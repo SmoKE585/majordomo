@@ -177,9 +177,9 @@ define('WEBSOCKETS_TLS', 0);                   // Использовать TLS: 
 define('WEBSOCKETS_MAX_CLIENTS', 100);         // Общий лимит одновременных websocket-клиентов | Total concurrent websocket clients limit
 define('WEBSOCKETS_MAX_CONNECTIONS_PER_IP', 100); // Лимит подключений с одного IP | Connection limit per IP
 define('WEBSOCKETS_MAX_REQUESTS_PER_MINUTE', 20000); // Лимит сообщений/запросов в минуту на клиента | Message/request limit per minute per client
-define('WEBSOCKETS_CLIENT_TIMEOUT', 30);       // Таймаут неактивного клиента в секундах | Inactive client timeout in seconds
-define('WEBSOCKETS_WRITE_TIMEOUT', 2);         // Таймаут записи в клиентский websocket-сокет | Client socket write timeout
-define('WEBSOCKETS_CLIENT_WRITE_TIMEOUT', 2);  // Таймаут записи локального клиента очереди | Queue client write timeout
+define('WEBSOCKETS_CLIENT_TIMEOUT', 0);        // Таймаут неактивного клиента, 0 - отключен | Inactive client timeout, 0 disables
+define('WEBSOCKETS_WRITE_TIMEOUT', 0.25);      // Таймаут записи в клиентский websocket-сокет | Client socket write timeout
+define('WEBSOCKETS_CLIENT_WRITE_TIMEOUT', 0.5); // Таймаут записи локального клиента очереди | Queue client write timeout
 define('WEBSOCKETS_MAX_FRAME_BYTES', 1048576); // Лимит буфера неполного websocket-фрейма | Incomplete frame buffer limit
 define('WEBSOCKETS_CHECK_ORIGIN', 0);          // Проверять Origin в handshake: 0/1 | Check Origin in handshake: 0/1
 define('WEBSOCKETS_ALLOWED_ORIGINS', '');      // Белый список Origin (через запятую), если CHECK_ORIGIN=1 | Allowed Origin list (comma-separated) when CHECK_ORIGIN=1

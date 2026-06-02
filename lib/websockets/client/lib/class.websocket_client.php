@@ -12,7 +12,7 @@
 
 class WebsocketClient
 {
-        const DEFAULT_WRITE_TIMEOUT = 2.0;
+        const DEFAULT_WRITE_TIMEOUT = 0.5;
 
         private $_host;
         private $_port;

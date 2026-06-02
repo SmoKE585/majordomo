@@ -73,6 +73,19 @@ if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
             exit(128 + $signal);
         });
     }
+    if (defined('SIGALRM') && function_exists('pcntl_alarm')) {
+        pcntl_signal(SIGALRM, function () {
+            if (isset($GLOBALS['websockets_busy_since'])) {
+                $busyFor = microtime(true) - (float)$GLOBALS['websockets_busy_since'];
+                if ($busyFor > 5) {
+                    $info = isset($GLOBALS['websockets_busy_info']) ? $GLOBALS['websockets_busy_info'] : 'unknown';
+                    cycleWebSocketsLog('cycle_websockets busy for ' . round($busyFor, 3) . 's: ' . $info);
+                }
+            }
+            pcntl_alarm(15);
+        });
+        pcntl_alarm(15);
+    }
 }
 
 

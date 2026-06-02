@@ -27,6 +27,7 @@ class Server extends Socket
         private $_maxClients           = 30;
         private $_maxConnectionsPerIp  = 5;
         private $_maxRequestsPerMinute = 50;
+        private $_latestLoopAlive = 0;
         /**
          * Timeout for inactive clients in seconds
          */
@@ -64,6 +65,8 @@ class Server extends Socket
         public function run()
         {
                 while (true) {
+                        $this->markLoopAlive();
+
                         // periodically check for timed-out clients
                         $now = time();
                         foreach ($this->clientActivity as $sockId => $ts) {
@@ -181,9 +184,29 @@ class Server extends Socket
                                                 }
                                         }
 
+                                        $GLOBALS['websockets_busy_since'] = microtime(true);
+                                        $GLOBALS['websockets_busy_info'] = 'onData client=' . $client->getClientIp() . ':' . $client->getClientPort() . ', bytes=' . $bytes;
+                                        $started = microtime(true);
                                         $client->onData($data);
+                                        $elapsed = microtime(true) - $started;
+                                        if ($elapsed > 1) {
+                                                $this->log('[warn] Slow websocket onData: ' . round($elapsed, 3) . 's, client=' . $client->getClientIp() . ':' . $client->getClientPort() . ', bytes=' . $bytes);
+                                        }
+                                        unset($GLOBALS['websockets_busy_since'], $GLOBALS['websockets_busy_info']);
                                 }
                         }
+                }
+        }
+
+        protected function markLoopAlive()
+        {
+                $now = time();
+                if (($now - $this->_latestLoopAlive) < 5) {
+                        return;
+                }
+                $this->_latestLoopAlive = $now;
+                if (isset($GLOBALS['cycleName']) && $GLOBALS['cycleName']) {
+                        setGlobal($GLOBALS['cycleName'], $now, 1);
                 }
         }
 
@@ -266,7 +289,11 @@ class Server extends Socket
         public function log($message, $type = 'info')
         {
                 $mem = round(memory_get_usage(true) / 1024 / 1024, 2) . ' mb';
-                echo date('Y-m-d H:i:s') . ' [' . ($type ? $type : 'error') . '] ' . $message . ' (Mem: ' . $mem . ')' . PHP_EOL;
+                $line = date('Y-m-d H:i:s') . ' [' . ($type ? $type : 'error') . '] ' . $message . ' (Mem: ' . $mem . ')';
+                echo $line . PHP_EOL;
+                if (function_exists('DebMes')) {
+                        DebMes($line, 'websockets');
+                }
         }
 
         /**

@@ -15,7 +15,7 @@ namespace WebSocket;
  */
 class Socket
 {
-    const DEFAULT_WRITE_TIMEOUT = 2.0;
+    const DEFAULT_WRITE_TIMEOUT = 0.25;
 
     /**
      * @var Socket Holds the master socket

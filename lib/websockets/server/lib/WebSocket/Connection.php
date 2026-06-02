@@ -297,6 +297,7 @@ class Connection {
     public function send($payload, $type = 'text', $masked = false) {
         $encodedData = $this->hybi10Encode($payload, $type, $masked);
         if (!$this->server->writeBuffer($this->socket, $encodedData)) {
+            $this->log('Send failed, disconnecting client. type=' . $type . ', payload=' . strlen((string)$payload) . ' bytes', 'warn');
             $this->server->removeClientOnError($this);
             return false;
         }
