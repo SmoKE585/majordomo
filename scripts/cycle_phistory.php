@@ -200,7 +200,7 @@ function ensureTableIndex($table_name, $index_name, $index_columns)
         return;
     }
 
-    $check = SQLSelectOne("SHOW INDEX FROM `$table_name_safe` WHERE Key_name='" . DBSafe($index_name_safe) . "' LIMIT 1");
+    $check = SQLSelectOne("SHOW INDEX FROM `$table_name_safe` WHERE Key_name='" . DBSafe($index_name_safe) . "'");
     if (!isset($check['Key_name'])) {
         SQLExec("ALTER TABLE `$table_name_safe` ADD INDEX `$index_name_safe` ($index_columns_safe)");
     }
