@@ -608,11 +608,11 @@ class xray extends module
                 $selected = gr('files');
                 if (!is_array($selected) || !count($selected)) {
                     echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'No files selected'));
-                    return;
+                    exit;
                 }
                 if ($path_real === false) {
                     echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Invalid log path'));
-                    return;
+                    exit;
                 }
 
                 $base_path = str_replace('\\', '/', $path_real);
@@ -643,7 +643,7 @@ class xray extends module
                 } else {
                     echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'No files cleared'));
                 }
-                return;
+                exit;
             }
             if ($op == 'cyclelog') {
                 header("HTTP/1.0: 200 OK\n");
@@ -652,7 +652,7 @@ class xray extends module
                 $cycle = preg_replace('/[^a-zA-Z0-9_]/', '', $cycle);
                 if ($cycle == '') {
                     echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'));
-                    return;
+                    exit;
                 }
                 SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycle_logs` (`ID` int(10) unsigned NOT NULL AUTO_INCREMENT,`CYCLE` char(100) NOT NULL,`ADDED` int(10) unsigned NOT NULL,`MESSAGE` varchar(1024) NOT NULL,PRIMARY KEY (`ID`),KEY `CYCLE_ADDED` (`CYCLE`,`ADDED`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
                 $res = SQLSelect("SELECT * FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycle) . "' ORDER BY ID DESC LIMIT 80");
@@ -666,7 +666,7 @@ class xray extends module
                     );
                 }
                 echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LINES' => $lines));
-                return;
+                exit;
             }
             if ($op == 'getcontent') {
                 header("HTTP/1.0: 200 OK\n");
