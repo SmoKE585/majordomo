@@ -8,6 +8,8 @@ namespace WebSocket;
  * @author Simon Samtleben <web@lemmingzshadow.net>
  */
 class Connection {
+    const DEFAULT_MAX_BUFFER_BYTES = 1048576;
+
     private $server;
     private $socket;
     private $handshaked = false;
@@ -231,6 +233,14 @@ class Connection {
         if ($decodedData === false) {
             $this->waitingForData = true;
             $this->_dataBuffer .= $data;
+            $maxBufferBytes = defined('WEBSOCKETS_MAX_FRAME_BYTES') ? (int)WEBSOCKETS_MAX_FRAME_BYTES : self::DEFAULT_MAX_BUFFER_BYTES;
+            if ($maxBufferBytes <= 0) {
+                $maxBufferBytes = self::DEFAULT_MAX_BUFFER_BYTES;
+            }
+            if (strlen($this->_dataBuffer) > $maxBufferBytes) {
+                $this->log('Websocket frame buffer limit exceeded: ' . strlen($this->_dataBuffer) . ' bytes', 'warn');
+                $this->close(1004);
+            }
             return false;
         }
         else {

@@ -12,6 +12,8 @@
 
 class WebsocketClient
 {
+        const DEFAULT_WRITE_TIMEOUT = 2.0;
+
         private $_host;
         private $_port;
         private $_path;
@@ -41,15 +43,10 @@ class WebsocketClient
                 {
                         return false;
                 }
-                $res = @fwrite($this->_Socket, $this->_hybi10Encode($data, $type, $masked));            
-                if($res === 0 || $res === false)
+                $res = $this->_writeAll($this->_hybi10Encode($data, $type, $masked));
+                if($res === false)
                 {
                         return false;
-                }               
-                $buffer = ' ';
-                while($buffer != '')
-                {                       
-                        $buffer = fread($this->_Socket, 512);// drop?
                 }
                 
                 return true;
@@ -77,8 +74,11 @@ class WebsocketClient
                 $this->_Socket = fsockopen($host, $port, $errno, $errstr, 2);
                 if(!empty($this->_Socket))
                 {
-                socket_set_timeout($this->_Socket, 0, 10000);
-                @fwrite($this->_Socket, $header);
+                socket_set_timeout($this->_Socket, 1);
+                if ($this->_writeAll($header) === false) {
+                        $this->disconnect();
+                        return false;
+                }
                 $response = @fread($this->_Socket, 1500);
 
                 preg_match('#Sec-WebSocket-Accept:\s(.*)$#mU', $response, $matches);
@@ -115,6 +115,46 @@ class WebsocketClient
                 }
                 $this->_connected = true;
                 return true;
+        }
+
+        private function _writeAll($data)
+        {
+                if (!is_resource($this->_Socket)) {
+                        return false;
+                }
+
+                $length = strlen($data);
+                $written = 0;
+                $timeout = defined('WEBSOCKETS_CLIENT_WRITE_TIMEOUT') ? (float)WEBSOCKETS_CLIENT_WRITE_TIMEOUT : self::DEFAULT_WRITE_TIMEOUT;
+                if ($timeout <= 0) {
+                        $timeout = self::DEFAULT_WRITE_TIMEOUT;
+                }
+                $deadline = microtime(true) + $timeout;
+
+                while ($written < $length) {
+                        $remaining = $deadline - microtime(true);
+                        if ($remaining <= 0) {
+                                return false;
+                        }
+
+                        $read = null;
+                        $write = array($this->_Socket);
+                        $except = null;
+                        $seconds = (int)$remaining;
+                        $microseconds = (int)(($remaining - $seconds) * 1000000);
+                        $ready = @stream_select($read, $write, $except, $seconds, $microseconds);
+                        if ($ready === false || $ready === 0) {
+                                return false;
+                        }
+
+                        $chunk = @fwrite($this->_Socket, substr($data, $written));
+                        if ($chunk === false || $chunk === 0) {
+                                return false;
+                        }
+                        $written += $chunk;
+                }
+
+                return $written;
         }
 
 

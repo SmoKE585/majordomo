@@ -103,6 +103,7 @@ class Server extends Socket
                                                 $this->log('[warn] Socket accept failed');
                                                 continue;
                                         }
+                                        stream_set_blocking($ressource, false);
                                         $client                          = $this->createConnection($ressource);
                                         $this->clients[(int) $ressource] = $client;
                                         $this->allsockets[]              = $ressource;

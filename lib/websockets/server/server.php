@@ -13,7 +13,7 @@ require(__DIR__ . '/lib/SplClassLoader.php');
 $classLoader = new SplClassLoader('WebSocket', __DIR__ . '/lib');
 $classLoader->register();
 
-if (!defined('WEBSOCKETS_PORT')) define('WEBSOCKETS_PORT',8002);
+if (!defined('WEBSOCKETS_PORT')) define('WEBSOCKETS_PORT',8001);
 if (!defined('WEBSOCKETS_HOST')) define('WEBSOCKETS_HOST', '0.0.0.0');
 if (!defined('WEBSOCKETS_TLS')) define('WEBSOCKETS_TLS', 0);
 if (!defined('WEBSOCKETS_MAX_CLIENTS')) define('WEBSOCKETS_MAX_CLIENTS', 100);

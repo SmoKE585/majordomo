@@ -115,7 +115,7 @@ function killProcessesOnPort($port)
 }
 
 
-killProcessesOnPort(8001);
+killProcessesOnPort((int)WEBSOCKETS_PORT);
 
 try {
     $server = majordomoCreateWebSocketServer();

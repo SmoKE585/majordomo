@@ -15,6 +15,8 @@ namespace WebSocket;
  */
 class Socket
 {
+    const DEFAULT_WRITE_TIMEOUT = 2.0;
+
     /**
      * @var Socket Holds the master socket
      */
@@ -54,6 +56,7 @@ class Socket
 		{
 			throw new \RuntimeException('Error creating socket [' . (int)$errno . ']: ' . (string)$err);
 		}		
+		stream_set_blocking($this->master, false);
 		
 		$this->allsockets[] = $this->master;
 	}  
@@ -136,11 +139,36 @@ class Socket
 	
 	// method originally found in phpws project:
 	public function writeBuffer($resource, $string)
-	{		
+	{
+		if (!is_resource($resource)) {
+			return false;
+		}
+
 		$stringLength = strlen($string);
-		for($written = 0; $written < $stringLength; $written += $fwrite)
-		{
-			$fwrite = @fwrite($resource, substr($string, $written));			
+		$written = 0;
+		$timeout = defined('WEBSOCKETS_WRITE_TIMEOUT') ? (float)WEBSOCKETS_WRITE_TIMEOUT : self::DEFAULT_WRITE_TIMEOUT;
+		if ($timeout <= 0) {
+			$timeout = self::DEFAULT_WRITE_TIMEOUT;
+		}
+		$deadline = microtime(true) + $timeout;
+
+		while ($written < $stringLength) {
+			$remaining = $deadline - microtime(true);
+			if ($remaining <= 0) {
+				return false;
+			}
+
+			$read = null;
+			$write = array($resource);
+			$except = null;
+			$seconds = (int)$remaining;
+			$microseconds = (int)(($remaining - $seconds) * 1000000);
+			$ready = @stream_select($read, $write, $except, $seconds, $microseconds);
+			if ($ready === false || $ready === 0) {
+				return false;
+			}
+
+			$fwrite = @fwrite($resource, substr($string, $written));
 			if($fwrite === false)
 			{
 				return false;
@@ -149,7 +177,8 @@ class Socket
 			{
 				return false;
 			}
-		}		
+			$written += $fwrite;
+		}
 		return $written;
 	}
 }
