@@ -10,6 +10,15 @@ set_time_limit(0);
 
 include_once("./load_settings.php");
 
+function cycleWebSocketsLog($message)
+{
+    $message = date('Y-m-d H:i:s') . ' ' . $message;
+    echo $message . PHP_EOL;
+    if (function_exists('DebMes')) {
+        DebMes($message, 'websockets');
+    }
+}
+
 if (defined('DISABLE_WEBSOCKETS') && DISABLE_WEBSOCKETS == 1) {
     echo "Web-sockets disabled\n";
     exit;
@@ -40,6 +49,31 @@ $cycleName = str_replace('.php', '', basename(__FILE__)) . 'Run';
 setGlobal($cycleName, time(), 1);
 
 require_once('./lib/websockets/server/server.php');
+
+cycleWebSocketsLog('cycle_websockets started, pid=' . getmypid() . ', port=' . (int)WEBSOCKETS_PORT);
+
+register_shutdown_function(function () use ($websockets_script_started) {
+    $error = error_get_last();
+    $uptime = time() - $websockets_script_started;
+    $message = 'cycle_websockets shutdown, pid=' . getmypid()
+        . ', uptime=' . $uptime . 's'
+        . ', memory=' . round(memory_get_usage(true) / 1024 / 1024, 2) . 'Mb'
+        . ', peak=' . round(memory_get_peak_usage(true) / 1024 / 1024, 2) . 'Mb';
+    if (is_array($error) && in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
+        $message .= ', fatal=' . $error['message'] . ' in ' . $error['file'] . ':' . $error['line'];
+    }
+    cycleWebSocketsLog($message);
+});
+
+if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
+    pcntl_async_signals(true);
+    foreach (array(SIGTERM, SIGINT, SIGHUP) as $signal) {
+        pcntl_signal($signal, function ($signal) use ($websockets_script_started) {
+            cycleWebSocketsLog('cycle_websockets got signal ' . $signal . ', pid=' . getmypid() . ', uptime=' . (time() - $websockets_script_started) . 's');
+            exit(128 + $signal);
+        });
+    }
+}
 
 
 function killProcessesOnPort($port)
@@ -123,13 +157,7 @@ try {
 
     throw new Exception('WebSocket server loop exited unexpectedly');
 } catch (Throwable $e) {
-    $message = date('Y-m-d H:i:s') . ' WebSocket server crashed: ' . $e->getMessage();
-
-    echo $message . PHP_EOL;
-
-    if (function_exists('DebMes')) {
-        DebMes($message, 'websockets');
-    }
+    cycleWebSocketsLog('WebSocket server crashed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString());
 
     exit(1);
 }
