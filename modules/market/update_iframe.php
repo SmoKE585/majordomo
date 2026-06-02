@@ -98,7 +98,7 @@ if ($mode2 == 'install_multiple' && $names != '') {
     if ($res) {
         $mkt->removeTree(ROOT . 'cms/saverestore/temp');
         $mkt->echonow("Rebooting system ... ");
-        @SaveFile(ROOT . 'reboot', 'updated');
+        setRebootRequired('market_update_multiple');
         $mkt->echonow(" OK<br/> ", 'green');
         $mkt->echonow('<script language="javascript">window.top.location.href="' . ROOTHTML . 'admin.php?md=panel&action=market&ok_msg=' . urlencode($res) . '";</script>');
     }
@@ -113,7 +113,7 @@ if ($mode2 == 'update_new') {
         if ($res) {
             $mkt->removeTree(ROOT . 'cms/saverestore/temp');
             $mkt->echonow("Rebooting system ... ");
-            @SaveFile(ROOT . 'reboot', 'updated');
+            setRebootRequired('market_update_new');
             $mkt->echonow(" OK<br/> ", 'green');
             $mkt->echonow('<script language="javascript">window.top.location.href="' . ROOTHTML . 'admin.php?md=panel&action=market&ok_msg=' . urlencode($res) . '";</script>');
         }
@@ -132,7 +132,7 @@ if ($mode2 == 'update_all') {
     if ($res) {
         $mkt->removeTree(ROOT . 'cms/saverestore/temp');
         $mkt->echonow("Rebooting system ... ");
-        @SaveFile(ROOT . 'reboot', 'updated');
+        setRebootRequired('market_update_all');
         $mkt->echonow(" OK<br/> ", 'green');
         $mkt->echonow('<script language="javascript">window.top.location.href="' . ROOTHTML . 'admin.php?md=panel&action=market&ok_msg=' . urlencode($res) . '";</script>');
     }

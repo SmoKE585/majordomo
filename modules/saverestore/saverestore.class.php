@@ -2186,7 +2186,7 @@ class saverestore extends module
                     }
                 }
                 DebMes("Update installed, need to reboot", 'auto_update');
-                @SaveFile(DOC_ROOT . DIRECTORY_SEPARATOR . 'reboot', 'updated');
+                setRebootRequired('auto_update');
             }
         }
     }

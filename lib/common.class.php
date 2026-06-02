@@ -10,6 +10,16 @@ function setRebootRequired($reason = '')
 {
     $path_to_flag = ROOT . 'reboot';
     if (!$reason) $reason = time();
+    $source = '';
+    if (function_exists('debug_backtrace')) {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        if (isset($trace[1]['file'])) {
+            $source = ' from ' . $trace[1]['file'] . ':' . (isset($trace[1]['line']) ? $trace[1]['line'] : 0);
+        }
+    }
+    if (function_exists('DebMes')) {
+        DebMes('Reboot flag set: ' . $reason . $source, 'boot');
+    }
     @SaveFile($path_to_flag, $reason);
 }
 
@@ -17,7 +27,11 @@ function resetRebootRequired()
 {
     $path_to_flag = ROOT . 'reboot';
     if (file_exists($path_to_flag)) {
-        @unlink($path_to_flag);
+        $old_reason = trim((string)@file_get_contents($path_to_flag));
+        $res = @unlink($path_to_flag);
+        if (function_exists('DebMes')) {
+            DebMes('Reboot flag reset: ' . ($res ? 'OK' : 'FAILED') . ', reason=' . $old_reason . ', path=' . $path_to_flag, 'boot');
+        }
     }
 }
 

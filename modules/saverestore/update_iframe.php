@@ -67,7 +67,7 @@ if ($backup) {
                 echonow('<script language="javascript">window.top.location.href="' . ROOTHTML . 'admin.php?action=market&mode=iframe&mode2=update_all";</script>');
             } else {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-chevron-right"></i> ' . LANG_UPDATEBACKUP_REQUEST_REBOOT . '</div>');
-                @SaveFile(ROOT . 'reboot', 'updated');
+                setRebootRequired('system_update_iframe');
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_REBOOT_WELL_DONE . '</div>');
                 sleep(2);
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-chevron-right"></i> ' . LANG_UPDATEBACKUP_GET_REDIRECT . '</div>');

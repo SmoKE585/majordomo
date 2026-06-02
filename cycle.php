@@ -13,6 +13,8 @@ include_once("./config.php");
 include_once("./lib/loader.php");
 include_once("./lib/threads.php");
 
+DebMes('Main cycle starting, pid=' . getmypid() . ', root=' . ROOT, 'boot');
+
 function buildCycleStopReason($cycleTitle, $closedThread, $exitCode = null, $termSig = null, $stopRequested = false, $restartRequested = false, $lastError = '')
 {
     $reasons = array();
