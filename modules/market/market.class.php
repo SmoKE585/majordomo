@@ -172,6 +172,10 @@ class market extends module
             $this->updateAll($this->selected_plugins);
         }
 
+        if ($this->mode == 'save_custom_repository' && $name) {
+            $this->saveCustomRepositoryUrl($name, gr('custom_url'));
+        }
+
 
         if ($this->mode == 'update_all') {
             $this->updateAll($this->can_be_updated);
@@ -411,7 +415,7 @@ class market extends module
             for ($i = 0; $i < $total; $i++) {
                 $rec = (array)$data->PLUGINS[$i];
                 $plugin_rec = SQLSelectOne("SELECT * FROM plugins WHERE MODULE_NAME LIKE '" . DBSafe($rec['MODULE_NAME']) . "'");
-                if (is_dir(ROOT . 'modules/' . $rec['MODULE_NAME']) || isset($plugin_rec['ID'])) {
+                if (is_dir(ROOT . 'modules/' . $rec['MODULE_NAME']) || (isset($plugin_rec['ID']) && isset($plugin_rec['IS_INSTALLED']) && $plugin_rec['IS_INSTALLED'])) {
                     $rec['EXISTS'] = 1;
                     if ($plugin_rec['ID']) {
                         $rec['INSTALLED_VERSION'] = $plugin_rec['CURRENT_VERSION'];
@@ -445,13 +449,13 @@ class market extends module
                         }
                     }
                 }
-                if ($rec['MODULE_NAME'] == $name) {
-                    $this->url = 'https://connect.smartliving.ru/market/?op=download&name=' . urlencode($rec['MODULE_NAME']) . "&serial=" . urlencode(gg('Serial'));
-                    $this->version = $rec['LATEST_VERSION'];
-                }
-
                 if (!$rec['REPOSITORY_URL']) {
                     $rec['REPOSITORY_URL'] = 'https://connect.smartliving.ru/market/?op=download&name=' . urlencode($rec['MODULE_NAME']) . "&serial=" . urlencode(gg('Serial'));
+                }
+                $rec = $this->applyCustomRepositoryUrl($rec);
+                if ($rec['MODULE_NAME'] == $name) {
+                    $this->url = $rec['REPOSITORY_URL'];
+                    $this->version = $rec['LATEST_VERSION'];
                 }
 
                 if ((isset($rec['EXISTS']) && !isset($rec['IGNORE_UPDATE'])) || isset($missing[$rec['MODULE_NAME']])) {
@@ -516,6 +520,85 @@ class market extends module
         $data_url = 'https://connect.smartliving.ru/market/?lang=' . SETTINGS_SITE_LANGUAGE . "&serial=" . urlencode($serial) . "&locale=" . urlencode($locale) . "&os=" . urlencode($os) . "&" . $details;
 
         return getURL($data_url, $cache_timeout);
+    }
+
+    function saveCustomRepositoryUrl($name, $url)
+    {
+        $name = trim($name);
+        $url = trim((string)$url);
+
+        if ($name == '') {
+            $this->redirect("?");
+        }
+
+        if ($url != '') {
+            $url = $this->normalizeCustomRepositoryUrl($url);
+            if (!$url) {
+                $this->redirect("?err_msg=" . urlencode("Invalid custom repository URL"));
+            }
+        }
+
+        $rec = SQLSelectOne("SELECT * FROM plugins WHERE MODULE_NAME LIKE '" . DBSafe($name) . "'");
+        $rec['MODULE_NAME'] = $name;
+        $rec['CUSTOM_REPOSITORY_URL'] = $url;
+        if (isset($rec['ID']) && $rec['ID']) {
+            SQLUpdate('plugins', $rec);
+        } else {
+            SQLInsert('plugins', $rec);
+        }
+
+        $msg = $url != '' ? "Custom repository URL saved" : "Custom repository URL cleared";
+        $this->redirect("?ok_msg=" . urlencode($msg));
+    }
+
+    function applyCustomRepositoryUrl($rec)
+    {
+        $custom_url = $this->getCustomRepositoryUrl($rec['MODULE_NAME']);
+        if ($custom_url != '') {
+            $rec['CUSTOM_REPOSITORY_URL'] = $custom_url;
+            $rec['CUSTOM_REPOSITORY_URL_BASE64'] = base64_encode($custom_url);
+            $rec['REPOSITORY_URL'] = $custom_url;
+            $rec['CUSTOM_REPOSITORY_ACTIVE'] = 1;
+        } else {
+            $rec['CUSTOM_REPOSITORY_URL'] = '';
+            $rec['CUSTOM_REPOSITORY_URL_BASE64'] = '';
+        }
+        return $rec;
+    }
+
+    function getCustomRepositoryUrl($name)
+    {
+        $rec = SQLSelectOne("SELECT CUSTOM_REPOSITORY_URL FROM plugins WHERE MODULE_NAME LIKE '" . DBSafe($name) . "'");
+        if (isset($rec['CUSTOM_REPOSITORY_URL'])) {
+            return trim($rec['CUSTOM_REPOSITORY_URL']);
+        }
+        return '';
+    }
+
+    function normalizeCustomRepositoryUrl($url)
+    {
+        $url = trim($url);
+        if (!preg_match('/^https?:\/\//is', $url)) {
+            return '';
+        }
+
+        if (preg_match('/\.(tar\.gz|tgz)(\?.*)?$/is', $url)) {
+            return $url;
+        }
+
+        if (preg_match('/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/?#]+)\/?$/is', $url, $m)) {
+            return 'https://github.com/' . $m[1] . '/' . $m[2] . '/archive/' . $m[3] . '.tar.gz';
+        }
+
+        if (preg_match('/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/commit\/([^\/?#]+)\/?$/is', $url, $m)) {
+            return 'https://github.com/' . $m[1] . '/' . $m[2] . '/archive/' . $m[3] . '.tar.gz';
+        }
+
+        if (preg_match('/^https:\/\/github\.com\/([^\/]+)\/([^\/?#]+?)(\.git)?\/?$/is', $url, $m)) {
+            return 'https://github.com/' . $m[1] . '/' . $m[2] . '/archive/master.tar.gz';
+        }
+
+        return $url;
     }
 
 
@@ -1272,6 +1355,7 @@ class market extends module
  plugins: TITLE varchar(255) NOT NULL DEFAULT ''
  plugins: MODULE_NAME varchar(255) NOT NULL DEFAULT ''
  plugins: REPOSITORY_URL char(255) NOT NULL DEFAULT ''
+ plugins: CUSTOM_REPOSITORY_URL varchar(1024) NOT NULL DEFAULT ''
  plugins: AUTHOR varchar(255) NOT NULL DEFAULT ''
  plugins: SUPPORT_URL char(255) NOT NULL DEFAULT ''
  plugins: DESCRIPTION_RU text

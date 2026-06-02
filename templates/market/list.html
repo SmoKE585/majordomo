@@ -2,6 +2,15 @@
 if($('#tab>li.active').text() == '<#LANG_UPDATES#>') {
 	$('#tab>li.active>a').append('<span class="badge" style="margin-left: 5px;color: #fff;background-color: #47a447;border-color: #398439;vertical-align: text-top;">'+$('#market_application>.media').length+'</span>')
 }
+function setCustomRepositoryUrl(moduleName, currentUrlBase64) {
+	var currentUrl = currentUrlBase64 ? atob(currentUrlBase64) : '';
+	var url = prompt('Укажите Git/архив URL для установки.\\nGitHub repo/tree/commit будет преобразован в архив master/branch/commit.\\nПустое значение сбросит пользовательский URL.', currentUrl || '');
+	if (url === null) {
+		return false;
+	}
+	window.location.href = '<#ROOTHTML#>panel/market.html?mode=save_custom_repository&name=' + encodeURIComponent(moduleName) + '&custom_url=' + encodeURIComponent(url);
+	return false;
+}
 </script>
 [#if PLUGINS#]
     [#begin PLUGINS#]
@@ -48,6 +57,7 @@ if($('#tab>li.active').text() == '<#LANG_UPDATES#>') {
 				<div class="btn-group">
 				[#if CAN_DOWNLOAD="1"#]
 					[#if SUPPORT_URL !="" AND PRICE != ""#]<a class="btn btn-default" target="_blank" href="[#SUPPORT_URL#]"><i class="glyphicon glyphicon-bullhorn"></i> <#LANG_NEWMARKET_MODULE_DISCUSS#></a>[#endif#]
+					<a class="btn btn-[#if CUSTOM_REPOSITORY_ACTIVE="1"#]info[#else#]default[#endif#]" href="#" onclick="return setCustomRepositoryUrl('[#MODULE_NAME#]', '[#CUSTOM_REPOSITORY_URL_BASE64#]');" title="[#if CUSTOM_REPOSITORY_ACTIVE="1"#]Используется пользовательский URL[#else#]Указать свой Git/архив URL[#endif#]"><i class="glyphicon glyphicon-link"></i> Свой GIT</a>
 					<a class="btn btn-[#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]success[#else#]warning[#endif#]" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME#]">[#if EXISTS#]<i class="glyphicon glyphicon-refresh"></i> [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]<#LANG_UPDATE#>[#else#]Перекачать[#endif#][#else#]<i class="glyphicon glyphicon-download"></i> <#LANG_ADD#>[#endif#]</a>
 					[#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>" AND INSTALLED_VERSION != ''#]<a class="btn btn-danger" style="background: #aa22a6;border-color: #8d0789;"  onClick="return confirm('<#LANG_ARE_YOU_SURE#>')" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=dontupdate&name=[#MODULE_NAME#]&value=[#LATEST_VERSION#]"><i class="glyphicon glyphicon-minus-sign"></i> Не обновлять</a>[#endif#]
 				[#else#]
