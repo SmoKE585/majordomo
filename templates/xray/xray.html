@@ -252,7 +252,7 @@ $(document).ready(function() {
 						i++;
 					}
 				} else if(dataJSON.MODE == 'services') {
-					$('#xrayContent').html('<div id="cycleManagerBlock"></div><div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed" style="width: 100%;"><tbody id="propContent"></tbody></table></div>');
+					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed" style="width: 100%;"><tbody id="propContent"></tbody></table></div>');
 					var statusLabels = {
 						'starting': '<span class="label label-warning">Запускается</span>',
 						'running': '<span class="label label-success">Работает</span>',
@@ -260,13 +260,6 @@ $(document).ready(function() {
 						'stopping': '<span class="label label-warning">Выключается</span>',
 						'stopped': '<span class="label label-danger">Остановлен</span>'
 					};
-					if (dataJSON.MANAGER) {
-						var managerStatusLabel = statusLabels[dataJSON.MANAGER.STATUS] || '<span class="label label-default">'+dataJSON.MANAGER.STATUS+'</span>';
-						var managerUpdate = dataJSON.MANAGER.UPDATE ? ' <span class="label label-default">'+dataJSON.MANAGER.UPDATE+'</span>' : '';
-						var managerStyle = dataJSON.MANAGER.WAIT == 1 ? 'background: linear-gradient(to right, lightcoral, white);' : 'background: linear-gradient(to right, #e8f5e9, white);';
-						var managerLogButton = '<button type="button" onClick="showCycleLog(\''+dataJSON.MANAGER.LOG_LINK+'\');return false;" class="btn btn-default btn-xs">Лог</button>';
-						$('#cycleManagerBlock').html('<div class="panel panel-default" style="margin-bottom: 10px;"><div class="panel-heading"><b>Менеджер циклов</b></div><table class="table table-condensed" style="margin-bottom: 0;"><tbody><tr style="'+managerStyle+'"><td style="width: 25%;"><b>'+dataJSON.MANAGER.TITLE+'</b><br><small>'+dataJSON.MANAGER.PATH+'</small></td><td style="vertical-align: middle;text-align: center;">'+managerStatusLabel+managerUpdate+'</td><td style="vertical-align: middle;text-align: right;">'+managerLogButton+'</td></tr></tbody></table></div>');
-					}
 					let i = 0;
 					while (i < dataJSON.TOTAL) {
 						var status = dataJSON.LIST[i].STATUS || '';
@@ -311,11 +304,14 @@ $(document).ready(function() {
 			return false;
 		}
 		function loadCycleLog() {
-			if (!cycleLogCurrent || !$('#cycleLogModal').is(':visible')) {
+			if (!cycleLogCurrent) {
 				return false;
 			}
 			var url = '<#ROOTHTML#>panel/xray.html?view_mode=services&ajax=1&op=cyclelog&cycle=' + encodeURIComponent(cycleLogCurrent);
-			$.getJSON(url, function(data) {
+			$.ajax({
+				url: url,
+				dataType: 'json'
+			}).done(function(data) {
 				var content = '';
 				if (data.STATUS === 'OK' && data.LINES && data.LINES.length) {
 					for (var i = 0; i < data.LINES.length; i++) {
@@ -326,8 +322,9 @@ $(document).ready(function() {
 				}
 				$('#cycleLogBody').html(content);
 				$('#cycleLogBody').scrollTop($('#cycleLogBody')[0].scrollHeight);
-			}).fail(function() {
-				$('#cycleLogBody').html('Ошибка загрузки лога.');
+			}).fail(function(xhr) {
+				var response = xhr && xhr.responseText ? xhr.responseText.substring(0, 500) : '';
+				$('#cycleLogBody').html('Ошибка загрузки лога.' + (response ? "\n\n" + response : ''));
 			});
 			clearTimeout(cycleLogTimer);
 			cycleLogTimer = setTimeout(loadCycleLog, 2000);

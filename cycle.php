@@ -481,11 +481,6 @@ $last_restart = array();
 
 $last_cycles_control_check = time();
 
-$cycle_manager_title = 'cycle_manager';
-setCycleRuntimeStatus($cycle_manager_title, 'running', 'cycle.php started');
-saveCycleToCache($cycle_manager_title . 'Run', time());
-addCycleRuntimeLog($cycle_manager_title, 'cycle.php started. PHP: ' . PHP_VERSION . ', OS: ' . php_uname());
-
 $auto_restarts = array();
 $to_start = array();
 $to_stop = array();
@@ -499,8 +494,6 @@ while (false !== ($result = $threads->iteration())) {
     if ((time() - $last_cycles_control_check) >= 5 || !empty($result)) {
 
         $last_cycles_control_check = time();
-        saveCycleToCache($cycle_manager_title . 'Run', time());
-        setCycleRuntimeStatus($cycle_manager_title, 'running', 'Monitoring ' . count($threads->commandLines) . ' cycle process(es)');
         $cyclesControls = $cyclesTimestamps = array();
         $tmpcyclesTimestamps = SQLSelect("SELECT * FROM cached_cycles;");
 
@@ -596,7 +589,6 @@ while (false !== ($result = $threads->iteration())) {
             $reboot_timer = 0;
             //force close all running threads
             DebMes("Force closing all running services.", 'boot');
-            addCycleRuntimeLog($cycle_manager_title, 'Reboot requested. Force closing all running services.');
             $to_start = array();
             $restart_threads = array();
             foreach ($is_running as $k => $v) {
@@ -630,7 +622,6 @@ while (false !== ($result = $threads->iteration())) {
             if (!isset($is_running[$title])) {
                 $cmd = './scripts/' . $title . '.php';
                 DebMes("Starting service " . $title . ' (' . $cmd . ')', 'boot');
-                addCycleRuntimeLog($cycle_manager_title, 'Starting service ' . $title);
                 setCycleRuntimeStatus($title, 'starting');
                 addCycleRuntimeLog($title, 'Starting service ' . $cmd);
                 $pipe_id = $threads->newThread($cmd);
@@ -671,7 +662,6 @@ while (false !== ($result = $threads->iteration())) {
                         $last_error = '';
                     }
                     DebMes("Thread closed: " . $cycle_title, 'boot');
-                    addCycleRuntimeLog($cycle_manager_title, 'Thread closed: ' . $cycle_title);
                     $stop_requested = isset($to_stop[$cycle_title]);
                     unset($to_stop[$cycle_title]);
                     setGlobal($cycle_title . 'Run', '');
@@ -691,7 +681,6 @@ while (false !== ($result = $threads->iteration())) {
                 if ($need_restart && $cycle_title) {
                     if (!isset($to_start[$cycle_title])) {
                         DebMes("AUTO-RECOVERY: " . $closed_thread, 'boot');
-                        addCycleRuntimeLog($cycle_manager_title, 'Auto recovery scheduled: ' . $cycle_title);
                         setCycleRuntimeStatus($cycle_title, 'starting', 'Auto recovery scheduled');
                         addCycleRuntimeLog($cycle_title, 'Auto recovery scheduled');
                         if (!preg_match('/websockets/is', $closed_thread)) {
