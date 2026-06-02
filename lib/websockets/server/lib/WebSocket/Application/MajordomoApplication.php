@@ -93,6 +93,9 @@ class MajordomoApplication extends Application
         }
         global $websockets_script_started;
         if ($websockets_script_started > 0 && (time() - $websockets_script_started) > 6 * 60 * 60) {
+            if (function_exists('DebMes')) {
+                DebMes(date('Y-m-d H:i:s') . ' cycle_websockets exiting by scheduled 6h restart, pid=' . getmypid(), 'websockets');
+            }
             exit; // restart every 6 hours
         }
     }
@@ -852,6 +855,9 @@ class MajordomoApplication extends Application
         }
 
         if (file_exists('./reboot')) {
+            if (function_exists('DebMes')) {
+                DebMes(date('Y-m-d H:i:s') . ' cycle_websockets exiting by reboot flag, pid=' . getmypid(), 'websockets');
+            }
             global $db;
             $db->Disconnect();
             exit;

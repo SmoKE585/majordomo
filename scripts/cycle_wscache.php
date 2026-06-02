@@ -147,6 +147,8 @@ while (1) {
         }
     }
     if (isRebootRequired() || isset($_GET['onetime'])) {
+        $reason = isRebootRequired() ? 'reboot flag' : 'onetime request';
+        cycleWsCacheLog('cycle_wscache exiting by ' . $reason . ', reboot_exists=' . (file_exists(ROOT . 'reboot') ? '1' : '0'));
         exit;
     }
     sleep(1);
