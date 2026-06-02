@@ -12,6 +12,7 @@ class Connection {
     private $socket;
     private $handshaked = false;
     private $application = null;
+    private $closed = false;
 
     private $ip;
     private $port;
@@ -295,6 +296,11 @@ class Connection {
     }
 
     public function close($statusCode = 1000) {
+        if ($this->closed) {
+            return true;
+        }
+        $this->closed = true;
+
         $payload = str_split(sprintf('%016b', $statusCode) , 8);
         $payload[0] = chr(bindec($payload[0]));
         $payload[1] = chr(bindec($payload[1]));
@@ -331,15 +337,19 @@ class Connection {
         }
 
         //DebMes("Disconnection reason: ".$payload);
-        if ($this->send($payload, 'close', false) === false) {
-            return false;
+        $encodedData = $this->hybi10Encode($payload, 'close', false);
+        if ($encodedData !== false && is_resource($this->socket)) {
+            @$this->server->writeBuffer($this->socket, $encodedData);
         }
 
         if ($this->application) {
             $this->application->onDisconnect($this);
         }
-        stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+        if (is_resource($this->socket)) {
+            @stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+        }
         $this->server->removeClientOnClose($this);
+        return true;
     }
 
     public function onDisconnect() {

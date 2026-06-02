@@ -27,13 +27,17 @@ class MajordomoApplication extends Application
         $client->subscribedTo['properties']['*'] = 1;
         $client->watchedProperties['*']['properties'] = 1;
         $this->_clients[$id] = $client;
+        $this->updateClientsTotal();
         echo "Client connected (" . $client->getClientIp() . "). Total clients: " . count($this->_clients) . "\n";
     }
 
     public function onDisconnect($client)
     {
         $id = $client->getClientId();
-        unset($this->_clients[$id]);
+        if (isset($this->_clients[$id])) {
+            unset($this->_clients[$id]);
+            $this->updateClientsTotal();
+        }
         echo "Client dicconnected (" . $client->getClientIp() . "). Total clients: " . count($this->_clients) . "\n";
 
     }
@@ -80,11 +84,7 @@ class MajordomoApplication extends Application
             $checked_time = time();
             setGlobal($cycleName, $checked_time, 1);
             //saveToCache('MJD:ThisComputer.'.$cycleName, $checked_time);
-            $ws_clients_total = count($this->_clients);
-            $old_value = gg('WSClientsTotal');
-            if ($ws_clients_total != $old_value) {
-                setGlobal('WSClientsTotal', $ws_clients_total, 1);
-            }
+            $this->updateClientsTotal();
             // send ping
             foreach ($this->_clients as $client){
                 if ($client->getClientIp() != "127.0.0.1")
@@ -94,6 +94,15 @@ class MajordomoApplication extends Application
         global $websockets_script_started;
         if ($websockets_script_started > 0 && (time() - $websockets_script_started) > 6 * 60 * 60) {
             exit; // restart every 6 hours
+        }
+    }
+
+    private function updateClientsTotal()
+    {
+        $ws_clients_total = count($this->_clients);
+        $old_value = gg('WSClientsTotal');
+        if ($ws_clients_total != $old_value) {
+            setGlobal('WSClientsTotal', $ws_clients_total, 1);
         }
     }
 
