@@ -23,7 +23,7 @@
 		} else {
 				serverUrl = "ws:";
 		}
-		serverUrl += "//" + loc.hostname + ':<#WEBSOCKETS_PORT#>/majordomo';
+		serverUrl += "//" + loc.hostname + ':8002/majordomo';
 		var wsAuthToken = <#WEBSOCKETS_AUTH_TOKEN_JSON#>;
 		if (wsAuthToken) {
 			serverUrl += '?token=' + encodeURIComponent(wsAuthToken);
