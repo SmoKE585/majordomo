@@ -565,9 +565,9 @@ while (false !== ($result = $threads->iteration())) {
                 $cycle_updated_timestamp = $cyclesTimestamps[$title . 'Run'] ?? null;
                 if (isset($to_stop[$title])) {
                     setCycleRuntimeStatus($title, 'stopping');
-                } elseif ($cycle_updated_timestamp && ((time() - (int)$cycle_updated_timestamp) <= 30 * 60)) {
+                } elseif ($cycle_updated_timestamp && ((time() - (int)$cycle_updated_timestamp) <= 10 * 60)) {
                     setCycleRuntimeStatus($title, 'running');
-                } elseif ((time() - $started_when[$title]) > 120) {
+                } elseif ((time() - $started_when[$title]) > 10 * 60) {
                     setCycleRuntimeStatus($title, 'hang');
                 } else {
                     setCycleRuntimeStatus($title, 'starting');

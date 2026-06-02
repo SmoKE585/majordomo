@@ -314,8 +314,7 @@ $(document).ready(function() {
 			if (!cycleLogCurrent || !$('#cycleLogModal').is(':visible')) {
 				return false;
 			}
-			var url = window.location.href;
-			url += (url.indexOf('?') !== -1 ? '&' : '?') + 'ajax=1&op=cyclelog&cycle=' + encodeURIComponent(cycleLogCurrent);
+			var url = '<#ROOTHTML#>panel/xray.html?view_mode=services&ajax=1&op=cyclelog&cycle=' + encodeURIComponent(cycleLogCurrent);
 			$.getJSON(url, function(data) {
 				var content = '';
 				if (data.STATUS === 'OK' && data.LINES && data.LINES.length) {
@@ -327,6 +326,8 @@ $(document).ready(function() {
 				}
 				$('#cycleLogBody').html(content);
 				$('#cycleLogBody').scrollTop($('#cycleLogBody')[0].scrollHeight);
+			}).fail(function() {
+				$('#cycleLogBody').html('Ошибка загрузки лога.');
 			});
 			clearTimeout(cycleLogTimer);
 			cycleLogTimer = setTimeout(loadCycleLog, 2000);

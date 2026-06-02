@@ -163,18 +163,21 @@ class xray extends module
             $control = gg($service . 'Control');
             $status = checkCycleFromCache($service . 'Status');
             $statusUpdated = (int)checkCycleFromCache($service . 'StatusUpdated');
+            $cycleHangTimeout = 10 * 60;
             if ($status === false || $status == '') {
-                $status = ((time() - (int)$updated < 30) ? 'running' : 'stopped');
+                $status = ((time() - (int)$updated < $cycleHangTimeout) ? 'running' : 'stopped');
             } elseif ((int)$updated > 0 && $status != 'stopping') {
-                if ((time() - (int)$updated) < 60 && ($status == 'starting' || (int)$updated >= $statusUpdated)) {
+                if ((time() - (int)$updated) < $cycleHangTimeout) {
                     $status = 'running';
-                } elseif ((time() - (int)$updated) >= 60) {
+                } elseif ((time() - (int)$updated) >= $cycleHangTimeout) {
                     $status = 'hang';
                 }
+            } elseif ($status == 'starting' && $statusUpdated > 0 && (time() - $statusUpdated) >= $cycleHangTimeout) {
+                $status = 'hang';
             }
             $result['UPDATED'] = $updated;
             $result['STATUS'] = $status;
-            if ((time() - (int)$updated < 30)) {
+            if ((time() - (int)$updated < $cycleHangTimeout)) {
                 $result['ONLINE'] = 1;
                 $result['BODY'] = '<font color="green">ONLINE</font>';
             } else {
@@ -933,24 +936,37 @@ class xray extends module
                     $responce['MODE'] = 'services';
                     $responce['TOTAL'] = $total;
                     $responce['TOTAL_ALIVE'] = 0;
+                    $cycleHangTimeout = 10 * 60;
+                    $latestCycleRun = 0;
+                    $latestCycleRuns = SQLSelect("SELECT TITLE, VALUE FROM cached_cycles WHERE TITLE LIKE 'cycle%Run'");
+                    $totalLatestCycleRuns = count($latestCycleRuns);
+                    for ($ir = 0; $ir < $totalLatestCycleRuns; $ir++) {
+                        if ($latestCycleRuns[$ir]['TITLE'] == 'cycle_managerRun') {
+                            continue;
+                        }
+                        $latestCycleRun = max($latestCycleRun, (int)$latestCycleRuns[$ir]['VALUE']);
+                    }
                     $managerRun = (int)checkCycleFromCache('cycle_managerRun');
                     $managerStatus = checkCycleFromCache('cycle_managerStatus');
                     $managerStatusUpdated = (int)checkCycleFromCache('cycle_managerStatusUpdated');
+                    $managerDisplayRun = $managerRun ?: $latestCycleRun;
                     if ($managerStatus === false || $managerStatus == '') {
-                        $managerStatus = $managerRun > 0 && (time() - $managerRun) < 30 ? 'running' : 'stopped';
-                    } elseif ($managerRun > 0 && $managerStatus != 'stopping') {
-                        if ((time() - $managerRun) < 30 && ($managerStatus == 'starting' || $managerRun >= $managerStatusUpdated)) {
+                        $managerStatus = $managerDisplayRun > 0 && (time() - $managerDisplayRun) < $cycleHangTimeout ? 'running' : 'stopped';
+                    } elseif ($managerDisplayRun > 0 && $managerStatus != 'stopping') {
+                        if ((time() - $managerDisplayRun) < $cycleHangTimeout) {
                             $managerStatus = 'running';
-                        } elseif ((time() - $managerRun) >= 30) {
+                        } elseif ((time() - $managerDisplayRun) >= $cycleHangTimeout) {
                             $managerStatus = 'hang';
                         }
+                    } elseif ($managerStatus == 'starting' && $managerStatusUpdated > 0 && (time() - $managerStatusUpdated) >= $cycleHangTimeout) {
+                        $managerStatus = 'hang';
                     }
                     $responce['MANAGER'] = array(
                         'TITLE' => 'cycle.php',
                         'PATH' => ROOT . 'cycle.php',
                         'STATUS' => $managerStatus,
-                        'UPDATE' => $managerRun > 0 ? date('d.m.Y H:i:s', $managerRun) : '',
-                        'WAIT' => ($managerRun > 0 && (time() - $managerRun) < 30) ? 0 : 1,
+                        'UPDATE' => $managerDisplayRun > 0 ? date('d.m.Y H:i:s', $managerDisplayRun) : '',
+                        'WAIT' => ($managerDisplayRun > 0 && (time() - $managerDisplayRun) < $cycleHangTimeout) ? 0 : 1,
                         'LOG_LINK' => 'cycle_manager',
                         'STATUS_DETAILS' => htmlspecialchars((string)checkCycleFromCache('cycle_managerStatusDetails')),
                     );
@@ -968,17 +984,19 @@ class xray extends module
                         if ($runtimeStatus === false || $runtimeStatus == '') {
                             $runtimeStatus = $tm > 0 ? 'running' : 'stopped';
                         } elseif ($tm > 0 && $runtimeStatus != 'stopping') {
-                            if ((time() - $tm) < 60 && ($runtimeStatus == 'starting' || $tm >= $runtimeStatusUpdated)) {
+                            if ((time() - $tm) < $cycleHangTimeout) {
                                 $runtimeStatus = 'running';
-                            } elseif ((time() - $tm) >= 60) {
+                            } elseif ((time() - $tm) >= $cycleHangTimeout) {
                                 $runtimeStatus = 'hang';
                             }
+                        } elseif ($runtimeStatus == 'starting' && $runtimeStatusUpdated > 0 && (time() - $runtimeStatusUpdated) >= $cycleHangTimeout) {
+                            $runtimeStatus = 'hang';
                         }
                         $responce['LIST'][$i]['STATUS'] = $runtimeStatus;
                         $responce['LIST'][$i]['STATUS_DETAILS'] = htmlspecialchars((string)checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'StatusDetails'));
                         $responce['LIST'][$i]['LOG_LINK'] = $responce['LIST'][$i]['TITLE'];
                         if ($tm > 0) {
-                            if ((time() - $tm) < 60) {
+                            if ((time() - $tm) < $cycleHangTimeout) {
                                 $responce['LIST'][$i]['WAIT'] = 0;
                             } else {
                                 $responce['LIST'][$i]['WAIT'] = 1;
