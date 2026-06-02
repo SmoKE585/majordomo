@@ -89,13 +89,7 @@ class Server extends Socket
                         $num_changed = @stream_select($changed_sockets, $write, $except, 0, 5000);
                         if ($num_changed === false) {
                                 $this->log('[warn] stream_select() failed, cleaning sockets');
-                                foreach ($this->clients as $key => $client) {
-                                        if (! isset($this->allsockets[$key]) || ! is_resource($key)) {
-                                                $this->removeClientOnError($client);
-                                                unset($this->clients[$key]);
-                                        }
-                                }
-                                $this->allsockets = array_values(array_filter($this->allsockets, 'is_resource'));
+                                $this->rebuildSocketList();
                                 continue;
                         }
 
@@ -138,6 +132,7 @@ class Server extends Socket
                                                 $this->allsockets = array_filter($this->allsockets, function ($s) use ($socket) {
                                                     return $s !== $socket;
                                                 });
+                                                $this->allsockets = array_values($this->allsockets);
                                                 continue;
                                         }
 
@@ -164,6 +159,7 @@ class Server extends Socket
                                                 $this->allsockets = array_filter($this->allsockets, function ($s) use ($socket) {
                                                     return $s !== $socket;
                                                 });
+                                                $this->allsockets = array_values($this->allsockets);
                                                 continue;
                                         }
 
@@ -177,11 +173,7 @@ class Server extends Socket
                                                         $this->log("[debug] Received binary/non-JSON from {$client->getClientIp()}, length: $bytes, preview: $preview (Mem: " . round(memory_get_usage(true) / 1024 / 1024, 2) . " mb)");
                                                 }
                                         } else {
-                                                // normal info logging for binary payloads
-                                                if (! $this->isJson($data)) {
-                                                        $preview = $this->binaryPreview($data, 24);
-                                                        $this->log("[info] Received binary/non-JSON from {$client->getClientIp()}, length: $bytes, preview: $preview (Mem: " . round(memory_get_usage(true) / 1024 / 1024, 2) . " mb)");
-                                                }
+                                                // Raw websocket frames are binary by design. Logging every frame can block stdout.
                                         }
 
                                         $GLOBALS['websockets_busy_since'] = microtime(true);
@@ -208,6 +200,28 @@ class Server extends Socket
                 if (isset($GLOBALS['cycleName']) && $GLOBALS['cycleName']) {
                         setGlobal($GLOBALS['cycleName'], $now, 1);
                 }
+        }
+
+        protected function rebuildSocketList()
+        {
+                $sockets = [];
+                if (is_resource($this->master)) {
+                        $sockets[] = $this->master;
+                }
+
+                foreach ($this->clients as $clientId => $client) {
+                        $socket = $client->getClientSocket();
+                        if (is_resource($socket)) {
+                                $sockets[] = $socket;
+                                continue;
+                        }
+
+                        $this->_removeIpFromStorage($client->getClientIp());
+                        unset($this->clients[$clientId], $this->clientActivity[$clientId], $this->_requestStorage[$client->getClientId()]);
+                }
+
+                $this->allsockets = array_values($sockets);
+                $this->log('[warn] Socket list rebuilt. sockets=' . count($this->allsockets) . ', clients=' . count($this->clients));
         }
 
         protected function isJson($string)
@@ -290,7 +304,9 @@ class Server extends Socket
         {
                 $mem = round(memory_get_usage(true) / 1024 / 1024, 2) . ' mb';
                 $line = date('Y-m-d H:i:s') . ' [' . ($type ? $type : 'error') . '] ' . $message . ' (Mem: ' . $mem . ')';
-                echo $line . PHP_EOL;
+                if ((defined('WEBSOCKETS_ECHO_LOG') && WEBSOCKETS_ECHO_LOG) || (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1)) {
+                        echo $line . PHP_EOL;
+                }
                 if (function_exists('DebMes')) {
                         DebMes($line, 'websockets');
                 }

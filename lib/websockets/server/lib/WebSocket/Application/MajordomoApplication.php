@@ -52,8 +52,37 @@ class MajordomoApplication extends Application
 
         $actionName = isset($decodedData['action']) ? '_action' . ucfirst($decodedData['action']) : '';
         if (method_exists($this, $actionName)) {
+            $action = isset($decodedData['action']) ? (string)$decodedData['action'] : '';
+            $details = $this->getActionLogDetails($action, $decodedData['data']);
+            if (function_exists('DebMes')) {
+                DebMes(date('Y-m-d H:i:s') . ' websocket action start: ' . $action . ', client=' . $client->getClientIp() . ', ' . $details, 'websockets');
+            }
+            $GLOBALS['websockets_busy_info'] = 'action=' . $action . ', client=' . $client->getClientIp() . ', ' . $details;
             call_user_func(array($this, $actionName), $decodedData['data'], $client->getClientId());
+            if (function_exists('DebMes')) {
+                DebMes(date('Y-m-d H:i:s') . ' websocket action done: ' . $action . ', client=' . $client->getClientIp(), 'websockets');
+            }
         }
+    }
+
+    private function getActionLogDetails($action, $data)
+    {
+        if ($action === 'PostProperty') {
+            if (is_array($data) && isset($data['NAME'])) {
+                return 'property=' . $data['NAME'];
+            }
+            if (is_array($data) && isset($data[0]['NAME'])) {
+                return 'properties=' . count($data) . ', first=' . $data[0]['NAME'];
+            }
+            return 'post_property_payload=' . (is_array($data) ? count($data) : 0);
+        }
+        if ($action === 'PostEvent' && is_array($data) && isset($data['NAME'])) {
+            return 'event=' . $data['NAME'];
+        }
+        if (is_array($data)) {
+            return 'payload_items=' . count($data);
+        }
+        return 'payload_type=' . gettype($data);
     }
 
     public function onBinaryData($data, $client)
