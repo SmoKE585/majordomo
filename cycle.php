@@ -49,6 +49,43 @@ function buildCycleStopReason($cycleTitle, $closedThread, $exitCode = null, $ter
     return $details;
 }
 
+function setCycleRuntimeStatus($cycleTitle, $status, $details = '')
+{
+    saveCycleToCache($cycleTitle . 'Status', $status);
+    saveCycleToCache($cycleTitle . 'StatusUpdated', time());
+    if ($details != '') {
+        saveCycleToCache($cycleTitle . 'StatusDetails', substr($details, 0, 240));
+    }
+}
+
+function addCycleRuntimeLog($cycleTitle, $message)
+{
+    $message = trim((string)$message);
+    if ($message == '') {
+        return;
+    }
+    SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycle_logs` (`ID` int(10) unsigned NOT NULL AUTO_INCREMENT,`CYCLE` char(100) NOT NULL,`ADDED` int(10) unsigned NOT NULL,`MESSAGE` varchar(1024) NOT NULL,PRIMARY KEY (`ID`),KEY `CYCLE_ADDED` (`CYCLE`,`ADDED`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+    $lines = preg_split('/\r\n|\r|\n/', $message);
+    $total = count($lines);
+    for ($i = 0; $i < $total; $i++) {
+        $line = trim($lines[$i]);
+        if ($line == '') {
+            continue;
+        }
+        $rec = array(
+            'CYCLE' => $cycleTitle,
+            'ADDED' => time(),
+            'MESSAGE' => substr($line, 0, 1000),
+        );
+        SQLInsert('cached_cycle_logs', $rec);
+    }
+    $oldLogs = SQLSelect("SELECT ID FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycleTitle) . "' ORDER BY ID DESC LIMIT 80, 1000");
+    $totalOldLogs = count($oldLogs);
+    for ($i = 0; $i < $totalOldLogs; $i++) {
+        SQLExec('DELETE FROM cached_cycle_logs WHERE ID=' . (int)$oldLogs[$i]['ID']);
+    }
+}
+
 resetRebootRequired();
 
 set_time_limit(0);
@@ -184,6 +221,8 @@ DebMes("Settings loaded.", 'boot');
 
 // создаем табличку cyclesRun, если её нет
 SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycles` (`TITLE` char(100) NOT NULL,`VALUE` char(255) NOT NULL,PRIMARY KEY (`TITLE`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycle_logs` (`ID` int(10) unsigned NOT NULL AUTO_INCREMENT,`CYCLE` char(100) NOT NULL,`ADDED` int(10) unsigned NOT NULL,`MESSAGE` varchar(1024) NOT NULL,PRIMARY KEY (`ID`),KEY `CYCLE_ADDED` (`CYCLE`,`ADDED`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+SQLExec('DELETE FROM cached_cycle_logs');
 SQLExec('DROP TABLE IF EXISTS cyclesRun;');
 
 
@@ -332,7 +371,7 @@ if (defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1) {
 }
 
 // Removing cycles properties
-$qry = "1 AND (TITLE LIKE 'cycle%Run' OR TITLE LIKE 'cycle%Control' OR TITLE LIKE 'cycle%Disabled' OR TITLE LIKE 'cycle%AutoRestart')";
+$qry = "1 AND (TITLE LIKE 'cycle%Run' OR TITLE LIKE 'cycle%Control' OR TITLE LIKE 'cycle%Disabled' OR TITLE LIKE 'cycle%AutoRestart' OR TITLE LIKE 'cycle%Status' OR TITLE LIKE 'cycle%StatusUpdated' OR TITLE LIKE 'cycle%StatusDetails')";
 $thisCompObject = getObject('ThisComputer');
 $cycles_records = SQLSelect("SELECT properties.* FROM properties WHERE $qry ORDER BY TITLE");
 SQLExec("DELETE FROM cached_cycles");
@@ -409,6 +448,8 @@ foreach ($cycles as $path) {
 
 
         DebMes("Starting " . $path . " ... ", 'boot');
+        setCycleRuntimeStatus($title, 'starting');
+        addCycleRuntimeLog($title, 'Starting ' . $path);
         echo "Starting " . $path . " ... \n";
 
         if ((preg_match("/_X/", $path))) {
@@ -426,6 +467,7 @@ foreach ($cycles as $path) {
         }
         if (isset($title)) {
             saveCycleToCache($title . 'LastError', '');
+            setCycleRuntimeStatus($title, 'starting');
         }
         $pipes[$pipe_id] = $path;
         echo "OK" . PHP_EOL;
@@ -478,8 +520,10 @@ while (false !== ($result = $threads->iteration())) {
             if (isset($cyclesControls[$title . 'Control'])) $control = $cyclesControls[$title . 'Control'];
             if ($control != '') {
                 DebMes("Got control command '$control' for " . $title, 'boot');
+                addCycleRuntimeLog($title, "Got control command: " . $control);
                 if ($control == 'stop') {
                     $to_stop[$title] = time();
+                    setCycleRuntimeStatus($title, 'stopping');
                     // Explicit stop must cancel any delayed start/restart requests.
                     unset($to_start[$title]);
                     $key = array_search($title, $auto_restarts);
@@ -487,9 +531,17 @@ while (false !== ($result = $threads->iteration())) {
                         unset($auto_restarts[$key]);
                         $auto_restarts = array_values($auto_restarts);
                     }
-                } elseif ($control == 'restart' || $control == 'start') {
+                } elseif ($control == 'start') {
+                    if (!isset($is_running[$title])) {
+                        $to_start[$title] = time() + 2;
+                        setCycleRuntimeStatus($title, 'starting');
+                    } else {
+                        setCycleRuntimeStatus($title, 'running');
+                    }
+                } elseif ($control == 'restart') {
                     $to_stop[$title] = time();
                     $to_start[$title] = time() + 30;
+                    setCycleRuntimeStatus($title, isset($is_running[$title]) ? 'stopping' : 'starting');
                 }
                 setGlobal($title . 'Control', '');
             }
@@ -503,14 +555,25 @@ while (false !== ($result = $threads->iteration())) {
                 $title = $m[1];
                 $is_running[$title] = $id;
                 if (!isset($started_when[$title])) $started_when[$title] = time();
+                $cycle_updated_timestamp = $cyclesTimestamps[$title . 'Run'] ?? null;
+                if (isset($to_stop[$title])) {
+                    setCycleRuntimeStatus($title, 'stopping');
+                } elseif ($cycle_updated_timestamp && ((time() - (int)$cycle_updated_timestamp) <= 30 * 60)) {
+                    setCycleRuntimeStatus($title, 'running');
+                } elseif ((time() - $started_when[$title]) > 120) {
+                    setCycleRuntimeStatus($title, 'hang');
+                } else {
+                    setCycleRuntimeStatus($title, 'starting');
+                }
                 if ((time() - $started_when[$title]) > 30 && !in_array($title, $auto_restarts)) {
                     DebMes("Adding $title to auto-recovery list", 'boot');
                     $auto_restarts[] = $title;
                 }
-                $cycle_updated_timestamp = $cyclesTimestamps[$title . 'Run'] ?? null;
 
                 if (!isset($to_start[$title]) && $cycle_updated_timestamp && in_array($title, $auto_restarts) && ((time() - $cycle_updated_timestamp) > 30 * 60)) { //
                     DebMes("Looks like $title is dead (updated: " . date('Y-m-d H:i:s', $cycle_updated_timestamp) . "). Need to recovery", 'boot');
+                    setCycleRuntimeStatus($title, 'hang', 'Last update: ' . date('Y-m-d H:i:s', $cycle_updated_timestamp));
+                    addCycleRuntimeLog($title, 'Detected hang, requesting restart');
                     registerError('cycle_hang', $title);
                     setGlobal($title . 'Control', 'restart');
                 }
@@ -546,6 +609,8 @@ while (false !== ($result = $threads->iteration())) {
             if (isset($is_running[$title])) {
                 $id = $is_running[$title];
                 DebMes("Force closing service " . $title . " (id: " . $id . ")", 'boot');
+                setCycleRuntimeStatus($title, 'stopping');
+                addCycleRuntimeLog($title, 'Force closing service');
                 $threads->closeThread($id);
             }
             unset($to_stop[$title]);
@@ -557,6 +622,8 @@ while (false !== ($result = $threads->iteration())) {
             if (!isset($is_running[$title])) {
                 $cmd = './scripts/' . $title . '.php';
                 DebMes("Starting service " . $title . ' (' . $cmd . ')', 'boot');
+                setCycleRuntimeStatus($title, 'starting');
+                addCycleRuntimeLog($title, 'Starting service ' . $cmd);
                 $pipe_id = $threads->newThread($cmd);
                 $is_running[$title] = $pipe_id;
                 $started_when[$title] = time();
@@ -569,6 +636,14 @@ while (false !== ($result = $threads->iteration())) {
     }
 
     if (!empty($result)) {
+        if (preg_match_all('/THREAD OUTPUT:\s*\[(.*?)\]\s*\n(.*?)\nTHREAD OUTPUT END/is', $result, $outputMatches, PREG_SET_ORDER)) {
+            $total_output = count($outputMatches);
+            for ($io = 0; $io < $total_output; $io++) {
+                if (preg_match('/(cycle_.+?)\.php/is', $outputMatches[$io][1], $m)) {
+                    addCycleRuntimeLog($m[1], $outputMatches[$io][2]);
+                }
+            }
+        }
         $closePattern = '/THREAD CLOSED:\s*\[(.*?)\](?:\s+EXIT_CODE=([-\d]+)\s+TERM_SIG=([-\d]+)\s+STOP_SIG=([-\d]+))?/is';
         if (preg_match_all($closePattern, $result, $matches, PREG_SET_ORDER) && !isRebootRequired()) {
             $total_m = count($matches);
@@ -590,6 +665,8 @@ while (false !== ($result = $threads->iteration())) {
                     $stop_requested = isset($to_stop[$cycle_title]);
                     unset($to_stop[$cycle_title]);
                     setGlobal($cycle_title . 'Run', '');
+                    setCycleRuntimeStatus($cycle_title, 'stopped', 'Thread closed');
+                    addCycleRuntimeLog($cycle_title, 'Thread closed. Exit code: ' . (string)$exit_code . ', term signal: ' . (string)$term_sig);
                     if (!$stop_requested) {
                         $key = array_search($cycle_title, $auto_restarts);
                         if ($key !== false) {
@@ -604,6 +681,8 @@ while (false !== ($result = $threads->iteration())) {
                 if ($need_restart && $cycle_title) {
                     if (!isset($to_start[$cycle_title])) {
                         DebMes("AUTO-RECOVERY: " . $closed_thread, 'boot');
+                        setCycleRuntimeStatus($cycle_title, 'starting', 'Auto recovery scheduled');
+                        addCycleRuntimeLog($cycle_title, 'Auto recovery scheduled');
                         if (!preg_match('/websockets/is', $closed_thread)) {
                             $details = buildCycleStopReason(
                                 $cycle_title,

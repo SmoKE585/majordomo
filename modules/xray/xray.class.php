@@ -141,15 +141,19 @@ class xray extends module
             $result = array('cycle' => $this->cycle);
 
             $service = 'cycle_' . $this->cycle;
+            SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycles` (`TITLE` char(100) NOT NULL,`VALUE` char(255) NOT NULL,PRIMARY KEY (`TITLE`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
 
             if ($op == 'start') {
                 sg($service . 'Run', '');
                 sg($service . 'Control', 'start');
+                saveCycleToCache($service . 'Status', 'starting');
             } elseif ($op == 'stop') {
                 sg($service . 'Control', 'stop');
+                saveCycleToCache($service . 'Status', 'stopping');
             } elseif ($op == 'restart') {
                 sg($service . 'Run', '');
                 sg($service . 'Control', 'restart');
+                saveCycleToCache($service . 'Status', 'stopping');
             }
 
             header("HTTP/1.0: 200 OK\n");
@@ -157,7 +161,12 @@ class xray extends module
 
             $updated = gg($service . 'Run');
             $control = gg($service . 'Control');
+            $status = checkCycleFromCache($service . 'Status');
+            if ($status === false || $status == '') {
+                $status = ((time() - (int)$updated < 30) ? 'running' : 'stopped');
+            }
             $result['UPDATED'] = $updated;
+            $result['STATUS'] = $status;
             if ((time() - (int)$updated < 30)) {
                 $result['ONLINE'] = 1;
                 $result['BODY'] = '<font color="green">ONLINE</font>';
@@ -171,6 +180,7 @@ class xray extends module
             if ($control != '') {
                 $result['BODY'] .= ' ' . $control;
             }
+            $result['BODY'] .= ' status: ' . htmlspecialchars($status);
 
 
             echo json_encode($result);
@@ -427,16 +437,20 @@ class xray extends module
         $qry = "";
 
         if ($this->view_mode == 'services') {
+            SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycles` (`TITLE` char(100) NOT NULL,`VALUE` char(255) NOT NULL,PRIMARY KEY (`TITLE`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
             $cmd = gr('cmd');
             $service = gr('service');
             if ($cmd == 'start' && $service != '') {
                 sg($service . 'Run', '');
                 sg($service . 'Control', 'start');
+                saveCycleToCache($service . 'Status', 'starting');
             } elseif ($cmd == 'stop' && $service != '') {
                 sg($service . 'Control', 'stop');
+                saveCycleToCache($service . 'Status', 'stopping');
             } elseif ($cmd == 'restart' && $service != '') {
                 sg($service . 'Run', '');
                 sg($service . 'Control', 'restart');
+                saveCycleToCache($service . 'Status', 'stopping');
                 /*
                } elseif ($cmd=='switch_restart' && $service!='') {
                 if (gg($service.'AutoRestart')) {
@@ -619,6 +633,29 @@ class xray extends module
                 } else {
                     echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'No files cleared'));
                 }
+                return;
+            }
+            if ($op == 'cyclelog') {
+                header("HTTP/1.0: 200 OK\n");
+                header('Content-Type: application/json; charset=utf-8');
+                $cycle = gr('cycle');
+                $cycle = preg_replace('/[^a-zA-Z0-9_]/', '', $cycle);
+                if ($cycle == '') {
+                    echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'));
+                    return;
+                }
+                SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycle_logs` (`ID` int(10) unsigned NOT NULL AUTO_INCREMENT,`CYCLE` char(100) NOT NULL,`ADDED` int(10) unsigned NOT NULL,`MESSAGE` varchar(1024) NOT NULL,PRIMARY KEY (`ID`),KEY `CYCLE_ADDED` (`CYCLE`,`ADDED`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+                $res = SQLSelect("SELECT * FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycle) . "' ORDER BY ID DESC LIMIT 80");
+                $res = array_reverse($res);
+                $lines = array();
+                $total = count($res);
+                for ($i = 0; $i < $total; $i++) {
+                    $lines[] = array(
+                        'ADDED' => date('H:i:s', (int)$res[$i]['ADDED']),
+                        'MESSAGE' => htmlspecialchars($res[$i]['MESSAGE']),
+                    );
+                }
+                echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LINES' => $lines));
                 return;
             }
             if ($op == 'getcontent') {
@@ -898,6 +935,13 @@ class xray extends module
                         $url = ROOTHTML . 'panel/xray.html?view_mode=services&service=' . urlencode($responce['LIST'][$i]['TITLE']);
 
                         $tm = (int)getGlobal($responce['LIST'][$i]['TITLE'] . 'Run');
+                        $runtimeStatus = checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'Status');
+                        if ($runtimeStatus === false || $runtimeStatus == '') {
+                            $runtimeStatus = $tm > 0 ? 'running' : 'stopped';
+                        }
+                        $responce['LIST'][$i]['STATUS'] = $runtimeStatus;
+                        $responce['LIST'][$i]['STATUS_DETAILS'] = htmlspecialchars((string)checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'StatusDetails'));
+                        $responce['LIST'][$i]['LOG_LINK'] = $responce['LIST'][$i]['TITLE'];
                         if ($tm > 0) {
                             if ((time() - $tm) < 60) {
                                 $responce['LIST'][$i]['WAIT'] = 0;

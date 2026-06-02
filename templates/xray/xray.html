@@ -131,6 +131,21 @@ $(document).ready(function() {
 		</div>
         [#endif VIEW_MODE#]
 	</div>
+	[#if VIEW_MODE="services"#]
+	<div class="modal fade" id="cycleLogModal" tabindex="-1" role="dialog" aria-hidden="true">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+					<h4 class="modal-title">Лог цикла <span id="cycleLogTitle"></span></h4>
+				</div>
+				<div class="modal-body">
+					<pre id="cycleLogBody" style="height: 420px;overflow: auto;background: #101820;color: #d7e8d0;border: 0;border-radius: 4px;"></pre>
+				</div>
+			</div>
+		</div>
+	</div>
+	[#endif VIEW_MODE#]
 	</div>
 
 	<script language="javascript">
@@ -240,18 +255,27 @@ $(document).ready(function() {
 					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed" style="width: 100%;"><tbody id="propContent"></tbody></table></div>');
 					let i = 0;
 					while (i < dataJSON.TOTAL) {
+						var status = dataJSON.LIST[i].STATUS || '';
+						var statusLabels = {
+							'starting': '<span class="label label-warning">Запускается</span>',
+							'running': '<span class="label label-success">Работает</span>',
+							'hang': '<span class="label label-info">Завис</span>',
+							'stopping': '<span class="label label-warning">Выключается</span>',
+							'stopped': '<span class="label label-danger">Остановлен</span>'
+						};
+						var statusLabel = statusLabels[status] || '';
 						if(dataJSON.LIST[i].ALIVE == 1) {
 							if(dataJSON.LIST[i].WAIT == 0) {
-								cycleUpdate = '<span class="label label-success">Работает '+dataJSON.LIST[i].UPDATE+'</span>';
+								cycleUpdate = statusLabel+' <span class="label label-default">'+dataJSON.LIST[i].UPDATE+'</span>';
 							} else {
-								cycleUpdate = '<span class="label label-info">Не отвечает с '+dataJSON.LIST[i].UPDATE+'</span>';
+								cycleUpdate = (statusLabel || '<span class="label label-info">Не отвечает</span>')+' <span class="label label-default">'+dataJSON.LIST[i].UPDATE+'</span>';
 							}
 							tr_style = '';
-							btn_group = '<div class="btn-group btn-group-xs"><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_RESTART+'\'" class="btn btn-info">Рестарт</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_STOP+'\'" class="btn btn-danger">Остановить</button></div>';
+							btn_group = '<div class="btn-group btn-group-xs"><button type="button" onClick="showCycleLog(\''+dataJSON.LIST[i].LOG_LINK+'\');return false;" class="btn btn-default">Лог</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_RESTART+'\'" class="btn btn-info">Рестарт</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_STOP+'\'" class="btn btn-danger">Остановить</button></div>';
 						} else {
-							cycleUpdate = '<span class="label label-danger">Остановлен</span>';
+							cycleUpdate = statusLabel || '<span class="label label-danger">Остановлен</span>';
 							tr_style = 'background: linear-gradient(to right, lightcoral, white);';
-							btn_group = '<div class="btn-group btn-group-xs"><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_START+'\'" class="btn btn-success">Запуск</button></div>';
+							btn_group = '<div class="btn-group btn-group-xs"><button type="button" onClick="showCycleLog(\''+dataJSON.LIST[i].LOG_LINK+'\');return false;" class="btn btn-default">Лог</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_START+'\'" class="btn btn-success">Запуск</button></div>';
 						}
 						
 						$("#propContent").prepend('<tr style="'+tr_style+'"><td>'+dataJSON.LIST[i].TITLE+'</td><td style="vertical-align: middle;text-align: center;">'+cycleUpdate+'</td><td style="vertical-align: middle;text-align: right;">'+btn_group+'</td></tr>');
@@ -268,6 +292,43 @@ $(document).ready(function() {
 			});
 			return false;
 		}
+
+		var cycleLogTimer = 0;
+		var cycleLogCurrent = '';
+		function showCycleLog(cycle) {
+			cycleLogCurrent = cycle;
+			$('#cycleLogTitle').text(cycle);
+			$('#cycleLogBody').html('Загрузка...');
+			$('#cycleLogModal').modal('show');
+			loadCycleLog();
+			return false;
+		}
+		function loadCycleLog() {
+			if (!cycleLogCurrent || !$('#cycleLogModal').is(':visible')) {
+				return false;
+			}
+			var url = window.location.href;
+			url += (url.indexOf('?') !== -1 ? '&' : '?') + 'ajax=1&op=cyclelog&cycle=' + encodeURIComponent(cycleLogCurrent);
+			$.getJSON(url, function(data) {
+				var content = '';
+				if (data.STATUS === 'OK' && data.LINES && data.LINES.length) {
+					for (var i = 0; i < data.LINES.length; i++) {
+						content += data.LINES[i].ADDED + '  ' + data.LINES[i].MESSAGE + "\n";
+					}
+				} else {
+					content = 'Пока нет данных. Для старых циклов здесь появится stdout/stderr, если цикл что-то выводит.';
+				}
+				$('#cycleLogBody').html(content);
+				$('#cycleLogBody').scrollTop($('#cycleLogBody')[0].scrollHeight);
+			});
+			clearTimeout(cycleLogTimer);
+			cycleLogTimer = setTimeout(loadCycleLog, 2000);
+			return false;
+		}
+		$('#cycleLogModal').on('hidden.bs.modal', function () {
+			cycleLogCurrent = '';
+			clearTimeout(cycleLogTimer);
+		});
 
 		function clearXrayLogs() {
 			var selectedFiles = $('#files').val() || [];

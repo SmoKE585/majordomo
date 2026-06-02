@@ -75,11 +75,7 @@ class Threads
          $command = $this->phpPath . ' -q ' . $filename . ' --params "' . $params . '">>' . $fileToWrite;
       } else {
          $command = $this->phpPath . ' -q ' . $filename . ' --params "' . $params . '"';
-         if (IsWindowsOS()) {
-            $command.=' > NUL';
-         } else {
-            $command.=' > /dev/null 2>&1';
-         }
+         $command .= ' 2>&1';
       }
       if (!IsWindowsOS()) {
        $command='exec '.$command;
@@ -194,6 +190,10 @@ class Threads
          
          $stream_status = stream_get_meta_data($stream);
          $proc_status   = proc_get_status($this->handles[$id]);
+         $contents = stream_get_contents($stream, 65536);
+         if ($contents !== false && $contents !== '') {
+            $result .= "THREAD OUTPUT: [" . $this->commandLines[$id] . "]\n" . $contents . "\nTHREAD OUTPUT END\n";
+         }
 
          if (!isset($output_show[$this->commandLines[$id]]) || $output_show[$this->commandLines[$id]] != $now)
          {
