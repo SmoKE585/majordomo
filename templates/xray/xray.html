@@ -315,12 +315,14 @@ $(document).ready(function() {
 				dataType: 'json'
 			}).done(function(data) {
 				var content = '';
-				if (data.STATUS === 'OK' && data.LINES && data.LINES.length) {
+				if (data.STATUS === 'OK' && data.LOG_CYCLES_ENABLED == 0) {
+					content = '<div style="height: 360px;display: flex;align-items: center;justify-content: center;text-align: center;color: #ffd27d;font-size: 16px;white-space: normal;">Файловый лог циклов выключен.<br>Включите LOG_CYCLES=1 в конфиге, перезапустите главный cycle.php, потом открывайте лог цикла.</div>';
+				} else if (data.STATUS === 'OK' && data.LINES && data.LINES.length) {
 					for (var i = 0; i < data.LINES.length; i++) {
 						content += data.LINES[i].ADDED + '  ' + data.LINES[i].MESSAGE + "\n";
 					}
 				} else {
-					content = 'Пока нет данных. Для старых циклов здесь появится stdout/stderr, если цикл что-то выводит.';
+					content = 'Пока нет данных. Здесь появится stdout/stderr цикла и хвост его файлового лога.';
 				}
 				$('#cycleLogBody').html(content);
 				$('#cycleLogBody').scrollTop($('#cycleLogBody')[0].scrollHeight);

@@ -193,6 +193,11 @@ class xray extends module
         return ROOT . 'cms/debmes';
     }
 
+    function isCycleFileLog($filename)
+    {
+        return (bool)preg_match('/^log_\d{4}-\d{2}-\d{2}-cycle_.+?\.php\.txt$/i', basename((string)$filename));
+    }
+
     function getCycleFileLogLines($cycleTitle, $limit = 80)
     {
         $path = $this->getCycleLogPath();
@@ -642,7 +647,11 @@ class xray extends module
                 return $b['TM'] > $a['TM'];
             });
             $total = count($files);
+            $filteredFiles = array();
             for ($i = 0; $i < $total; $i++) {
+                if ($this->isCycleFileLog($files[$i]['FILENAME'])) {
+                    continue;
+                }
                 $files[$i]['TITLE'] = str_replace($path . '/', '', $files[$i]['FILENAME']);
                 $files[$i]['BASENAME'] = basename($files[$i]['FILENAME']);
                 $files[$i]['PASSED'] = getPassedText($files[$i]['TM']);
@@ -652,7 +661,9 @@ class xray extends module
                 } else {
                     $files[$i]['SIZE'] = round($files[$i]['SIZE'] / 1024, 2) . ' KB';
                 }
+                $filteredFiles[] = $files[$i];
             }
+            $files = $filteredFiles;
             $out['FILES'] = $files;
             $selected = gr('files');
             if (!is_array($selected)) {
@@ -748,6 +759,7 @@ class xray extends module
                     echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'));
                     exit;
                 }
+                $logCyclesEnabled = (defined('LOG_CYCLES') && LOG_CYCLES == '1') ? 1 : 0;
                 $this->ensureCycleRuntimeTables();
                 $res = SQLSelect("SELECT * FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycle) . "' ORDER BY ID DESC LIMIT 80");
                 $res = array_reverse($res);
@@ -759,7 +771,7 @@ class xray extends module
                         'MESSAGE' => htmlspecialchars($res[$i]['MESSAGE']),
                     );
                 }
-                $fileLines = $this->getCycleFileLogLines($cycle, 80);
+                $fileLines = $logCyclesEnabled ? $this->getCycleFileLogLines($cycle, 80) : array();
                 if (count($fileLines)) {
                     $lines[] = array(
                         'ADDED' => date('H:i:s'),
@@ -768,7 +780,7 @@ class xray extends module
                     $lines = array_merge($lines, $fileLines);
                     $lines = array_slice($lines, -120);
                 }
-                echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LINES' => $lines));
+                echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LOG_CYCLES_ENABLED' => $logCyclesEnabled, 'LINES' => $lines));
                 exit;
             }
             if ($op == 'getcontent') {
@@ -828,6 +840,9 @@ class xray extends module
                     foreach ($files as $file_item) {
                         if (isset($file_item['SELECTED'])) {
                             $file = $file_item['TITLE'];
+                            if ($this->isCycleFileLog($file)) {
+                                continue;
+                            }
                             $filename = $path . '/' . $file;
                             if (file_exists($filename)) {
                                 $data = LoadFile($filename);
