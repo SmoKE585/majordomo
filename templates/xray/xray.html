@@ -252,17 +252,24 @@ $(document).ready(function() {
 						i++;
 					}
 				} else if(dataJSON.MODE == 'services') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed" style="width: 100%;"><tbody id="propContent"></tbody></table></div>');
+					$('#xrayContent').html('<div id="cycleManagerBlock"></div><div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed" style="width: 100%;"><tbody id="propContent"></tbody></table></div>');
+					var statusLabels = {
+						'starting': '<span class="label label-warning">Запускается</span>',
+						'running': '<span class="label label-success">Работает</span>',
+						'hang': '<span class="label label-info">Завис</span>',
+						'stopping': '<span class="label label-warning">Выключается</span>',
+						'stopped': '<span class="label label-danger">Остановлен</span>'
+					};
+					if (dataJSON.MANAGER) {
+						var managerStatusLabel = statusLabels[dataJSON.MANAGER.STATUS] || '<span class="label label-default">'+dataJSON.MANAGER.STATUS+'</span>';
+						var managerUpdate = dataJSON.MANAGER.UPDATE ? ' <span class="label label-default">'+dataJSON.MANAGER.UPDATE+'</span>' : '';
+						var managerStyle = dataJSON.MANAGER.WAIT == 1 ? 'background: linear-gradient(to right, lightcoral, white);' : 'background: linear-gradient(to right, #e8f5e9, white);';
+						var managerLogButton = '<button type="button" onClick="showCycleLog(\''+dataJSON.MANAGER.LOG_LINK+'\');return false;" class="btn btn-default btn-xs">Лог</button>';
+						$('#cycleManagerBlock').html('<div class="panel panel-default" style="margin-bottom: 10px;"><div class="panel-heading"><b>Менеджер циклов</b></div><table class="table table-condensed" style="margin-bottom: 0;"><tbody><tr style="'+managerStyle+'"><td style="width: 25%;"><b>'+dataJSON.MANAGER.TITLE+'</b><br><small>'+dataJSON.MANAGER.PATH+'</small></td><td style="vertical-align: middle;text-align: center;">'+managerStatusLabel+managerUpdate+'</td><td style="vertical-align: middle;text-align: right;">'+managerLogButton+'</td></tr></tbody></table></div>');
+					}
 					let i = 0;
 					while (i < dataJSON.TOTAL) {
 						var status = dataJSON.LIST[i].STATUS || '';
-						var statusLabels = {
-							'starting': '<span class="label label-warning">Запускается</span>',
-							'running': '<span class="label label-success">Работает</span>',
-							'hang': '<span class="label label-info">Завис</span>',
-							'stopping': '<span class="label label-warning">Выключается</span>',
-							'stopped': '<span class="label label-danger">Остановлен</span>'
-						};
 						var statusLabel = statusLabels[status] || '';
 						if(dataJSON.LIST[i].ALIVE == 1) {
 							if(dataJSON.LIST[i].WAIT == 0) {

@@ -162,8 +162,15 @@ class xray extends module
             $updated = gg($service . 'Run');
             $control = gg($service . 'Control');
             $status = checkCycleFromCache($service . 'Status');
+            $statusUpdated = (int)checkCycleFromCache($service . 'StatusUpdated');
             if ($status === false || $status == '') {
                 $status = ((time() - (int)$updated < 30) ? 'running' : 'stopped');
+            } elseif ((int)$updated > 0 && $status != 'stopping') {
+                if ((time() - (int)$updated) < 60 && ($status == 'starting' || (int)$updated >= $statusUpdated)) {
+                    $status = 'running';
+                } elseif ((time() - (int)$updated) >= 60) {
+                    $status = 'hang';
+                }
             }
             $result['UPDATED'] = $updated;
             $result['STATUS'] = $status;
@@ -926,6 +933,27 @@ class xray extends module
                     $responce['MODE'] = 'services';
                     $responce['TOTAL'] = $total;
                     $responce['TOTAL_ALIVE'] = 0;
+                    $managerRun = (int)checkCycleFromCache('cycle_managerRun');
+                    $managerStatus = checkCycleFromCache('cycle_managerStatus');
+                    $managerStatusUpdated = (int)checkCycleFromCache('cycle_managerStatusUpdated');
+                    if ($managerStatus === false || $managerStatus == '') {
+                        $managerStatus = $managerRun > 0 && (time() - $managerRun) < 30 ? 'running' : 'stopped';
+                    } elseif ($managerRun > 0 && $managerStatus != 'stopping') {
+                        if ((time() - $managerRun) < 30 && ($managerStatus == 'starting' || $managerRun >= $managerStatusUpdated)) {
+                            $managerStatus = 'running';
+                        } elseif ((time() - $managerRun) >= 30) {
+                            $managerStatus = 'hang';
+                        }
+                    }
+                    $responce['MANAGER'] = array(
+                        'TITLE' => 'cycle.php',
+                        'PATH' => ROOT . 'cycle.php',
+                        'STATUS' => $managerStatus,
+                        'UPDATE' => $managerRun > 0 ? date('d.m.Y H:i:s', $managerRun) : '',
+                        'WAIT' => ($managerRun > 0 && (time() - $managerRun) < 30) ? 0 : 1,
+                        'LOG_LINK' => 'cycle_manager',
+                        'STATUS_DETAILS' => htmlspecialchars((string)checkCycleFromCache('cycle_managerStatusDetails')),
+                    );
                     $onDisabled = ' - ';
                     $onEnable = ' - ';
 
@@ -936,8 +964,15 @@ class xray extends module
 
                         $tm = (int)getGlobal($responce['LIST'][$i]['TITLE'] . 'Run');
                         $runtimeStatus = checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'Status');
+                        $runtimeStatusUpdated = (int)checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'StatusUpdated');
                         if ($runtimeStatus === false || $runtimeStatus == '') {
                             $runtimeStatus = $tm > 0 ? 'running' : 'stopped';
+                        } elseif ($tm > 0 && $runtimeStatus != 'stopping') {
+                            if ((time() - $tm) < 60 && ($runtimeStatus == 'starting' || $tm >= $runtimeStatusUpdated)) {
+                                $runtimeStatus = 'running';
+                            } elseif ((time() - $tm) >= 60) {
+                                $runtimeStatus = 'hang';
+                            }
                         }
                         $responce['LIST'][$i]['STATUS'] = $runtimeStatus;
                         $responce['LIST'][$i]['STATUS_DETAILS'] = htmlspecialchars((string)checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'StatusDetails'));
