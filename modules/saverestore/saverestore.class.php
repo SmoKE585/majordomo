@@ -193,6 +193,10 @@ class saverestore extends module
         $link = gr('link');
         $update_url = $this->getUpdateURL($link);
         $out['UPDATE_URL'] = $update_url;
+        $out['PROJECT_COMMIT_URL'] = defined('PROJECT_COMMIT_URL') ? PROJECT_COMMIT_URL : '';
+        $out['GIT_URL_CONFIGURED'] = defined('GIT_URL') && GIT_URL != '' ? 1 : 0;
+        $out['GIT_MASTER_UPDATE_URL'] = $out['GIT_URL_CONFIGURED'] ? rtrim(GIT_URL, '/') . '/archive/master.tar.gz' : '';
+        $out['GIT_ALPHA_UPDATE_URL'] = $out['GIT_URL_CONFIGURED'] ? rtrim(GIT_URL, '/') . '/archive/alpha.tar.gz' : '';
 
         $out['UPDATE_AUTO'] = $this->config['UPDATE_AUTO'];
         $out['UPDATE_AUTO_DELAY'] = $this->config['UPDATE_AUTO_DELAY'];
@@ -211,9 +215,7 @@ class saverestore extends module
             }
         }
 
-        $github_feed_url = $update_url;
-        $github_feed_url = str_replace('/archive/', '/commits/', $github_feed_url);
-        $github_feed_url = str_replace('.tar.gz', '.atom', $github_feed_url);
+        $github_feed_url = $this->getUpdateFeedURL($update_url);
 
         $op = isset($_GET['op']) ? $_GET['op'] : '';
         if ($op == 'check_updates') {
@@ -225,7 +227,10 @@ class saverestore extends module
         $options = array(
             CURLOPT_HTTPHEADER => array('Accept: application/xml')
         );
-        $github_feed = getURL($github_feed_url, $cache_timeout, '', '', false, $options);
+        $github_feed = '';
+        if ($github_feed_url != '') {
+            $github_feed = getURL($github_feed_url, $cache_timeout, '', '', false, $options);
+        }
         if ($github_feed != '') {
             $tmp = GetXMLTree($github_feed);
             if (is_array($tmp)) {
@@ -245,7 +250,6 @@ class saverestore extends module
                     foreach ($items as $key => $value) {
                         $itm = array();
 
-                        if ($value['author']['name']['textvalue'] != 'sergejey') continue;
                         $itm['ID'] = trim($value['id']['textvalue']);
                         $itm['ID'] = preg_replace('/.+Commit\//is', '', $itm['ID']);
                         $itm['MYVERSION'] = ($itm['ID'] == $this->config['LATEST_UPDATED_ID']) ? 1 : 0;
@@ -279,8 +283,7 @@ class saverestore extends module
                     $out['LATEST_UPDATED_ID_SLICE'] = mb_strtoupper(substr($this->config['LATEST_UPDATED_ID'], 0, 7));
                     $out['LATEST_UPDATED_TIME'] = gg('LatestUpdateTimestamp');
 
-                    $currBranch = explode("/", $update_url);
-                    $out['UPDATE_CURR_BRANCH'] = mb_strtoupper(explode('.', $currBranch[6])[0]);
+                    $out['UPDATE_CURR_BRANCH'] = mb_strtoupper($this->getUpdateBranch($update_url));
 
                     if ($out['LATEST_ID'] != '' && $out['LATEST_ID'] == $out['LATEST_UPDATED_ID'] && $out['LATEST_CURR_BRANCH'] == $out['UPDATE_CURR_BRANCH']) {
                         $out['NO_NEED_TO_UPDATE'] = 1;
@@ -288,9 +291,9 @@ class saverestore extends module
                     $op = isset($_GET['op']) ? $_GET['op'] : '';
                     if ($this->ajax && $op == 'check_updates') {
                         if (!isset($out['NO_NEED_TO_UPDATE'])) {
-                            echo json_encode(array('needUpdate' => '1', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $this->config['LATEST_UPDATED_ID']));
+                            echo json_encode(array('needUpdate' => '1', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $this->config['LATEST_UPDATED_ID'], 'commitUrl' => $out['PROJECT_COMMIT_URL']));
                         } else {
-                            echo json_encode(array('needUpdate' => '0', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $this->config['LATEST_UPDATED_ID']));
+                            echo json_encode(array('needUpdate' => '0', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $this->config['LATEST_UPDATED_ID'], 'commitUrl' => $out['PROJECT_COMMIT_URL']));
                         }
                         exit;
                     }
@@ -510,15 +513,69 @@ class saverestore extends module
             $update_url = $this->config['MASTER_UPDATE_URL'];
         } elseif (defined('MASTER_UPDATE_URL') && MASTER_UPDATE_URL != '') {
             $update_url = MASTER_UPDATE_URL;
+        } elseif (defined('GIT_URL') && GIT_URL != '') {
+            $update_url = rtrim(GIT_URL, '/') . '/archive/master.tar.gz';
         } else {
-            $update_url = GIT_URL . 'archive/master.tar.gz';
+            $update_url = '';
         }
         if ($link != '') {
             if (preg_match('/\/commit\/(.+?)$/', $link, $m)) {
                 $commit = $m[1];
-                $update_url = preg_replace('/archive\/\w+?\./', 'archive/' . $commit . '.', $update_url);
+                $update_url = $this->getArchiveURLForCommit($update_url, $commit);
             }
         }
+        return $update_url;
+    }
+
+    function getUpdateFeedURL($update_url)
+    {
+        $url_info = parse_url($update_url);
+        $path = isset($url_info['path']) ? $url_info['path'] : $update_url;
+
+        if (preg_match('#/-/archive/([^/]+)/[^/]+\.tar\.gz$#i', $path, $m)) {
+            return str_replace($m[0], '/-/commits/' . $m[1] . '.atom', $update_url);
+        }
+
+        if (preg_match('#/archive/(?:refs/heads/)?([^/]+)\.tar\.gz$#i', $path, $m)) {
+            return preg_replace('#/archive/(?:refs/heads/)?[^/]+\.tar\.gz#i', '/commits/' . $m[1] . '.atom', $update_url);
+        }
+
+        return str_replace(array('/archive/', '.tar.gz'), array('/commits/', '.atom'), $update_url);
+    }
+
+    function getUpdateBranch($update_url)
+    {
+        $url_info = parse_url($update_url);
+        $path = isset($url_info['path']) ? $url_info['path'] : $update_url;
+
+        if (preg_match('#/-/archive/([^/]+)/[^/]+\.tar\.gz$#i', $path, $m)) {
+            return $m[1];
+        }
+
+        if (preg_match('#/archive/(?:refs/heads/)?([^/]+)\.tar\.gz$#i', $path, $m)) {
+            return $m[1];
+        }
+
+        return str_replace('.tar.gz', '', basename($path));
+    }
+
+    function getArchiveURLForCommit($update_url, $commit)
+    {
+        $url_info = parse_url($update_url);
+        $path = isset($url_info['path']) ? $url_info['path'] : $update_url;
+
+        if (preg_match('#/-/archive/([^/]+)/([^/]+)\.tar\.gz$#i', $path, $m)) {
+            $archive_name = str_replace($m[1], $commit, $m[2]);
+            if ($archive_name == $m[2]) {
+                $archive_name = $commit;
+            }
+            return str_replace($m[0], '/-/archive/' . $commit . '/' . $archive_name . '.tar.gz', $update_url);
+        }
+
+        if (preg_match('#/archive/(?:refs/heads/)?[^/]+\.tar\.gz#i', $path, $m)) {
+            return str_replace($m[0], '/archive/' . $commit . '.tar.gz', $update_url);
+        }
+
         return $update_url;
     }
 
@@ -589,13 +646,7 @@ class saverestore extends module
             if (!$iframe) {
                 $with_extensions = gr('with_extensions');
                 $with_backup = gr('with_backup');
-                $folder = 'majordomo-master';
-                $basename = basename($this->url);
-                if ($basename != 'master.tar.gz') {
-                    $basename = str_replace('.tar.gz', '', $basename);
-                    $folder = str_replace('master', $basename, $folder);
-                }
-                $this->redirect("?mode=upload&restore=" . urlencode('master.tgz') . "&folder=" . urlencode($folder) . "&with_extensions=" . $with_extensions . "&with_backup=" . $with_backup);
+                $this->redirect("?mode=upload&restore=" . urlencode('master.tgz') . "&with_extensions=" . $with_extensions . "&with_backup=" . $with_backup);
             } else {
                 return 1;
             }
@@ -1786,10 +1837,11 @@ class saverestore extends module
 
         $update_url = $this->getUpdateURL();
 
-        $github_feed_url = $update_url;
-        $github_feed_url = str_replace('/archive/', '/commits/', $github_feed_url);
-        $github_feed_url = str_replace('.tar.gz', '.atom', $github_feed_url);
-        $github_feed = getURL($github_feed_url, 30 * 60);
+        $github_feed_url = $this->getUpdateFeedURL($update_url);
+        $github_feed = '';
+        if ($github_feed_url != '') {
+            $github_feed = getURL($github_feed_url, 30 * 60);
+        }
 
         if ($github_feed != '') {
             $tmp = GetXMLTree($github_feed);
@@ -1825,13 +1877,8 @@ class saverestore extends module
                 global $restore;
                 global $folder;
                 $restore = 'master.tgz';
-                $folder = 'majordomo-master';
-                $basename = basename($this->url);
-                if ($basename != 'master.tar.gz') {
-                    $basename = str_replace('.tar.gz', '', $basename);
-                    $folder = str_replace('master', $basename, $folder);
-                }
-                DebMes("Applying update $basename from $folder", 'auto_update');
+                $folder = '';
+                DebMes("Applying update from " . basename($this->url), 'auto_update');
                 $res = $this->upload($out, 1);
                 removeTree(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', 1);
                 // now downloading updates for modules

@@ -1012,25 +1012,6 @@ class objects extends module
 
         saveToCache($cached_name, $value);
 
-        $p_lower = strtolower($property);
-        if (!defined('DISABLE_SIMPLE_DEVICES') &&
-            isset($this->device_id) &&
-            ($p_lower == 'value' ||
-                $p_lower == 'valuehumidity' ||
-                $p_lower == 'status' ||
-                $p_lower == 'disabled' ||
-                $p_lower == 'level' ||
-                $p_lower == 'color' ||
-                $p_lower == 'volume' ||
-                $p_lower == 'channel' ||
-                $p_lower == 'mode' ||
-                $p_lower == 'thermostatmode' ||
-                $p_lower == 'fanspeedmode' ||
-                $p_lower == 'currenttargetvalue') //
-        ) {
-            addToOperationsQueue('connect_device_data', $this->object_title . '.' . $property, $value, true);
-        }
-
         if (isset($v['LINKED_MODULES']) && $v['LINKED_MODULES']) { // TO-DO !
             if (!is_array($no_linked) && $no_linked) {
                 return;

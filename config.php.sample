@@ -81,11 +81,13 @@ if (isset($_ENV["S2G_BASE_URL"]) && $_ENV["S2G_BASE_URL"]) {
  *  7) Репозитории и обновления | Repositories and updates
  * ============================================================================
  */
-Define('GIT_URL', 'https://github.com/sergejey/majordomo/');          // Базовый URL репозитория | Repository base URL
-Define('MASTER_UPDATE_URL', GIT_URL . 'archive/master.tar.gz');       // URL архива для обновления | Update archive URL
+Define('GIT_URL', 'https://github.com/SmoKE585/majordomo');           // Базовый URL репозитория | Repository base URL
+Define('MASTER_UPDATE_URL', GIT_URL != '' ? rtrim(GIT_URL, '/') . '/archive/master.tar.gz' : ''); // URL архива для обновления | Update archive URL
+Define('PROJECT_URL', GIT_URL);                                       // URL проекта | Project URL
+Define('PROJECT_COMMIT_URL', GIT_URL != '' ? rtrim(GIT_URL, '/') . '/commit/' : ''); // Базовый URL коммита | Commit base URL
 $aditional_git_urls = array(                                           // Дополнительные источники обновлений | Additional update sources
-    //'https://github.com/AKEB/majordomo/archive/alpha.tar.gz' => 'AKEB/alpha',
-    //'https://github.com/AKEB/majordomo/archive/master.tar.gz' => 'AKEB/master',
+    //'https://github.com/SmoKE585/majordomo/archive/alpha.tar.gz' => 'SmoKE585/alpha',
+    //'https://github.com/SmoKE585/majordomo/archive/master.tar.gz' => 'SmoKE585/master',
 );
 
 /*

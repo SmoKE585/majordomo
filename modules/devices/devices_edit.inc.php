@@ -557,7 +557,6 @@ if ($this->mode == 'update' && $this->tab == '') {
         }
 
         clearCacheData();
-        addToOperationsQueue('connect_sync_devices', 'required');
 
         if ($out['SOURCE_TABLE'] && $out['SOURCE_TABLE_ID']) {
             $this->addDeviceToSourceTable($out['SOURCE_TABLE'], $out['SOURCE_TABLE_ID'], $rec['ID']);

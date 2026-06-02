@@ -119,11 +119,6 @@
 								url: url
 							}).done(function(data) {
 								$('#search_result').html(data);
-								if (category_id=='owned') {
-									$('#connect_sync_note').show();
-								} else {
-									$('#connect_sync_note').hide();
-								}
 							});
 							return false;
 						});
@@ -185,5 +180,4 @@
 [#if MODE="details"#]
 [#inc details.html#]
 [#endif MODE#]
-
 

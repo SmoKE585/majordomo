@@ -97,7 +97,11 @@
 				<script>
 				$(document).ready(function() {
 					if($('#mysystemversion').length == 0) {
-						$('#changelogUpdate').prepend('<div class="alert alert-danger"><b><#LANG_VERSION_TOO_OLD#></b> ([#LATEST_UPDATED_TIME#]);<br/><#LANG_LATEST_UPDATES#>: <a href="https://github.com/sergejey/majordomo/commit/[#LATEST_UPDATED_ID#]" target="_blank">[#LATEST_CURR_BRANCH#]_[#LATEST_UPDATED_ID_SLICE#]</a>.</div>');
+						[#if PROJECT_COMMIT_URL!=""#]
+						$('#changelogUpdate').prepend('<div class="alert alert-danger"><b><#LANG_VERSION_TOO_OLD#></b> ([#LATEST_UPDATED_TIME#]);<br/><#LANG_LATEST_UPDATES#>: <a href="[#PROJECT_COMMIT_URL#][#LATEST_UPDATED_ID#]" target="_blank">[#LATEST_CURR_BRANCH#]_[#LATEST_UPDATED_ID_SLICE#]</a>.</div>');
+						[#else#]
+						$('#changelogUpdate').prepend('<div class="alert alert-danger"><b><#LANG_VERSION_TOO_OLD#></b> ([#LATEST_UPDATED_TIME#]);<br/><#LANG_LATEST_UPDATES#>: [#LATEST_CURR_BRANCH#]_[#LATEST_UPDATED_ID_SLICE#].</div>');
+						[#endif#]
 					}
 				});
 				</script>
@@ -115,8 +119,10 @@
 					<li class="list-group-item">
 						<span style="float: right;">
 							<select name="set_update_url" id="set_update_url" style="border: 0px;" onchange="this.form.submit();">
-								<option value="<#GIT_URL#>archive/master.tar.gz"[#if UPDATE_URL="<#GIT_URL#>archive/master.tar.gz"#] selected[#endif#]><#LANG_UPDATES_SOURCE_MASTER#></option>
-								<option value="<#GIT_URL#>archive/alpha.tar.gz"[#if UPDATE_URL="<#GIT_URL#>archive/alpha.tar.gz"#] selected[#endif#]><#LANG_UPDATES_SOURCE_ALPHA#></option>
+								[#if GIT_URL_CONFIGURED="1"#]
+								<option value="<#GIT_MASTER_UPDATE_URL#>"[#if UPDATE_URL="<#GIT_MASTER_UPDATE_URL#>"#] selected[#endif#]><#LANG_UPDATES_SOURCE_MASTER#></option>
+								<option value="<#GIT_ALPHA_UPDATE_URL#>"[#if UPDATE_URL="<#GIT_ALPHA_UPDATE_URL#>"#] selected[#endif#]><#LANG_UPDATES_SOURCE_ALPHA#></option>
+								[#endif#]
 								[#if ADITIONAL_GIT_URLS#]
 								[#begin ADITIONAL_GIT_URLS#]
 								<option value="[#URL#]" [#SELECTED#]>[#TITLE#]</option>

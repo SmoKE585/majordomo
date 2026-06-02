@@ -115,7 +115,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'חוקי אבטחה',
 'MODULE_MQTT'=>'MQTT',
 'MODULE_MODBUS'=>'ModBus',
-'MODULE_CONNECT'=>'התחברות',
 'MODULE_MARKET'=>'חנות הרחבות',
 'MODULE_MYBLOCKS'=>'בלוקים שלי',
 'MODULE_TEXTFILES'=>'קבצי טקסט',

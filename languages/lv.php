@@ -114,7 +114,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'Drošības noteikumi',
 'MODULE_MQTT'=>'MQTT',
 'MODULE_MODBUS'=>'ModBus',
-'MODULE_CONNECT'=>'Savienojums ar smartliving',
 'MODULE_MARKET'=>'Papildinājumu veikals',
 'MODULE_MYBLOCKS'=>'Mani bloki',
 'MODULE_TEXTFILES'=>'Teksta faili',

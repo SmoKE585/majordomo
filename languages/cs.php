@@ -104,7 +104,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'Bezpečnostní pokyny',
 'MODULE_MQTT'=>'MQTT',
 'MODULE_MODBUS'=>'ModBus',
-'MODULE_CONNECT'=>'CONNECT',
 'MODULE_MARKET'=>'Doplňková prodejna',
 'MODULE_MYBLOCKS'=>'Moje bloky',
 'MODULE_TEXTFILES'=>'Textové soubory',

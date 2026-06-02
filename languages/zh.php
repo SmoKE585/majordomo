@@ -147,7 +147,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'安全规则',
 'MODULE_MQTT'=>'包括我',
 'MODULE_MODBUS'=>'储备',
-'MODULE_CONNECT'=>'连接',
 'MODULE_MARKET'=>'插件市场',
 'MODULE_MYBLOCKS'=>'我块',
 'MODULE_TEXTFILES'=>'文本的文件',

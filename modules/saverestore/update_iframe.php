@@ -53,12 +53,7 @@ if ($backup) {
         logAction('system_update');
         global $restore;
         $restore = 'master.tgz';
-        $folder = 'majordomo-master';
-        $basename = basename($sv->url);
-        if ($basename != 'master.tar.gz') {
-            $basename = str_replace('.tar.gz', '', $basename);
-            $folder = str_replace('master', $basename, $folder);
-        }
+        $folder = '';
         $res = $sv->upload($out, 1);
         if ($res) {
             echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-chevron-right"></i> ' . LANG_UPDATEBACKUP_DELETE_TEMP_FILES . '</div>');
@@ -85,4 +80,3 @@ if ($backup) {
 
 echo "</body>";
 echo "</html>";
-

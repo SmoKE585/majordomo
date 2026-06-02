@@ -114,7 +114,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'Reguli de siguranță',
 'MODULE_MQTT'=>'MQTT',
 'MODULE_MODBUS'=>'ModBus',
-'MODULE_CONNECT'=>'CONECTAȚI',
 'MODULE_MARKET'=>'Magazin Plug-in',
 'MODULE_MYBLOCKS'=>'Blocurile mele',
 'MODULE_TEXTFILES'=>'Fișiere text',

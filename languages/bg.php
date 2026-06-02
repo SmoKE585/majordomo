@@ -113,7 +113,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'Правила за безопастност',
 'MODULE_MQTT'=>'MQTT',
 'MODULE_MODBUS'=>'ModBus',
-'MODULE_CONNECT'=>'CONNECT',
 'MODULE_MARKET'=>'Маркет за допълнения',
 'MODULE_MYBLOCKS'=>'Моите блокове',
 'MODULE_TEXTFILES'=>'Текстови файлове',

@@ -457,16 +457,8 @@ class patterns extends module
     function getConnectDetails()
     {
         if (!$this->connect_username && !$this->connect_password) {
-            include_once(DIR_MODULES . 'connect/connect.class.php');
-            $cn = new connect();
-            $cn->getConfig();
-            if ($cn->config['CONNECT_USERNAME'] && $cn->config['CONNECT_PASSWORD']) {
-                $this->connect_username = $cn->config['CONNECT_USERNAME'];
-                $this->connect_password = $cn->config['CONNECT_PASSWORD'];
-            } else {
-                $this->connect_username = 'anonymous';
-                $this->connect_password = '';
-            }
+            $this->connect_username = 'anonymous';
+            $this->connect_password = '';
         }
     }
 

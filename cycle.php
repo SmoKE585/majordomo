@@ -604,7 +604,7 @@ while (false !== ($result = $threads->iteration())) {
                 if ($need_restart && $cycle_title) {
                     if (!isset($to_start[$cycle_title])) {
                         DebMes("AUTO-RECOVERY: " . $closed_thread, 'boot');
-                        if (!preg_match('/websockets/is', $closed_thread) && !preg_match('/connect/is', $closed_thread)) {
+                        if (!preg_match('/websockets/is', $closed_thread)) {
                             $details = buildCycleStopReason(
                                 $cycle_title,
                                 $closed_thread,

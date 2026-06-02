@@ -22,6 +22,15 @@ echo "<pre>\n";
 
 DebMes("Running maintenance script", 'maintenance');
 
+// Remove legacy paid Connect module records. The module files are no longer shipped.
+DebMes("Removing Connect module records.", 'maintenance');
+SQLExec("DELETE FROM project_modules WHERE NAME='connect'");
+SQLExec("DELETE FROM pvalues WHERE PROPERTY_NAME IN ('ThisComputer.cycle_connectRun','ThisComputer.connect_manualRun')");
+SQLExec("DELETE FROM phistory WHERE VALUE_ID NOT IN (SELECT ID FROM pvalues)");
+SQLExec("DELETE FROM properties WHERE OBJECT_ID=(SELECT ID FROM objects WHERE TITLE='ThisComputer' LIMIT 1) AND TITLE IN ('cycle_connectRun','connect_manualRun')");
+SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, '\"connect\":{\"filter\":\"\"},', '') WHERE NAME IN ('HOOK_EVENT_SAY','HOOK_EVENT_HOURLY')");
+SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, ',\"connect\":{\"filter\":\"\"}', '') WHERE NAME IN ('HOOK_EVENT_SAY','HOOK_EVENT_HOURLY')");
+
 // BACKUP DATABASE AND FILES
 
 if (defined('SETTINGS_BACKUP_PATH') && SETTINGS_BACKUP_PATH != '' && is_dir(SETTINGS_BACKUP_PATH)) {

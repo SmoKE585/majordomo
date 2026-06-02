@@ -109,7 +109,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'Saugos taisyklės',
 'MODULE_MQTT'=>'MQTT',
 'MODULE_MODBUS'=>'ModBus',
-'MODULE_CONNECT'=>'CONNECT',
 'MODULE_MARKET'=>'Papildymų rinka',
 'MODULE_MYBLOCKS'=>'Mano blokai',
 'MODULE_TEXTFILES'=>'Tekstiniai failai',

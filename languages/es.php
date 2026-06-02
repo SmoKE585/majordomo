@@ -144,7 +144,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'Reglas de seguridad',
 'MODULE_MQTT'=>'MQTT',
 'MODULE_MODBUS'=>'ModBus',
-'MODULE_CONNECT'=>'CONECTAR',
 'MODULE_MARKET'=>'Mercado de complementos',
 'MODULE_MYBLOCKS'=>'Mis bloques',
 'MODULE_TEXTFILES'=>'Archivos de texto',

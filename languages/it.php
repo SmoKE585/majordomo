@@ -104,7 +104,6 @@ $dictionary=array(
 'MODULE_SECURITY_RULES'=>'Regole di sicurezza',
 'MODULE_MQTT'=>'MQTT',
 'MODULE_MODBUS'=>'ModBus',
-'MODULE_CONNECT'=>'CONNECT',
 'MODULE_MARKET'=>'Mercato di supplementi',
 'MODULE_MYBLOCKS'=>'Miei blocchi',
 'MODULE_TEXTFILES'=>'File di testo',

@@ -149,7 +149,6 @@ $dictionary = array(
     'MODULE_SECURITY_RULES' => 'Κανόνες ασφαλείας',
     'MODULE_MQTT' => 'MQTT',
     'MODULE_MODBUS' => 'ModBus',
-    'MODULE_CONNECT' => 'CONNECT',
     'MODULE_MARKET' => 'Αγορά πρόσθετων',
     'MODULE_MYBLOCKS' => 'Τα μπλοκ μου',
     'MODULE_TEXTFILES' => 'Αρχεία κειμένου',

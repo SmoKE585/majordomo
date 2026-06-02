@@ -309,14 +309,6 @@
 		</div>
 		</div>
 		
-		<div id="getConnect" class="jumbotron hidden-xs" style="display:none!important;margin-bottom: 10px;padding-top: 20px;padding-bottom: 10px;border-radius: 5px;background-image: url(/img/connect_back_block.png), radial-gradient(circle farthest-corner at 100px 50px, #ffffff, #d6df4a);background-size: contain;background-repeat: no-repeat;background-position: right center;">
-			<h2 id="titleConnect"><#LANG_NEWDASH_CONNECT_ADS#></h2>
-			<p style="font-size: 11pt;" id="textConnect"><#LANG_NEWDASH_CONNECT_ADS_TEXT#></p>
-			<p class="text-right">
-				<a style="border-color: #ffffff;" onclick="$('#btnConnect').hide();$('#titleConnect').text('<#LANG_NEWDASH_CONNECT_ADS_DONATE#>');$('#textConnect').html('<#LANG_NEWDASH_CONNECT_ADS_DONATE_TEXT#>');" class="btn btn-default btn-md" role="button"><#LANG_NEWDASH_CONNECT_ADS_DONATE_BTN#></a>
-				<a style="border-color: #ffffff;" id="btnConnect" href="https://connect.smartliving.ru/services/s2.html" target="_blank" class="btn btn-success btn-md" role="button"><#LANG_NEWDASH_CONNECT_ADS_BTN#></a>
-			</p>
-		</div>
 		<div id="hint_blockdidyouknow" style="display:none;">
 			<div id="didyouknow" class="alert alert-dismissable hidden-xs" style="background-color: #f5f5f5;margin-bottom: 0px;">
 				<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
@@ -370,7 +362,6 @@
 		hideHintCookie('addMyBlockHint', 1);
 		setInterval(function() { checkSystemInfo(); }, 300000);
 		checkSystemInfo();
-		checkConnectStatus();
 		
 		myBlockOnDash();
     });

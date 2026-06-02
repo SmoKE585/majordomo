@@ -515,20 +515,7 @@ class market extends module
         }
         $data_url = 'https://connect.smartliving.ru/market/?lang=' . SETTINGS_SITE_LANGUAGE . "&serial=" . urlencode($serial) . "&locale=" . urlencode($locale) . "&os=" . urlencode($os) . "&" . $details;
 
-        $username = '';
-        $password = '';
-        @include_once(DIR_MODULES . 'connect/connect.class.php');
-        if (class_exists('connect')) {
-            $connect = new connect();
-            $connect->getConfig();
-            $connect_username = strtolower($connect->config['CONNECT_USERNAME']);
-            $connect_password = $connect->config['CONNECT_PASSWORD'];
-            if ($connect_username != '' && $connect_password != '') {
-                $username = $connect_username;
-                $password = $connect_password;
-            }
-        }
-        return getURL($data_url, $cache_timeout, $username, $password);
+        return getURL($data_url, $cache_timeout);
     }
 
 
@@ -851,23 +838,6 @@ class market extends module
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
         curl_setopt($ch, CURLOPT_FILE, $f);
 
-        if (preg_match('/\?op=download/', $url)) {
-            DebMes("Setting CONNECT authorization credentials", 'market');
-            @include_once(DIR_MODULES . 'connect/connect.class.php');
-            if (class_exists('connect')) {
-                $connect = new connect();
-                $connect->getConfig();
-                $connect_username = strtolower($connect->config['CONNECT_USERNAME']);
-                $connect_password = $connect->config['CONNECT_PASSWORD'];
-                if ($connect_username != '' && $connect_password != '') {
-                    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-                    curl_setopt($ch, CURLOPT_USERPWD, $connect_username . ":" . $connect_password);
-                    DebMes("Auth credentials set.", 'market');
-                } else {
-                    DebMes("Auth credentials missing.", 'market');
-                }
-            }
-        }
         $incoming = curl_exec($ch);
         curl_close($ch);
         @fclose($f);

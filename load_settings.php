@@ -37,7 +37,13 @@ if (!defined('SETTINGS_SITE_LANGUAGE')) {
 }
 
 if (!defined('GIT_URL')) {
-    Define('GIT_URL', 'https://github.com/sergejey/majordomo/');
+    Define('GIT_URL', 'https://github.com/SmoKE585/majordomo');
+}
+if (!defined('PROJECT_URL')) {
+    Define('PROJECT_URL', GIT_URL);
+}
+if (!defined('PROJECT_COMMIT_URL')) {
+    Define('PROJECT_COMMIT_URL', GIT_URL != '' ? rtrim(GIT_URL, '/') . '/commit/' : '');
 }
 if (!isset($aditional_git_urls)) {
     $aditional_git_urls = array();
