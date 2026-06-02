@@ -25,6 +25,20 @@ if (!defined('WEBSOCKETS_MAX_REQUESTS_PER_MINUTE')) define('WEBSOCKETS_MAX_REQUE
 if (!defined('WEBSOCKETS_CLIENT_TIMEOUT')) define('WEBSOCKETS_CLIENT_TIMEOUT', 0);
 if (!defined('WEBSOCKETS_ALLOWED_ORIGINS')) define('WEBSOCKETS_ALLOWED_ORIGINS', '');
 
+function majordomoGetWebSocketAuthToken()
+{
+	if (defined('SETTINGS_SYSTEM_WEBSOCKETS_TOKEN') && SETTINGS_SYSTEM_WEBSOCKETS_TOKEN != '') {
+		return (string)SETTINGS_SYSTEM_WEBSOCKETS_TOKEN;
+	}
+	if (defined('WEBSOCKETS_AUTH_TOKEN') && WEBSOCKETS_AUTH_TOKEN != '') {
+		return (string)WEBSOCKETS_AUTH_TOKEN;
+	}
+	if (defined('WEBSOCKETS_TOKEN') && WEBSOCKETS_TOKEN != '') {
+		return (string)WEBSOCKETS_TOKEN;
+	}
+	return '';
+}
+
 function majordomoCreateWebSocketServer()
 {
 	$server = new \WebSocket\Server((string)WEBSOCKETS_HOST, (int)WEBSOCKETS_PORT, (bool)WEBSOCKETS_TLS);

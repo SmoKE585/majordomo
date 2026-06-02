@@ -27,6 +27,10 @@ $settings_structure = array(
         'SYSTEM_DB_HISTORY_SAVE_PERIOD' => array(
             'title' => 'Database save period (history data), minutes',
             'default' => '60'
+        ),
+        'SYSTEM_WEBSOCKETS_TOKEN' => array(
+            'title' => 'WebSocket authorization token',
+            'notes' => 'If set, websocket clients must pass this token as ?token=...'
         )
     ),
     'behavior' => array(

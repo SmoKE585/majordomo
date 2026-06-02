@@ -24,6 +24,8 @@ class MajordomoApplication extends Application
     public function onConnect($client)
     {
         $id = $client->getClientId();
+        $client->subscribedTo['properties']['*'] = 1;
+        $client->watchedProperties['*']['properties'] = 1;
         $this->_clients[$id] = $client;
         echo "Client connected (" . $client->getClientIp() . "). Total clients: " . count($this->_clients) . "\n";
     }
@@ -41,6 +43,7 @@ class MajordomoApplication extends Application
         $decodedData = $this->_decodeData($data);
         if ($decodedData === false) {
             // @todo: invalid request trigger error...
+            return;
         }
 
         $actionName = isset($decodedData['action']) ? '_action' . ucfirst($decodedData['action']) : '';
@@ -259,13 +262,23 @@ class MajordomoApplication extends Application
             }
 
             if ($data['TYPE'] == 'properties') {
-                if ($data['PROPERTIES'] == '') {
+                $properties_list = isset($data['PROPERTIES']) ? trim((string)$data['PROPERTIES']) : '';
+                if ($properties_list == '') {
+                    $this->_clients[$client_id]->subscribedTo['properties']['*'] = 1;
+                    $this->_clients[$client_id]->watchedProperties['*']['properties'] = 1;
+                    if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
+                        DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to all properties", 'websockets');
+                    }
+                    $send_data = $data;
+                    $send_data['PROPERTIES'] = '*';
+                    $encodedData = $this->_encodeData('subscribed', json_encode($send_data));
+                    $this->_clients[$client_id]->send($encodedData);
                     return;
                 }
                 if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                    DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to properties: " . $data['PROPERTIES'], 'websockets');
+                    DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to properties: " . $properties_list, 'websockets');
                 }
-                $tmp = explode(',', $data['PROPERTIES']);
+                $tmp = explode(',', $properties_list);
                 if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
                     DebMes($this->_clients[$client_id]->getClientIp() . " Watching:\n" . json_encode($tmp), 'websockets');
                 }
@@ -319,6 +332,223 @@ class MajordomoApplication extends Application
             $encodedData = $this->_encodeData('subscribed', json_encode($send_data));
             $this->_clients[$client_id]->send($encodedData);
         }
+    }
+
+    private function _actionGetProperty($data, $client_id)
+    {
+        $this->_actionGetProperties($data, $client_id);
+    }
+
+    private function _actionGetProperties($data, $client_id)
+    {
+        $this->cycleAlive();
+        $properties = $this->extractPropertyNames($data);
+        if (!isset($properties[0])) {
+            $this->sendActionResult($client_id, 'property_values', array(
+                'SUCCESS' => 0,
+                'ERROR' => 'Property name is required',
+                'REQUEST_ID' => $this->getRequestId($data),
+                'DATA' => array()
+            ));
+            return;
+        }
+
+        $send_data = array();
+        foreach ($properties as $property) {
+            $property_lc = mb_strtolower($property, 'UTF-8');
+            if (isSet($this->_cachedProperties[$property_lc])) {
+                $value = $this->_cachedProperties[$property_lc];
+            } else {
+                $value = getGlobal($property);
+            }
+            $send_data[] = array('PROPERTY' => $property, 'VALUE' => $value);
+        }
+
+        $payload = array(
+            'REQUEST_ID' => $this->getRequestId($data),
+            'DATA' => $send_data
+        );
+        $encodedData = $this->_encodeData('property_values', json_encode($payload));
+        $this->_clients[$client_id]->send($encodedData);
+    }
+
+    private function _actionGetValues($data, $client_id)
+    {
+        $this->_actionGetProperties($data, $client_id);
+    }
+
+    private function _actionSetGlobal($data, $client_id)
+    {
+        $this->cycleAlive();
+        if (!is_array($data)) {
+            $data = array();
+        }
+        $property = isset($data['PROPERTY']) ? $data['PROPERTY'] : (isset($data['NAME']) ? $data['NAME'] : '');
+        $property = trim((string)$property);
+        if ($property === '' || !array_key_exists('VALUE', $data)) {
+            $this->sendActionResult($client_id, 'setGlobal', array(
+                'SUCCESS' => 0,
+                'ERROR' => 'Property name and VALUE are required',
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+            return;
+        }
+
+        $no_linked = isset($data['NO_LINKED']) ? (int)$data['NO_LINKED'] : 0;
+        $source = isset($data['SOURCE']) ? (string)$data['SOURCE'] : 'websocket';
+        try {
+            $result = setGlobal($property, $data['VALUE'], $no_linked, $source);
+            $this->sendActionResult($client_id, 'setGlobal', array(
+                'SUCCESS' => 1,
+                'PROPERTY' => $property,
+                'VALUE' => $data['VALUE'],
+                'RESULT' => $result,
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        } catch (\Throwable $e) {
+            $this->sendActionResult($client_id, 'setGlobal', array(
+                'SUCCESS' => 0,
+                'ERROR' => $e->getMessage(),
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        } catch (\Exception $e) {
+            $this->sendActionResult($client_id, 'setGlobal', array(
+                'SUCCESS' => 0,
+                'ERROR' => $e->getMessage(),
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        }
+    }
+
+    private function _actionCallMethod($data, $client_id)
+    {
+        $this->cycleAlive();
+        if (!is_array($data)) {
+            $data = array();
+        }
+        $method = isset($data['METHOD']) ? $data['METHOD'] : (isset($data['NAME']) ? $data['NAME'] : '');
+        $method = trim((string)$method);
+        if ($method === '') {
+            $this->sendActionResult($client_id, 'callMethod', array(
+                'SUCCESS' => 0,
+                'ERROR' => 'Method name is required',
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+            return;
+        }
+
+        $params = isset($data['PARAMS']) ? $data['PARAMS'] : 0;
+        try {
+            $result = callMethod($method, $params);
+            $this->sendActionResult($client_id, 'callMethod', array(
+                'SUCCESS' => 1,
+                'METHOD' => $method,
+                'RESULT' => $result,
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        } catch (\Throwable $e) {
+            $this->sendActionResult($client_id, 'callMethod', array(
+                'SUCCESS' => 0,
+                'ERROR' => $e->getMessage(),
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        } catch (\Exception $e) {
+            $this->sendActionResult($client_id, 'callMethod', array(
+                'SUCCESS' => 0,
+                'ERROR' => $e->getMessage(),
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        }
+    }
+
+    private function _actionRunScript($data, $client_id)
+    {
+        $this->cycleAlive();
+        if (!is_array($data)) {
+            $data = array();
+        }
+        $script = isset($data['SCRIPT']) ? $data['SCRIPT'] : (isset($data['ID']) ? $data['ID'] : (isset($data['NAME']) ? $data['NAME'] : ''));
+        $script = trim((string)$script);
+        if ($script === '') {
+            $this->sendActionResult($client_id, 'runScript', array(
+                'SUCCESS' => 0,
+                'ERROR' => 'Script id or title is required',
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+            return;
+        }
+
+        $params = isset($data['PARAMS']) ? $data['PARAMS'] : '';
+        try {
+            $result = runScript($script, $params);
+            $this->sendActionResult($client_id, 'runScript', array(
+                'SUCCESS' => 1,
+                'SCRIPT' => $script,
+                'RESULT' => $result,
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        } catch (\Throwable $e) {
+            $this->sendActionResult($client_id, 'runScript', array(
+                'SUCCESS' => 0,
+                'ERROR' => $e->getMessage(),
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        } catch (\Exception $e) {
+            $this->sendActionResult($client_id, 'runScript', array(
+                'SUCCESS' => 0,
+                'ERROR' => $e->getMessage(),
+                'REQUEST_ID' => $this->getRequestId($data)
+            ));
+        }
+    }
+
+    private function extractPropertyNames($data)
+    {
+        $properties = array();
+        if (isset($data['PROPERTIES'])) {
+            if (is_array($data['PROPERTIES'])) {
+                $properties = $data['PROPERTIES'];
+            } else {
+                $properties = explode(',', (string)$data['PROPERTIES']);
+            }
+        } elseif (isset($data['PROPERTY'])) {
+            $properties = is_array($data['PROPERTY']) ? $data['PROPERTY'] : array($data['PROPERTY']);
+        } elseif (isset($data['NAMES'])) {
+            $properties = is_array($data['NAMES']) ? $data['NAMES'] : explode(',', (string)$data['NAMES']);
+        } elseif (isset($data['NAME'])) {
+            $properties = is_array($data['NAME']) ? $data['NAME'] : array($data['NAME']);
+        } elseif (is_array($data)) {
+            $properties = $data;
+        }
+
+        $result = array();
+        foreach ($properties as $property) {
+            if (!is_scalar($property)) {
+                continue;
+            }
+            $property = trim((string)$property);
+            if ($property !== '') {
+                $result[] = $property;
+            }
+        }
+        return $result;
+    }
+
+    private function sendActionResult($client_id, $action, $payload)
+    {
+        $encodedData = $this->_encodeData($action, json_encode($payload));
+        $this->_clients[$client_id]->send($encodedData);
+    }
+
+    private function getRequestId($data)
+    {
+        if (is_array($data) && isset($data['REQUEST_ID'])) {
+            return $data['REQUEST_ID'];
+        }
+        if (is_array($data) && isset($data['request_id'])) {
+            return $data['request_id'];
+        }
+        return '';
     }
 
     private function _actionPostEvent($data)
@@ -378,7 +608,7 @@ class MajordomoApplication extends Application
 
             foreach ($this->_clients as $client) {
                 $tmp = explode('.', $property_name_lc);
-                if (IsSet($client->watchedProperties[$property_name_lc]) || IsSet($client->watchedProperties[$tmp[0]])) {
+                if (IsSet($client->watchedProperties['*']['properties']) || IsSet($client->watchedProperties[$property_name_lc]) || IsSet($client->watchedProperties[$tmp[0]])) {
                     //scenes
                     if (isset($client->watchedProperties[$property_name_lc]['states'])) {
                         $send_states = array();
@@ -575,7 +805,7 @@ class MajordomoApplication extends Application
                     }
 
                     //properties
-                    if (isset($client->watchedProperties[$property_name_lc]['properties'])) {
+                    if (isset($client->watchedProperties['*']['properties']) || isset($client->watchedProperties[$property_name_lc]['properties'])) {
                         $send_data = array();
                         $send_data[] = array('PROPERTY' => $property_name, 'VALUE' => $property_value);
                         if (isset($send_data[0])) {

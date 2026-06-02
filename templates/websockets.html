@@ -24,6 +24,10 @@
 				serverUrl = "ws:";
 		}
 		serverUrl += "//" + loc.hostname + ':<#WEBSOCKETS_PORT#>/majordomo';
+		var wsAuthToken = <#WEBSOCKETS_AUTH_TOKEN_JSON#>;
+		if (wsAuthToken) {
+			serverUrl += '?token=' + encodeURIComponent(wsAuthToken);
+		}
 		try {
 			console.log('%c%s', 'color: gray;', '... Подключение к серверу '+serverUrl);
 			

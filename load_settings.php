@@ -132,6 +132,18 @@ if (isset($_SERVER['SERVER_ADDR']) && isset($_SERVER['SERVER_PORT'])) {
 if (!defined('WEBSOCKETS_PORT'))
     Define('WEBSOCKETS_PORT', 8001);
 
+$websocketsAuthToken = '';
+if (defined('SETTINGS_SYSTEM_WEBSOCKETS_TOKEN') && SETTINGS_SYSTEM_WEBSOCKETS_TOKEN != '') {
+    $websocketsAuthToken = SETTINGS_SYSTEM_WEBSOCKETS_TOKEN;
+} elseif (defined('WEBSOCKETS_AUTH_TOKEN') && WEBSOCKETS_AUTH_TOKEN != '') {
+    $websocketsAuthToken = WEBSOCKETS_AUTH_TOKEN;
+} elseif (defined('WEBSOCKETS_TOKEN') && WEBSOCKETS_TOKEN != '') {
+    $websocketsAuthToken = WEBSOCKETS_TOKEN;
+}
+if (!defined('WEBSOCKETS_AUTH_TOKEN_JSON')) {
+    Define('WEBSOCKETS_AUTH_TOKEN_JSON', json_encode((string)$websocketsAuthToken));
+}
+
 // check external access
 $home_network = '';
 if (defined('SETTINGS_REMOTE_HOME_NETWORK') && SETTINGS_REMOTE_HOME_NETWORK != '') {

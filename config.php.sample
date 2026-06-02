@@ -180,6 +180,7 @@ define('WEBSOCKETS_MAX_REQUESTS_PER_MINUTE', 20000); // Лимит сообще�
 define('WEBSOCKETS_CLIENT_TIMEOUT', 30);       // Таймаут неактивного клиента в секундах | Inactive client timeout in seconds
 define('WEBSOCKETS_CHECK_ORIGIN', 0);          // Проверять Origin в handshake: 0/1 | Check Origin in handshake: 0/1
 define('WEBSOCKETS_ALLOWED_ORIGINS', '');      // Белый список Origin (через запятую), если CHECK_ORIGIN=1 | Allowed Origin list (comma-separated) when CHECK_ORIGIN=1
+define('WEBSOCKETS_AUTH_TOKEN', '');           // Токен авторизации websocket, пусто = отключено | Websocket auth token, empty = disabled
 
 // TLS-параметры (используются только если WEBSOCKETS_TLS=1) | TLS parameters (used only when WEBSOCKETS_TLS=1)
 define('WEBSOCKETS_TLS_PEM_FILE', './server.pem');       // Путь к PEM-сертификату | Path to PEM certificate

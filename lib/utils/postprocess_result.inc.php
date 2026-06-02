@@ -65,7 +65,6 @@ if (preg_match_all('/%(\w{2,}?)\.(\w{2,}?)\|(\d+)%/isu', $result, $m))
          payload.action = 'Subscribe';
          payload.data = new Object();
          payload.data.TYPE='properties';
-         payload.data.PROPERTIES='".implode(',', $tracked_properties)."';
          console.log('Subscription to properties sent.');
          wsSocket.send(JSON.stringify(payload));
         });\n";

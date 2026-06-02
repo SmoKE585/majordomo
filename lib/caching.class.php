@@ -200,6 +200,23 @@ function postToWebSocketQueue($property, $value, $post_action = 'PostProperty')
     //SQLInsert('cached_ws', $rec);
 }
 
+function getWebSocketClientPath()
+{
+    $path = '/majordomo';
+    $token = '';
+    if (defined('SETTINGS_SYSTEM_WEBSOCKETS_TOKEN') && SETTINGS_SYSTEM_WEBSOCKETS_TOKEN != '') {
+        $token = SETTINGS_SYSTEM_WEBSOCKETS_TOKEN;
+    } elseif (defined('WEBSOCKETS_AUTH_TOKEN') && WEBSOCKETS_AUTH_TOKEN != '') {
+        $token = WEBSOCKETS_AUTH_TOKEN;
+    } elseif (defined('WEBSOCKETS_TOKEN') && WEBSOCKETS_TOKEN != '') {
+        $token = WEBSOCKETS_TOKEN;
+    }
+    if ($token != '') {
+        $path .= '?token=' . rawurlencode((string)$token);
+    }
+    return $path;
+}
+
 function postToWebSocket($property, $value, $post_action = 'PostProperty')
 {
 
@@ -218,7 +235,7 @@ function postToWebSocket($property, $value, $post_action = 'PostProperty')
 
     if (!Is_Object($wsClient)) {
         $wsClient = new WebsocketClient;
-        if (!(@$wsClient->connect('127.0.0.1', WEBSOCKETS_PORT, '/majordomo'))) {
+        if (!(@$wsClient->connect('127.0.0.1', WEBSOCKETS_PORT, getWebSocketClientPath()))) {
             $wsClient = false;
             if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
                 DebMes("Failed to connect to websocket");
@@ -264,7 +281,7 @@ function postToWebSocket($property, $value, $post_action = 'PostProperty')
             $wsClient->disconnect();
         }
         $wsClient = new WebsocketClient;
-        if ((@$wsClient->connect('127.0.0.1', WEBSOCKETS_PORT, '/majordomo'))) {
+        if ((@$wsClient->connect('127.0.0.1', WEBSOCKETS_PORT, getWebSocketClientPath()))) {
             $data_sent = @$wsClient->sendData($payload);
         } else {
             if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {

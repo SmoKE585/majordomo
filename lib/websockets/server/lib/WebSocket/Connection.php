@@ -21,6 +21,8 @@ class Connection {
     public $outPacket = 0;
     public $inBytes = 0;
     public $outBytes = 0;
+    public $subscribedTo = array();
+    public $watchedProperties = array();
 
     public $waitingForData = false;
     private $_dataBuffer = '';
@@ -55,7 +57,12 @@ class Connection {
 
         // check for valid application:
         $path = $matches[1];
-        $this->application = $this->server->getApplication(substr($path, 1));
+        $requestPath = parse_url($path, PHP_URL_PATH);
+        if ($requestPath === false || $requestPath === null || $requestPath === '') {
+            $requestPath = $path;
+        }
+        $applicationName = substr($requestPath, 1);
+        $this->application = $this->server->getApplication($applicationName);
         if (!$this->application) {
             $this->log('Invalid application: ' . $path);
             $this->sendHttpResponse(404);
@@ -111,6 +118,14 @@ class Connection {
             }
         }
 
+        if (!$this->checkAuthToken($path, $headers)) {
+            $this->log('Invalid websocket token.');
+            $this->sendHttpResponse(401);
+            stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+            $this->server->removeClientOnError($this);
+            return false;
+        }
+
         // do handyshake: (hybi-10)
         $secKey = $headers['Sec-WebSocket-Key'];
         $secAccept = base64_encode(pack('H*', sha1($secKey . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')));
@@ -119,7 +134,7 @@ class Connection {
         $response .= "Connection: Upgrade\r\n";
         $response .= "Sec-WebSocket-Accept: " . $secAccept . "\r\n";
         if (isset($headers['Sec-WebSocket-Protocol']) && !empty($headers['Sec-WebSocket-Protocol'])) {
-            $response .= "Sec-WebSocket-Protocol: " . substr($path, 1) . "\r\n";
+            $response .= "Sec-WebSocket-Protocol: " . $applicationName . "\r\n";
         }
         $response .= "\r\n";
         if (false === ($this->server->writeBuffer($this->socket, $response))) {
@@ -135,6 +150,33 @@ class Connection {
         }
 
         return true;
+    }
+
+    private function checkAuthToken($path, $headers)
+    {
+        $requiredToken = function_exists('majordomoGetWebSocketAuthToken') ? majordomoGetWebSocketAuthToken() : '';
+        if ($requiredToken === '') {
+            return true;
+        }
+
+        $providedToken = '';
+        $query = parse_url($path, PHP_URL_QUERY);
+        if ($query !== false && $query !== null && $query !== '') {
+            $params = array();
+            parse_str($query, $params);
+            if (isset($params['token'])) {
+                $providedToken = (string)$params['token'];
+            } elseif (isset($params['auth_token'])) {
+                $providedToken = (string)$params['auth_token'];
+            }
+        }
+        if ($providedToken === '' && isset($headers['X-WebSocket-Token'])) {
+            $providedToken = (string)$headers['X-WebSocket-Token'];
+        }
+
+        return function_exists('hash_equals')
+            ? hash_equals($requiredToken, $providedToken)
+            : $requiredToken === $providedToken;
     }
 
     public function sendHttpResponse($httpStatusCode = 400) {
@@ -503,4 +545,3 @@ class Connection {
         return (isset($this->application)) ? $this->application : false;
     }
 }
-
