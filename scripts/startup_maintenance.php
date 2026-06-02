@@ -211,6 +211,26 @@ for ($i = 0; $i < $total; $i++) {
     }
 }
 
+// checking property history schema
+DebMes('Checking property history schema.', 'maintenance');
+maintenanceEnsureTableIndex('phistory', 'idx_phistory_value_added', 'VALUE_ID,ADDED');
+maintenanceEnsureTableIndex('phistory', 'idx_phistory_value_id', 'VALUE_ID,ID');
+maintenanceEnsureTableIndex('phistory_queue', 'idx_phistory_queue_value_id', 'VALUE_ID');
+maintenanceEnsureTableIndex('phistory_queue', 'idx_phistory_queue_added', 'ADDED');
+maintenanceEnsureTableIndex('history', 'idx_history_object_added', 'OBJECT_ID,ADDED');
+maintenanceEnsureTableIndex('history', 'idx_history_method_added', 'METHOD_ID,ADDED');
+maintenanceEnsureTableIndex('history', 'idx_history_value_added', 'VALUE_ID,ADDED');
+
+$history_tables = SQLSelect("SHOW TABLES LIKE 'phistory_value_%'");
+$total_history_tables = count($history_tables);
+for ($i = 0; $i < $total_history_tables; $i++) {
+    $table_name = reset($history_tables[$i]);
+    if (!preg_match('/^phistory_value_\d+$/', $table_name)) {
+        continue;
+    }
+    maintenanceEnsureTableColumn($table_name, 'SOURCE', "varchar(255) NOT NULL DEFAULT ''", 'varchar(255)');
+    maintenanceEnsureTableIndex($table_name, 'idx_phistory_value_id', 'VALUE_ID,ID');
+}
 
 // removing incorrect pvalues
 DebMes("Checking for incorrect pvalues.", 'maintenance');
@@ -395,3 +415,43 @@ $out = array();
 $sv->admin($out);
 
 DebMes("Maintenance complete.", 'maintenance');
+
+function maintenanceEnsureTableIndex($table_name, $index_name, $index_columns)
+{
+    $table_name_safe = preg_replace('/[^a-z0-9_]/i', '', (string)$table_name);
+    $index_name_safe = preg_replace('/[^a-z0-9_]/i', '', (string)$index_name);
+    $index_columns_safe = preg_replace('/[^a-z0-9_,]/i', '', (string)$index_columns);
+    if ($table_name_safe == '' || $index_name_safe == '' || $index_columns_safe == '') {
+        return;
+    }
+
+    $table_exists = SQLSelectOne("SHOW TABLES LIKE '" . DBSafe($table_name_safe) . "'");
+    if (!$table_exists) {
+        return;
+    }
+
+    $check = SQLSelectOne("SHOW INDEX FROM `$table_name_safe` WHERE Key_name='" . DBSafe($index_name_safe) . "'");
+    if (!isset($check['Key_name'])) {
+        SQLExec("ALTER TABLE `$table_name_safe` ADD INDEX `$index_name_safe` ($index_columns_safe)");
+    }
+}
+
+function maintenanceEnsureTableColumn($table_name, $column_name, $definition, $required_type)
+{
+    $table_name_safe = preg_replace('/[^a-z0-9_]/i', '', (string)$table_name);
+    $column_name_safe = preg_replace('/[^a-z0-9_]/i', '', (string)$column_name);
+    $definition_safe = preg_replace("/[^a-z0-9_(), '`]/i", '', (string)$definition);
+    if ($table_name_safe == '' || $column_name_safe == '' || $definition_safe == '') {
+        return;
+    }
+
+    $column = SQLSelectOne("SHOW COLUMNS FROM `$table_name_safe` LIKE '" . DBSafe($column_name_safe) . "'");
+    if (!isset($column['Field'])) {
+        SQLExec("ALTER TABLE `$table_name_safe` ADD `$column_name_safe` $definition_safe");
+        return;
+    }
+
+    if (isset($column['Type']) && stripos($column['Type'], (string)$required_type) === false) {
+        SQLExec("ALTER TABLE `$table_name_safe` MODIFY `$column_name_safe` $definition_safe");
+    }
+}

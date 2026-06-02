@@ -298,16 +298,29 @@ function postToWebSocket($property, $value, $post_action = 'PostProperty')
 
 function createHistoryTable($value_id)
 {
+    $value_id = (int)$value_id;
     $table_name = 'phistory_value_' . $value_id;
     SQLExec("CREATE TABLE IF NOT EXISTS `$table_name` (
   `ID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `VALUE_ID` int(10) unsigned NOT NULL DEFAULT '0',
   `ADDED` datetime DEFAULT NULL,
   `VALUE` varchar(255) NOT NULL,
-  `SOURCE` varchar(20) NOT NULL DEFAULT '',
+  `SOURCE` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`ID`),
-  KEY `VALUE_ID` (`VALUE_ID`)
+  KEY `VALUE_ID` (`VALUE_ID`),
+  KEY `idx_phistory_value_id` (`VALUE_ID`, `ID`)
  ) ENGINE=MyISAM  DEFAULT CHARSET=utf8");
+
+    $source_column = SQLSelectOne("SHOW COLUMNS FROM `$table_name` LIKE 'SOURCE'");
+    if (isset($source_column['Type']) && stripos($source_column['Type'], 'varchar(255)') === false) {
+        SQLExec("ALTER TABLE `$table_name` MODIFY `SOURCE` varchar(255) NOT NULL DEFAULT ''");
+    }
+
+    $value_id_index = SQLSelectOne("SHOW INDEX FROM `$table_name` WHERE Key_name='idx_phistory_value_id'");
+    if (!isset($value_id_index['Key_name'])) {
+        SQLExec("ALTER TABLE `$table_name` ADD INDEX `idx_phistory_value_id` (`VALUE_ID`, `ID`)");
+    }
+
     return $table_name;
 }
 

@@ -1102,7 +1102,7 @@ function cleanUpValueHistory($value_id, $max_age_days, $data_type = 0)
     $qry = "VALUE_ID='" . $value_id . "' AND ADDED<('" . $start_tm . "')";
 
     if ($data_type == 5) {
-        $values = SQLSelect("SELECT * FROM $table_name WHERE $qry");
+        $values = SQLSelect("SELECT VALUE FROM $table_name WHERE $qry");
         $totalv = count($values);
         for ($iv = 0; $iv < $totalv; $iv++) {
             $file_path = ROOT . 'cms/images/' . $values[$iv]['VALUE'];
@@ -1110,13 +1110,10 @@ function cleanUpValueHistory($value_id, $max_age_days, $data_type = 0)
                 unlink($file_path);
             }
         }
+        $total_removed = $totalv;
     }
 
-    $tmp = SQLSelectOne("SELECT COUNT(*) as TOTAL FROM $table_name WHERE $qry");
-    if (isset($tmp['TOTAL']) && $tmp['TOTAL'] > 0) {
-        $total_removed = (int)$tmp['TOTAL'];
-        SQLExec("DELETE FROM $table_name WHERE $qry");
-    }
+    SQLExec("DELETE FROM $table_name WHERE $qry");
     return $total_removed;
 }
 

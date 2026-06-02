@@ -24,6 +24,10 @@ $limit = (int)gg('phistory_queue_limit');
 if (!$limit) {
     $limit = 200;
 }
+$queue_problem_limit = (int)gg('phistory_queue_problem_limit');
+if (!$queue_problem_limit) {
+    $queue_problem_limit = max($limit * 5, 1000);
+}
 
 $checked_time = 0;
 setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
@@ -33,6 +37,7 @@ echo date("H:i:s") . " running " . basename(__FILE__) . "\n";
 
 $processed = array();
 $processed_cleanup_time = 0;
+$queue_check_time = 0;
 
 while (1) {
     if (time() - $checked_time > 5) {
@@ -61,12 +66,22 @@ while (1) {
         }
     }
     */
-    $queue_error_status = gg('phistory_queue_problem');
-
-    $tmp = SQLSelectOne("SELECT COUNT(*) as TOTAL FROM phistory_queue;");
-    $count_queue = (int)$tmp['TOTAL'];
-
     $queue = SQLSelect("SELECT * FROM phistory_queue ORDER BY ID LIMIT " . $limit);
+    if ((time() - $queue_check_time) > 10) {
+        $queue_check_time = time();
+        $queue_error_status = gg('phistory_queue_problem');
+        $tmp = SQLSelectOne("SELECT COUNT(*) as TOTAL FROM phistory_queue;");
+        $count_queue = (int)$tmp['TOTAL'];
+        if ($count_queue > $queue_problem_limit && !$queue_error_status) {
+            sg('phistory_queue_problem', 1);
+            $txt = 'Properties history queue is too long (' . $count_queue . ', threshold ' . $queue_problem_limit . ')';
+            echo date("H:i:s") . " " . $txt . "\n";
+            registerError('phistory_queue', $txt);
+        } elseif ($count_queue <= $limit && $queue_error_status) {
+            sg('phistory_queue_problem', 0);
+        }
+    }
+
     if (isset($queue[0]['ID'])) {
         if ((time() - $processed_cleanup_time) > 60 * 60) {
             $processed_cleanup_time = time();
@@ -77,24 +92,15 @@ while (1) {
             }
         }
 
-        if ($count_queue > $limit && !$queue_error_status) {
-            sg('phistory_queue_problem', 1);
-            $txt = 'Properties history queue is too long (' . $count_queue . ')';
-            echo date("H:i:s") . " " . $txt . "\n";
-            registerError('phistory_queue', $txt);
-        } elseif ($count_queue <= $limit && $queue_error_status) {
-            sg('phistory_queue_problem', 0);
-        }
-
         $total = count($queue);
         for ($i = 0; $i < $total; $i++) {
             $q_rec = $queue[$i];
             $value = $q_rec['VALUE'];
             $old_value = $q_rec['OLD_VALUE'];
+            $history_saved = false;
             debug_echo("Queue $i / $total");
-            SQLExec("DELETE FROM phistory_queue WHERE ID='" . $q_rec['ID'] . "'");
             if (defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1) {
-                $table_name = 'phistory_value_' . $q_rec['VALUE_ID'];
+                $table_name = createHistoryTable((int)$q_rec['VALUE_ID']);
             } else {
                 $table_name = 'phistory';
             }
@@ -119,10 +125,11 @@ while (1) {
                 $h['SOURCE'] = $q_rec['SOURCE'];
                 debug_echo(" Insert new value " . $h['VALUE_ID'] . " " . $h['ADDED'] . " " . $value);
                 $h['ID'] = SQLInsert($table_name, $h);
+                $history_saved = !empty($h['ID']);
                 debug_echo(" Done ");
             } elseif ($value == $old_value) {
 
-                $tmp_history = SQLSelect("SELECT * FROM $table_name WHERE VALUE_ID='" . $q_rec['VALUE_ID'] . "' ORDER BY ID DESC LIMIT 2");
+                $tmp_history = SQLSelect("SELECT ID, VALUE, SOURCE FROM $table_name WHERE VALUE_ID='" . (int)$q_rec['VALUE_ID'] . "' ORDER BY ID DESC LIMIT 2");
                 $prev_value = $tmp_history[0]['VALUE'] ?? null;
                 $prev_prev_value = $tmp_history[1]['VALUE'] ?? null;
 
@@ -136,7 +143,7 @@ while (1) {
                     $prev_value == $prev_prev_value &&
                     !empty($tmp_history[0]['ID'])) {
                     debug_echo(" Update same value " . $q_rec['VALUE_ID']);
-                    SQLExec("UPDATE $table_name SET ADDED='" . $q_rec['ADDED'] . "' WHERE ID=" . $tmp_history[0]['ID']);
+                    $history_saved = (bool)SQLExec("UPDATE $table_name SET ADDED='" . DBSafe($q_rec['ADDED']) . "' WHERE ID=" . (int)$tmp_history[0]['ID']);
                     /*
                     $tmp_history[0]['ADDED'] = $q_rec['ADDED'];
                     foreach($tmp_history[0] as $k=>$v) {
@@ -155,10 +162,13 @@ while (1) {
                     if (strlen($h['VALUE']) > 255) $h['VALUE'] = substr($h['VALUE'], 0, 255);
                     $h['SOURCE'] = $q_rec['SOURCE'];
                     $h['ID'] = SQLInsert($table_name, $h);
+                    $history_saved = !empty($h['ID']);
                     debug_echo(" Done ");
                 }
             }
-            // delete old data
+            if ($history_saved) {
+                SQLExec("DELETE FROM phistory_queue WHERE ID=" . (int)$q_rec['ID']);
+            }
         }
         unset($queue, $tmp_history, $h, $q_rec);
     } else
@@ -179,6 +189,7 @@ DebMes("Unexpected close of cycle: " . basename(__FILE__));
 function ensureHistorySchema()
 {
     ensureTableIndex('phistory', 'idx_phistory_value_added', 'VALUE_ID,ADDED');
+    ensureTableIndex('phistory', 'idx_phistory_value_id', 'VALUE_ID,ID');
     ensureTableIndex('phistory_queue', 'idx_phistory_queue_value_id', 'VALUE_ID');
     ensureTableIndex('phistory_queue', 'idx_phistory_queue_added', 'ADDED');
     ensureTableIndex('history', 'idx_history_object_added', 'OBJECT_ID,ADDED');
