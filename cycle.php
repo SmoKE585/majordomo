@@ -588,15 +588,35 @@ while (false !== ($result = $threads->iteration())) {
         if (!$reboot_timer) {
             $reboot_timer = time();
         } elseif ((time() - $reboot_timer) > 10) {
-            $reboot_timer = 0;
-            //force close all running threads
-            DebMes("Force closing all running services.", 'boot');
-            $to_start = array();
-            $restart_threads = array();
-            foreach ($is_running as $k => $v) {
-                $to_stop[$k] = time();
+            $reboot_reason = trim((string)@file_get_contents(ROOT . 'reboot'));
+            if ($reboot_reason == 'system_update') {
+                DebMes("Reboot flag is set for system update, keeping services stopped until update completes.", 'boot');
+                $reboot_timer = time();
+            } else {
+                $reboot_timer = 0;
+                // force close all running threads
+                DebMes("Force closing all running services. Reboot reason: " . $reboot_reason, 'boot');
+                $to_start = array();
+                foreach ($is_running as $k => $v) {
+                    $to_stop[$k] = time();
+                }
+                resetRebootRequired();
+                foreach ($cycles as $path) {
+                    if (!preg_match('/(cycle_.+?)\.php/is', $path, $m)) {
+                        continue;
+                    }
+                    $title = $m[1];
+                    if (getGlobal($title . 'Disabled')) {
+                        continue;
+                    }
+                    $to_start[$title] = time() + 5;
+                    setCycleRuntimeStatus($title, 'starting', 'Scheduled after reboot flag reset');
+                    addCycleRuntimeLog($title, 'Scheduled after reboot flag reset');
+                }
             }
         }
+    } else {
+        $reboot_timer = 0;
     }
 
     foreach ($to_stop as $title => $tm) {
