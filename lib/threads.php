@@ -22,6 +22,11 @@ class Threads
    private $timeout      = 5;
    private $lastCheck    = 0;
 
+   private function commandArgument($value)
+   {
+      return escapeshellarg((string)$value);
+   }
+
 
    public function closeThread($id) {
       $pstatus = proc_get_status($this->handles[$id]);
@@ -61,7 +66,8 @@ class Threads
          return false;
       }
 
-      $params = addcslashes(serialize($params), '"');
+      $params = serialize($params);
+      $baseCommand = $this->commandArgument($this->phpPath) . ' -q ' . $this->commandArgument($filename) . ' --params ' . $this->commandArgument($params);
 
       if (defined('LOG_CYCLES') && LOG_CYCLES == '1') {
          if (defined('SETTINGS_SYSTEM_DEBMES_PATH') && SETTINGS_SYSTEM_DEBMES_PATH!='') {
@@ -71,11 +77,10 @@ class Threads
          } else {
             $path = ROOT . 'cms/debmes';
          }
-         $fileToWrite = $path.'/log_' . date('Y-m-d') . '-' . basename($filename) . '.txt';
-         $command = $this->phpPath . ' -q ' . $filename . ' --params "' . $params . '">>' . $fileToWrite;
+         $fileToWrite = $path . '/log_' . date('Y-m-d') . '-' . basename($filename) . '.txt';
+         $command = $baseCommand . ' >> ' . $this->commandArgument($fileToWrite) . ' 2>&1';
       } else {
-         $command = $this->phpPath . ' -q ' . $filename . ' --params "' . $params . '"';
-         $command .= ' 2>&1';
+         $command = $baseCommand . ' 2>&1';
       }
       if (!IsWindowsOS()) {
        $command='exec '.$command;

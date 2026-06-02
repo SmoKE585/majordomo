@@ -264,6 +264,7 @@ $(document).ready(function() {
 					while (i < dataJSON.TOTAL) {
 						var status = dataJSON.LIST[i].STATUS || '';
 						var statusLabel = statusLabels[status] || '';
+						var statusDetails = dataJSON.LIST[i].STATUS_DETAILS ? '<div style="font-size: 8pt;color: #666;margin-top: 3px;">'+dataJSON.LIST[i].STATUS_DETAILS+'</div>' : '';
 						if(dataJSON.LIST[i].ALIVE == 1) {
 							if(dataJSON.LIST[i].WAIT == 0) {
 								cycleUpdate = statusLabel+' <span class="label label-default">'+dataJSON.LIST[i].UPDATE+'</span>';
@@ -277,6 +278,7 @@ $(document).ready(function() {
 							tr_style = 'background: linear-gradient(to right, lightcoral, white);';
 							btn_group = '<div class="btn-group btn-group-xs"><button type="button" onClick="showCycleLog(\''+dataJSON.LIST[i].LOG_LINK+'\');return false;" class="btn btn-default">Лог</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_START+'\'" class="btn btn-success">Запуск</button></div>';
 						}
+						cycleUpdate += statusDetails;
 						
 						$("#propContent").prepend('<tr style="'+tr_style+'"><td>'+dataJSON.LIST[i].TITLE+'</td><td style="vertical-align: middle;text-align: center;">'+cycleUpdate+'</td><td style="vertical-align: middle;text-align: right;">'+btn_group+'</td></tr>');
 						i++;

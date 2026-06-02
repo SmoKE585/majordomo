@@ -55,9 +55,7 @@ function setCycleRuntimeStatus($cycleTitle, $status, $details = '')
 {
     saveCycleToCache($cycleTitle . 'Status', $status);
     saveCycleToCache($cycleTitle . 'StatusUpdated', time());
-    if ($details != '') {
-        saveCycleToCache($cycleTitle . 'StatusDetails', substr($details, 0, 240));
-    }
+    saveCycleToCache($cycleTitle . 'StatusDetails', substr((string)$details, 0, 240));
 }
 
 function addCycleRuntimeLog($cycleTitle, $message)
@@ -86,6 +84,30 @@ function addCycleRuntimeLog($cycleTitle, $message)
     for ($i = 0; $i < $totalOldLogs; $i++) {
         SQLExec('DELETE FROM cached_cycle_logs WHERE ID=' . (int)$oldLogs[$i]['ID']);
     }
+}
+
+function startCycleThread($threads, $title, $cmd)
+{
+    if (!file_exists($cmd)) {
+        $message = 'Cycle file not found: ' . $cmd;
+        DebMes($message, 'boot');
+        setCycleRuntimeStatus($title, 'stopped', $message);
+        addCycleRuntimeLog($title, $message);
+        setGlobal($title . 'Run', '');
+        return false;
+    }
+
+    $pipeId = $threads->newThread($cmd);
+    if (!$pipeId) {
+        $message = 'Failed to start cycle process: ' . $cmd;
+        DebMes($message, 'boot');
+        setCycleRuntimeStatus($title, 'stopped', $message);
+        addCycleRuntimeLog($title, $message);
+        setGlobal($title . 'Run', '');
+        return false;
+    }
+
+    return $pipeId;
 }
 
 resetRebootRequired();
@@ -454,6 +476,7 @@ foreach ($cycles as $path) {
         addCycleRuntimeLog($title, 'Starting ' . $path);
         echo "Starting " . $path . " ... \n";
 
+        $pipe_id = false;
         if ((preg_match("/_X/", $path))) {
             if (!IsWindowsOS()) {
                 $display = '101';
@@ -463,16 +486,21 @@ foreach ($cycles as $path) {
                     }
                 }
                 $pipe_id = $threads->newXThread($path, $display);
+            } else {
+                setCycleRuntimeStatus($title, 'stopped', 'X display cycles are not supported on Windows');
+                addCycleRuntimeLog($title, 'X display cycles are not supported on Windows');
             }
         } else {
-            $pipe_id = $threads->newThread($path);
+            $pipe_id = startCycleThread($threads, $title, $path);
         }
-        if (isset($title)) {
+        if ($pipe_id && isset($title)) {
             saveCycleToCache($title . 'LastError', '');
             setCycleRuntimeStatus($title, 'starting');
+            $pipes[$pipe_id] = $path;
+            echo "OK" . PHP_EOL;
+        } else {
+            echo "FAILED" . PHP_EOL;
         }
-        $pipes[$pipe_id] = $path;
-        echo "OK" . PHP_EOL;
     }
 }
 
@@ -646,9 +674,11 @@ while (false !== ($result = $threads->iteration())) {
                 DebMes("Starting service " . $title . ' (' . $cmd . ')', 'boot');
                 setCycleRuntimeStatus($title, 'starting');
                 addCycleRuntimeLog($title, 'Starting service ' . $cmd);
-                $pipe_id = $threads->newThread($cmd);
-                $is_running[$title] = $pipe_id;
-                $started_when[$title] = time();
+                $pipe_id = startCycleThread($threads, $title, $cmd);
+                if ($pipe_id) {
+                    $is_running[$title] = $pipe_id;
+                    $started_when[$title] = time();
+                }
             } else {
                 DebMes("Got to_start command for " . $title . ' but looks like it is already running', 'boot');
             }

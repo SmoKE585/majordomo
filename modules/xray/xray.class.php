@@ -127,33 +127,136 @@ class xray extends module
         $this->result = $p->result;
     }
 
+    function normalizeCycleTitle($cycle)
+    {
+        $cycle = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$cycle);
+        if ($cycle == '') {
+            return '';
+        }
+        if (strpos($cycle, 'cycle_') !== 0) {
+            $cycle = 'cycle_' . $cycle;
+        }
+        return $cycle;
+    }
+
+    function ensureCycleRuntimeTables()
+    {
+        SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycles` (`TITLE` char(100) NOT NULL,`VALUE` char(255) NOT NULL,PRIMARY KEY (`TITLE`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+        SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycle_logs` (`ID` int(10) unsigned NOT NULL AUTO_INCREMENT,`CYCLE` char(100) NOT NULL,`ADDED` int(10) unsigned NOT NULL,`MESSAGE` varchar(1024) NOT NULL,PRIMARY KEY (`ID`),KEY `CYCLE_ADDED` (`CYCLE`,`ADDED`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+    }
+
+    function addCycleRuntimeLog($cycleTitle, $message)
+    {
+        $message = trim((string)$message);
+        if ($cycleTitle == '' || $message == '') {
+            return;
+        }
+        $this->ensureCycleRuntimeTables();
+        $rec = array(
+            'CYCLE' => $cycleTitle,
+            'ADDED' => time(),
+            'MESSAGE' => substr($message, 0, 1000),
+        );
+        SQLInsert('cached_cycle_logs', $rec);
+    }
+
+    function queueCycleCommand($cycleTitle, $command)
+    {
+        $this->ensureCycleRuntimeTables();
+        if ($command == 'start') {
+            sg($cycleTitle . 'Run', '');
+            sg($cycleTitle . 'Control', 'start');
+            saveCycleToCache($cycleTitle . 'Status', 'starting');
+        } elseif ($command == 'stop') {
+            sg($cycleTitle . 'Control', 'stop');
+            saveCycleToCache($cycleTitle . 'Status', 'stopping');
+        } elseif ($command == 'restart') {
+            sg($cycleTitle . 'Run', '');
+            sg($cycleTitle . 'Control', 'restart');
+            saveCycleToCache($cycleTitle . 'Status', 'stopping');
+        } else {
+            return;
+        }
+        saveCycleToCache($cycleTitle . 'StatusUpdated', time());
+        saveCycleToCache($cycleTitle . 'StatusDetails', 'Command queued in XRAY: ' . $command);
+        $this->addCycleRuntimeLog($cycleTitle, 'XRAY command queued: ' . $command);
+    }
+
+    function getCycleLogPath()
+    {
+        if (defined('SETTINGS_SYSTEM_DEBMES_PATH') && SETTINGS_SYSTEM_DEBMES_PATH != '') {
+            return SETTINGS_SYSTEM_DEBMES_PATH;
+        }
+        if (defined('LOG_DIRECTORY') && LOG_DIRECTORY != '') {
+            return LOG_DIRECTORY;
+        }
+        return ROOT . 'cms/debmes';
+    }
+
+    function getCycleFileLogLines($cycleTitle, $limit = 80)
+    {
+        $path = $this->getCycleLogPath();
+        if (!is_dir($path)) {
+            return array();
+        }
+        $files = glob(rtrim($path, '/\\') . DIRECTORY_SEPARATOR . 'log_*-'.$cycleTitle.'.php.txt');
+        if (!is_array($files) || !count($files)) {
+            return array();
+        }
+        usort($files, function ($a, $b) {
+            return filemtime($b) - filemtime($a);
+        });
+        $file = $files[0];
+        if (!is_file($file)) {
+            return array();
+        }
+        $size = filesize($file);
+        $readSize = min((int)$size, 131072);
+        $fh = @fopen($file, 'rb');
+        if (!$fh) {
+            return array();
+        }
+        if ($size > $readSize) {
+            fseek($fh, -$readSize, SEEK_END);
+        }
+        $content = stream_get_contents($fh);
+        fclose($fh);
+        if ($content === false || $content === '') {
+            return array();
+        }
+        $rawLines = preg_split('/\r\n|\r|\n/', $content);
+        $rawLines = array_slice($rawLines, -1 * (int)$limit);
+        $lines = array();
+        $fileTime = filemtime($file);
+        foreach ($rawLines as $line) {
+            $line = trim((string)$line);
+            if ($line == '') {
+                continue;
+            }
+            $lines[] = array(
+                'ADDED' => date('H:i:s', $fileTime),
+                'MESSAGE' => htmlspecialchars('[file] ' . $line),
+            );
+        }
+        return $lines;
+    }
+
     function service_control(&$out)
     {
 
-        $cycle = $this->cycle;
         if (!$this->cycle) {
             $this->cycle = gr('cycle');
         }
-        $out['CYCLE'] = $cycle;
+        $service = $this->normalizeCycleTitle($this->cycle);
+        $out['CYCLE'] = $service;
         $op = gr('op');
         $ajax = gr('ajax');
         if ($ajax) {
-            $result = array('cycle' => $this->cycle);
+            $result = array('cycle' => $service);
+            $this->ensureCycleRuntimeTables();
 
-            $service = 'cycle_' . $this->cycle;
-            SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycles` (`TITLE` char(100) NOT NULL,`VALUE` char(255) NOT NULL,PRIMARY KEY (`TITLE`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
-
-            if ($op == 'start') {
-                sg($service . 'Run', '');
-                sg($service . 'Control', 'start');
-                saveCycleToCache($service . 'Status', 'starting');
-            } elseif ($op == 'stop') {
-                sg($service . 'Control', 'stop');
-                saveCycleToCache($service . 'Status', 'stopping');
-            } elseif ($op == 'restart') {
-                sg($service . 'Run', '');
-                sg($service . 'Control', 'restart');
-                saveCycleToCache($service . 'Status', 'stopping');
+            if ($service != '' && ($op == 'start' || $op == 'stop' || $op == 'restart')) {
+                $this->queueCycleCommand($service, $op);
             }
 
             header("HTTP/1.0: 200 OK\n");
@@ -447,20 +550,11 @@ class xray extends module
         $qry = "";
 
         if ($this->view_mode == 'services') {
-            SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycles` (`TITLE` char(100) NOT NULL,`VALUE` char(255) NOT NULL,PRIMARY KEY (`TITLE`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+            $this->ensureCycleRuntimeTables();
             $cmd = gr('cmd');
-            $service = gr('service');
-            if ($cmd == 'start' && $service != '') {
-                sg($service . 'Run', '');
-                sg($service . 'Control', 'start');
-                saveCycleToCache($service . 'Status', 'starting');
-            } elseif ($cmd == 'stop' && $service != '') {
-                sg($service . 'Control', 'stop');
-                saveCycleToCache($service . 'Status', 'stopping');
-            } elseif ($cmd == 'restart' && $service != '') {
-                sg($service . 'Run', '');
-                sg($service . 'Control', 'restart');
-                saveCycleToCache($service . 'Status', 'stopping');
+            $service = $this->normalizeCycleTitle(gr('service'));
+            if (($cmd == 'start' || $cmd == 'stop' || $cmd == 'restart') && $service != '') {
+                $this->queueCycleCommand($service, $cmd);
                 /*
                } elseif ($cmd=='switch_restart' && $service!='') {
                 if (gg($service.'AutoRestart')) {
@@ -649,12 +743,12 @@ class xray extends module
                 header("HTTP/1.0: 200 OK\n");
                 header('Content-Type: application/json; charset=utf-8');
                 $cycle = gr('cycle');
-                $cycle = preg_replace('/[^a-zA-Z0-9_]/', '', $cycle);
+                $cycle = $this->normalizeCycleTitle($cycle);
                 if ($cycle == '') {
                     echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'));
                     exit;
                 }
-                SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycle_logs` (`ID` int(10) unsigned NOT NULL AUTO_INCREMENT,`CYCLE` char(100) NOT NULL,`ADDED` int(10) unsigned NOT NULL,`MESSAGE` varchar(1024) NOT NULL,PRIMARY KEY (`ID`),KEY `CYCLE_ADDED` (`CYCLE`,`ADDED`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+                $this->ensureCycleRuntimeTables();
                 $res = SQLSelect("SELECT * FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycle) . "' ORDER BY ID DESC LIMIT 80");
                 $res = array_reverse($res);
                 $lines = array();
@@ -664,6 +758,15 @@ class xray extends module
                         'ADDED' => date('H:i:s', (int)$res[$i]['ADDED']),
                         'MESSAGE' => htmlspecialchars($res[$i]['MESSAGE']),
                     );
+                }
+                $fileLines = $this->getCycleFileLogLines($cycle, 80);
+                if (count($fileLines)) {
+                    $lines[] = array(
+                        'ADDED' => date('H:i:s'),
+                        'MESSAGE' => htmlspecialchars('--- latest file log tail ---'),
+                    );
+                    $lines = array_merge($lines, $fileLines);
+                    $lines = array_slice($lines, -120);
                 }
                 echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LINES' => $lines));
                 exit;
