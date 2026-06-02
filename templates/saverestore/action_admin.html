@@ -53,7 +53,8 @@
 							[#else#]
 								<p id="updateParams">
 									<input type="checkbox" name="with_extensions" value="1"> <#LANG_UPDATE_ALL_EXTENSIONS#><br/>
-									<input type="checkbox" name="with_backup" value="1" checked> <#LANG_CREATE_BACKUP#>
+									<#LANG_MANDATORY_DB_BACKUP#>
+									<input type="hidden" name="with_backup" value="0">
 									<input type="hidden" name="link" id="update_link" value="">
 									<div id="update_link_text" style="display:none"></div>
 								</p>

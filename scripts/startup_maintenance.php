@@ -22,14 +22,29 @@ echo "<pre>\n";
 
 DebMes("Running maintenance script", 'maintenance');
 
+if (defined('LANG_MODULE_SAVERESTORE')) {
+    SQLExec("UPDATE project_modules SET TITLE='" . DBSafe(LANG_MODULE_SAVERESTORE) . "' WHERE NAME='saverestore'");
+}
+
 // Remove legacy paid Connect module records. The module files are no longer shipped.
 DebMes("Removing Connect module records.", 'maintenance');
 SQLExec("DELETE FROM project_modules WHERE NAME='connect'");
+SQLExec("DELETE FROM settings WHERE NAME='MODULE_CONNECT'");
 SQLExec("DELETE FROM pvalues WHERE PROPERTY_NAME IN ('ThisComputer.cycle_connectRun','ThisComputer.connect_manualRun')");
 SQLExec("DELETE FROM phistory WHERE VALUE_ID NOT IN (SELECT ID FROM pvalues)");
 SQLExec("DELETE FROM properties WHERE OBJECT_ID=(SELECT ID FROM objects WHERE TITLE='ThisComputer' LIMIT 1) AND TITLE IN ('cycle_connectRun','connect_manualRun')");
 SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, '\"connect\":{\"filter\":\"\"},', '') WHERE NAME IN ('HOOK_EVENT_SAY','HOOK_EVENT_HOURLY')");
 SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, ',\"connect\":{\"filter\":\"\"}', '') WHERE NAME IN ('HOOK_EVENT_SAY','HOOK_EVENT_HOURLY')");
+
+$config_file = ROOT . 'config.php';
+if (file_exists($config_file)) {
+    $config_content = LoadFile($config_file);
+    $config_content_clean = preg_replace('/^[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*=>[ \t]*[\'"][\'"][ \t]*,[ \t]*(?:\r?\n)?/m', '', $config_content);
+    if ($config_content_clean !== $config_content) {
+        SaveFile($config_file, $config_content_clean);
+        DebMes("Removed legacy MODULE_CONNECT entries from config.php.", 'maintenance');
+    }
+}
 
 // BACKUP DATABASE AND FILES
 
@@ -132,7 +147,7 @@ if (!isset($run_from_start) || $run_from_start == 0) {
         foreach ($files as $file) {
             $path = ROOT . 'cms/saverestore/' . $file;
             if (is_file($path)
-                && (preg_match('/\.tgz$/', $file) || preg_match('/\.tar\.gz$/', $file) || preg_match('/\.zip\.gz$/', $file))
+                && (preg_match('/\.tgz$/', $file) || preg_match('/\.tar\.gz$/', $file) || preg_match('/\.zip\.gz$/', $file) || preg_match('/^db_before_update_.+\.sql$/', $file))
                 && filemtime($path) < time() - BACKUP_FILES_EXPIRE * 24 * 60 * 60
             ) {
                 echo("Removing $path");

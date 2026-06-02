@@ -170,7 +170,7 @@ class panel extends module
                  WHERE (`HIDDEN`='0' OR NAME='control_modules')
                  ORDER BY FIELD(CATEGORY, '<#LANG_SECTION_OBJECTS#>', '<#LANG_SECTION_DEVICES#>', '<#LANG_SECTION_APPLICATIONS#>',
                                 '<#LANG_SECTION_SETTINGS#>', '<#LANG_SECTION_SYSTEM#>'),
-                          FIELD(`NAME`,'classes','devices','settings','system_errors','xray','connect','saverestore','market') DESC,
+                          FIELD(`NAME`,'classes','devices','settings','system_errors','xray','saverestore','market') DESC,
                           `PRIORITY`, `TITLE`";
 
             $modules = SQLSelect($sqlQuery);

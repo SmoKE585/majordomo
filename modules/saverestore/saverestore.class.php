@@ -127,6 +127,245 @@ class saverestore extends module
         }
     }
 
+    function normalizeCommitId($commit_id)
+    {
+        $commit_id = trim((string)$commit_id);
+        if ($commit_id == '') {
+            return '';
+        }
+        return preg_replace('/.+Commit\//is', '', $commit_id);
+    }
+
+    function normalizeUpdateBranch($branch)
+    {
+        return mb_strtoupper(trim((string)$branch));
+    }
+
+    function readLatestUpdateInfo($update_url)
+    {
+        $result = array(
+            'LATEST_ID' => '',
+            'UPDATE_CURR_BRANCH' => $this->normalizeUpdateBranch($this->getUpdateBranch($update_url))
+        );
+
+        $github_feed_url = $this->getUpdateFeedURL($update_url);
+        if ($github_feed_url == '') {
+            return $result;
+        }
+
+        $options = array(
+            CURLOPT_HTTPHEADER => array('Accept: application/xml')
+        );
+        $github_feed = getURL($github_feed_url, 0, '', '', false, $options);
+        if ($github_feed == '') {
+            return $result;
+        }
+
+        $tmp = GetXMLTree($github_feed);
+        if (!is_array($tmp)) {
+            return $result;
+        }
+
+        $data = XMLTreeToArray($tmp);
+        if (!isset($data['feed']['entry']) || !is_array($data['feed']['entry']) || !isset($data['feed']['entry'][0])) {
+            return $result;
+        }
+
+        $result['LATEST_ID'] = $this->normalizeCommitId($data['feed']['entry'][0]['id']['textvalue']);
+        return $result;
+    }
+
+    function removeBundledConfigFiles($path)
+    {
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $config_file = rtrim($path, DIRECTORY_SEPARATOR . '/') . DIRECTORY_SEPARATOR . 'config.php';
+        if (file_exists($config_file)) {
+            @unlink($config_file);
+        }
+    }
+
+    function removeBundledConnectFiles($path)
+    {
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $path = rtrim($path, DIRECTORY_SEPARATOR . '/');
+        $connect_module = $path . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR . 'connect';
+        if (is_dir($connect_module)) {
+            removeTree($connect_module);
+        }
+
+        $connect_template = $path . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR . 'connect';
+        if (is_dir($connect_template)) {
+            removeTree($connect_template);
+        }
+
+        $connect_cycle = $path . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'cycle_connect.php';
+        if (file_exists($connect_cycle)) {
+            @unlink($connect_cycle);
+        }
+    }
+
+    function cleanupLegacyConnectConfigNoise($config_file)
+    {
+        if (!file_exists($config_file)) {
+            return;
+        }
+
+        $content = LoadFile($config_file);
+        $clean_content = preg_replace('/^[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*=>[ \t]*[\'"][\'"][ \t]*,[ \t]*(?:\r?\n)?/m', '', $content);
+        if ($clean_content !== $content) {
+            SaveFile($config_file, $clean_content);
+        }
+    }
+
+    function getSystemUpdateManifestFile()
+    {
+        return DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/system_update_manifest.json';
+    }
+
+    function normalizeManifestPath($path)
+    {
+        return str_replace('\\', '/', $path);
+    }
+
+    function isProtectedSystemUpdatePath($relative_path)
+    {
+        $relative_path = $this->normalizeManifestPath($relative_path);
+        if ($relative_path == '' || preg_match('#(^|/)\.\.(/|$)#', $relative_path)) {
+            return true;
+        }
+        if ($relative_path == 'config.php' || preg_match('#(^|/)config\.php$#i', $relative_path)) {
+            return true;
+        }
+        if (preg_match('#^cms(/|$)#i', $relative_path)) {
+            return true;
+        }
+        if (preg_match('#^(backup|database_backup)(/|$)#i', $relative_path)) {
+            return true;
+        }
+        return false;
+    }
+
+    function buildSystemUpdateManifest($root_path, $base_path = '', &$result = array())
+    {
+        $root_path = rtrim($root_path, DIRECTORY_SEPARATOR . '/');
+        $scan_path = $base_path == '' ? $root_path : $root_path . DIRECTORY_SEPARATOR . $base_path;
+        if (!is_dir($scan_path)) {
+            return $result;
+        }
+
+        $items = scandir($scan_path);
+        foreach ($items as $item) {
+            if ($item == '.' || $item == '..') {
+                continue;
+            }
+            $relative_path = $base_path == '' ? $item : $base_path . '/' . $item;
+            $relative_path = $this->normalizeManifestPath($relative_path);
+            if ($this->isProtectedSystemUpdatePath($relative_path)) {
+                continue;
+            }
+
+            $full_path = $scan_path . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($full_path)) {
+                $this->buildSystemUpdateManifest($root_path, $relative_path, $result);
+            } elseif (is_file($full_path)) {
+                $result[] = $relative_path;
+            }
+        }
+
+        return $result;
+    }
+
+    function loadSystemUpdateManifest()
+    {
+        $manifest_file = $this->getSystemUpdateManifestFile();
+        if (!file_exists($manifest_file)) {
+            return array();
+        }
+
+        $data = json_decode(LoadFile($manifest_file), true);
+        if (!is_array($data)) {
+            return array();
+        }
+
+        return $data;
+    }
+
+    function saveSystemUpdateManifest($files)
+    {
+        sort($files);
+        SaveFile($this->getSystemUpdateManifestFile(), json_encode(array_values($files), JSON_PRETTY_PRINT));
+    }
+
+    function removeFilesDeletedFromSystemUpdate($old_manifest, $new_manifest, $iframe = 0)
+    {
+        if (!is_array($old_manifest) || count($old_manifest) == 0) {
+            return;
+        }
+
+        $new_lookup = array_fill_keys($new_manifest, 1);
+        foreach ($old_manifest as $relative_path) {
+            $relative_path = $this->normalizeManifestPath($relative_path);
+            if (isset($new_lookup[$relative_path]) || $this->isProtectedSystemUpdatePath($relative_path)) {
+                continue;
+            }
+
+            $target = DOC_ROOT . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_path);
+            $real_target = realpath($target);
+            $real_root = realpath(DOC_ROOT);
+            if ($real_target === false || $real_root === false || strpos($real_target, $real_root) !== 0 || !is_file($real_target)) {
+                continue;
+            }
+
+            @unlink($real_target);
+            DebMes('Removed file deleted from system update: ' . $relative_path, 'restore');
+            if ($iframe) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed deleted system file ' . htmlspecialchars($relative_path) . '</div>');
+            }
+        }
+    }
+
+    function backupDatabaseBeforeSystemUpdate($iframe = 0)
+    {
+        $backup_dir = DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore';
+        if (!is_dir($backup_dir)) {
+            @mkdir($backup_dir, 0777, true);
+        }
+
+        $filename = $backup_dir . DIRECTORY_SEPARATOR . 'db_before_update_' . date('Y-m-d__H-i-s') . '.sql';
+        if ($iframe) {
+            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Creating mandatory database backup...</div>');
+        }
+
+        $result = $this->backupdatabase($filename);
+        if ($iframe) {
+            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Database backup ' . ($result ? 'OK' : 'failed') . '</div>', $result ? 'green' : 'red');
+        }
+
+        return $result;
+    }
+
+    function stopCyclesBeforeSystemUpdate($iframe = 0)
+    {
+        setRebootRequired('system_update');
+        $cycles = array('cycle_main', 'cycle_execs', 'cycle_scheduler', 'cycle_states', 'cycle_ping', 'cycle_phistory', 'cycle_wscache', 'cycle_websockets');
+        foreach ($cycles as $cycle) {
+            sg($cycle . 'Control', 'stop');
+            sg('ThisComputer.' . $cycle . 'Run', '');
+            sg($cycle . 'Run', '');
+        }
+
+        if ($iframe) {
+            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Waiting for cycles to stop...</div>');
+        }
+        sleep(12);
+    }
+
     /**
      * BackEnd
      *
@@ -171,7 +410,6 @@ class saverestore extends module
             $this->config['UPDATE_AUTO_DELAY'] = gr('update_auto_delay');
             $this->config['UPDATE_AUTO_TIME'] = gr('update_auto_time');
             $this->config['UPDATE_AUTO_PLUGINS'] = gr('update_auto_plugins');
-            $this->config['LATEST_UPDATED_ID'] = $this->config['LATEST_UPDATED_ID'];
 
             if ($this->config['UPDATE_AUTO']) {
                 subscribeToEvent($this->name, 'HOURLY');
@@ -244,15 +482,15 @@ class saverestore extends module
                 $total = count($items);
                 if ($total) {
                     $iteration = 0;
+                    $current_latest_id = isset($this->config['LATEST_UPDATED_ID']) ? $this->normalizeCommitId($this->config['LATEST_UPDATED_ID']) : '';
                     // echo '<pre>';
                     // var_dump($items);
                     // die();
                     foreach ($items as $key => $value) {
                         $itm = array();
 
-                        $itm['ID'] = trim($value['id']['textvalue']);
-                        $itm['ID'] = preg_replace('/.+Commit\//is', '', $itm['ID']);
-                        $itm['MYVERSION'] = ($itm['ID'] == $this->config['LATEST_UPDATED_ID']) ? 1 : 0;
+                        $itm['ID'] = $this->normalizeCommitId($value['id']['textvalue']);
+                        $itm['MYVERSION'] = ($itm['ID'] == $current_latest_id) ? 1 : 0;
                         $itm['TITLE'] = trim($value['title']['textvalue']);
                         $itm['AUTHOR'] = $value['author']['name']['textvalue'];
                         $itm['LINK'] = $value['link']['href'];
@@ -267,7 +505,7 @@ class saverestore extends module
                             }
                         }
 
-                        $itm['MYVERSION'] = ($itm['ID'] == $this->config['LATEST_UPDATED_ID']) ? 1 : 0;
+                        $itm['MYVERSION'] = ($itm['ID'] == $current_latest_id) ? 1 : 0;
                         $out['UPDATES'][] = $itm;
                         $iteration++;
 
@@ -278,12 +516,15 @@ class saverestore extends module
 
                     $out['LATEST_ID'] = $out['UPDATES'][0]['ID'];
 
-                    $out['LATEST_CURR_BRANCH'] = $this->config['LATEST_CURR_BRANCH'];
-                    $out['LATEST_UPDATED_ID'] = $this->config['LATEST_UPDATED_ID'];
-                    $out['LATEST_UPDATED_ID_SLICE'] = mb_strtoupper(substr($this->config['LATEST_UPDATED_ID'], 0, 7));
+                    $out['LATEST_UPDATED_ID'] = $current_latest_id;
+                    $out['LATEST_UPDATED_ID_SLICE'] = mb_strtoupper(substr($out['LATEST_UPDATED_ID'], 0, 7));
                     $out['LATEST_UPDATED_TIME'] = gg('LatestUpdateTimestamp');
 
-                    $out['UPDATE_CURR_BRANCH'] = mb_strtoupper($this->getUpdateBranch($update_url));
+                    $out['UPDATE_CURR_BRANCH'] = $this->normalizeUpdateBranch($this->getUpdateBranch($update_url));
+                    $out['LATEST_CURR_BRANCH'] = isset($this->config['LATEST_CURR_BRANCH']) ? $this->normalizeUpdateBranch($this->config['LATEST_CURR_BRANCH']) : '';
+                    if ($out['LATEST_CURR_BRANCH'] == '' && $out['LATEST_UPDATED_ID'] != '') {
+                        $out['LATEST_CURR_BRANCH'] = $out['UPDATE_CURR_BRANCH'];
+                    }
 
                     if ($out['LATEST_ID'] != '' && $out['LATEST_ID'] == $out['LATEST_UPDATED_ID'] && $out['LATEST_CURR_BRANCH'] == $out['UPDATE_CURR_BRANCH']) {
                         $out['NO_NEED_TO_UPDATE'] = 1;
@@ -291,9 +532,9 @@ class saverestore extends module
                     $op = isset($_GET['op']) ? $_GET['op'] : '';
                     if ($this->ajax && $op == 'check_updates') {
                         if (!isset($out['NO_NEED_TO_UPDATE'])) {
-                            echo json_encode(array('needUpdate' => '1', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $this->config['LATEST_UPDATED_ID'], 'commitUrl' => $out['PROJECT_COMMIT_URL']));
+                            echo json_encode(array('needUpdate' => '1', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $out['LATEST_UPDATED_ID'], 'commitUrl' => $out['PROJECT_COMMIT_URL']));
                         } else {
-                            echo json_encode(array('needUpdate' => '0', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $this->config['LATEST_UPDATED_ID'], 'commitUrl' => $out['PROJECT_COMMIT_URL']));
+                            echo json_encode(array('needUpdate' => '0', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $out['LATEST_UPDATED_ID'], 'commitUrl' => $out['PROJECT_COMMIT_URL']));
                         }
                         exit;
                     }
@@ -596,6 +837,14 @@ class saverestore extends module
         if (!is_dir(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore')) {
             @umask(0);
             @mkdir(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore', 0777);
+        }
+
+        if (!$this->backupDatabaseBeforeSystemUpdate($iframe)) {
+            if ($iframe) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Cannot create mandatory database backup. Update stopped.</div>', 'red');
+                return 0;
+            }
+            $this->redirect("?err_msg=" . urlencode("Cannot create mandatory database backup"));
         }
 
         $filename = DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/master.tgz';
@@ -1414,6 +1663,7 @@ class saverestore extends module
         } elseif ($file != '') {
 
             DebMes("Trying to unpack $file", "restore");
+            $is_system_update = ($file_name == 'master.tgz' || (isset($out['LATEST_ID']) && $out['LATEST_ID'] != ''));
 
             logAction('system_restore', $file);
             // unpack archive
@@ -1451,6 +1701,16 @@ class saverestore extends module
 
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
+            }
+
+            $update_root = DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder;
+            $this->removeBundledConfigFiles($update_root);
+            $this->removeBundledConnectFiles($update_root);
+            $old_manifest = array();
+            $new_manifest = array();
+            if ($is_system_update) {
+                $old_manifest = $this->loadSystemUpdateManifest();
+                $new_manifest = $this->buildSystemUpdateManifest($update_root);
             }
 
             if (file_exists(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/config.php')) {
@@ -1501,8 +1761,17 @@ class saverestore extends module
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_APPLY_CHANGES . ' ' . DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . " to " . DOC_ROOT . DIRECTORY_SEPARATOR . '</div>');
             }
 
+            $this->stopCyclesBeforeSystemUpdate($iframe);
+            if ($is_system_update) {
+                $this->removeFilesDeletedFromSystemUpdate($old_manifest, $new_manifest, $iframe);
+            }
+
             // UPDATING FILES DIRECTLY Исправлено верно на док_руут - потому что функция копиТрее не воспринимает других слешей 
-            copyTree(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder, DOC_ROOT, 1);
+            copyTree($update_root, DOC_ROOT, 1);
+            $this->cleanupLegacyConnectConfigNoise(DOC_ROOT . DIRECTORY_SEPARATOR . 'config.php');
+            if ($is_system_update) {
+                $this->saveSystemUpdateManifest($new_manifest);
+            }
 
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
@@ -1519,13 +1788,30 @@ class saverestore extends module
                 }
             }
 
-            $this->config['LATEST_UPDATED_ID'] = $out['LATEST_ID'];
-            $this->config['LATEST_CURR_BRANCH'] = $out['UPDATE_CURR_BRANCH'];
+            if ($is_system_update) {
+                $latest_id = isset($out['LATEST_ID']) ? $this->normalizeCommitId($out['LATEST_ID']) : '';
+                $update_branch = isset($out['UPDATE_CURR_BRANCH']) ? $this->normalizeUpdateBranch($out['UPDATE_CURR_BRANCH']) : '';
+                if ($latest_id == '' || $update_branch == '') {
+                    $update_info = $this->readLatestUpdateInfo(isset($this->url) ? $this->url : $this->getUpdateURL());
+                    if ($latest_id == '' && $update_info['LATEST_ID'] != '') {
+                        $latest_id = $update_info['LATEST_ID'];
+                    }
+                    if ($update_branch == '' && $update_info['UPDATE_CURR_BRANCH'] != '') {
+                        $update_branch = $update_info['UPDATE_CURR_BRANCH'];
+                    }
+                }
 
-            $this->saveConfig();
-            setGlobal('LatestUpdateId', $out['LATEST_ID']);
-            setGlobal('LatestUpdateBranch', $out['UPDATE_CURR_BRANCH']);
-            setGlobal('LatestUpdateTimestamp', date('d.m.Y H:i:s'));
+                if ($latest_id != '') {
+                    $this->config['LATEST_UPDATED_ID'] = $latest_id;
+                    $this->config['LATEST_CURR_BRANCH'] = $update_branch;
+                    $this->saveConfig();
+                    setGlobal('LatestUpdateId', $latest_id);
+                    setGlobal('LatestUpdateBranch', $update_branch);
+                    setGlobal('LatestUpdateTimestamp', date('d.m.Y H:i:s'));
+                } else {
+                    DebMes('Cannot detect latest update commit after applying archive.', 'restore');
+                }
+            }
 
 
             if ($iframe) {
@@ -1852,14 +2138,15 @@ class saverestore extends module
                 $items = false;
             }
             if (is_array($items)) {
-                $latest_id = preg_replace('/.+Commit\//is', '', trim($items[0]['id']['textvalue']));
+                $latest_id = $this->normalizeCommitId($items[0]['id']['textvalue']);
                 $latest_tm = strtotime($items[0]['updated']['textvalue']);
                 //$latest_id = 'force_new_id';
-                if ($latest_id && ($latest_id == $this->config['LATEST_UPDATED_ID'])) {
+                $current_latest_id = isset($this->config['LATEST_UPDATED_ID']) ? $this->normalizeCommitId($this->config['LATEST_UPDATED_ID']) : '';
+                if ($latest_id && ($latest_id == $current_latest_id)) {
                     DebMes("Already updated to the latest version ($latest_id)", 'auto_update');
                     return 0;
                 } else {
-                    DebMes("Need to update to $latest_id on top of " . $this->config['LATEST_UPDATED_ID'], 'auto_update');
+                    DebMes("Need to update to $latest_id on top of " . $current_latest_id, 'auto_update');
                 }
                 $current_delay = round((time() - $latest_tm) / (24 * 60 * 60), 2);
                 if ($latest_tm && $current_delay < $delay) {
