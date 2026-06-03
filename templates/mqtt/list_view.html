@@ -1,0 +1,84 @@
+<section class="md-admin-module-list md-mqtt-record-list">
+    [#if PAGES#]
+    <div class="md-admin-module-list__toolbar">
+        <div class="md-admin-module-list__pagination">
+            <ul class="pagination">
+                [#begin PREVPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
+                [#begin PAGES#]
+                <li class="page-item [#if SELECTED#]active[#endif#]"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
+                [#end PAGES#]
+                [#begin NEXTPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
+            </ul>
+        </div>
+    </div>
+    [#endif PAGES#]
+
+    [#if RESULT#]
+    <form action="?" method="post" name="frmList_mqtt" class="md-admin-module-list__form">
+        <div class="md-admin-record-list" id="proplist">
+            [#begin RESULT#]
+            <article class="md-admin-record-card md-mqtt-record-card">
+                <div class="md-admin-record-card__main">
+                    <button type="button" class="md-admin-record-card__search" data-md-global-search="[#PATH#]" aria-label="<#LANG_SEARCH#>">
+                        <i class="glyphicon glyphicon-search"></i>
+                    </button>
+                    <div class="md-admin-record-card__content">
+                        <div class="md-admin-record-card__title">
+                            <a href="?view_mode=edit_mqtt&id=[#ID#]"><strong>[#TITLE#]</strong></a>
+                        </div>
+                        <div class="md-admin-record-card__badges">
+                            [#if PATH!=""#]<span class="label label-default">[#PATH#]</span>[#endif#]
+                            [#if PATH_WRITE!="" && PATH_WRITE!=PATH#]<span class="label label-info">write: [#PATH_WRITE#]</span>[#endif#]
+                            [#if LINKED_OBJECT!=""#]
+                            <span class="label label-success">[#if LINKED_PROPERTY=""#]M:[#else#]P:[#endif#] [#LINKED_OBJECT#].[#if LINKED_PROPERTY!=""#][#LINKED_PROPERTY#][#else#][#LINKED_METHOD#][#endif#]</span>
+                            [#endif LINKED_OBJECT#]
+                            [#if READONLY="1"#]<span class="label label-warning"><#LANG_READ_ONLY#></span>[#endif#]
+                            [#if ONLY_NEW_VALUE="1"#]<span class="label label-primary">Only new</span>[#endif#]
+                            [#if LOGGING="1"#]<span class="label label-default">Logging</span>[#endif#]
+                        </div>
+                    </div>
+                </div>
+                <div class="md-admin-record-card__meta">
+                    <div class="md-admin-record-card__field [#if VALUE==""#]is-empty[#endif#]">
+                        <span class="text-muted">Value</span><br>
+                        [#if VALUE!=""#][#VALUE#][#else#]&mdash;[#endif#]
+                    </div>
+                    <div class="md-admin-record-card__field [#if UPDATED==""#]is-empty[#endif#]">
+                        <span class="text-muted"><#LANG_UPDATED#></span><br>
+                        [#if UPDATED!=""#][#UPDATED#][#else#]&mdash;[#endif#]
+                    </div>
+                </div>
+                <div class="md-admin-record-card__actions">
+                    <a href="?view_mode=edit_mqtt&id=[#ID#]" class="btn btn-light btn-sm" title="<#LANG_EDIT#>">
+                        <i class="glyphicon glyphicon-pencil"></i><span><#LANG_EDIT#></span>
+                    </a>
+                    <a href="?view_mode=delete_mqtt&id=[#ID#]" data-md-confirm="<#LANG_ARE_YOU_SURE#>" class="btn btn-outline-danger btn-sm" title="<#LANG_DELETE#>">
+                        <i class="glyphicon glyphicon-remove"></i><span><#LANG_DELETE#></span>
+                    </a>
+                </div>
+            </article>
+            [#end RESULT#]
+        </div>
+        <input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
+        <input type="hidden" name="view_mode" value="multiple_mqtt">
+    </form>
+    [#else RESULT#]
+    <div class="md-admin-empty-state">
+        <#LANG_NO_RECORDS_FOUND#>
+    </div>
+    [#endif RESULT#]
+
+    [#if PAGES#]
+    <div class="md-admin-module-list__toolbar">
+        <div class="md-admin-module-list__pagination">
+            <ul class="pagination">
+                [#begin PREVPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
+                [#begin PAGES#]
+                <li class="page-item [#if SELECTED#]active[#endif#]"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
+                [#end PAGES#]
+                [#begin NEXTPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
+            </ul>
+        </div>
+    </div>
+    [#endif PAGES#]
+</section>

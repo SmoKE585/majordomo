@@ -1,0 +1,250 @@
+<section class="md-admin-section-card md-admin-form-card md-mqtt-dashboard-hero">
+    <div class="md-admin-section-card__body">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-7">
+                <div class="text-uppercase fw-bold small text-muted">MQTT</div>
+                <h1 class="h3 mb-2"><#LANG_MODULE_MQTT#></h1>
+                <div class="text-secondary">
+                    Управляйте топиками, привязками к объектам и параметрами брокера в одном экране. Карточки ниже позволяют быстро менять настройки, фильтровать поток и переключаться между табличным и древовидным представлением.
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="md-admin-form-actions">
+                    <a href="?view_mode=edit_mqtt" class="btn btn-primary">
+                        <i class="glyphicon glyphicon-plus"></i> <#LANG_ADD#>
+                    </a>
+                    <a href="?view_mode=clear_trash" class="btn btn-outline-danger" data-md-confirm="<#LANG_ARE_YOU_SURE#>" title="Delete not linked topics.">
+                        <i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#>
+                    </a>
+                    [#if TREE="1"#]
+                    <a href="?tree=0" class="btn btn-light"><#LANG_LIST_VIEW#></a>
+                    [#else#]
+                    <a href="?tree=1" class="btn btn-light"><#LANG_TREE_VIEW#></a>
+                    [#endif#]
+                    <button type="button" class="btn btn-light" data-md-collapse-toggle="mqttFilter" aria-controls="row_mqttFilter">
+                        <i class="glyphicon glyphicon-search"></i> <#LANG_XRAY_LINE_FILTER#>
+                    </button>
+                    <button type="button" class="btn btn-light" data-md-collapse-toggle="mqttSettings" aria-controls="row_mqttSettings">
+                        <i class="glyphicon glyphicon-cog"></i> <#LANG_SETUP#>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            [#module name="xray" action="service" cycle="mqtt"#]
+        </div>
+    </div>
+</section>
+
+<section class="md-admin-section-card md-admin-form-card">
+    <button type="button" class="md-admin-section-card__header" data-md-collapse-toggle="mqttSettings" aria-controls="row_mqttSettings">
+        <h2><#LANG_SETUP#></h2>
+        <span class="label label-primary">MQTT</span>
+    </button>
+    <div id="row_mqttSettings" class="collapse show md-admin-section-card__body">
+        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
+            <div class="row g-3 align-items-start mb-3">
+                <div class="col-lg-6">
+                    <label class="form-label"><#LANG_NEW_MQTT_CLIENT#>:</label>
+                    <input type="text" name="mqtt_client" value="<#MQTT_CLIENT#>" class="form-control">
+                </div>
+                <div class="col-lg-6">
+                    <label class="form-label"><#LANG_NEW_MQTT_HOST#>:</label>
+                    <input type="text" name="mqtt_host" value="<#MQTT_HOST#>" class="form-control">
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-start mb-3">
+                <div class="col-lg-4">
+                    <label class="form-label"><#LANG_NEW_MQTT_PORT#>:</label>
+                    <input type="text" name="mqtt_port" value="<#MQTT_PORT#>" class="form-control">
+                </div>
+                <div class="col-lg-8">
+                    <label class="form-label"><#LANG_NEW_MQTT_QUERY#>:</label>
+                    <input type="text" name="mqtt_query" value="<#MQTT_QUERY#>" class="form-control">
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-start mb-3">
+                <div class="col-lg-4">
+                    <label class="form-label"><#LANG_NEW_MQTT_REQ_AUTH#>:</label>
+                    <div class="pt-2">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" name="mqtt_auth" value="1" [#if MQTT_AUTH="1" #] checked[#endif#]>
+                        </label>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div id="mqtt_req_pass"[#if MQTT_AUTH!="1"#] hidden[#endif#]>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label"><#LANG_NEW_MQTT_USERNAME#>:</label>
+                                <input type="text" name="mqtt_username" value="<#MQTT_USERNAME#>" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label"><#LANG_NEW_MQTT_PASSWORD#>:</label>
+                                <input type="text" name="mqtt_password" value="<#MQTT_PASSWORD#>" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-start mb-3">
+                <div class="col-lg-4">
+                    <label class="form-label">TLS/SSL Enable:</label>
+                    <div class="pt-2">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" name="mqtt_tls_enable" value="1" [#if MQTT_TLS_ENABLE="1" #] checked[#endif#]>
+                        </label>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div id="mqtt_tls_options"[#if MQTT_TLS_ENABLE!="1"#] hidden[#endif#]>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Certificate File Path:</label>
+                                <input type="text" name="mqtt_tls_certpath" value="<#MQTT_TLS_CERTPATH#>" class="form-control" placeholder="e.g., /etc/mqtt/ca.crt">
+                                <div class="form-text">Path to CA certificate file for TLS verification</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ignore Certificate Validation:</label>
+                                <div class="pt-2">
+                                    <label class="checkbox-inline">
+                                        <input type="checkbox" name="mqtt_tls_ignore_cert" value="1" [#if MQTT_TLS_IGNORE_CERT="1" #] checked[#endif#]>
+                                    </label>
+                                </div>
+                                <div class="form-text text-danger">Use with caution: allows self-signed certificates.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-start mb-3">
+                <div class="col-lg-4">
+                    <label class="form-label">Debug mode:</label>
+                    <div class="pt-2">
+                        <label class="radio-inline"><input type="radio" name="debug_mode" value="1"[#if DEBUG_MODE="1"#] checked[#endif#]> <#LANG_YES#></label>
+                        <label class="radio-inline"><input type="radio" name="debug_mode" value="0"[#if DEBUG_MODE!="1"#] checked[#endif#]> <#LANG_NO#></label>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <label class="form-label">Write method:</label>
+                    <div class="pt-2">
+                        <label class="radio-inline"><input type="radio" name="mqtt_write_method" value="0"[#if MQTT_WRITE_METHOD="0" || MQTT_WRITE_METHOD=""#] checked[#endif#]> New connection</label>
+                        <label class="radio-inline"><input type="radio" name="mqtt_write_method" value="2"[#if MQTT_WRITE_METHOD="2"#] checked[#endif#]> Queue</label>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <label class="form-label">Process only known topics:</label>
+                    <div class="pt-2">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" name="mqtt_stripmode" value="1" [#if MQTT_STRIPMODE="1" #] checked[#endif#]>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-start mb-3">
+                <div class="col-lg-4">
+                    <label class="form-label">Repeating values delay (sec):</label>
+                    <input type="text" name="mqtt_delay" value="<#MQTT_DELAY#>" placeholder="5" class="form-control">
+                </div>
+            </div>
+
+            <div class="md-admin-form-actions">
+                <button type="submit" name="subm" value="Submit" class="btn btn-primary">
+                    <i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_UPDATE#>
+                </button>
+                <input type="hidden" name="view_mode" value="update_settings">
+                <input type="hidden" name="mode" value="update">
+            </div>
+        </form>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var authToggle = document.querySelector('input[name="mqtt_auth"]');
+        var authPanel = document.getElementById('mqtt_req_pass');
+        if (authToggle && authPanel) {
+            authToggle.addEventListener('change', function () {
+                authPanel.hidden = !authToggle.checked;
+            });
+        }
+
+        var tlsToggle = document.querySelector('input[name="mqtt_tls_enable"]');
+        var tlsPanel = document.getElementById('mqtt_tls_options');
+        if (tlsToggle && tlsPanel) {
+            tlsToggle.addEventListener('change', function () {
+                tlsPanel.hidden = !tlsToggle.checked;
+            });
+        }
+    });
+</script>
+
+<section class="md-admin-section-card md-admin-form-card">
+    <button type="button" class="md-admin-section-card__header" data-md-collapse-toggle="mqttFilter" aria-controls="row_mqttFilter">
+        <h2><#LANG_XRAY_LINE_FILTER#></h2>
+        <span class="label label-default">Filter</span>
+    </button>
+    <div id="row_mqttFilter" class="collapse show md-admin-section-card__body">
+        <form action="?" method="get" name="frmFilter" class="md-admin-form-grid">
+            <div class="row g-3 align-items-start mb-3">
+                <div class="col-lg-4">
+                    <label class="form-label"><#LANG_SEARCH#></label>
+                    <input type="text" name="title" value="<#TITLE#>" class="form-control" placeholder="<#LANG_SEARCH#>">
+                </div>
+                <div class="col-lg-4">
+                    <label class="form-label"><#LANG_FILTER_BY_CLASS#></label>
+                    <select class="form-control form-select" name="searchpath">
+                        <option value="0"><#LANG_FILTER_BY_CLASS#> (<#LANG_ALL#>)</option>
+                        [#begin PATHS#]
+                        <option value="[#path#]" [#if path="<#SEARCH#>" #] selected[#endif#]>[#path#]</option>
+                        [#end PATHS#]
+                    </select>
+                </div>
+                <div class="col-lg-4">
+                    <label class="form-label"><#LANG_FILTER_BY_LOCATION#></label>
+                    <select class="form-control form-select" name="location_id">
+                        <option value="0"><#LANG_FILTER_BY_LOCATION#> (<#LANG_ALL#>)</option>
+                        [#begin LOCATIONS#]
+                        <option value="[#ID#]" [#if ID="<#LOCATION_ID#>" #] selected[#endif#]>[#TITLE#]</option>
+                        [#end LOCATIONS#]
+                    </select>
+                </div>
+            </div>
+            <div class="md-admin-form-actions">
+                <button type="submit" name="submit" class="btn btn-info">
+                    <i class="glyphicon glyphicon-search"></i> <#LANG_SEARCH#>
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+[#if MQTT_ROOT!=""#]
+<section class="md-admin-section-card md-admin-section-card--compact">
+    <div class="md-admin-section-card__body">
+        <h3 class="h5 mb-2"><a href="<#ROOTHTML#>panel/mqtt.html"><#LANG_ALL#></a> / [#BREADCRUMBS#]</h3>
+    </div>
+</section>
+[#endif#]
+
+<section class="md-admin-section-card">
+    <div class="md-admin-section-card__body">
+        [#if RESULT#]
+        [#if TREE="1"#]
+        [#inc tree_view.tpl#]
+        [#else TREE#]
+        [#inc list_view.html#]
+        [#endif TREE#]
+        [#else RESULT#]
+        <div class="md-admin-empty-state">
+            <#LANG_NO_RECORDS_FOUND#>
+        </div>
+        [#endif RESULT#]
+    </div>
+</section>

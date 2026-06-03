@@ -1,0 +1,52 @@
+<script type="text/javascript">
+    var valuesUpdateTimeout=0;
+    function getLatestValues() {
+        clearTimeout(valuesUpdateTimeout);
+        var ids='';
+        [#if TREE="1"#]
+          ids+='ids=all';
+        [#else TREE#]
+        $('.mqtt_value').each(function () {
+            ids+='ids[]='+this.id.replace('mqtt','')+'&';
+        });
+        [#endif TREE#]
+        var url='<#ROOTHTML#>ajax/mqtt.html?op=getvalues&'+ids+'&root=[#MQTT_ROOT_URL#]';
+        $.ajax({
+            url: url
+        }).done(function(data) {
+            var obj=jQuery.parseJSON(data);
+            if (obj.DATA.length>0) {
+                for(var i=0;i<obj.DATA.length;i++) {
+                    var item_id=obj.DATA[i].ID;
+                    var value = obj.DATA[i].VALUE;
+                    var oldValue=$('#mqtt'+item_id).html();
+                    $('#mqtt'+item_id).html(value);
+                    if (value!=oldValue) {
+                        $("#mqtt"+item_id).stop().fadeTo(100, 0.1).fadeTo(200, 1.0);
+                    }
+                }
+            }
+            $('#history').html(obj.HISTORY);
+            valuesUpdateTimeout = setTimeout('getLatestValues()',2000);
+        });
+    }
+    valuesUpdateTimeout = setTimeout('getLatestValues()',2000);
+</script>
+
+
+<!-- action usual -->
+ <!-- table mqtt search -->
+ [#if VIEW_MODE="search_mqtt" || VIEW_MODE=""#]
+  [#inc mqtt_search_admin.html#]
+ [#endif VIEW_MODE#]
+ <!-- / table mqtt search -->
+ <!-- table mqtt edit -->
+ [#if VIEW_MODE="edit_mqtt"#]
+   [#inc mqtt_edit.html#]
+ [#endif VIEW_MODE#]
+ <!-- / table mqtt edit -->
+ <!-- table mqtt view --> 
+ [#if VIEW_MODE="view_mqtt"#]
+   [#inc mqtt_view.html#]
+ [#endif VIEW_MODE#]
+ <!-- / table mqtt view -->

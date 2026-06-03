@@ -5,7 +5,7 @@
 		<title>{#TITLE#}</title>
 		[#inc common_header_admin.html#]
 		<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/fonts/rubik/rubik.css?v=2026-06-03" type="text/css">
-		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03-12" type="text/css">
+		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03-14" type="text/css">
 		[#inc websockets.html#]
 	</head>
 
@@ -144,6 +144,10 @@
 			[#endif PRINT#]
 			<div class="col-lg-[#if HIDE_LEFT_PANEL="1"#]12[#else#]10[#endif#] col-md-[#if HIDE_LEFT_PANEL="1"#]12[#else#]9[#endif#] col-sm-[#if HIDE_LEFT_PANEL="1"#]12[#else#]8[#endif#] col-xs-12 md-admin-main" id="main-content">
 		[#if PRINT!="1"#]
+		<button type="button" class="btn md-admin-sidebar-toggle md-admin-sidebar-toggle--mobile" data-md-admin-sidebar-toggle aria-label="Open menu">
+			<i class="glyphicon glyphicon-th-list"></i>
+			<span>Меню</span>
+		</button>
 		<section class="md-admin-page-links" aria-label="<#LANG_CONTROL_PANEL#>">
 			<a class="md-admin-page-link md-admin-page-link--primary" href="#" data-md-search-open>
 				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-search"></i></span>

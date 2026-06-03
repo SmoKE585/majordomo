@@ -1356,6 +1356,20 @@ body > [id],
   text-decoration: none;
 }
 
+.md-admin-section-card__header {
+  color: inherit;
+}
+
+button.md-admin-section-card__header {
+  width: 100%;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .md-admin-section-card__body {
   padding: 16px;
 }
@@ -1611,6 +1625,21 @@ body > [id],
   border-radius: 12px;
 }
 
+.md-admin-sidebar-toggle--mobile {
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  margin: 0 0 12px;
+  padding: 0 14px;
+  font-size: .92rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.md-admin-sidebar-toggle--mobile span {
+  line-height: 1;
+}
+
 .md-admin-brand {
   gap: 10px;
   min-width: 178px;
@@ -1713,16 +1742,17 @@ body > [id],
   gap: 0;
   min-height: 0;
   margin: 0 0 14px;
-  padding: 4px 0 12px;
+  padding: 0 0 12px;
   color: inherit;
-  background: linear-gradient(180deg, var(--md-shell-sidebar-bg), rgba(23, 34, 53, .92));
+  background: transparent;
   border: 0;
   box-shadow: none;
 }
 
 .md-admin-sidebar__brand img {
-  width: 42px;
-  height: 42px;
+  display: block;
+  width: min(128px, 100%);
+  height: auto;
   object-fit: contain;
 }
 
@@ -2244,15 +2274,16 @@ body {
   z-index: 3;
   min-height: 0;
   margin: 4px 0 18px;
-  padding: 4px 0 12px;
-  background: linear-gradient(180deg, var(--md-shell-sidebar-bg), rgba(23, 34, 53, .92));
+  padding: 0 0 12px;
+  background: transparent;
   border: 0;
   border-radius: 0;
 }
 
 .md-admin-sidebar__brand img {
-  width: 42px;
-  height: 42px;
+  display: block;
+  width: min(128px, 100%);
+  height: auto;
 }
 
 .md-admin-sidebar__group {
@@ -3379,7 +3410,7 @@ body,
 
 @media (max-width: 991.98px) {
   .md-admin-sidebar__brand {
-    padding-right: 52px;
+    padding-right: 0;
   }
 }
 
@@ -3853,14 +3884,14 @@ body.md-admin-search-open {
     z-index: 3;
     min-height: 0;
     margin: 8px 0 22px;
-    padding: 6px 0 14px;
+    padding: 0 0 14px;
     border-radius: 0;
-    background: linear-gradient(180deg, var(--md-shell-sidebar-bg), rgba(23, 34, 53, .96));
+    background: transparent;
   }
 
   .md-admin-sidebar__brand img {
-    width: 42px;
-    height: 42px;
+    width: min(148px, 100%);
+    height: auto;
   }
 }
 
@@ -3871,6 +3902,10 @@ body.md-admin-search-open {
 
   .md-admin-header__actions {
     display: none;
+  }
+
+  .md-admin-sidebar-toggle--mobile {
+    display: inline-flex;
   }
 
   .md-admin-page-links {
