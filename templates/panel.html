@@ -138,36 +138,6 @@
 			<div class="col-lg-[#if HIDE_LEFT_PANEL="1"#]12[#else#]10[#endif#] col-md-[#if HIDE_LEFT_PANEL="1"#]12[#else#]9[#endif#] col-sm-[#if HIDE_LEFT_PANEL="1"#]12[#else#]8[#endif#] col-xs-12 md-admin-main" id="main-content">
 		[#if PRINT!="1"#]
 		<section class="md-admin-page-links" aria-label="<#LANG_CONTROL_PANEL#>">
-			<a class="md-admin-page-link md-admin-page-link--primary" href="<#ROOTHTML#>">
-				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-home"></i></span>
-				<span class="md-admin-page-link__content"><strong><#LANG_FRONTEND#></strong><small>Frontend</small></span>
-			</a>
-			<a class="md-admin-page-link" href="<#LANG_WIKI_URL#>?utm_source=SetupFile&utm_medium=link&utm_campaign=mainlink" target="_blank">
-				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-globe"></i></span>
-				<span class="md-admin-page-link__content"><strong>MajorDoMo Project</strong><small><#LANG_NEWDASH_MJDM_RESOURCE#></small></span>
-			</a>
-			<a class="md-admin-page-link" href="https://mjdm.ru/forum/" target="_blank">
-				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-edit"></i></span>
-				<span class="md-admin-page-link__content"><strong><#LANG_NEWDASH_FORUM#></strong><small>Community</small></span>
-			</a>
-			[#if APP_TDWIKI_INSTALLED="1"#]
-			<a class="md-admin-page-link" onClick="return openModalTWindow('tdWiki', 'Wiki', '/panel/popup/app_tdwiki.html', 1000, 800)" href="#">
-				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-book"></i></span>
-				<span class="md-admin-page-link__content"><strong><#LANG_APP_TDWIKI#></strong><small>Wiki</small></span>
-			</a>
-			[#endif#]
-			<a class="md-admin-page-link" href="<#LANG_KB_URL#>?utm_source=system&utm_medium=help&utm_campaign=GeneralHelp" target="_blank">
-				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-question-sign"></i></span>
-				<span class="md-admin-page-link__content"><strong><#LANG_KNOWLEDGE_BASE#></strong><small>Help</small></span>
-			</a>
-			<a class="md-admin-page-link" href="<#ROOTHTML#>pages.html" target="_blank">
-				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-th-list"></i></span>
-				<span class="md-admin-page-link__content"><strong><#LANG_MODULE_LAYOUTS#></strong><small><#LANG_NEWDASH_WEB_PAGE#></small></span>
-			</a>
-			<a class="md-admin-page-link" href="<#ROOTHTML#>apps.html" target="_blank">
-				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-th-list"></i></span>
-				<span class="md-admin-page-link__content"><strong><#LANG_SECTION_APPLICATIONS#></strong><small>Apps</small></span>
-			</a>
 			[#if HIDE_LEFT_PANEL!="1"#]
 			<a class="md-admin-page-link" href="?action=xray">
 				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-dashboard"></i></span>

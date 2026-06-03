@@ -25,7 +25,11 @@ $code = $_POST['code'];
 	
 if($action == 'save' && !empty($key)) {
 	if(!is_dir($dir)) {
-		mkdir($dir, 0777, true);
+		@mkdir($dir, 0777, true);
+	}
+	if(!is_dir($dir)) {
+		echo json_encode(array('status' => 'error', 'msg' => 'Не удалось создать каталог autosave!',));
+		die();
 	}
 
 	$fileName = 'autosave_'.$safeKey.'_'.time().'.cdm';
@@ -45,8 +49,19 @@ if($action == 'save' && !empty($key)) {
 		}
 	}
 } else if($action == 'restore' && !empty($key)) {
+	if(!is_dir($dir)) {
+		@mkdir($dir, 0777, true);
+	}
+	if(!is_dir($dir)) {
+		echo json_encode(array('status' => 'error', 'msg' => 'Не удалось создать каталог autosave!',));
+		die();
+	}
 	//Выгружаем файлы
 	$files = @scandir($dir);
+	if(!is_array($files)) {
+		echo json_encode(array('status' => 'error', 'msg' => 'Нет доступных для восстановления файлов!',));
+		die();
+	}
 	//Выкидываем, все что не относится к запросу
 	foreach($files as $key => $value) {
 		if($value == '.' || $value == '..') unset($files[$key]);
@@ -58,7 +73,7 @@ if($action == 'save' && !empty($key)) {
 	
 	$restoreCode = [];
 	
-	if(!is_dir($dir) || count($files) == 0) {
+	if(count($files) == 0) {
 		echo json_encode(array('status' => 'error', 'msg' => 'Нет доступных для восстановления файлов!',));
 		die();
 	}
