@@ -692,6 +692,10 @@ class xray extends module
                 return strcmp($a['BASENAME'], $b['BASENAME']);
             });
 
+            $out['FILES_TOTAL'] = count($out['FILES']);
+            $out['TODAY_FILES_TOTAL'] = count($out['TODAY_FILES']);
+            $out['SELECTED_FILES_TOTAL'] = $total_selected_files;
+
         }
 
         if ($ajax) {

@@ -1,122 +1,194 @@
-<script type="text/javascript">
-$(document).ready(function() {
-	$('.select2').select2();
-	$("#files").select2({
-		placeholder: "<#LANG_XRAY_CHOUSE_LOG_FILE#>"
-	});
-});
-</script>
-<link href="<#ROOTHTML#>3rdparty/select2/css/select2.min.css" rel="stylesheet" />
-<script src="<#ROOTHTML#>3rdparty/select2/js/select2.min.js"></script>
-<style>
-@media (max-width: 767px) {
-	.xray-mobile-gutters {
-		margin-right: -15px;
-		margin-left: -15px;
-	}
-}
-</style>
-
-
 [#if ACTION!="context" && ACTION!="service"#]
-	<div class="row xray-mobile-gutters">
-		<div class="col-md-12">
-			<ul class="nav nav-tabs">
-				<li [#if VIEW_MODE=""#]class="active"[#endif#]><a href="?view_mode="><#LANG_LOG#></a></li>
-				<li [#if VIEW_MODE="properties"#]class="active"[#endif#]><a href="?view_mode=properties"><#LANG_PROPERTIES#></a></li>
-				<li [#if VIEW_MODE="methods"#]class="active"[#endif#]><a href="?view_mode=methods"><#LANG_METHODS#></a></li>
-				<li [#if VIEW_MODE="scripts"#]class="active"[#endif#]><a href="?view_mode=scripts"><#LANG_MODULE_SCRIPTS#></a></li>
-				<li [#if VIEW_MODE="timers"#]class="active"[#endif#]><a href="?view_mode=timers"><#LANG_XRAY_TIMERS#></a></li>
-				<li [#if VIEW_MODE="events"#]class="active"[#endif#]><a href="?view_mode=events"><#LANG_MODULE_EVENTS#></a></li>
-				<li [#if VIEW_MODE="services"#]class="active"[#endif#]><a href="?view_mode=services"><#LANG_LOOPS#></a></li>
-				<li [#if VIEW_MODE="database"#]class="active"[#endif#]><a href="?view_mode=database"><#LANG_XRAY_DB#></a></li>
-				<li [#if VIEW_MODE="performance"#]class="active"[#endif#]><a href="?view_mode=performance"><#LANG_XRAY_PERFORMANCE#></a></li>
-				<li [#if VIEW_MODE="dead"#]class="active"[#endif#]><a href="?view_mode=dead"><#LANG_XRAY_NOT_ALIVE#></a></li>
-				<li><a href="print_all.php" target=_blank><#LANG_XRAY_STRUCTURE#></a></li>
-			</ul>
-		</div>
-	</div>
-	<div style="border-left: 1px solid #ddd;border-right: 1px solid #ddd;border-bottom: 1px solid #ddd;">
-	[#if VIEW_MODE!="services"#]
-	<form action="?" method="get" class="form-inline">
-		<div class="row xray-mobile-gutters" style="padding: 10px;">
-			[#if VIEW_MODE=""#]
-			<div class="col-md-6">
-				<!--- первая вкладка --->
-				<div class="col-md-6" style="padding-left: 5px;padding-right: 5px;">
-					<div class="form-group" style="width: 100%;">
-					<select name="files[]" id='files' class="select2" multiple="multiple" style="width:100%">
-						[#begin FILES#]
-							<option value="[#TITLE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
-						[#end FILES#]
-					</select>
-					</div>
-				</div>
-				<div class="col-md-6" style="padding-left: 5px;padding-right: 5px;">
-					<div class="form-group" style="width: 100%;">
-						<select name="limit" id='limit' class="form-control" style="padding: 3px;">
-							<option value=""><#LANG_XRAY_SHOW_LINE_FILTER#></option>
-							<option value="50"[#if LINES="50"#] selected[#endif#]>50
-							<option value="100"[#if LINES="100"#] selected[#endif#]>100
-							<option value="200"[#if LINES="200"#] selected[#endif#]>200
-							<option value="500"[#if LINES="500"#] selected[#endif#]>500
-							<option value="1000"[#if LINES="1000"#] selected[#endif#]>1000
-						</select>
-					</div>
+<link href="<#ROOTHTML#>templates/xray/xray.css?v=2026-06-03-2" rel="stylesheet" />
+<script>
+	window.XRayConfig = {
+		rootHtml: '<#ROOTHTML#>',
+		viewMode: '<#VIEW_MODE#>',
+		checkTimeout: [#if VIEW_MODE="database"#]60000[#else#]5000[#endif#],
+		pauseLabel: '<#LANG_XRAY_PAUSE#>',
+		continueLabel: '<#LANG_XRAY_CONTINUE#>',
+		logFilesLabel: '<#LANG_XRAY_CHOUSE_LOG_FILE#>',
+		loadingText: '<#LANG_NEWDASH_LOADING#>',
+		selectAtLeastOneFile: 'Выберите хотя бы один лог-файл.',
+		clearLogConfirm: 'Очистить выбранные лог-файлы?',
+		clearLogFailed: 'Не удалось очистить лог.',
+		clearLogRequestFailed: 'Ошибка запроса при очистке лога.',
+		invalidResponseTitle: 'Некорректный ответ',
+		invalidResponseText: 'Сервер вернул повреждённый JSON.',
+		requestFailedTitle: 'Ошибка запроса',
+		requestFailedText: 'Не удалось обновить данные X-Ray.',
+		noDataTitle: 'Нет данных',
+		noDataText: 'Для выбранного режима ничего не найдено.',
+		consoleEmptyTitle: 'Консоль пуста',
+		consoleEmptyText: 'Дождитесь новых данных или измените фильтр.',
+		cycleLogDisabledText: 'Файловый лог циклов выключен.',
+		cycleLogEmptyText: 'Пока нет данных. Здесь появится stdout/stderr цикла и хвост его файлового лога.',
+		cycleLogError: 'Ошибка загрузки лога.',
+		statusStarting: 'Запускается',
+		statusRunning: 'Работает',
+		statusHang: 'Завис',
+		statusStopping: 'Выключается',
+		statusStopped: 'Остановлен',
+		statusUnknown: 'Неизвестно',
+		statusNoResponse: 'Не отвечает',
+		langTitle: '<#LANG_TITLE#>',
+		langValue: '<#LANG_VALUE#>',
+		langUpdated: '<#LANG_UPDATED#>',
+		langSource: '<#LANG_XRAY_SOURCE#>',
+		langMethod: '<#LANG_METHOD#>',
+		langParams: '<#LANG_XRAY_PARAMS#>',
+		langExecuted: '<#LANG_EXECUTED#>',
+		langScript: '<#LANG_SCRIPT#>',
+		langCancel: '<#LANG_CANCEL#>',
+		langLog: 'Лог',
+		langRestart: 'Рестарт',
+		langStop: 'Остановить',
+		langStart: 'Запуск'
+	};
+</script>
+<script src="<#ROOTHTML#>templates/xray/xray.js?v=2026-06-03-2"></script>
+
+<div class="xray-shell">
+	<div class="xray-hero">
+		<div class="row">
+			<div class="col-md-8">
+				<h2>X-Ray</h2>
+				<div class="xray-hero-subtitle">Диагностика модулей, логов, фоновых циклов, базы и производительности. Интерфейс обновляется автоматически и показывает только то, что помогает быстро найти проблему.</div>
+			</div>
+			<div class="col-md-4">
+				<div class="xray-hero-meta">
+					<div class="xray-hero-chip"><span>Режим</span> <span class="label label-primary" id="xrayModeBadge">[#if VIEW_MODE=""#]Логи[#else#]<#VIEW_MODE#>[#endif VIEW_MODE#]</span></div>
+					<div class="xray-hero-chip"><span>Автообновление</span> <span class="label label-default" id="xrayRefreshBadge">[#if VIEW_MODE="database"#]60 c[#else#]5 c[#endif VIEW_MODE#]</span></div>
+					[#if VIEW_MODE=""#]
+					<div class="xray-hero-chip"><span>Выбрано</span> <span class="label label-info">[#SELECTED_FILES_TOTAL#]</span></div>
+					[#endif VIEW_MODE#]
 				</div>
 			</div>
-			[#endif VIEW_MODE#]
-			<div class="col-md-[#if VIEW_MODE=""#]6[#else#]12[#endif#]">
-				<div style="padding-left: 5px;padding-right: 5px;" class="text-center">
-					<div class="input-group">
-						<input type="text" name="filter" id="filter" value="<#FILTER#>" placeholder="<#LANG_XRAY_LINE_FILTER#>" style="padding: 3px;" class="form-control">
-						<span class="input-group-btn">
-							<button type="submit" value="<#LANG_SUBMIT#>" class="btn btn-default btn-success" type="button"><#LANG_SUBMIT#></button>
-							<a href="#" class="btn btn-primary" onClick="return playPauseXRay();" id="playpausebtn"><i class="glyphicon glyphicon-pause"></i> <#LANG_XRAY_PAUSE#></a>
-							[#if VIEW_MODE=""#]
-							<a href="#" class="btn btn-danger" onClick="return clearXrayLogs();" id="clearlogsbtn" title="Очистить выбранные логи"><i class="glyphicon glyphicon-trash"></i> Очистить лог</a>
-							[#endif VIEW_MODE#]
-						</span>
-					</div>
-						
-					<input type="hidden" name="tab" value="<#TAB#>">
-					<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-				</div>
+		</div>
+		[#if VIEW_MODE=""#]
+		<div class="xray-summary-grid">
+			<div class="xray-summary-card">
+				<div class="xray-summary-label">Файлов логов</div>
+				<div class="xray-summary-value">[#FILES_TOTAL#]</div>
+				<div class="xray-summary-help">Доступно в каталоге логов</div>
+			</div>
+			<div class="xray-summary-card">
+				<div class="xray-summary-label">Выбрано сейчас</div>
+				<div class="xray-summary-value">[#SELECTED_FILES_TOTAL#]</div>
+				<div class="xray-summary-help">Используется в основной консоли</div>
+			</div>
+			<div class="xray-summary-card">
+				<div class="xray-summary-label">Логов сегодня</div>
+				<div class="xray-summary-value">[#TODAY_FILES_TOTAL#]</div>
+				<div class="xray-summary-help">Свежие файлы для быстрого доступа</div>
+			</div>
+		</div>
+		[#endif VIEW_MODE#]
+	</div>
+
+	<div class="xray-tabs-wrap">
+		<ul class="nav nav-tabs xray-tabs">
+			<li [#if VIEW_MODE=""#]class="active"[#endif#]><a href="?view_mode="><#LANG_LOG#></a></li>
+			<li [#if VIEW_MODE="properties"#]class="active"[#endif#]><a href="?view_mode=properties"><#LANG_PROPERTIES#></a></li>
+			<li [#if VIEW_MODE="methods"#]class="active"[#endif#]><a href="?view_mode=methods"><#LANG_METHODS#></a></li>
+			<li [#if VIEW_MODE="scripts"#]class="active"[#endif#]><a href="?view_mode=scripts"><#LANG_MODULE_SCRIPTS#></a></li>
+			<li [#if VIEW_MODE="timers"#]class="active"[#endif#]><a href="?view_mode=timers"><#LANG_XRAY_TIMERS#></a></li>
+			<li [#if VIEW_MODE="events"#]class="active"[#endif#]><a href="?view_mode=events"><#LANG_MODULE_EVENTS#></a></li>
+			<li [#if VIEW_MODE="services"#]class="active"[#endif#]><a href="?view_mode=services"><#LANG_LOOPS#></a></li>
+			<li [#if VIEW_MODE="database"#]class="active"[#endif#]><a href="?view_mode=database"><#LANG_XRAY_DB#></a></li>
+			<li [#if VIEW_MODE="performance"#]class="active"[#endif#]><a href="?view_mode=performance"><#LANG_XRAY_PERFORMANCE#></a></li>
+			<li [#if VIEW_MODE="dead"#]class="active"[#endif#]><a href="?view_mode=dead"><#LANG_XRAY_NOT_ALIVE#></a></li>
+			<li><a href="print_all.php" target="_blank"><#LANG_XRAY_STRUCTURE#></a></li>
+		</ul>
+	</div>
+
+	[#if VIEW_MODE!="services"#]
+	<form action="?" method="get" class="xray-toolbar">
+		<input type="hidden" name="tab" value="<#TAB#>">
+		<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
+		[#if VIEW_MODE=""#]
+		<div class="xray-toolbar-grid">
+			<div class="xray-control">
+				<div class="xray-control-label"><#LANG_XRAY_CHOUSE_LOG_FILE#></div>
+				<select name="files[]" id="files" class="form-control" multiple="multiple" size="8">
+					[#begin FILES#]
+						<option value="[#TITLE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
+					[#end FILES#]
+				</select>
+				<div class="help-block">Для выбора нескольких файлов используйте Ctrl/Cmd.</div>
+			</div>
+			<div class="xray-control">
+				<div class="xray-control-label"><#LANG_XRAY_SHOW_LINE_FILTER#></div>
+				<select name="limit" id="limit" class="form-control">
+					<option value=""><#LANG_XRAY_SHOW_LINE_FILTER#></option>
+					<option value="50"[#if LINES="50"#] selected[#endif#]>50</option>
+					<option value="100"[#if LINES="100"#] selected[#endif#]>100</option>
+					<option value="200"[#if LINES="200"#] selected[#endif#]>200</option>
+					<option value="500"[#if LINES="500"#] selected[#endif#]>500</option>
+					<option value="1000"[#if LINES="1000"#] selected[#endif#]>1000</option>
+				</select>
+			</div>
+		</div>
+		[#endif VIEW_MODE#]
+		<div class="xray-search">
+			<div class="input-group">
+				<input type="text" name="filter" id="filter" value="<#FILTER#>" placeholder="<#LANG_XRAY_LINE_FILTER#>" class="form-control">
+				<span class="input-group-btn">
+					<button type="submit" class="btn btn-success"><#LANG_SUBMIT#></button>
+					<a href="#" class="btn btn-primary" id="playpausebtn"><i class="glyphicon glyphicon-pause"></i> <#LANG_XRAY_PAUSE#></a>
+					[#if VIEW_MODE=""#]
+					<a href="#" class="btn btn-danger" id="clearlogsbtn" title="Очистить выбранные логи"><i class="glyphicon glyphicon-trash"></i> Очистить лог</a>
+					[#endif VIEW_MODE#]
+				</span>
 			</div>
 		</div>
 	</form>
 	[#endif VIEW_MODE#]
-	<div class="row xray-mobile-gutters" style="margin-top: 10px;">
+
+	<div class="row xray-layout">
 		<div class="col-md-[#if VIEW_MODE=""#]8[#else#]12[#endif VIEW_MODE#]">
-			<div style="padding:0 10px">
-				<div class="progress" style="height:3px">
-					<div class="progress-bar progress-bar-success" id="reloadProgress" role="progressbar" data-now="0" style=""></div>
+			<div class="xray-card">
+				<div class="xray-progress">
+					<div class="progress">
+						<div class="progress-bar progress-bar-success" id="reloadProgress" role="progressbar" data-now="0"></div>
+					</div>
+				</div>
+				<div class="xray-content" id="xrayContent" aria-live="polite">
+					<div class="xray-empty-state">
+						<div>
+							<div class="xray-spinner"></div>
+							<strong><#LANG_NEWDASH_LOADING#></strong>
+							<div>Собираем данные и обновляем представление.</div>
+						</div>
+					</div>
 				</div>
 			</div>
-			<div id="xrayContent" style="overflow-wrap: anywhere;padding: 10px;border-top: 1px solid #ddd;[#if VIEW_MODE=""#]font-family: Consolas, Verdana;background: #000080;color: #c0c0c0;border-radius: 5px;margin: 10px;[#endif#]"><center><img src="<#ROOTHTML#>img/ajax-loader.gif"/> <#LANG_NEWDASH_LOADING#></center></div>
 		</div>
-        [#if VIEW_MODE=""#]
+		[#if VIEW_MODE=""#]
 		<div class="col-md-4">
-			<div class="panel panel-default">
-				<div class="panel-heading" style="padding: 8px 12px;"><b>Файлы логов</b></div>
-				<div class="table-responsive">
-					<table class="table table-condensed table-hover" style="margin-bottom: 0;">
+			<div class="xray-card">
+				<div class="xray-card-header">
+					<div class="xray-card-title">Файлы логов</div>
+					<div class="xray-card-subtitle">Быстрый доступ к сегодняшним файлам и скачиванию.</div>
+				</div>
+				<div class="table-responsive xray-table-wrap">
+					<table class="table table-condensed table-hover xray-table">
 						<thead>
 							<tr>
 								<th>Файл</th>
-								<th class="text-right" style="white-space: nowrap;">Размер</th>
-								<th class="text-right" style="white-space: nowrap;">Изменен</th>
-								<th class="text-center" style="width: 42px;"></th>
+								<th class="text-right">Размер</th>
+								<th class="text-right">Изменен</th>
+								<th class="text-center xray-download-col"></th>
 							</tr>
 						</thead>
 						<tbody>
 						[#begin TODAY_FILES#]
 							<tr>
-								<td style="max-width: 1px;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">
+								<td class="xray-cell-wrap">
 									<a href="?files[]=[#TITLE#]" title="[#TITLE#]">[#BASENAME#]</a>
 								</td>
-								<td class="text-right" style="white-space: nowrap;">[#SIZE#]</td>
-								<td class="text-right" style="white-space: nowrap;">[#PASSED#]</td>
+								<td class="text-right">[#SIZE#]</td>
+								<td class="text-right">[#PASSED#]</td>
 								<td class="text-center">
 									<a href="?download_file=[#TITLE#]" class="btn btn-default btn-xs" title="Скачать">
 										<i class="glyphicon glyphicon-download"></i>
@@ -129,316 +201,143 @@ $(document).ready(function() {
 				</div>
 			</div>
 		</div>
-        [#endif VIEW_MODE#]
+		[#endif VIEW_MODE#]
 	</div>
+
 	[#if VIEW_MODE="services"#]
-	<div class="modal fade" id="cycleLogModal" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal fade xray-log-modal" id="cycleLogModal" tabindex="-1" aria-hidden="true">
 		<div class="modal-dialog modal-lg">
 			<div class="modal-content">
 				<div class="modal-header">
-					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					<h4 class="modal-title">Лог цикла <span id="cycleLogTitle"></span></h4>
 				</div>
 				<div class="modal-body">
-					<pre id="cycleLogBody" style="height: 420px;overflow: auto;background: #101820;color: #d7e8d0;border: 0;border-radius: 4px;"></pre>
+					<pre id="cycleLogBody"></pre>
 				</div>
 			</div>
 		</div>
 	</div>
 	[#endif VIEW_MODE#]
-	</div>
-
-	<script language="javascript">
-		var checkTimer;
-		var checkTimeout=5000;
-		var playingXray;
-
-		[#if VIEW_MODE=="database"#]
-			checkTimeout=60000;
-		[#endif#]
-
-		function playPauseXRay() {
-			if (playingXray==1) {
-				$('#reloadProgress').stop();
-				$('#reloadProgress').toggleClass('progress-bar-success progress-bar-warning');
-				$('#playpausebtn').html('<i class="glyphicon glyphicon-play"></i> <#LANG_XRAY_CONTINUE#>');
-				clearTimeout(checkTimer);
-				playingXray=0;
-			} else {
-				$('#reloadProgress').toggleClass('progress-bar-warning progress-bar-success');
-				$('#playpausebtn').html('<i class="glyphicon glyphicon-pause"></i> <#LANG_XRAY_PAUSE#>');
-				checkAllStates();
-			}
-			return false;
-		}
-		
-		function progressAmin() {
-			var $progressBar = $("#reloadProgress")
-
-			$progressBar.animate({
-				width: '100%'
-			}, {
-				duration: checkTimeout,
-				easing: 'linear'
-			});
-		}
-		
-		function checkAllStates() {
-			playingXray=1;
-			progressAmin();
-			clearTimeout(checkTimer);
-			//var url="?ajax=1&op=getcontent&view_mode=<#VIEW_MODE#>&filter="+encodeURIComponent($('#filter').val())+"&limit="+$('#limit').val()+"&file="+$('#file').val();
-			var url=window.location.href;
-			url+='&ajax=1&op=getcontent';
-			$.ajax({
-				url: url,
-			}).done(function(data) {
-				dataJSON = JSON.parse(data);
-				//console.log(dataJSON);
-				if(dataJSON.MODE == 'properties') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed"><tr><th style="width: 30%;"><#LANG_TITLE#></th><th style="width: 20%;"><#LANG_VALUE#></th><th style="width: 15%;"><#LANG_UPDATED#></th><th><#LANG_XRAY_SOURCE#></th></tr><tbody id="propContent"></tbody></table></div>');
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						$("#propContent").prepend('<tr><td>'+dataJSON.LIST[i].NAME+'<div style="font-size: 7pt;color: #b8b8b8;">'+dataJSON.LIST[i].DESC+'</div></td><td>'+dataJSON.LIST[i].VALUE+'</td><td>'+dataJSON.LIST[i].UPDATE+'</td><td style="font-size: 8pt;">'+dataJSON.LIST[i].SOURCE+'</td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'methods') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed"><tr><th style="width: 20%;"><#LANG_METHOD#></th><th style="width: 30%;"><#LANG_XRAY_PARAMS#></th><th style="width: 15%;"><#LANG_EXECUTED#></th><th><#LANG_XRAY_SOURCE#></th></tr><tbody id="propContent"></tbody></table></div>');
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						$("#propContent").prepend('<tr><td>'+dataJSON.LIST[i].METHOD+'<div style="font-size: 7pt;color: #b8b8b8;">'+dataJSON.LIST[i].DESC+'</div></td><td>'+dataJSON.LIST[i].PARAMS+'</td><td>'+dataJSON.LIST[i].EXECUTED+'</td><td style="font-size: 8pt;">'+dataJSON.LIST[i].SOURCE+'</td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'scripts') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed"><tr><th style="width: 20%;"><#LANG_SCRIPT#></th><th style="width: 30%;"><#LANG_XRAY_PARAMS#></th><th style="width: 15%;"><#LANG_EXECUTED#></th><th><#LANG_XRAY_SOURCE#></th></tr><tbody id="propContent"></tbody></table></div>');
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						if(!!dataJSON.LIST[i]) $("#propContent").prepend('<tr><td>'+dataJSON.LIST[i].SCRIPT+'<div style="font-size: 7pt;color: #b8b8b8;">'+dataJSON.LIST[i].DESC+'</div></td><td>'+dataJSON.LIST[i].PARAMS+'</td><td>'+dataJSON.LIST[i].EXECUTED+'</td><td style="font-size: 8pt;">'+dataJSON.LIST[i].SOURCE+'</td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'performance') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed" style="width: 100%;"><tr><th style="width: 30%;">OPERATION</th><th style="width: 20%;">COUNTER</th><th style="width: 15%;">TIME</th><th>AV.TIME</th></tr><tbody id="propContent"></tbody></table></div>');
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						$("#propContent").prepend('<tr><td>'+dataJSON.LIST[i].OPERATION+'</td><td>'+dataJSON.LIST[i].COUNTER+'</td><td>'+dataJSON.LIST[i].TIME+'</td><td style="font-size: 8pt;">'+dataJSON.LIST[i].AVTIME+'</td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'timers') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table style="width: 100%;" class="tableXray table-condensed"><tbody id="propContent"></tbody></table></div>');
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						$("#propContent").prepend('<tr><td>'+dataJSON.LIST[i].TITLE+'</td><td>'+dataJSON.LIST[i].COMMAND+'</td><td>'+dataJSON.LIST[i].SCHEDULED+'</td><td class="text-center"><button type="button" onClick="location.href=\''+dataJSON.LIST[i].STOP_LINK+'\'" class="btn btn-xs btn-danger"><#LANG_CANCEL#></button></td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'dead') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed" style="width: 100%;"><tr><th style="width: 20%;">TITLE</th><th style="width: 40%;">DESCRIPTION</th><th style="width: 15%;">UPDATED</th><th>LOCATION</th></tr><tbody id="propContent"></tbody></table></div>');
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						$("#propContent").prepend('<tr><td>'+dataJSON.LIST[i].TITLE+'</td><td>'+dataJSON.LIST[i].DESCRIPTION+'</td><td>'+dataJSON.LIST[i].UPDATED+'</td><td>'+dataJSON.LIST[i].LOCATIONTITLE+'</td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'events') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed"><tr><th style="width: 20%;">EVENT</th><th style="width: 40%;">DETAILS</th><th style="width: 15%;">ADDED</th></tr><tbody id="propContent"></tbody></table></div>');
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						$("#propContent").prepend('<tr><td>'+dataJSON.LIST[i].EVENT+'</td><td>'+dataJSON.LIST[i].DETAILS+'</td><td>'+dataJSON.LIST[i].ADDED+'</td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'database') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table table-condensed"><tr><th style="width: 25%;">NAME</th><th style="width: 15%;">ENGINE</th><th style="width: 15%;">ROWS</th><th style="width: 15%;">UPDATE</th><th></th></tr><tbody id="propContent"></tbody></table></div>');
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						$("#propContent").prepend('<tr><td>'+dataJSON.LIST[i].NAME+'</td><td>'+dataJSON.LIST[i].ENGINE+'</td><td>'+dataJSON.LIST[i].ROWS+'</td><td>'+dataJSON.LIST[i].UPDATE_TIME+'</td><td class="text-right"><div class="btn-group btn-group-xs"><button type="button" onClick="location.href=\''+dataJSON.LIST[i].BTN_ANALYZE+'\'" class="btn btn-default">Analyze</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].BTN_OPTIMIZE+'\'" class="btn btn-default">Optimize</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].BTN_REPAIR+'\'" class="btn btn-default">Repair</button></div></td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'services') {
-					$('#xrayContent').html('<div class="table-responsive" style="word-break: break-all;"><table class="tableXray table-condensed" style="width: 100%;"><tbody id="propContent"></tbody></table></div>');
-					var statusLabels = {
-						'starting': '<span class="label label-warning">Запускается</span>',
-						'running': '<span class="label label-success">Работает</span>',
-						'hang': '<span class="label label-info">Завис</span>',
-						'stopping': '<span class="label label-warning">Выключается</span>',
-						'stopped': '<span class="label label-danger">Остановлен</span>'
-					};
-					let i = 0;
-					while (i < dataJSON.TOTAL) {
-						var status = dataJSON.LIST[i].STATUS || '';
-						var statusLabel = statusLabels[status] || '';
-						var statusDetails = dataJSON.LIST[i].STATUS_DETAILS ? '<div style="font-size: 8pt;color: #666;margin-top: 3px;">'+dataJSON.LIST[i].STATUS_DETAILS+'</div>' : '';
-						if(dataJSON.LIST[i].ALIVE == 1) {
-							if(dataJSON.LIST[i].WAIT == 0) {
-								cycleUpdate = statusLabel+' <span class="label label-default">'+dataJSON.LIST[i].UPDATE+'</span>';
-							} else {
-								cycleUpdate = (statusLabel || '<span class="label label-info">Не отвечает</span>')+' <span class="label label-default">'+dataJSON.LIST[i].UPDATE+'</span>';
-							}
-							tr_style = '';
-							btn_group = '<div class="btn-group btn-group-xs"><button type="button" onClick="showCycleLog(\''+dataJSON.LIST[i].LOG_LINK+'\');return false;" class="btn btn-default">Лог</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_RESTART+'\'" class="btn btn-info">Рестарт</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_STOP+'\'" class="btn btn-danger">Остановить</button></div>';
-						} else {
-							cycleUpdate = statusLabel || '<span class="label label-danger">Остановлен</span>';
-							tr_style = 'background: linear-gradient(to right, lightcoral, white);';
-							btn_group = '<div class="btn-group btn-group-xs"><button type="button" onClick="showCycleLog(\''+dataJSON.LIST[i].LOG_LINK+'\');return false;" class="btn btn-default">Лог</button><button type="button" onClick="location.href=\''+dataJSON.LIST[i].CNT_START+'\'" class="btn btn-success">Запуск</button></div>';
-						}
-						cycleUpdate += statusDetails;
-						
-						$("#propContent").prepend('<tr style="'+tr_style+'"><td>'+dataJSON.LIST[i].TITLE+'</td><td style="vertical-align: middle;text-align: center;">'+cycleUpdate+'</td><td style="vertical-align: middle;text-align: right;">'+btn_group+'</td></tr>');
-						i++;
-					}
-				} else if(dataJSON.MODE == 'logs') {
-					if(!dataJSON.CONTENT) {
-						$('#xrayContent').html('<img style="background: white;border-radius: 50px;padding: 5px;" src="<#ROOTHTML#>img/ajax-loader.gif"/> Console is empty... Wait new data...');
-					} else {
-						$('#xrayContent').html(dataJSON.CONTENT);
-					}
-				} 
-				checkTimer=setTimeout('checkAllStates()', checkTimeout);
-			});
-			return false;
-		}
-
-		var cycleLogTimer = 0;
-		var cycleLogCurrent = '';
-		function showCycleLog(cycle) {
-			cycleLogCurrent = cycle;
-			$('#cycleLogTitle').text(cycle);
-			$('#cycleLogBody').html('Загрузка...');
-			$('#cycleLogModal').modal('show');
-			loadCycleLog();
-			return false;
-		}
-		function loadCycleLog() {
-			if (!cycleLogCurrent) {
-				return false;
-			}
-			var url = '<#ROOTHTML#>panel/xray.html?view_mode=services&ajax=1&op=cyclelog&cycle=' + encodeURIComponent(cycleLogCurrent);
-			$.ajax({
-				url: url,
-				dataType: 'json'
-			}).done(function(data) {
-				var content = '';
-				if (data.STATUS === 'OK' && data.LOG_CYCLES_ENABLED == 0) {
-					content = '<div style="height: 360px;display: flex;align-items: center;justify-content: center;text-align: center;color: #ffd27d;font-size: 16px;white-space: normal;">Файловый лог циклов выключен.<br>Включите LOG_CYCLES=1 в конфиге, перезапустите главный cycle.php, потом открывайте лог цикла.</div>';
-				} else if (data.STATUS === 'OK' && data.LINES && data.LINES.length) {
-					for (var i = 0; i < data.LINES.length; i++) {
-						content += data.LINES[i].ADDED + '  ' + data.LINES[i].MESSAGE + "\n";
-					}
-				} else {
-					content = 'Пока нет данных. Здесь появится stdout/stderr цикла и хвост его файлового лога.';
-				}
-				$('#cycleLogBody').html(content);
-				$('#cycleLogBody').scrollTop($('#cycleLogBody')[0].scrollHeight);
-			}).fail(function(xhr) {
-				var response = xhr && xhr.responseText ? xhr.responseText.substring(0, 500) : '';
-				$('#cycleLogBody').html('Ошибка загрузки лога.' + (response ? "\n\n" + response : ''));
-			});
-			clearTimeout(cycleLogTimer);
-			cycleLogTimer = setTimeout(loadCycleLog, 2000);
-			return false;
-		}
-		$('#cycleLogModal').on('hidden.bs.modal', function () {
-			cycleLogCurrent = '';
-			clearTimeout(cycleLogTimer);
-		});
-
-		function clearXrayLogs() {
-			var selectedFiles = $('#files').val() || [];
-			if (!selectedFiles.length) {
-				alert('Выберите хотя бы один лог-файл.');
-				return false;
-			}
-			if (!confirm('Очистить выбранные лог-файлы?')) {
-				return false;
-			}
-
-			var url = window.location.href;
-			url += (url.indexOf('?') !== -1 ? '&' : '?') + 'ajax=1&op=clearlog';
-			$.ajax({
-				url: url,
-				type: 'POST',
-				data: { files: selectedFiles }
-			}).done(function(data) {
-				var dataJSON;
-				try {
-					dataJSON = JSON.parse(data);
-				} catch (e) {
-					dataJSON = {};
-				}
-				if (dataJSON.STATUS === 'OK') {
-					checkAllStates();
-				} else {
-					alert(dataJSON.MESSAGE || 'Не удалось очистить лог.');
-				}
-			}).fail(function() {
-				alert('Ошибка запроса при очистке лога.');
-			});
-
-			return false;
-		}
-		checkAllStates();
-	</script>
+</div>
 [#endif ACTION#]
-
 
 [#if ACTION="context"#]
 	<b>Related: <#LANG_HCB#>related<#LANG_HCE#></b>
-	<div id='contextBody'>...</div>
-	<script language="javascript">
-	 function findContext() {
-	  var url="<#ROOTHTML#>popup/xray.html?action=context";
-	  var bodyText='';
-	  [#if CODE_ID!=""#]bodyText=$('#[#CODE_ID#]').val();[#endif CODE_ID#]
-	  $.post(url, 
-	  { action:"context", ajax: "1", op: "process", keyword: "<#KEYWORD#>", type: "<#TYPE#>", body: bodyText},
-	   function(data) {
-		$('#contextBody').html(data);
-	   }
-	  );
-	  return false;
-	 }
-	 findContext();
+	<div id="contextBody">...</div>
+	<script>
+	(function () {
+		'use strict';
+
+		function initContext() {
+			var bodyText = '';
+			[#if CODE_ID!=""#]
+			var codeInput = document.getElementById('<#CODE_ID#>');
+			if (codeInput) {
+				bodyText = codeInput.value;
+			}
+			[#endif CODE_ID#]
+			var url = '<#ROOTHTML#>popup/xray.html';
+			var formData = new FormData();
+			formData.append('action', 'context');
+			formData.append('ajax', '1');
+			formData.append('op', 'process');
+			formData.append('keyword', '<#KEYWORD#>');
+			formData.append('type', '<#TYPE#>');
+			formData.append('body', bodyText);
+
+			fetch(url, {
+				method: 'POST',
+				credentials: 'same-origin',
+				body: formData
+			}).then(function (response) {
+				return response.text();
+			}).then(function (html) {
+				document.getElementById('contextBody').innerHTML = html;
+			});
+		}
+
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initContext);
+		} else {
+			initContext();
+		}
+	})();
 	</script>
 [#endif ACTION#]
 
 [#if ACTION="service"#]
-<div class="row" style="border:1px dashed black;padding:5px;display: flex;align-items: center;">
- <div class="col-md-3">
-  Service: <b>[#CYCLE#]</b>
- </div>
- <div class="col-md-6" id='status[#CYCLE#]Body'>
-  ...
- </div>
- <div class="col-md-3 text-right">
-  <a href="#" class="btn btn-default btn-sm" onclick="return send[#CYCLE#]Command('restart');"><i class="glyphicon glyphicon-refresh"></i> Restart</a>
-  <a href="#" class="btn btn-default btn-sm" onclick="return send[#CYCLE#]Command('stop');"><i class="glyphicon glyphicon-stop"></i> Stop</a>
- </div>
+<link href="<#ROOTHTML#>templates/xray/xray.css?v=2026-06-03-2" rel="stylesheet" />
+<div class="xray-card xray-service-shell">
+	<div class="row xray-service-row">
+		<div class="col-md-3">
+			Service: <b>[#CYCLE#]</b>
+		</div>
+		<div class="col-md-6" id="status[#CYCLE#]Body">...</div>
+		<div class="col-md-3 xray-service-actions-wrap">
+			<div class="xray-inline-actions">
+				<button type="button" class="btn btn-default btn-sm" data-service-command="restart"><i class="glyphicon glyphicon-refresh"></i> Restart</button>
+				<button type="button" class="btn btn-default btn-sm" data-service-command="stop"><i class="glyphicon glyphicon-stop"></i> Stop</button>
+			</div>
+		</div>
+	</div>
 </div>
 
-<script language="javascript">
- var [#CYCLE#]Status_timer=0;
- function send[#CYCLE#]Command(cmd) {
-  var url="<#ROOTHTML#>ajax/xray.html?action=service";
-  $.post(url,
-          { action:"service", ajax: "1", "cycle": "[#CYCLE#]", "op": cmd},
-          function(data) {
-           //console.log(data);
-          }
-  );
-  update[#CYCLE#]Status();
-  return false;
- }
- function update[#CYCLE#]Status() {
-  var url="<#ROOTHTML#>ajax/xray.html?action=service";
-  clearTimeout([#CYCLE#]Status_timer);
-  $.post(url,
-          { action:"service", ajax: "1", "cycle": "[#CYCLE#]"},
-          function(data) {
-           //console.log(data);
-           $('#status[#CYCLE#]Body').html(data.BODY);
-           [#CYCLE#]Status_timer=setTimeout('update[#CYCLE#]Status()',2000);
-          }
-  );
-  return false;
- }
- update[#CYCLE#]Status();
+<script>
+(function () {
+	'use strict';
 
+	var cycle = '[#CYCLE#]';
+	var statusTimer = 0;
+	var statusBody = document.getElementById('status' + cycle + 'Body');
+	var container = document.currentScript ? document.currentScript.previousElementSibling : null;
+
+	function fetchStatus(op) {
+		var formData = new FormData();
+		formData.append('action', 'service');
+		formData.append('ajax', '1');
+		formData.append('cycle', cycle);
+		if (op) {
+			formData.append('op', op);
+		}
+
+		return fetch('<#ROOTHTML#>ajax/xray.html?action=service', {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: formData
+		}).then(function (response) {
+			return response.json();
+		}).then(function (data) {
+			if (statusBody && data && data.BODY) {
+				statusBody.innerHTML = data.BODY;
+			}
+		});
+	}
+
+	function updateStatus() {
+		clearTimeout(statusTimer);
+		fetchStatus().finally(function () {
+			statusTimer = window.setTimeout(updateStatus, 2000);
+		});
+	}
+
+	function onActionClick(event) {
+		var button = event.target.closest('[data-service-command]');
+		if (!button || !container || !container.contains(button)) {
+			return;
+		}
+		event.preventDefault();
+		fetchStatus(button.getAttribute('data-service-command')).then(function () {
+			clearTimeout(statusTimer);
+			statusTimer = window.setTimeout(updateStatus, 400);
+		});
+	}
+
+	if (container) {
+		container.addEventListener('click', onActionClick);
+	}
+
+	updateStatus();
+})();
 </script>
 [#endif#]
