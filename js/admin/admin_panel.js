@@ -1553,6 +1553,26 @@
         });
     }
 
+    function scrollSidebarToActiveItem() {
+        var sidebarInner = document.querySelector('.md-admin-sidebar__inner');
+        if (!sidebarInner) {
+            return;
+        }
+
+        var activeItem = sidebarInner.querySelector('.md-admin-sidebar__item.active, .md-admin-sidebar__item.is-active');
+        if (!activeItem) {
+            return;
+        }
+
+        window.requestAnimationFrame(function () {
+            var sidebarRect = sidebarInner.getBoundingClientRect();
+            var activeRect = activeItem.getBoundingClientRect();
+            var currentScrollTop = sidebarInner.scrollTop;
+            var targetScrollTop = currentScrollTop + (activeRect.top - sidebarRect.top) - (sidebarInner.clientHeight / 2) + (activeRect.height / 2);
+            sidebarInner.scrollTop = Math.max(0, targetScrollTop);
+        });
+    }
+
     function callComponent(Component, element, commandOrOptions) {
         if (!Component || !element) {
             return;
@@ -1638,6 +1658,7 @@
         boot(document);
         installJqueryBridge();
         initAdminSidebarDrawer();
+        scrollSidebarToActiveItem();
     });
 })(window, document);
 
