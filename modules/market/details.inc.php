@@ -18,10 +18,16 @@ if ($params) {
     }
 }
 
-$out['URL']=$plugin_data['URL'];
+$out['URL'] = isset($plugin_data['URL']) ? $plugin_data['URL'] : '';
 $out['COMMITS'] = array();
+$out['MODULE_NAME_ENCODED'] = urlencode($plugin_rec['MODULE_NAME']);
 
 if (isset($plugin_data['REPOSITORY_URL'])) {
+    $plugin_data = $this->applyCustomRepositoryUrl($plugin_data);
+    $out['REPOSITORY_URL_ENCODED'] = urlencode($plugin_data['REPOSITORY_URL']);
+    $out['LATEST_VERSION_ENCODED'] = urlencode($plugin_data['LATEST_VERSION']);
+    $out['MODULE_NAME_ENCODED'] = urlencode($plugin_data['MODULE_NAME']);
+
     $github_feed_url = $plugin_data['REPOSITORY_URL'];
     $github_feed_url = str_replace('/archive/', '/commits/', $github_feed_url);
     $github_feed_url = str_replace('.tar.gz', '.atom', $github_feed_url);

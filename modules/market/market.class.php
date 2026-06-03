@@ -224,6 +224,8 @@ class market extends module
             $link = gr('link');
             $out['LINK'] = $link;
             $out['LINK_URL'] = urlencode($link);
+            $out['INSTALL_URL'] = urlencode(gr('url'));
+            $out['VERSION_URL'] = urlencode(gr('version'));
 
             global $names;
 
@@ -453,6 +455,9 @@ class market extends module
                     $rec['REPOSITORY_URL'] = 'https://connect.smartliving.ru/market/?op=download&name=' . urlencode($rec['MODULE_NAME']) . "&serial=" . urlencode(gg('Serial'));
                 }
                 $rec = $this->applyCustomRepositoryUrl($rec);
+                $rec['MODULE_NAME_ENCODED'] = urlencode($rec['MODULE_NAME']);
+                $rec['REPOSITORY_URL_ENCODED'] = urlencode($rec['REPOSITORY_URL']);
+                $rec['LATEST_VERSION_ENCODED'] = urlencode($rec['LATEST_VERSION']);
                 if ($rec['MODULE_NAME'] == $name) {
                     $this->url = $rec['REPOSITORY_URL'];
                     $this->version = $rec['LATEST_VERSION'];
