@@ -61,7 +61,7 @@ CREATE TABLE `admin_users` (
 --
 
 INSERT INTO `admin_users` (`ID`, `NAME`, `LOGIN`, `PASSWORD`, `EMAIL`, `COMMENTS`, `ACCESS`, `PRIVATE`, `EMAIL_ORDERS`, `EMAIL_INVENTORY`) VALUES
-(1, 'Administrator', 'admin', '21232f297a57a5a743894a0e4a801fc3', 'webmaster@domain.com', '', 'control_modules,control_access,master,cms_docs,news,statistic,newsletter,backup,edit_templates,newslist,saverestore,skins,settings,dateselect,thumb,footercode,holdingpage,dashboard,events,users,terminals,mediabrowser,player,classes,history,locations,methods,properties,objects,pvalues,shoutbox,shoutrooms,jobs,btweather,usbapp_mediabrowser,app_products,app_tdwiki,app_weather,layouts,scripts,rss_channels,languages,pinghosts,watchfolders,app_player,app_gpstrack,webvars,onewire,app_calendar,xray', 0, 0, 0);
+(1, 'Administrator', 'admin', '21232f297a57a5a743894a0e4a801fc3', 'webmaster@domain.com', '', 'control_modules,control_access,master,cms_docs,news,statistic,newsletter,backup,edit_templates,newslist,saverestore,skins,settings,footercode,holdingpage,events,users,classes,history,locations,methods,properties,objects,pvalues,shoutbox,jobs,btweather,app_products,app_tdwiki,app_weather,scripts,rss_channels,languages,pinghosts,watchfolders,app_gpstrack,webvars,onewire,app_calendar,xray', 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -97,7 +97,7 @@ INSERT INTO `blockly_code` (`ID`, `SYSTEM_NAME`, `CODE_TYPE`, `CODE`, `XML`, `UP
 (28, 'object71_method97', 0, 'say(\"Нажата на пульте кнопка Бэ!\",2);', '', '2014-09-04 17:38:48'),
 (61, 'script17', 0, '$lastRead=getGlobal(\'lastNewsRead\');\r\n$limit=10;\r\n\r\n$items=SQLSelect(\"SELECT TITLE FROM rss_items WHERE ADDED>\'\".date(\'Y-m-d H:i:s\',$lastRead).\"\' ORDER BY ADDED DESC LIMIT $limit\");\r\n$total=count($items);\r\nif ($total==0) {\r\n $items=SQLSelect(\"SELECT TITLE FROM rss_items WHERE 1 ORDER BY ADDED DESC LIMIT 2\");\r\n $total=count($items); \r\n}\r\n\r\n$res=array_reverse($items);\r\nfor($i=0;$i<$total;$i++) {\r\n say($res[$i][\'TITLE\'],2);\r\n}\r\nsetGlobal(\'lastNewsRead\',time());', '', '2014-10-30 15:32:13'),
 (35, 'object72_method98', 0, 'say(\"Нажата на пульте кнопка Цэ!\",2);\r\nrunScript(\'readLatestNews\');', '', '2014-09-04 18:04:04'),
-(63, 'script18', 0, '// вытягиваем историю из переменной\r\n$alreadyPlayed=gg(\"AlreadyPlayedMusic\");\r\nif (!$alreadyPlayed) {\r\n $alreadyPlayed=\'0\';\r\n}\r\n\r\n// выбираем случайную папку\r\n$rec=SQLSelectOne(\"SELECT * FROM media_favorites WHERE ID NOT IN (\".$alreadyPlayed.\") ORDER BY RAND()\");\r\n\r\nif (!$rec[\'ID\']) {\r\n // папок больше не осталось, поэтому выбираем случайную и сбрасываем историю\r\n $rec=SQLSelectOne(\"SELECT * FROM media_favorites ORDER BY RAND()\");\r\n $alreadyPlayed=\'0\';\r\n}\r\n\r\n\r\nif ($rec[\'ID\']) {\r\n\r\n // добавляем выбранную папку в историю\r\n $alreadyPlayed.=\',\'.$rec[\'ID\'];\r\n sg(\"AlreadyPlayedMusic\",$alreadyPlayed);\r\n\r\n // запускаем на проигрывание\r\n $collection=SQLSelectOne(\"SELECT * FROM collections WHERE ID=\".(int)$rec[\'COLLECTION_ID\']);\r\n $path=$collection[\'PATH\'].$rec[\'PATH\'];\r\n playMedia($path);\r\n //setTimeOut(\'VLCPlayer_update\',\"callMethod(\'VLCPlayer.update\');\",10);\r\n\r\n}', '', '2014-10-30 15:32:40'),
+(63, 'script18', 0, '// вытягиваем историю из переменной\r\n$alreadyPlayed=gg(\"AlreadyPlayedMusic\");\r\nif (!$alreadyPlayed) {\r\n $alreadyPlayed=\'0\';\r\n}\r\n\r\n// выбираем случайную папку\r\n$rec=SQLSelectOne(\"SELECT * FROM media_favorites WHERE ID NOT IN (\".$alreadyPlayed.\") ORDER BY RAND()\");\r\n\r\nif (!$rec[\'ID\']) {\r\n // папок больше не осталось, поэтому выбираем случайную и сбрасываем историю\r\n $rec=SQLSelectOne(\"SELECT * FROM media_favorites ORDER BY RAND()\");\r\n $alreadyPlayed=\'0\';\r\n}\r\n\r\n\r\nif ($rec[\'ID\']) {\r\n\r\n // добавляем выбранную папку в историю\r\n $alreadyPlayed.=\',\'.$rec[\'ID\'];\r\n sg(\"AlreadyPlayedMusic\",$alreadyPlayed);\r\n\r\n // старый механизм проигрывания удалён\r\n //setTimeOut(\'VLCPlayer_update\',\"callMethod(\'VLCPlayer.update\');\",10);\r\n\r\n}', '', '2014-10-30 15:32:40'),
 (62, 'script19', 0, 'getURL(\'http://localhost/rc/?command=vlc_pause\',0);', '', '2014-10-30 15:32:28'),
 (39, 'object19_method64', 0, 'callMethod(\'noo1.turnOff\'); // выключаем тёплый пол\r\ncallMethod(\'noo2.turnOff\'); // выключаем бойлер на кухне', '', '2014-09-05 11:10:07'),
 (40, 'object19_method65', 0, 'callMethod(\'noo1.turnOn\'); // включаем тёплый пол\r\ncallMethod(\'noo2.turnOn\'); // включаем бойлер на кухне', '', '2014-09-05 11:10:32'),
@@ -562,7 +562,6 @@ CREATE TABLE `layouts` (
 
 INSERT INTO `layouts` (`ID`, `TITLE`, `PRIORITY`, `TYPE`, `CODE`, `APP`, `URL`, `DETAILS`, `REFRESH`, `ICON`, `HIDDEN`, `BACKGROUND_IMAGE`, `THEME`) VALUES
 (8, '<#LANG_WELCOME_GREETING#>', 1000, 'html', '<div style=\"padding-left:50px;padding-top:30px\">\r\n<h1><#LANG_WELCOME_GREETING#></h1>\r\n&nbsp;\r\n<p style=\"font-size:14px\">\r\n<#LANG_WELCOME_TEXT#>\r\n</p>\r\n</div>', '', '', '', 0, '', 0, '', ''),
-(10, '<#LANG_APP_MEDIA_BROWSER#>', 200, 'app', '', 'app_mediabrowser', '', '', 0, '', 0, '', '');
 
 -- --------------------------------------------------------
 
@@ -891,13 +890,8 @@ INSERT INTO `project_modules` (`ID`, `NAME`, `TITLE`, `CATEGORY`, `PARENT_NAME`,
 (21, 'userlog', '<#LANG_MODULE_USERLOG#>', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2009-02-07 11:45:52'),
 (22, 'skins', '<#LANG_MODULE_SKINS#>', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2009-02-07 12:02:54'),
 (23, 'settings', '<#LANG_MODULE_SETTINGS#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2009-02-07 12:05:40'),
-(24, 'dateselect', 'Date Selector', 'System', '', '', 1, 0, '2009-02-07 12:47:32'),
-(25, 'thumb', '<#LANG_MODULE_THUMB#>', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2009-02-07 12:48:32'),
-(73, 'app_player', '<#LANG_APP_PLAYER#>', '<#LANG_SECTION_APPLICATIONS#>', '', '', 0, 0, '2011-05-03 11:02:57'),
-(28, 'dashboard', 'Dashboard', 'CMS', '', 'a:5:{s:12:\"CPANEL_STATS\";i:0;s:15:\"CPANEL_USERNAME\";s:0:\"\";s:15:\"CPANEL_PASSWORD\";s:0:\"\";s:13:\"CPANEL_DOMAIN\";s:0:\"\";s:10:\"CPANEL_URL\";s:0:\"\";}', 1, 0, '2009-02-23 10:15:23'),
 (29, 'events', '<#LANG_MODULE_EVENTS#>', '<#LANG_SECTION_SYSTEM#>', '', '', 0, 0, '2020-07-08 14:02:17'),
 (30, 'users', '<#LANG_MODULE_USERS#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2009-03-27 13:08:07'),
-(31, 'terminals', '<#LANG_MODULE_TERMINALS#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2009-03-27 13:10:00'),
 (37, 'classes', '<#LANG_MODULE_OBJECTS#>', '<#LANG_SECTION_OBJECTS#>', '', 'a:3:{s:12:\"DEFAULT_VIEW\";s:0:\"\";s:15:\"FILTER_CLASS_ID\";i:0;s:18:\"FILTER_LOCATION_ID\";i:0;}', 0, 0, '2009-05-22 10:09:27'),
 (38, 'history', '<#LANG_MODULE_OBJECTS_HISTORY#>', '<#LANG_SECTION_OBJECTS#>', '', '', 1, 0, '2009-05-22 10:09:51'),
 (39, 'locations', '<#LANG_MODULE_LOCATIONS#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2009-05-22 10:11:01'),
@@ -906,17 +900,10 @@ INSERT INTO `project_modules` (`ID`, `NAME`, `TITLE`, `CATEGORY`, `PARENT_NAME`,
 (42, 'objects', '<#LANG_MODULE_OBJECT_INSTANCES#>', '<#LANG_SECTION_OBJECTS#>', '', '', 1, 0, '2009-05-22 10:12:04'),
 (85, 'pvalues', '<#LANG_MODULE_PVALUES#>', '<#LANG_SECTION_OBJECTS#>', '', '', 1, 0, '2012-11-16 15:04:26'),
 (44, 'shoutbox', '<#LANG_MODULE_SHOUTBOX#>', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2009-07-29 13:53:13'),
-(45, 'shoutrooms', '<#LANG_MODULE_SHOUTROOMS#>', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2009-07-29 13:53:28'),
 (46, 'jobs', '<#LANG_MODULE_JOBS#>', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2014-10-30 11:57:40'),
-(61, 'app_mediabrowser', '<#LANG_APP_MEDIA_BROWSER#>', '<#LANG_SECTION_APPLICATIONS#>', '', '', 0, 0, '2010-08-31 09:09:33'),
-(66, 'layouts', '<#LANG_MODULE_LAYOUTS#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2010-09-13 15:03:49'),
 (83, 'xray', 'X-Ray', '<#LANG_SECTION_SYSTEM#>', '', '', 0, 0, '2012-11-16 14:59:57'),
-(88, 'security_rules', '<#LANG_MODULE_SECURITY_RULES#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2013-05-18 11:31:37'),
 (93, 'market', '<#LANG_MODULE_MARKET#>', '<#LANG_SECTION_SYSTEM#>', '', '', 0, 0, '2014-01-25 14:04:20'),
 (97, 'blockly_code', 'Blockly code', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2014-09-03 09:28:23'),
-(98, 'myblocks', '<#LANG_MODULE_MYBLOCKS#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2014-10-30 11:57:40'),
-(99, 'soundfiles', '<#LANG_MODULE_SOUNDFILES#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2014-10-30 11:57:41'),
-(100, 'textfiles', '<#LANG_MODULE_TEXTFILES#>', '<#LANG_SECTION_SETTINGS#>', '', '', 0, 0, '2014-10-30 11:57:41'),
 (101, 'linkedobject', 'LinkedObject', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2015-01-29 08:24:25'),
 (102, 'system_errors', '<#LANG_MODULE_SYSTEM_ERRORS#>', '<#LANG_SECTION_SYSTEM#>', '', '', 0, 0, '2015-01-29 08:24:26'),
 (109, 'actions_log', '<#LANG_MODULE_ACTIONS_LOG#>', '<#LANG_SECTION_SYSTEM#>', '', NULL, 0, 0, '2020-07-08 14:02:17');
@@ -1228,7 +1215,7 @@ INSERT INTO `scripts` (`ID`, `TITLE`, `CODE`, `DESCRIPTION`, `TYPE`, `XML`, `CAT
 (11, 'easyRF', '$device_id=$params[\'did\'];\r\n$destination_id=$params[\'dest\'];\r\n$packet_id=$params[\'pid\'];\r\n$command_id=$params[\'c\'];\r\n$data=$params[\'d\'];\r\n\r\nif ($device_id==0) {\r\n if ($command_id==10) {\r\n  //temp\r\n setGlobal(\'ws.tempInside\',round($data/100));\r\n } elseif ($command_id==12) {\r\n  //motion\r\n  callMethod(\'intSensor.statusChanged\',array(\'status\'=>1));\r\n  clearTimeOut($id.\'_move\');\r\n  setTimeOut($id.\'_move\',\"callMethod(\'intSensor.statusChanged\',array(\'status\'=>0));\",20);  \r\n }\r\n}', '', 0, '', 5, '2014-09-03 12:12:37', 'a:6:{s:6:\"script\";s:6:\"easyRF\";s:3:\"did\";s:1:\"0\";s:4:\"dest\";s:1:\"0\";s:3:\"pid\";s:4:\"8339\";s:1:\"c\";s:2:\"10\";s:1:\"d\";s:4:\"2600\";}', 0, '', '00:00', NULL, NULL, 0, 0, '', '', 0),
 (12, 'RCSwitch', '$id=$params[\'rcswitch\'];\r\nif ($id==\'12345\') {\r\n //sensor 1\r\n}', '', 0, '', 5, '1970-01-01 00:00:00', 'a:2:{s:6:\"script\";s:8:\"RCSwitch\";s:8:\"rcswitch\";s:7:\"7689557\";}', 0, '', '00:00', NULL, NULL, 0, 0, '', '', 0),
 (15, 'readWeatherToday', '$weather.=\"Сегодня ожидается \".str_replace(\'&deg;\',\' \',getGlobal(\'weatherToday\'));\r\n$weather.=\". Завтра \".str_replace(\'&deg;\',\' \',getGlobal(\'weatherTomorrow\'));\r\n$weather.=\". Сейчас на улице \".getGlobal(\'TempOutside\').\'.\';\r\n$weather=str_replace(\'&deg;\',\'\',$weather);\r\nsay($weather,2);', '', 0, '', 0, '1970-01-01 00:00:00', 'a:2:{i:0;s:12:\"погода\";i:1;s:2:\"а\";}', 0, '', '00:00', NULL, NULL, 0, 0, '', '', 0),
-(18, 'playFavoriteMusic', '// вытягиваем историю из переменной\r\n$alreadyPlayed=gg(\"AlreadyPlayedMusic\");\r\nif (!$alreadyPlayed) {\r\n $alreadyPlayed=\'0\';\r\n}\r\n\r\n// выбираем случайную папку\r\n$rec=SQLSelectOne(\"SELECT * FROM media_favorites WHERE ID NOT IN (\".$alreadyPlayed.\") ORDER BY RAND()\");\r\n\r\nif (!$rec[\'ID\']) {\r\n // папок больше не осталось, поэтому выбираем случайную и сбрасываем истоирю\r\n $rec=SQLSelectOne(\"SELECT * FROM media_favorites ORDER BY RAND()\");\r\n $alreadyPlayed=\'0\';\r\n}\r\n\r\n\r\nif ($rec[\'ID\']) {\r\n\r\n // добавляем выбранную папку в историю\r\n $alreadyPlayed.=\',\'.$rec[\'ID\'];\r\n sg(\"AlreadyPlayedMusic\",$alreadyPlayed);\r\n\r\n // запускаем на проигрывание\r\n $collection=SQLSelectOne(\"SELECT * FROM collections WHERE ID=\".(int)$rec[\'COLLECTION_ID\']);\r\n $path=$collection[\'PATH\'].$rec[\'PATH\'];\r\n playMedia($path);\r\n //setTimeOut(\'VLCPlayer_update\',\"callMethod(\'VLCPlayer.update\');\",10);\r\n\r\n}', '', 0, '', 0, '1970-01-01 00:00:00', '', 0, '', '00:00', NULL, NULL, 0, 0, '', '', 0),
+(18, 'playFavoriteMusic', '// вытягиваем историю из переменной\r\n$alreadyPlayed=gg(\"AlreadyPlayedMusic\");\r\nif (!$alreadyPlayed) {\r\n $alreadyPlayed=\'0\';\r\n}\r\n\r\n// выбираем случайную папку\r\n$rec=SQLSelectOne(\"SELECT * FROM media_favorites WHERE ID NOT IN (\".$alreadyPlayed.\") ORDER BY RAND()\");\r\n\r\nif (!$rec[\'ID\']) {\r\n // папок больше не осталось, поэтому выбираем случайную и сбрасываем истоирю\r\n $rec=SQLSelectOne(\"SELECT * FROM media_favorites ORDER BY RAND()\");\r\n $alreadyPlayed=\'0\';\r\n}\r\n\r\n\r\nif ($rec[\'ID\']) {\r\n\r\n // добавляем выбранную папку в историю\r\n $alreadyPlayed.=\',\'.$rec[\'ID\'];\r\n sg(\"AlreadyPlayedMusic\",$alreadyPlayed);\r\n\r\n // старый механизм проигрывания удалён\r\n //setTimeOut(\'VLCPlayer_update\',\"callMethod(\'VLCPlayer.update\');\",10);\r\n\r\n}', '', 0, '', 0, '1970-01-01 00:00:00', '', 0, '', '00:00', NULL, NULL, 0, 0, '', '', 0),
 (22, 'Greeting', 'runScript(\"reportStatus\", array());\r\n', '', 0, '', 0, '1970-01-01 00:00:00', '', 0, '', '00:00', NULL, NULL, 0, 0, '', '', 0),
 (19, 'playPause', 'getURL(\'http://localhost/rc/?command=vlc_pause\',0);', '', 0, '', 0, '1970-01-01 00:00:00', '', 0, '', '00:00', NULL, NULL, 0, 0, '', '', 0),
 (20, 'Watching movie', 'say(LANG_GENERAL_SETTING_UP_LIGHTS,2);\r\n// to-do', '', 0, '', 6, '1970-01-01 00:00:00', '', 0, '', '00:00', NULL, NULL, 0, 0, '', '', 0),

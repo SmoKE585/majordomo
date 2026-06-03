@@ -184,10 +184,6 @@ class application extends module
             $this->redirect(ROOTHTML . 'admin.php');
         }
 
-        if (file_exists(DIR_MODULES . 'app_player')) {
-            $out['SHOW_PLAYER'] = 1;
-        }
-
         $terminals = getAllTerminals(-1, 'TITLE');
         $total = count($terminals);
         for ($i = 0; $i < $total; $i++) {

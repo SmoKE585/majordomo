@@ -255,11 +255,31 @@ class saverestore extends module
     {
         return array(
             'directories' => array(
+                'modules/dashboard',
+                'modules/dateselect',
+                'modules/layouts',
+                'modules/myblocks',
+                'modules/security_rules',
+                'modules/shoutrooms',
+                'modules/soundfiles',
+                'modules/terminals',
+                'modules/textfiles',
+                'modules/thumb',
+                'templates/dashboard',
                 'modules/commands',
                 'modules/patterns',
                 'modules/plans',
                 'modules/scenes',
                 'modules/devices',
+                'templates/dateselect',
+                'templates/layouts',
+                'templates/myblocks',
+                'templates/security_rules',
+                'templates/shoutrooms',
+                'templates/soundfiles',
+                'templates/terminals',
+                'templates/textfiles',
+                'templates/thumb',
                 'templates/commands',
                 'templates/patterns',
                 'templates/plans',
@@ -276,10 +296,29 @@ class saverestore extends module
                 'img/modules/plans.png',
                 'img/modules/scenes.png',
                 'img/modules/devices.png',
+                'img/modules/layouts.png',
+                'img/modules/terminals.png',
+                'img/modules/textfiles.png',
             ),
             'patterns' => array(
                 'templates/classes/views/S*.html',
             ),
+        );
+    }
+
+    function getObsoleteSystemModules()
+    {
+        return array(
+            'dashboard',
+            'dateselect',
+            'layouts',
+            'myblocks',
+            'security_rules',
+            'shoutrooms',
+            'soundfiles',
+            'terminals',
+            'textfiles',
+            'thumb',
         );
     }
 
@@ -433,6 +472,79 @@ class saverestore extends module
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed deleted system file ' . htmlspecialchars($relative_path) . '</div>');
             }
         }
+    }
+
+    function removeObsoleteModuleInstallMarkers($iframe = 0)
+    {
+        $modules = $this->getObsoleteSystemModules();
+        foreach ($modules as $module) {
+            foreach (array('.installed', '.error') as $suffix) {
+                $marker = DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/modules_installed/' . $module . $suffix;
+                if (!file_exists($marker)) {
+                    continue;
+                }
+                @unlink($marker);
+                DebMes('Removed obsolete module marker: cms/modules_installed/' . $module . $suffix, 'restore');
+                if ($iframe) {
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed obsolete module marker ' . htmlspecialchars('cms/modules_installed/' . $module . $suffix) . '</div>');
+                }
+            }
+        }
+    }
+
+    function cleanupObsoleteModuleDatabaseRows($iframe = 0)
+    {
+        $modules = $this->getObsoleteSystemModules();
+        if (!is_array($modules) || count($modules) == 0) {
+            return;
+        }
+
+        $quoted_modules = array();
+        foreach ($modules as $module) {
+            $quoted_modules[] = "'" . DBSafe($module) . "'";
+        }
+        $in_list = implode(',', $quoted_modules);
+
+        SQLExec("DELETE FROM project_modules WHERE NAME IN (" . $in_list . ")");
+        SQLExec("DELETE FROM ignore_updates WHERE NAME IN (" . $in_list . ")");
+
+        $users = SQLSelect("SELECT ID, ACCESS FROM admin_users");
+        $total_users = count($users);
+        $changed_users = 0;
+        for ($i = 0; $i < $total_users; $i++) {
+            $access = trim((string)$users[$i]['ACCESS']);
+            if ($access == '') {
+                continue;
+            }
+
+            $parts = array_filter(array_map('trim', explode(',', $access)), 'strlen');
+            $filtered = array();
+            $changed = false;
+            foreach ($parts as $part) {
+                if (in_array($part, $modules, true)) {
+                    $changed = true;
+                    continue;
+                }
+                $filtered[] = $part;
+            }
+
+            if ($changed) {
+                $new_access = implode(',', $filtered);
+                SQLExec("UPDATE admin_users SET ACCESS='" . DBSafe($new_access) . "' WHERE ID=" . (int)$users[$i]['ID']);
+                DebMes('Removed obsolete module access from admin user ID ' . (int)$users[$i]['ID'], 'restore');
+                $changed_users++;
+            }
+        }
+
+        if ($iframe && $changed_users > 0) {
+            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Updated admin user access for obsolete modules</div>');
+        }
+    }
+
+    function cleanupObsoleteSystemModules($iframe = 0)
+    {
+        $this->removeObsoleteModuleInstallMarkers($iframe);
+        $this->cleanupObsoleteModuleDatabaseRows($iframe);
     }
 
     function backupDatabaseBeforeSystemUpdate($iframe = 0)
@@ -1874,6 +1986,9 @@ class saverestore extends module
 
             // UPDATING FILES DIRECTLY Исправлено верно на док_руут - потому что функция копиТрее не воспринимает других слешей 
             copyTree($update_root, DOC_ROOT, 1);
+            if ($is_system_update) {
+                $this->cleanupObsoleteSystemModules($iframe);
+            }
             $this->cleanupLegacyConnectConfigNoise(DOC_ROOT . DIRECTORY_SEPARATOR . 'config.php');
             if ($is_system_update) {
                 $this->saveSystemUpdateManifest($new_manifest);

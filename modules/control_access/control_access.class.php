@@ -40,7 +40,7 @@ function getParams() {
   // running current module
   global $session;
 
-  if ($this->owner->name!='panel' && $this->owner->name!='master') {
+     if ($this->owner->name!='panel' && $this->owner->name!='master') {
    echo "Unauthorized Access";
    exit;
   }
@@ -50,7 +50,7 @@ function getParams() {
      }
 
 
-        if ($this->id=='1') {
+     if ($this->id=='1') {
                 $this->mode='edit';
                 global $id;
                 global $mode;
@@ -98,9 +98,6 @@ function getParams() {
      
 
      if (!$session->data["cp_requested_url"]) {
-      if (file_exists(DIR_MODULES.'dashboard/dashboard.class.php')) {
-       $this->owner->redirect("?action=dashboard");
-      }
       $this->owner->redirect("?");
      } else {
       $this->owner->redirect($session->data["cp_requested_url"]);

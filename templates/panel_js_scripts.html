@@ -435,20 +435,32 @@
 
                 for (var i = 0; i < list.length; i++) {
                     var item = list[i];
+                    var itemName = $('<div/>').text(item.NAME || '').html();
+                    var itemValue = $('<div/>').text(item.VALUE || '—').html();
+                    var itemUpdate = $('<div/>').text(item.UPDATE || '').html();
+                    var itemSource = $('<div/>').text(item.SOURCE || '—').html();
                     html += '<li class="md-admin-property-feed__item">' +
                         '<div class="md-admin-property-feed__main">' +
-                            '<strong>' + $('<div/>').text(item.NAME || '').html() + '</strong>' +
-                            '<span>' + $('<div/>').text(item.VALUE || '—').html() + '</span>' +
+                            '<div class="md-admin-property-feed__property-row">' +
+                                '<strong class="md-admin-property-feed__property">' + itemName + '</strong>' +
+                                '<span class="md-admin-property-feed__update">' + itemUpdate + '</span>' +
+                            '</div>' +
+                            '<span class="md-admin-property-feed__value">' + itemValue + '</span>' +
                         '</div>' +
                         '<div class="md-admin-property-feed__meta">' +
-                            '<span>' + $('<div/>').text(item.UPDATE || '').html() + '</span>' +
-                            '<small>' + $('<div/>').text(item.SOURCE || '—').html() + '</small>' +
+                            '<small class="md-admin-property-feed__source" data-bs-toggle="tooltip" data-bs-placement="top" title="Источник: ' + itemSource + '">' +
+                                '<i class="glyphicon glyphicon-info-sign" aria-hidden="true"></i>' +
+                                'Источник' +
+                            '</small>' +
                         '</div>' +
                     '</li>';
                 }
 
                 html += '</ul>';
                 $('#recentProperties').html(html);
+                if (window.MDJAdminUI && typeof window.MDJAdminUI.initBootstrapWidgets === 'function') {
+                    window.MDJAdminUI.initBootstrapWidgets(document.getElementById('recentProperties'));
+                }
             },
             error: function(data) {
                 $('#recentProperties').html('<div class="md-admin-empty-state">Не удалось загрузить последние изменения свойств.</div>');

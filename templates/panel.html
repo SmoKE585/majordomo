@@ -5,7 +5,7 @@
 		<title>{#TITLE#}</title>
 		[#inc common_header_admin.html#]
 		<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/fonts/rubik/rubik.css?v=2026-06-03" type="text/css">
-		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03-8" type="text/css">
+		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03-9" type="text/css">
 		[#inc websockets.html#]
 	</head>
 
@@ -13,18 +13,6 @@
 	[#if AUTHORIZED#]
 	[#inc panel_js_scripts.html#]
 	[#if PRINT!="1"#]
-	<nav class="navbar navbar-expand-lg md-admin-header" role="navigation">
-		<div class="container-fluid md-admin-header__inner">
-			<button type="button" class="btn md-admin-sidebar-toggle" data-md-admin-sidebar-toggle aria-label="Open menu">
-				<i class="glyphicon glyphicon-th-list"></i>
-			</button>
-			<a class="navbar-brand md-admin-brand" href="<#ROOTHTML#>admin.php">
-				<img src="<#ROOTHTML#>img/logo-md.png" alt="MajorDoMo">
-				<span><#LANG_CONTROL_PANEL#></span>
-			</a>
-		</div>
-	</nav>
-	
 	<div class="md-admin-search-backdrop" data-md-search-close></div>
 	<aside class="md-admin-search-drawer" id="mdmGlobalSearchDrawer" aria-labelledby="mdmGlobalSearchTitle" aria-hidden="true">
 		<div class="md-admin-search-drawer__header">
@@ -337,22 +325,6 @@ $(document).ready(function() {
 		//$(this).popover('hide');
 	});
 	
-	var $adminHeader = $('.md-admin-header');
-	function updateAdminHeaderState() {
-		if ($(window).scrollTop() > 24 && (document.documentElement.scrollHeight - window.innerHeight) >= 200) {
-			$adminHeader.addClass('md-admin-header--compact');
-		} else {
-			$adminHeader.removeClass('md-admin-header--compact');
-		}
-	}
-	updateAdminHeaderState();
-	$(window).on("scroll", function(e) {
-		updateAdminHeaderState();
-
-		//if(window.pageYOffset < 500) {
-		//	$('#partLoadContent').css('margin-top', ''+(window.pageYOffset*1)+'px');
-		//}
-	});
 	
 	[#if HIDE_LEFT_PANEL!="1"#]
 	$("#hideMenuHint").mouseover(function () {

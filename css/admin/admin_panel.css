@@ -6006,9 +6006,11 @@ body.md-object-history-open .md-object-history-drawer {
 
 .md-admin-property-feed__item {
   display: grid;
-  gap: 10px;
-  padding: 12px 14px;
-  background: rgba(var(--md-admin-surface-rgb, 255, 255, 255), .92);
+  gap: 12px;
+  padding: 14px 16px;
+  background:
+    radial-gradient(circle at top right, rgba(var(--md-admin-primary-rgb, 71, 146, 209), .08), transparent 12rem),
+    rgba(var(--md-admin-surface-rgb, 255, 255, 255), .94);
   border: 1px solid var(--md-admin-border, rgba(31, 41, 51, .1));
   border-radius: 16px;
   box-shadow: 0 8px 22px rgba(15, 23, 42, .05);
@@ -6016,7 +6018,7 @@ body.md-object-history-open .md-object-history-drawer {
 
 .md-admin-property-feed__main {
   display: grid;
-  gap: 4px;
+  gap: 8px;
 }
 
 .md-admin-property-feed__main strong,
@@ -6027,15 +6029,37 @@ body.md-object-history-open .md-object-history-drawer {
   word-break: break-word;
 }
 
-.md-admin-property-feed__main strong {
-  color: var(--md-admin-text, #1f2933);
-  font-size: .93rem;
-  font-weight: 700;
+.md-admin-property-feed__property-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
 }
 
-.md-admin-property-feed__main span {
+.md-admin-property-feed__property {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 4px 10px;
+  color: var(--md-admin-primary, #4792d1);
+  background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
+  border: 1px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .18);
+  border-radius: 999px;
+  font-size: .9rem;
+  font-weight: 800;
+}
+
+.md-admin-property-feed__update {
   color: var(--md-admin-muted, #6b7a88);
-  font-size: .88rem;
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+.md-admin-property-feed__value {
+  color: var(--md-admin-text, #1f2933);
+  font-size: .93rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .md-admin-property-feed__meta {
@@ -6051,6 +6075,22 @@ body.md-object-history-open .md-object-history-drawer {
 .md-admin-property-feed__meta span,
 .md-admin-property-feed__meta small {
   max-width: 100%;
+}
+
+.md-admin-property-feed__source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  color: var(--md-admin-muted, #6b7a88);
+  background: rgba(148, 163, 184, .12);
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 999px;
+  cursor: help;
+}
+
+.md-admin-property-feed__source i {
+  font-size: .95em;
 }
 
 .md-admin-console-drawer {
