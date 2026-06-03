@@ -9,7 +9,13 @@
   [#endif OK#]
   [#if ERR#]
    <div class="alert alert-danger" id="alert_msg" data-scripts-auto-hide><#LANG_FILLOUT_REQURED#></div>
-   <div class="md-scripts-code-error" data-scripts-error-line="[#ERR_LINE#]" data-scripts-error-text="[#ERRORS#]" data-scripts-error-up="[#SETTINGS_CODEEDITOR_UPTOLINE#]" data-scripts-error-enabled="[#SETTINGS_CODEEDITOR_SHOWERROR#]" data-scripts-error-settings="[#SETTINGS_CODEEDITOR_TURNONSETTINGS#]"></div>
+   <div class="md-scripts-code-error md-code-editor__error" id="error_noty" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]" data-scripts-error-line="[#ERR_LINE#]" data-scripts-error-text="[#ERRORS#]" data-scripts-error-up="[#SETTINGS_CODEEDITOR_UPTOLINE#]" data-scripts-error-enabled="[#SETTINGS_CODEEDITOR_SHOWERROR#]" data-scripts-error-settings="[#SETTINGS_CODEEDITOR_TURNONSETTINGS#]">
+    <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
+    <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
+    <div class="md-code-editor__error-actions">
+     <button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
+    </div>
+   </div>
   [#endif ERR#]
 
   <div class="md-scripts-form__grid">
@@ -56,24 +62,91 @@
    <div class="md-scripts-form__grid md-scripts-code-grid">
     <label class="md-scripts-label"><#LANG_CODE#></label>
     <div class="md-scripts-code-panel">
-     [#module name="blockly_code" system_name="script<#ID#>" code_field="code" action=""#]
-     [#if ERRORS#]
-      <div id="error_noty" class="md-scripts-code-error">
-       <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
-       <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
-      </div>
-      <textarea id="error_old_code" class="md-scripts-hidden">[#ERR_OLD_CODE#]</textarea>
-     [#endif ERRORS#]
-     <div class="visible-xs visible-sm" id="mobileIndicator"></div>
-     <div id="code_area" class="md-scripts-code-area">
-      [#if SETTINGS_CODEEDITOR_TURNONSETTINGS != 1#]
-       <div class="md-scripts-code-warning"><#LANG_CODEEDITOR_NOTY_TURNOFF#></div>
-      [#endif SETTINGS_CODEEDITOR_TURNONSETTINGS#]
+     [#if SETTINGS_CODEEDITOR_TURNONSETTINGS != 1#]
+      <div class="md-scripts-code-warning"><#LANG_CODEEDITOR_NOTY_TURNOFF#></div>
+     [#endif SETTINGS_CODEEDITOR_TURNONSETTINGS#]
 
-      <div id="autosave_code_in_time_div" class="md-scripts-autosave">
-       <span class="md-scripts-autosave__icon">saved</span> <#LANG_CODEEDITOR_AUTOSAVE_CODE#> <span id="autosave_code_in_time"></span>. <#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#>
+     <div class="md-code-editor"
+          data-code-editor
+          data-code-editor-key="[#CODE_EDITOR_KEY#]"
+          data-code-editor-mode="[#CODE_EDITOR_MODE#]"
+          data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
+          data-code-editor-autosave="[#SETTINGS_CODEEDITOR_AUTOSAVE#]"
+          data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
+          data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
+          data-code-editor-min-lines="[#SETTINGS_CODEEDITOR_MIXLINE#]"
+          data-code-editor-max-lines="[#SETTINGS_CODEEDITOR_SHOWLINE#]"
+          data-code-editor-autofocus="[#if AUTOFOCUS == '0'#]0[#else#]1[#endif#]"
+          data-code-editor-validate-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+          data-code-editor-autosave-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+          data-code-editor-id="[#ID#]"
+          data-code-editor-md="[#SYSTEM_NAME#]"
+          data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
+      <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+       <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
+       [#if CODE_EDITOR_VALIDATE="1"#]
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
+       [#endif CODE_EDITOR_VALIDATE#]
+       <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
+       <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
+       <span class="md-code-editor__status" data-code-editor-status></span>
       </div>
+
+      [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS#]
+       <div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
+        <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
+        <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
+        <div class="md-code-editor__error-actions">
+         <button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
+        </div>
+       </div>
+      [#endif#]
+
       <textarea name="code" id="code" rows="30" cols="100" class="form-control">[#CODE#]</textarea>
+
+      <div class="md-code-editor__drawer-backdrop" data-code-editor-backdrop hidden></div>
+      <aside class="md-code-editor__drawer" data-code-editor-drawer hidden>
+       <div class="md-code-editor__drawer-header">
+        <div>
+         <h3 class="md-code-editor__drawer-title"><#LANG_HISTORY#></h3>
+         <p class="md-code-editor__drawer-subtitle">Autosave backups and saved versions</p>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="close-drawer"><#LANG_CLOSE#></button>
+       </div>
+       <div class="md-code-editor__drawer-body">
+        <div class="md-code-editor__section">
+         <h4><#LANG_HISTORY#></h4>
+         <p>Saved versions are stored automatically when the code changes.</p>
+         <div class="md-code-editor__version-list">
+          [#if HISTORY_AVAILABLE#]
+           [#begin CODE_HISTORY#]
+            <article class="md-code-editor__version-item" data-code-editor-version data-code-editor-version-code-b64="[#CODE_B64#]">
+             <header>
+              <strong>[#ADDED#]</strong>
+              <span>[#SYSTEM_NAME#]</span>
+             </header>
+             <div class="md-code-editor__restore-actions">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-version-action="preview"><#LANG_SHOW#></button>
+              <button type="button" class="btn btn-primary btn-sm" data-code-editor-version-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
+             </div>
+            </article>
+           [#end CODE_HISTORY#]
+          [#else#]
+           <div class="md-code-editor__empty">No saved versions yet.</div>
+          [#endif HISTORY_AVAILABLE#]
+         </div>
+        </div>
+
+        <div class="md-code-editor__section">
+         <h4><#LANG_CODEEDITOR_AUTOSAVE#></h4>
+         <p><#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></p>
+         <div class="md-code-editor__restore-list" data-code-editor-autosave-list>
+          <div class="md-code-editor__empty">No autosave backups loaded yet.</div>
+         </div>
+         <pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
+        </div>
+       </div>
+      </aside>
      </div>
     </div>
    </div>

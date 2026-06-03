@@ -856,7 +856,7 @@ $dictionary=array(
 'CODEEDITOR_AUTOSAVE_CODE'=>'Kood salvestatakse automaatselt',
 'CODEEDITOR_AUTOSAVE_CODE_HELP'=>'Vajutage taastamiseks <code>CTRL+R</code>!',
 'CODEEDITOR_ERROR_IN_CODE'=>'Viga koodis',
-'CODEEDITOR_ERROR_RESTORE_CODE'=>'Kas saate taastada eelmise koodi, <a style="color: #ff574b;font-weight: bold;text-decoration: underline;" href="javascript://" onclick="if(confirm(\'<#LANG_ARE_YOU_SURE#>\')) (editor.setValue($(\'#error_old_code\').text(), $(\'#error_noty\').hide()));">restore?</a>',
+'CODEEDITOR_ERROR_RESTORE_CODE'=>'Kasutage allolevat taastamisnuppu, et tuua tagasi eelmine versioon.',
 'CODEEDITOR_CHECK_ON_ERROR_BTN'=>'Kontrollige viga',
 'CODEEDITOR_RESTORE'=>'Taastamine',
 'CODEEDITOR_CLOSE_BTN'=>'Sulgege',

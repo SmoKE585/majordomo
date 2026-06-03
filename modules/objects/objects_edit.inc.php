@@ -304,18 +304,13 @@ if ($this->tab == 'methods') {
             if ($run_type == 'code' && $my_meth['CODE'] != '') {
                 //echo $content;
                 if (!defined('PYTHON_PATH') and !isItPythonCode($my_meth['CODE'])) {
+                    $errorDetails = code_syntax_error_details($my_meth['CODE']);
 
-
-                    $errors = php_syntax_error($my_meth['CODE']);
-
-                    if ($errors) {
-                        $out['ERR_LINE'] = preg_replace('/[^0-9]/', '', substr(stristr($errors, 'php on line '), 0, 18)) - 2;
+                    if ($errorDetails) {
+                        $out['ERR_LINE'] = (int)$errorDetails['line'];
                         $out['ERR_CODE'] = 1;
-                        $errorStr = explode('Parse error: ', str_replace("'", '', strip_tags(nl2br($errors))));
-                        $errorStr = explode('Errors parsing', $errorStr[1]);
-                        $errorStr = explode(' in ', $errorStr[0]);
-                        //var_dump($errorStr);
-                        $out['ERRORS'] = $errorStr[0];
+                        $out['ERRORS'] = $errorDetails['message'];
+                        $out['ERR_FULL'] = $errorDetails['full'];
                         $ok = 0;
                         $out['OK'] = $ok;
                         $out['ERR_OLD_CODE'] = $old_code;

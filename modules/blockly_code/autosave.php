@@ -4,11 +4,16 @@ chdir (dirname (__FILE__) . '/../../');
 include_once ('./config.php');
 include_once ('./lib/loader.php');
 
-$dir = DOC_ROOT . '/cms/cached/codemirror';
+$dir = DOC_ROOT . '/cms/cached/codeeditor';
 
 $action = $_POST['action'];
 $id = $_POST['id'];
 $md = $_POST['md'];
+$key = isset($_POST['key']) ? trim((string)$_POST['key']) : '';
+if ($key === '') {
+	$key = trim((string)$md . '_' . (string)$id);
+}
+$safeKey = md5($key);
 	
 $code = $_POST['code'];
 	
@@ -18,12 +23,12 @@ $code = $_POST['code'];
 //$code = str_replace("!quot;", '"', $code);
 //$code = str_replace("!#039;", "'", $code);
 	
-if($action == 'save' && !empty($id) && !empty($md)) {
+if($action == 'save' && !empty($key)) {
 	if(!is_dir($dir)) {
 		mkdir($dir, 0777, true);
 	}
 
-	$fileName = 'autosave_'.$md.'_'.$id.'_'.time().'.cdm';
+	$fileName = 'autosave_'.$safeKey.'_'.time().'.cdm';
 	$filePath = $dir . '/' . $fileName;
 	SaveFile($filePath, $code);
 	
@@ -33,12 +38,13 @@ if($action == 'save' && !empty($id) && !empty($md)) {
 	foreach(@scandir($dir) as $value) {
 		if($value == '.' || $value == '..') continue;
 		$filename = substr($value, 0, -4);
-		$filename = (int) explode('_', $filename)[3];
+		$parts = explode('_', $filename);
+		$filename = (int) end($parts);
 		if(($filename+86400) < time()) {
 			@unlink($dir.'/'.$value);
 		}
 	}
-} else if($action == 'restore' && !empty($id) && !empty($md)) {
+} else if($action == 'restore' && !empty($key)) {
 	//Выгружаем файлы
 	$files = @scandir($dir);
 	//Выкидываем, все что не относится к запросу
@@ -46,7 +52,7 @@ if($action == 'save' && !empty($id) && !empty($md)) {
 		if($value == '.' || $value == '..') unset($files[$key]);
 		$filename = substr($value, 0, -4);
 		$filename = explode('_', $filename);
-		if($filename[1] != $md || $filename[2] != $id) unset($files[$key]);
+		if(!isset($filename[1]) || $filename[1] != $safeKey) unset($files[$key]);
 	}
 	rsort($files);
 	
@@ -61,9 +67,9 @@ if($action == 'save' && !empty($id) && !empty($md)) {
 		if($value == '.' || $value == '..') continue;
 		$filename = substr($value, 0, -4);
 		$filename = explode('_', $filename);
-		$addtime = (int) $filename[3];
+		$addtime = (int) end($filename);
 		
-		$restoreCode[$key]['name'] = $filename[1].'_'.$filename[2].'_'.$filename[3];
+		$restoreCode[$key]['name'] = 'backup_' . date('Ymd_His', $addtime);
 		$restoreCode[$key]['create'] = date('d.m.Y H:i:s', $addtime);
 		$restoreCode[$key]['code'] = LoadFile($dir.'/'.$value);
 	}
@@ -84,9 +90,13 @@ if($action == 'save' && !empty($id) && !empty($md)) {
 	$code = str_replace("!plus", "+", $code);
 	$code = str_replace("!minus", "-", $code);
 	
-	$errors = php_syntax_error($code);
+	$errorDetails = code_syntax_error_details($code);
 	
-	echo json_encode(array('status' => 'ok', 'msg' => $errors,));
+	echo json_encode(array(
+		'status' => 'ok',
+		'msg' => $errorDetails ? $errorDetails['full'] : '',
+		'details' => $errorDetails,
+	));
 } else {
 	echo 'error';
 	http_response_code(404);

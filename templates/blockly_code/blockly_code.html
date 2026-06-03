@@ -1,614 +1,91 @@
-[#if TYPE=="php"#]
-<script language="javascript">
- function [#CODE_FIELD#]_editBlocklyUpdated() {
-     if (typeof editor!=="undefined") {
-         editor.toTextArea();
-     }
-  var blockly = window.open('<#ROOTHTML#>3rdparty/googleblockly/?code_field=[#CODE_FIELD#]','BlocklyUpdated','scrollbars=no,width='+(screen.width-100)+',height='+(screen.height-200)+',left=50,top=100');
-  blockly.creator=self;
-  blockly.focus(); 
-  return false;
- }
+<div class="md-code-editor-shell" data-code-editor-shell>
+ [#if ID!=""#]
+  <div class="md-code-editor"
+       data-code-editor
+       data-code-editor-key="[#CODE_EDITOR_KEY#]"
+       data-code-editor-mode="[#CODE_EDITOR_MODE#]"
+       data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
+       data-code-editor-autosave="[#SETTINGS_CODEEDITOR_AUTOSAVE#]"
+       data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
+       data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
+       data-code-editor-min-lines="[#SETTINGS_CODEEDITOR_MIXLINE#]"
+       data-code-editor-max-lines="[#SETTINGS_CODEEDITOR_SHOWLINE#]"
+       data-code-editor-autofocus="[#if AUTOFOCUS == '0'#]0[#else#]1[#endif#]"
+       data-code-editor-validate-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+       data-code-editor-autosave-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+       data-code-editor-id="[#ID#]"
+       data-code-editor-md="[#SYSTEM_NAME#]"
+       data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
 
- function [#CODE_FIELD#]_showCodeHistory() {
-	 $('#[#CODE_FIELD#]_history').toggle();
-	 return false;
- }
+   [#if SETTINGS_CODEEDITOR_TURNONSETTINGS != 1#]
+    <div class="md-scripts-code-warning"><#LANG_CODEEDITOR_NOTY_TURNOFF#></div>
+   [#endif SETTINGS_CODEEDITOR_TURNONSETTINGS#]
 
- function [#CODE_FIELD#]_showCode(history_id) {
-	 var history_code = $('#history_'+history_id).html();
-	 alert(history_code);
-	 return false;
- }
+   <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
+    [#if CODE_EDITOR_VALIDATE="1"#]
+     <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
+    [#endif CODE_EDITOR_VALIDATE#]
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
+    <span class="md-code-editor__status" data-code-editor-status></span>
+   </div>
 
- function [#CODE_FIELD#]_useCode(history_id) {
-	 var history_code = $('#history_'+history_id).html();
-	 var history_code_xml = $('#history_'+history_id+'_xml').html();
-	 var code_type = $('.[#CODE_FIELD#]_code_type:checked').val();
-
-	 $('#[#CODE_FIELD#]').val(history_code);
-	 if (typeof editor !== 'undefined') {
-		 editor.setValue(history_code);
-	 }
-	 $('#xml_code').val(history_code_xml);
-	 return false;
- }
-
-</script>
-
-[#if ONLYCODE != 1#]
-<div style="margin-top: 3px;" id="blockyTypeForCoding">
-	<#LANG_CODE_TYPE#>:
-	<input type="radio" name="[#CODE_FIELD#]_code_type" class="[#CODE_FIELD#]_code_type" value="0"[#if CODE_TYPE="0"#] checked[#endif#]> <#LANG_CODE#>
-	<input type="radio" name="[#CODE_FIELD#]_code_type" class="[#CODE_FIELD#]_code_type" value="1"[#if CODE_TYPE="1"#] checked[#endif#]> Blockly
-	
-	[#if HISTORY_AVAILABLE#]
-	(<a href="#" onclick="return [#CODE_FIELD#]_showCodeHistory();"><#LANG_HISTORY#></a>)
-	[#endif HISTORY_AVAILABLE#]
-</div>
-[#endif#]
-
-<div id="[#CODE_FIELD#]_history" style="display:none;max-height: 150px;overflow: auto;">
-	<table class="table">
-		[#begin CODE_HISTORY#]
-		<tr>
-			<td><#LANG_UPDATED#> [#ADDED#]
-				<span id="history_[#ID#]" style="display:none">[#CODE#]</span>
-				<span id="history_[#ID#]_xml" style="display:none">[#XML#]</span>
-			</td>
-			<td>
-				<a href="#" onclick="return <#CODE_FIELD#>_showCode([#ID#]);" class="btn btn-default btn-xs"><i class="glyphicon glyphicon-eye-open"></i> <#LANG_SHOW#></a>
-				<a href="#" onclick="return <#CODE_FIELD#>_useCode([#ID#]);" class="btn btn-default btn-xs"><i class="glyphicon glyphicon-download"></i> <#LANG_SELECT#></a>
-			</td>
-		</tr>
-		[#end CODE_HISTORY#]
-	</table>
-</div>
-
- <script language="javascript">
-
-  $('.[#CODE_FIELD#]_code_type').click (function ()
-  {
-  var thisCheck = $(this);
-      if (thisCheck.val()==0) {
-          $('#xml_row').hide();
-          $('#[#CODE_FIELD#]_area').show();
-          $('#checkCodeBtn').show();
-      }
-      if (thisCheck.val()==1) {
-        $('#xml_row').show();
-        $('#[#CODE_FIELD#]_area').hide();
-        $('#checkCodeBtn').hide();
-      }
-  }
-  );
- </script>
-[#endif TYPE#]
-
-
-<script language="javascript" type="text/javascript">
-$(function() {
-    [#if CODE_TYPE="1"#]
-     $('#[#CODE_FIELD#]_area').hide();
-    [#endif CODE_TYPE#]
-});
-</script>
-
-[#if CODE_TYPE="0"#]
-<script src="<#ROOTHTML#>3rdparty/codemirror/lib/codemirror.js"></script>
-<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/codemirror/lib/codemirror.css">
-<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/codemirror/addon/display/fullscreen.css">
-<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/codemirror/addon/fold/foldgutter.css">
-<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/codemirror/addon/hint/show-hint.css">
-[#if SETTINGS_CODEEDITOR_THEME != 'codemirror' && SETTINGS_CODEEDITOR_TURNONSETTINGS == '1'#]<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/codemirror/lib/[#SETTINGS_CODEEDITOR_THEME#].css">[#endif#]
-
-<style>
-	.cm_panel {
-		background: #f7f7f7;
-		padding: 3px 7px;
-		font-size: 0.85em;
-	}
-	.cm_panel.top, .cm_panel.after-top {
-		border-bottom: 1px solid #ddd;
-	}
-	.cm_panel.bottom, .cm_panel.before-bottom {
-		border-top: 1px solid #ddd;
-	}
-
-	.cm_panel.top.cm_panel_fullscreen {
-		position: fixed;
-		z-index: 10;
-		top: 0; left: 50%;
-		width: 50%;
-	}
-
-	.remove-panel {
-		cursor: pointer;
-	}
-	.remove-panel {
-		float: right;
-	}
-</style>
-
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/edit/matchbrackets.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/mode/htmlmixed/htmlmixed.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/mode/xml/xml.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/mode/javascript/javascript.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/mode/css/css.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/mode/clike/clike.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/mode/php/php.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/mode/htmlmixed/htmlmixed.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/display/fullscreen.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/fold/foldcode.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/fold/foldgutter.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/fold/brace-fold.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/fold/comment-fold.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/hint/show-hint.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/edit/closebrackets.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/search/match-highlighter.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/search/search.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/search/dialog.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/search/searchcursor.js"></script>
-<script src="<#ROOTHTML#>3rdparty/codemirror/addon/display/panel.js"></script>
-
-<script language="javascript">
-var editor;
-var myTextArea[#CODE_FIELD#];
-
-var numPanels = 0;
-var panels = {};
-
-function makePanel(where) {
-	var node = document.createElement("div");
-	var id = ++numPanels;
-	var close, label;
-
-	node.id = "panel-" + id;
-	node.className = "cm_panel " + where;
-	close = node.appendChild(document.createElement("a"));
-	close.setAttribute("title", "Remove me!");
-	close.setAttribute("class", "remove-panel");
-	close.textContent = "✖";
-	CodeMirror.on(close, "mousedown", function(e) {
-		e.preventDefault()
-		panels[node.id].clear();
-	});
-	label = node.appendChild(document.createElement("span"));
-	label.innerHTML = "Tips: you can hit <a href='#' onClick='return switchFullscreen();'>F11</a> for a fullscreen mode; <a href='#' onclick='return CtrlSSave();'>Ctrl+S</a> to save code.";
-	return node;
-}
-function addPanel(where) {
-	var node = makePanel(where);
-	panels[node.id] = editor.addPanel(node, {position: where, stable: true});
-}
-
-
-function switchFullscreen() {
-	if (editor.getOption("fullScreen") != true) {
-		$('nav').hide();
-		setTimeout('$(\'nav\').hide();',1000);
-		$('.cm_panel').addClass('cm_panel_fullscreen');
-	} else {
-		$('nav').show();
-		$('.cm_panel').removeClass('cm_panel_fullscreen');
-	}
-	editor.setOption("fullScreen", !editor.getOption("fullScreen"));
-}
-
-function CtrlSSave() {
-	[#if SETTINGS_CODEEDITOR_AUTOSAVE != '0'#]ajaxAutosave('save');[#endif#]
-	$("[name='subm']").click();
-}
-
-$(document).ready(function(){
-	var myTextArea[#CODE_FIELD#] = document.getElementById('[#CODE_FIELD#]');
-	editor = CodeMirror.fromTextArea(myTextArea[#CODE_FIELD#], {
-		value: myTextArea[#CODE_FIELD#].value,
-		lineNumbers: true,
-		matchBrackets: true,
-		indentUnit: 0,
-		tabSize: 4,
-		
-		[#if TYPE=="php" || TYPE=="html" || TYPE=="javascript"#]
-		enterMode: "indent",
-		undoDelay: 400,
-		lineWrapping: [#if SETTINGS_CODEEDITOR_WRAPLINES == 1#]true[#else#]false[#endif#],
-		scrollbarStyle: 'native',
-		autofocus: [#if AUTOFOCUS == '0'#]false[#else#]true[#endif#],
-		[#if SETTINGS_CODEEDITOR_THEME != 'codemirror' && SETTINGS_CODEEDITOR_TURNONSETTINGS == '1'#]theme: "[#SETTINGS_CODEEDITOR_THEME#]",[#endif#]
-		[#endif#]
-		
-		[#if TYPE=="php"#]
-		mode: "text/x-php",
-		[#else TYPE#]
-		mode: "xml",
-		htmlMode: true,
-		[#endif TYPE#]
-		
-		indentWithTabs: false,
-		[#if TYPE=="php"#]autoCloseBrackets: [#if SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES == 1#]true[#else#]false[#endif#],[#endif#]
-		foldGutter: true,
-		gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
-		extraKeys: {
-			"F11": function(cm) {
-				switchFullscreen();
-			},
-			"Ctrl-S": function(instance) {
-				CtrlSSave();
-				return;
-			},
-			"Ctrl-E": function(cm) { 
-				ajaxAutosave('checkcode');
-				return;
-			},
-			"Ctrl-O": function(cm) { 
-				ajaxAutosave('save');
-				return;
-			},
-			"Ctrl-R": function(cm) { 
-				modalRestoreCode();
-				return;
-			},
-			"Ctrl-D": function(cm) { 
-				var current_cursor = cm.doc.getCursor();
-				var line_content = cm.doc.getLine(current_cursor.line);
-				CodeMirror.commands.goLineEnd(cm);
-				CodeMirror.commands.newlineAndIndent(cm);
-				cm.doc.replaceSelection(line_content);
-				cm.doc.setCursor(current_cursor.line + 1, current_cursor.ch);
-			},
-			"Ctrl-F": "findPersistent",
-			"Esc": function(cm) {
-				if (cm.getOption("fullScreen")) {
-					cm.setOption("fullScreen", false);
-					$('nav').show();
-				}
-			},
-			[#if SETTINGS_CODEEDITOR_TURNONSETTINGS == 1 && SETTINGS_CODEEDITOR_AUTOCOMPLETE == 1#]
-			"Ctrl-Space": "autocomplete",
-			'"': "autocomplete",
-			[#endif#]
-			"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }
-		}
-	});
-
-
-
-	addPanel("top");
-
-	[#if TYPE=="php"#]
-		[#if SETTINGS_CODEEDITOR_TURNONSETTINGS == 1 && SETTINGS_CODEEDITOR_AUTOCOMPLETE == 1#]
-		if($('#mobileIndicator').is(':hidden')) {
-			CodeMirror.registerHelper('hint', 'ajax', (mirror, callback) => {
-				let words = [[#CODEEDITOR_AUTOCOMPLETE_WORDS#]];
-				let cur = mirror.getCursor();
-				let range = mirror.findWordAt(cur);
-				let fragment = mirror.getRange(range.anchor, range.head).toLowerCase();
-
-				callback({
-					list: words.filter(w => w.toLowerCase().indexOf(fragment) >= 0),
-					from: range.anchor,
-					to: range.head
-					
-				});
-			});
-			CodeMirror.hint.ajax.async = true;
-			
-			
-			CodeMirror.commands.autocomplete = function(mirror) {
-				mirror.showHint({ 
-					hint: CodeMirror.hint.ajax,
-					completeSingle: true,
-					alignWithWord: true,
-					closeOnUnfocus: true,
-				});
-			};
-			
-			var ExcludedIntelliSenseTriggerKeys =
-			{
-				"8": "backspace",
-				"9": "tab",
-				"13": "enter",
-				"16": "shift",
-				"17": "ctrl",
-				"18": "alt",
-				"19": "pause",
-				"20": "capslock",
-				"27": "escape",
-				"33": "pageup",
-				"34": "pagedown",
-				"35": "end",
-				"36": "home",
-				"37": "left",
-				"38": "up",
-				"39": "right",
-				"40": "down",
-				"45": "insert",
-				"46": "delete",
-				"49": "1",
-				"50": "2",
-				"51": "3",
-				"53": "5",
-				"54": "6",
-				"55": "7",
-				"56": "8",
-				"91": "left window key",
-				"92": "right window key",
-				"93": "select",
-				"107": "add",
-				"109": "subtract",
-				"110": "decimal point",
-				"111": "divide",
-				"112": "f1",
-				"113": "f2",
-				"114": "f3",
-				"115": "f4",
-				"116": "f5",
-				"117": "f6",
-				"118": "f7",
-				"119": "f8",
-				"120": "f9",
-				"121": "f10",
-				"122": "f11",
-				"123": "f12",
-				"144": "numlock",
-				"145": "scrolllock",
-				"186": "semicolon",
-				"187": "equalsign",
-				"188": "comma",
-				"191": "slash",
-				"192": "graveaccent",
-				"220": "backslash",
-			}
-
-			editor.on("keyup", function(editor, event) {
-				$(".cm-error").removeAttr('class');
-				var __Cursor = editor.getDoc().getCursor();
-				var __Token = editor.getTokenAt(__Cursor);
-
-				if (!editor.state.completionActive && !ExcludedIntelliSenseTriggerKeys[(event.keyCode || event.which).toString()]) {
-					CodeMirror.commands.autocomplete(editor, null, null);
-				}
-			});
-		}
-		[#endif#]
-		
-		editor.on('update', editor => {			
-			anc = window.location.hash.replace("#","");
-			actualLineNumber = Number(anc.split('_')[1]);
-			
-			totalLine = editor.lineCount();
-			
-			classList = $('.CodeMirror').attr("class").split(' ');
-			if(!actualLineNumber) {
-				if(totalLine < [#SETTINGS_CODEEDITOR_MIXLINE#] && classList.indexOf('CodeMirror-fullscreen') == '-1') {
-					setHeight = Number('[#SETTINGS_CODEEDITOR_MIXLINE#]')*20;
-					$('.CodeMirror').attr('style', 'height: '+setHeight+'px;');
-				} else if(classList[4] != 'CodeMirror-fullscreen') {
-					if(totalLine >= [#SETTINGS_CODEEDITOR_SHOWLINE#]) {
-						setHeightMax = Number('[#SETTINGS_CODEEDITOR_SHOWLINE#]')*20;
-						$('.CodeMirror').attr('style', 'height: '+setHeightMax+'px;');
-					} else {
-						$('.CodeMirror').attr('style', 'height: auto;');
-					}
-					
-				} else {
-					$('.CodeMirror').removeAttr('style');
-				}
-			} else {
-				$('.CodeMirror').attr('style', 'height: auto;');
-			}
-		});
-		
-		[#if SETTINGS_CODEEDITOR_SHOWERROR == '1' AND SETTINGS_CODEEDITOR_TURNONSETTINGS == '1'#]
-		//editor.on('focus', editor => {
-		//	$('.cm-error').remoteAddr('class');
-		//	anc = window.location.hash.replace("#","");
-		//	actualLineNumber = Number(anc.split('_')[1]);
-		//	if(actualLineNumber) {
-				//Покажем ошибку
-		//		myEditor = $(".CodeMirror");
-		//		codeMirrorEditor = myEditor[0].CodeMirror;
-		//		codeMirrorEditor.addLineClass(actualLineNumber-1, null, 'line-error');
-		//		codeMirrorEditor.addLineClass(actualLineNumber, null, 'line-error');
-		//		codeMirrorEditor.addLineClass(actualLineNumber+1, null, 'line-error');
-		//	}
-		//});
-		//Обработчик событий чтобы удалить пометку строки
-		//editor.on('cursorActivity', editor => {
-			//Найдем анкер
-			//anc = window.location.hash.replace("#","");
-			//Сплит и получим номер строки
-			//actualLineNumber = Number(anc.split('_')[1]);
-			//Найдем где курсор в редакторе
-			//getCursorStart = editor.getCursor().line-1;
-			//getCursorEnd = getCursorStart+2;
-			
-			//if(getCursorStart <= actualLineNumber && getCursorEnd >= actualLineNumber) {
-				//Удалим класс
-			//	myEditor = $(".CodeMirror");
-			//	codeMirrorEditor = myEditor[0].CodeMirror;
-			//	codeMirrorEditor.removeLineClass(actualLineNumber-1, null, 'line-error');
-			//	codeMirrorEditor.removeLineClass(actualLineNumber, null, 'line-error');
-			//	codeMirrorEditor.removeLineClass(actualLineNumber+1, null, 'line-error');
-			//}
-		//});
-		editor.on('dblclick', editor => {
-			editor.setOption('highlightSelectionMatches', {showToken: false, wordsOnly: false, annotateScrollbar: false});
-		});
-		[#if SETTINGS_CODEEDITOR_AUTOSAVE != '0'#]
-		editor.on('change', editor => {
-			clearInterval(getCookie('autosavetimerid'));
-			document.cookie = 'autosavetimerid='+setTimeout(function() { ajaxAutosave('save'); }, [#SETTINGS_CODEEDITOR_AUTOSAVE#]000);
-		});
-		[#endif#]
-		[#endif#]	
-	[#endif#]
-});
-
-
-function getCookie(name) {
-  let matches = document.cookie.match(new RegExp(
-	"(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-  ));
-  return matches ? decodeURIComponent(matches[1]) : undefined;
-}
-
-function escapeHtml(text, type='scape') {
-	if(type == 'scape') { 
-		var map = {
-			'&': '!amp',
-			'<': '!lt',
-			'>': '!gt',
-			'"': '!quot',
-			"'": '!039',
-			"(": '!lpar',
-			")": '!rpar',
-			"\\": '!bsol',
-			"#": '!num',
-			";": '!endline',
-			"\n": '!newline',
-			"+": '!plus',
-			"-": '!minus',
-		};
-		
-		return text.replace(/[&<>()\+\-#;\n\"']/g, function(m) { return map[m]; });
-	} else if(type == 'unscape') {
-		var map = {
-			'!amp': '&',
-			'!lt': '<',
-			'!gt': '>',
-			'!quot': '"',
-			'!039': "'",
-			'!lpar' : "(",
-			'!rpar' : ")",
-			'!bsol' : "\\",
-			'!num' : "#",
-			'!endline' : ";",
-			"!newline": '\n',
-			"!plus": '+',
-			"!minus": '-',
-		};
-		
-		return text.replace(/!amp|!lt|!gt|!quot|!039|!lpar|!rpar|!bsol|!num|!endline|!newline|!plus|!minus/g, function(m) { return map[m]; });
-	}
-}
-
-function ajaxAutosave(action) {
-	//Отправляем код POST
-	id = $('input[name*="id"]').val();
-	md = $('input[name*="md"]:eq(2)').val();
-	code = editor.getValue();
-	code = escapeHtml(code);
-	
-	$.ajax({
-		type: "POST",
-		url: "/modules/blockly_code/autosave.php",
-		data: "id="+id+"&md="+md+"&code="+code+"&action="+action,
-		success: function(responce){
-			responce = JSON.parse(responce);
-			if(responce.status != 'ok') return;
-			
-			if(action == 'checkcode') {
-				$('#autosave_check_code_div').show('slow');
-				if(responce.msg) {
-					alert('В коде есть ошибка: '+responce.msg);
-				} else {
-					alert('Ошибок в коде нет!');
-				}
-			}
-			if(action == 'save') {
-				$('#autosave_code_in_time_div').show('slow');
-				$('#autosave_code_in_time').html(responce.msg);
-			}
-			if(action == 'restore') {
-				let i = 0;
-				responseArray = responce.msg;
-				
-				$("#restoreCodeList").html('');
-				while (i <= responseArray.length) {
-					$("#restoreCodeList").append('<tr><th scope="row" style="vertical-align: middle;">'+responseArray[i].name+'</th><td style="vertical-align: middle;">'+responseArray[i].create+'</td><td style="cursor:pointer;vertical-align: middle;"><a href="javascript://" onclick="seeCodeFunc(\''+responseArray[i].code+'\')"><i class="glyphicon glyphicon-eye-open" style="font-size: 1.5rem;"></i></a></td><td style="vertical-align: middle;"><button type="button" class="btn btn-warning btn-xs" onclick="if(confirm(\'<#LANG_ARE_YOU_SURE#>\')) setValueEditor(\''+responseArray[i].code+'\');"><#LANG_CODEEDITOR_RESTORE#></button></td></tr>');
-					i++;
-				}
-			}
-		}
-	});	
-}
-
-function setValueEditor(code) {
-	ajaxAutosave('save');
-	var code = escapeHtml(code, 'unscape');
-	editor.setValue(code);
-	clearInterval(getCookie('autosavetimerid'));
-}
-
-function seeCodeFunc(code) {
-	var code = escapeHtml(code, 'unscape');
-	$('#restoreCodeTable').hide();
-	$('#seeRestoreCode').html(code);
-	$('#seeRestoreCodeDiv').show();
-}
-
-function modalRestoreCode() {
-	ajaxAutosave('restore');
-	$('#showAutosaveModal').modal('show')
-}
-</script>
-[#endif CODE_TYPE#]
-
-[#if TYPE=="php"#]
-<div class="modal fade" tabindex="-1" role="dialog" id="showAutosaveModal">
-	<div class="modal-dialog modal-lg" role="document">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h4 class="modal-title">Восстановить код</h4>
-			</div>
-			<div class="modal-body" style="padding: 20px 20px 0px 20px;">
-				<div style="row">
-					<div style="max-height: 350px;overflow: auto;" id="restoreCodeTable">
-						<table class="table" style="font-size: 1.2rem;text-align: center;">
-							<thead class="thead-dark">
-								<tr>
-									<th scope="col"><#LANG_NAME#></th>
-									<th scope="col" style="text-align: center;"><#LANG_CODEEDITOR_CREATE#></th>
-									<th scope="col" style="text-align: center;"><#LANG_PREVIEW#></th>
-									<th scope="col" style="text-align: center;"></th>
-								</tr>
-							</thead>
-							<tbody id="restoreCodeList">
-							
-							</tbody>
-						</table>
-					</div>
-					
-					<div id="seeRestoreCodeDiv" style="display:none;">
-						<textarea id="seeRestoreCode" style="width: 100%;height: 300px;border: 1px solid #ddd;padding: 5px;border-radius: 5px;resize: none;" readonly>
-							
-						</textarea>
-						<center>
-							<button type="button" class="btn btn-default btn-sm" style="margin-top: 15px;" onclick="$('#seeRestoreCodeDiv').hide();$('#restoreCodeTable').show();"><#LANG_BACK#></button>
-						</center>
-					</div>
-				</div>
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-primary" data-dismiss="modal"><#LANG_CODEEDITOR_CLOSE_BTN#></button>	
-			</div>
-		</div>
-	</div>
-</div>
-
-<div id="xml_row"[#if CODE_TYPE!="1"#] style="display:none"[#endif#]>
-<a href="#" onClick="return [#CODE_FIELD#]_editBlocklyUpdated();" class="btn btn-default btn-success"><#LANG_EDIT#></a>
-    <br/>
-    <small><a href="#" onClick="$('#xml_area').toggle();return false;"><#LANG_SHOW#> XML</a></small>
-    <div id="xml_area" style="display:none">
-     <textarea name="xml" id="xml_code" rows="5" cols="60" class="form-control">[#XML#]</textarea>
+   [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS#]
+    <div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
+     <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
+     <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
+     <div class="md-code-editor__error-actions">
+      <button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
+     </div>
     </div>
-</div>
-[#endif TYPE#]
+   [#endif#]
 
-    <link href="<#ROOTHTML#>3rdparty/select2/css/select2.min.css" rel="stylesheet" />
-    <script src="<#ROOTHTML#>3rdparty/select2/js/select2.min.js"></script>
+   <textarea name="code" id="code" rows="30" cols="100" class="form-control">[#CODE#]</textarea>
 
+   <div class="md-code-editor__drawer-backdrop" data-code-editor-backdrop hidden></div>
+   <aside class="md-code-editor__drawer" data-code-editor-drawer hidden>
+    <div class="md-code-editor__drawer-header">
+     <div>
+      <h3 class="md-code-editor__drawer-title"><#LANG_HISTORY#></h3>
+      <p class="md-code-editor__drawer-subtitle">Autosave backups and saved versions</p>
+     </div>
+     <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="close-drawer"><#LANG_CLOSE#></button>
+    </div>
+    <div class="md-code-editor__drawer-body">
+     <div class="md-code-editor__section">
+      <h4><#LANG_HISTORY#></h4>
+      <p>Saved versions are stored automatically when the code changes.</p>
+      <div class="md-code-editor__version-list">
+       [#if HISTORY_AVAILABLE#]
+        [#begin CODE_HISTORY#]
+         <article class="md-code-editor__version-item" data-code-editor-version data-code-editor-version-code-b64="[#CODE_B64#]">
+          <header>
+           <strong>[#ADDED#]</strong>
+           <span>[#SYSTEM_NAME#]</span>
+          </header>
+          <div class="md-code-editor__restore-actions">
+           <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-version-action="preview"><#LANG_SHOW#></button>
+           <button type="button" class="btn btn-primary btn-sm" data-code-editor-version-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
+          </div>
+         </article>
+        [#end CODE_HISTORY#]
+       [#else#]
+        <div class="md-code-editor__empty">No saved versions yet.</div>
+       [#endif HISTORY_AVAILABLE#]
+      </div>
+     </div>
+
+     <div class="md-code-editor__section">
+      <h4><#LANG_CODEEDITOR_AUTOSAVE#></h4>
+      <p><#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></p>
+      <div class="md-code-editor__restore-list" data-code-editor-autosave-list>
+       <div class="md-code-editor__empty">No autosave backups loaded yet.</div>
+      </div>
+      <pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
+     </div>
+    </div>
+   </aside>
+  </div>
+ [#endif ID#]
 </div>

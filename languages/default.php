@@ -1366,7 +1366,7 @@ $dictionary = array(
 	'CODEEDITOR_AUTOSAVE_CODE' => 'The code is saved automatically',
 	'CODEEDITOR_AUTOSAVE_CODE_HELP' => 'Press <code>CTRL+R</code> for restore!',
 	'CODEEDITOR_ERROR_IN_CODE' => 'Error in code',
-	'CODEEDITOR_ERROR_RESTORE_CODE' => 'Can you restore the previous code, <a style="color: #ff574b;font-weight: bold;text-decoration: underline;" href="javascript://" onclick="if(confirm(\'<#LANG_ARE_YOU_SURE#>\')) (editor.setValue($(\'#error_old_code\').text(), $(\'#error_noty\').hide()));">restore?</a>',
+	'CODEEDITOR_ERROR_RESTORE_CODE' => 'Use the restore button below to recover the previous version.',
 	'CODEEDITOR_CHECK_ON_ERROR_BTN' => 'Check on error',
 	'CODEEDITOR_RESTORE' => 'Restore',
 	'CODEEDITOR_CLOSE_BTN' => 'Close',

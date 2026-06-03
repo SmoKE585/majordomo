@@ -77,9 +77,9 @@
    }
    if ($rec['VALIDATION_TYPE']==100) {
     $rec['VALIDATION_CODE']=gr('validation_code');
-    $errors=php_syntax_error($rec['VALIDATION_CODE']);
-    if ($errors) {
-     $out['ERR_VALIDATION_CODE']=$errors;
+    $errorDetails=code_syntax_error_details($rec['VALIDATION_CODE']);
+    if ($errorDetails) {
+     $out['ERR_VALIDATION_CODE']=$errorDetails['message'];
      $ok=0;
     }
    }

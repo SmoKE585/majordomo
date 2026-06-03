@@ -66,21 +66,13 @@
 
 
    if ($rec['CODE']!='' && $run_type=='code') {
-    //echo $content;
-    $errors=php_syntax_error($code);
-    if ($errors) {
-            $out['ERR_LINE'] = preg_replace('/[^0-9]/', '', substr(stristr($errors, 'php on line '), 0, 18))-2;
+    $errorDetails = code_syntax_error_details($code);
+    if ($errorDetails) {
+            $out['ERR_LINE'] = (int)$errorDetails['line'];
             $out['ERR_CODE'] = 1;
-			if($out['ERR_LINE'] != '-2') {
-				$errorStr = explode('Parse error: ', str_replace("'", '', strip_tags(nl2br($errors))));
-				$errorStr = explode('Errors parsing', $errorStr[1]);
-				$errorStr = explode(' in ', $errorStr[0]);
-				$out['ERRORS'] = $errorStr[0];
-				$out['ERR_FULL'] = $errorStr[0].' '.$errorStr[1];
-				$out['ERR_OLD_CODE'] = $old_code;
-			} else {
-				$out['ERRORS'] = $errors;
-			}
+			$out['ERRORS'] = $errorDetails['message'];
+			$out['ERR_FULL'] = $errorDetails['full'];
+			$out['ERR_OLD_CODE'] = $old_code;
             $ok = 0;
         }
    }

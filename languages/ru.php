@@ -1367,7 +1367,7 @@ $dictionary = array(
 	'CODEEDITOR_AUTOSAVE_CODE' => 'Код сохранен автоматически',
 	'CODEEDITOR_AUTOSAVE_CODE_HELP' => 'Нажмите <code>CTRL+R</code> для восстановления!',
 	'CODEEDITOR_ERROR_IN_CODE' => 'Ошибка в коде',
-	'CODEEDITOR_ERROR_RESTORE_CODE' => 'Вы можете восстановить предыдущий код, <a style="color: #ff574b;font-weight: bold;text-decoration: underline;" href="javascript://" onclick="if(confirm(\'<#LANG_ARE_YOU_SURE#>\')) (editor.setValue($(\'#error_old_code\').text(), $(\'#error_noty\').hide()));">восстановить?</a>',
+	'CODEEDITOR_ERROR_RESTORE_CODE' => 'Используйте кнопку восстановления ниже, чтобы вернуть предыдущую версию.',
 	'CODEEDITOR_CHECK_ON_ERROR_BTN' => 'Проверить на ошибки',
 	'CODEEDITOR_RESTORE' => 'Восстановить',
 	'CODEEDITOR_CLOSE_BTN' => 'Закрыть',

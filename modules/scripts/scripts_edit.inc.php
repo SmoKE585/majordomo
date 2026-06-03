@@ -50,24 +50,15 @@ if ($this->mode == 'update') {
     $rec['CODE'] = $code;
 
     if ($rec['CODE'] != '') {
-        //echo $content;
+        $errorDetails = code_syntax_error_details($rec['CODE']);
 
-        $errors = php_syntax_error($rec['CODE']);
-
-        if ($errors) {
-            $out['ERR_LINE'] = preg_replace('/[^0-9]/', '', substr(stristr($errors, 'php on line '), 0, 18)) - 2;
+        if ($errorDetails) {
+            $out['ERR_LINE'] = (int)$errorDetails['line'];
             $out['ERR_CODE'] = 1;
-            $errorStr = explode('Parse error: ', htmlspecialchars(strip_tags(nl2br($errors))));
-            $errorStr = explode('Errors parsing', $errorStr[1]);
-            $errorStr = explode(' in ', $errorStr[0]);
-            if ($errorStr[0]) {
-                $out['ERRORS'] = $errorStr[0];
-                $out['ERR_FULL'] = $errorStr[0] . ' ' . $errorStr[1];
-            } else {
-                $out['ERRORS'] = $errors;
-                $out['ERR_FULL'] = nl2br($errors);
-            }
+            $out['ERRORS'] = $errorDetails['message'];
+            $out['ERR_FULL'] = $errorDetails['full'];
             $out['ERR_OLD_CODE'] = $old_code;
+            $out['ERR_OLD_CODE_B64'] = base64_encode((string)$old_code);
             $ok = 0;
         }
     }
