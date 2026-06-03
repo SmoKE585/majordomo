@@ -49,29 +49,78 @@
                     </div>
 
                     <div id="code_option" class="md-method-edit__code-panel [#if SCRIPT_ID!="0"#]d-none[#endif#]" data-md-method-code-panel>
-                        [#module name="blockly_code" system_name="method<#ID#>" code_field="code" action=""#]
-                        [#if ERRORS#]
-                        <div id="error_noty" class="alert alert-danger">
-                            <strong><#LANG_CODEEDITOR_ERROR_IN_CODE#>:</strong> [#ERRORS#]
-                            [#if ERR_OLD_CODE!=""#]<div class="mt-2"><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>[#endif#]
-                        </div>
-                        [#if ERR_OLD_CODE!=""#]<textarea id="error_old_code" class="d-none">[#ERR_OLD_CODE#]</textarea>[#endif#]
-                        [#endif ERRORS#]
-
-                        <div class="visible-xs visible-sm" id="mobileIndicator"></div>
-
                         [#if SETTINGS_CODEEDITOR_TURNONSETTINGS != 1#]
                         <div class="md-method-edit__editor-note">
                             <#LANG_CODEEDITOR_NOTY_TURNOFF#>
                         </div>
                         [#endif SETTINGS_CODEEDITOR_TURNONSETTINGS#]
 
-                        <div id="autosave_code_in_time_div" class="md-method-edit__autosave-note">
-                            <i class="glyphicon glyphicon-floppy-saved" aria-hidden="true"></i>
-                            <span><#LANG_CODEEDITOR_AUTOSAVE_CODE#> <span id="autosave_code_in_time"></span>. <#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></span>
-                        </div>
+                        <div class="md-code-editor"
+                             data-code-editor
+                             data-code-editor-key="[#CODE_EDITOR_KEY#]"
+                             data-code-editor-mode="[#CODE_EDITOR_MODE#]"
+                             data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
+                             data-code-editor-autosave="[#SETTINGS_CODEEDITOR_AUTOSAVE#]"
+                             data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
+                             data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
+                             data-code-editor-min-lines="[#SETTINGS_CODEEDITOR_MIXLINE#]"
+                             data-code-editor-max-lines="[#SETTINGS_CODEEDITOR_SHOWLINE#]"
+                             data-code-editor-autofocus="1"
+                             data-code-editor-validate-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+                             data-code-editor-autosave-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+                             data-code-editor-id="[#ID#]"
+                             data-code-editor-md="method[#ID#]"
+                             data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
+                            <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+                                <label class="md-code-editor__mode-switch">
+                                    <span>Mode</span>
+                                    <select class="form-control form-control-sm" name="code_editor_mode" data-code-editor-mode-select>
+                                        <option value="php"[#if CODE_EDITOR_MODE="php"#] selected[#endif#]>PHP</option>
+                                        <option value="python"[#if CODE_EDITOR_MODE="python"#] selected[#endif#]>Python</option>
+                                    </select>
+                                </label>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
+                                [#if CODE_EDITOR_VALIDATE="1"#]
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
+                                [#endif CODE_EDITOR_VALIDATE#]
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
+                                <span class="md-code-editor__status" data-code-editor-status></span>
+                            </div>
 
-                        <textarea name="code" id="code" rows="24" cols="100" class="form-control md-admin-code-textarea">[#CODE#]</textarea>
+                            [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS!=""#]
+                            <div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
+                                <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
+                                <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
+                                <div class="md-code-editor__error-actions">
+                                    <button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
+                                </div>
+                            </div>
+                            [#endif#]
+
+                            <textarea name="code" id="code" rows="24" cols="100" class="form-control">[#CODE#]</textarea>
+
+                            <div class="md-code-editor__drawer-backdrop" data-code-editor-backdrop hidden></div>
+                            <aside class="md-code-editor__drawer" data-code-editor-drawer hidden>
+                                <div class="md-code-editor__drawer-header">
+                                    <div>
+                                        <h3 class="md-code-editor__drawer-title"><#LANG_HISTORY#></h3>
+                                        <p class="md-code-editor__drawer-subtitle">Autosave backups and saved versions</p>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="close-drawer"><#LANG_CLOSE#></button>
+                                </div>
+                                <div class="md-code-editor__drawer-body">
+                                    <div class="md-code-editor__section">
+                                        <h4><#LANG_CODEEDITOR_AUTOSAVE#></h4>
+                                        <p><#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></p>
+                                        <div class="md-code-editor__restore-list" data-code-editor-autosave-list>
+                                            <div class="md-code-editor__empty">No autosave backups loaded yet.</div>
+                                        </div>
+                                        <pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
+                                    </div>
+                                </div>
+                            </aside>
+                        </div>
                     </div>
                 </div>
             </div>

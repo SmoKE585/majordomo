@@ -264,6 +264,7 @@ if ($this->tab == 'methods') {
 
     if ($overwrite) {
         global $method_id;
+        global $code_editor_mode;
         $method = SQLSelectOne("SELECT * FROM methods WHERE ID='" . (int)$method_id . "'");
 
         if ($method['OBJECT_ID']) {
@@ -289,6 +290,7 @@ if ($this->tab == 'methods') {
 
             $old_code = $my_meth['CODE'];
             $my_meth['CODE'] = $code;
+            $code_editor_mode = gr('code_editor_mode');
 
             $my_meth['CALL_PARENT'] = $call_parent;
             $my_meth['TITLE'] = $method['TITLE'];
@@ -303,20 +305,17 @@ if ($this->tab == 'methods') {
 
             if ($run_type == 'code' && $my_meth['CODE'] != '') {
                 //echo $content;
-                if (!defined('PYTHON_PATH') and !isItPythonCode($my_meth['CODE'])) {
-                    $errorDetails = code_syntax_error_details($my_meth['CODE']);
+                $errorDetails = code_syntax_error_details($my_meth['CODE'], $code_editor_mode);
 
-                    if ($errorDetails) {
-                        $out['ERR_LINE'] = (int)$errorDetails['line'];
-                        $out['ERR_CODE'] = 1;
-                        $out['ERRORS'] = $errorDetails['message'];
-                        $out['ERR_FULL'] = $errorDetails['full'];
-                        $ok = 0;
-                        $out['OK'] = $ok;
-                        $out['ERR_OLD_CODE'] = $old_code;
-                    }
-                } else {
-                    // chek python code
+                if ($errorDetails) {
+                    $out['ERR_LINE'] = (int)$errorDetails['line'];
+                    $out['ERR_CODE'] = 1;
+                    $out['ERRORS'] = $errorDetails['message'];
+                    $out['ERR_FULL'] = $errorDetails['full'];
+                    $ok = 0;
+                    $out['OK'] = $ok;
+                    $out['ERR_OLD_CODE'] = $old_code;
+                    $out['ERR_OLD_CODE_B64'] = base64_encode((string)$old_code);
                 }
                 $out['CODE'] = $my_meth['CODE'];
             }
@@ -339,6 +338,8 @@ if ($this->tab == 'methods') {
             $out['CALL_PARENT'] = (int)($my_meth['CALL_PARENT']);
         }
         $out['OVERWRITE'] = 1;
+        $out['CODE_EDITOR_MODE'] = normalize_code_editor_mode(isset($code_editor_mode) ? $code_editor_mode : '') ?: ((defined('PYTHON_PATH') && isset($my_meth['CODE']) && isItPythonCode($my_meth['CODE'])) ? 'python' : 'php');
+        $out['CODE_EDITOR_VALIDATE'] = in_array($out['CODE_EDITOR_MODE'], array('php', 'python'), true) ? 1 : 0;
     }
 
     include_once(DIR_MODULES . 'classes/classes.class.php');

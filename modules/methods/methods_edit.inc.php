@@ -14,6 +14,9 @@
   }
   $table_name='methods';
   $rec=SQLSelectOne("SELECT * FROM $table_name WHERE ID='$id'");
+  $out['CODE_EDITOR_KEY'] = 'method_' . (int)$id;
+  $out['CODE_EDITOR_MODE'] = (defined('PYTHON_PATH') && isset($rec['CODE']) && isItPythonCode($rec['CODE'])) ? 'python' : 'php';
+  $out['CODE_EDITOR_VALIDATE'] = in_array($out['CODE_EDITOR_MODE'], array('php', 'python'), true) ? 1 : 0;
   if ($this->mode=='update') {
    $ok=1;
   //updating 'Object ID' (int)
@@ -56,6 +59,10 @@
     $rec['CODE'] = $code;
 
    global $run_type;
+   global $code_editor_mode;
+   if (!empty($code_editor_mode)) {
+    $out['CODE_EDITOR_MODE'] = normalize_code_editor_mode($code_editor_mode) ?: $out['CODE_EDITOR_MODE'];
+   }
 
        if ($run_type=='script') {
         global $script_id;
@@ -66,7 +73,7 @@
 
 
    if ($rec['CODE']!='' && $run_type=='code') {
-    $errorDetails = code_syntax_error_details($code);
+    $errorDetails = code_syntax_error_details($code, $code_editor_mode);
     if ($errorDetails) {
             $out['ERR_LINE'] = (int)$errorDetails['line'];
             $out['ERR_CODE'] = 1;
@@ -109,6 +116,7 @@
   }
 
   $out['SCRIPTS']=SQLSelect("SELECT ID, TITLE FROM scripts ORDER BY TITLE");
-
+  $out['CODE_EDITOR_MODE'] = normalize_code_editor_mode(isset($out['CODE_EDITOR_MODE']) ? $out['CODE_EDITOR_MODE'] : '') ?: 'php';
+  $out['CODE_EDITOR_VALIDATE'] = in_array($out['CODE_EDITOR_MODE'], array('php', 'python'), true) ? 1 : 0;
 
 ?>
