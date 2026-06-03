@@ -59,7 +59,7 @@
                     <h2 id="myBlockOnDash_title"><#LANG_NEWDASH_DMB_TITLE#></h2>
                     <button type="button" class="md-admin-icon-button" onclick="return toggleCategory('myBlockDiv');" aria-label="Hide"><i id="hideTogglemyBlock" class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
-                <div id="row_myBlockDiv" class="collapse md-admin-section-card__body">
+                <div id="row_myBlockDiv" class="collapse show md-admin-section-card__body">
                     <div id="myBlockOnDash_body"></div>
                     <div id="more_myBlockOnDash" class="md-admin-more-list">
                         <ul class="list-group" id="more_myBlockOnDash_body"></ul>
@@ -79,7 +79,7 @@
                     <h2><#LANG_NEWDASH_SYSTEM_INFO#></h2>
                     <button type="button" class="md-admin-icon-button" onclick="return toggleCategory('infoBlockDiv');" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
-                <div id="row_infoBlockDiv" class="collapse md-admin-section-card__body">
+                <div id="row_infoBlockDiv" class="collapse show md-admin-section-card__body">
                     <div class="md-admin-info-list">
                         <button type="button" class="md-admin-info-row" data-md-toggle-target=".reqPerMinHour">
                             <span><#LANG_NEWDASH_DB_REQ_MIN#></span>
@@ -113,7 +113,7 @@
                     <h2><#LANG_NEWDASH_CYCLE_CONTROL#> <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=services">X-Ray</a></h2>
                     <button type="button" class="md-admin-icon-button" onclick="return toggleCategory('cycleBlockDiv');" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
-                <div id="row_cycleBlockDiv" class="collapse md-admin-section-card__body">
+                <div id="row_cycleBlockDiv" class="collapse show md-admin-section-card__body">
                     <div id="chartdiv_cycle" class="md-admin-chart md-admin-chart--cycle"><span class="spinner-border text-primary" aria-hidden="true"></span></div>
                 </div>
             </section>
@@ -123,7 +123,7 @@
                     <h2><#LANG_NEWDASH_LAST_SCRIPTS#> <a href="?pd=pz_&md=panel&inst=&action=scripts"><#LANG_NEWDASH_LAST_SCRIPTS_GO#></a></h2>
                     <button type="button" class="md-admin-icon-button" onclick="return toggleCategory('scriptBlockDiv');" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
-                <div id="row_scriptBlockDiv" class="collapse md-admin-section-card__body">
+                <div id="row_scriptBlockDiv" class="collapse show md-admin-section-card__body">
                     <div class="md-admin-inline-note"><i class="glyphicon glyphicon-exclamation-sign"></i> <#LANG_NEWDASH_SHOW_LAST_SCRIPTS#></div>
                     <ul class="md-admin-list" id="scriptLast"><li><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></li></ul>
                 </div>
@@ -136,7 +136,7 @@
                     <h2><#LANG_NEWDASH_HINT_BIG_DATA_DB#> <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=database">X-Ray</a></h2>
                     <button type="button" class="md-admin-icon-button" onclick="return toggleCategory('tablesBlockDiv');" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
-                <div id="row_tablesBlockDiv" class="collapse md-admin-section-card__body">
+                <div id="row_tablesBlockDiv" class="collapse show md-admin-section-card__body">
                     <div id="tablesChart" class="md-admin-chart md-admin-chart--tables"><span class="spinner-border text-primary" aria-hidden="true"></span></div>
                 </div>
             </section>
@@ -154,7 +154,7 @@
                     <h2><#LANG_NEWDASH_NEWS#> <a href="https://connect.smartliving.ru/blog.html" target="_blank"><#LANG_NEWDASH_NEWS_MORE#></a></h2>
                     <button type="button" class="md-admin-icon-button" onclick="return toggleCategory('newsBlockDiv');" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
-                <div id="row_newsBlockDiv" class="collapse md-admin-section-card__body">
+                <div id="row_newsBlockDiv" class="collapse show md-admin-section-card__body">
                     <div class="md-admin-news-list" id="news_body"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></div>
                 </div>
             </section>

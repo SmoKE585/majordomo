@@ -64,6 +64,44 @@
         initBootstrapWidgets(root);
     }
 
+    function initAdminSidebarDrawer() {
+        var toggleButtons = document.querySelectorAll('[data-md-admin-sidebar-toggle]');
+        var closeTargets = document.querySelectorAll('[data-md-admin-sidebar-close]');
+        var body = document.body;
+
+        function openSidebar() {
+            body.classList.add('md-admin-sidebar-open');
+        }
+
+        function closeSidebar() {
+            body.classList.remove('md-admin-sidebar-open');
+        }
+
+        toggleButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                if (body.classList.contains('md-admin-sidebar-open')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            });
+        });
+
+        closeTargets.forEach(function (target) {
+            target.addEventListener('click', closeSidebar);
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeSidebar();
+            }
+        });
+
+        document.querySelectorAll('.md-admin-sidebar__link').forEach(function (link) {
+            link.addEventListener('click', closeSidebar);
+        });
+    }
+
     function callComponent(Component, element, commandOrOptions) {
         if (!Component || !element) {
             return;
@@ -113,6 +151,7 @@
         applyThemeFromCookie();
         boot(document);
         installJqueryBridge();
+        initAdminSidebarDrawer();
     });
 })(window, document);
 

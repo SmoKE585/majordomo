@@ -4,7 +4,7 @@
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 		<title>{#TITLE#}</title>
 		[#inc common_header_admin.html#]
-		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03-2" type="text/css">
+		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03-3" type="text/css">
 		[#inc websockets.html#]
 	</head>
 
@@ -14,6 +14,9 @@
 	[#if PRINT!="1"#]
 	<nav class="navbar navbar-expand-lg md-admin-header" role="navigation">
 		<div class="container-fluid md-admin-header__inner">
+			<button type="button" class="btn md-admin-sidebar-toggle" data-md-admin-sidebar-toggle aria-label="Open menu">
+				<i class="glyphicon glyphicon-th-list"></i>
+			</button>
 			<a class="navbar-brand md-admin-brand" href="<#ROOTHTML#>admin.php">
 				<img src="<#ROOTHTML#>img/logo-md.png" alt="MajorDoMo">
 				<span><#LANG_CONTROL_PANEL#></span>
@@ -171,6 +174,7 @@
 				</div>
 			</div>
 		</div>
+		<div class="md-admin-sidebar-backdrop" data-md-admin-sidebar-close></div>
 		<div class="row md-admin-layout" id="content">
 			[#if PRINT!="1" && HIDE_LEFT_PANEL!="1"#]
 			[#inc panel_nav_left.html#]

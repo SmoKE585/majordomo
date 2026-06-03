@@ -1,16 +1,14 @@
-<aside class="col-lg-2 col-md-3 col-sm-4 col-xs-12 md-admin-sidebar" id="left_block">
+<aside class="col-lg-2 col-md-3 col-sm-4 col-xs-12 md-admin-sidebar" id="left_block" aria-label="Admin navigation">
     <div class="md-admin-sidebar__inner">
-        <div id="hint_alert_hide_hint2" class="md-admin-sidebar__hint-wrap">
-            <div class="hidden-xs">
-                <button type="button" class="md-admin-hint md-admin-hint--success" id="hideMenuHint" onClick="return leftPanelToggle();">
-                    <i class="glyphicon glyphicon-exclamation-sign"></i>
-                    <span><#LANG_NEWDASH_HIDE_MENU_HINT#></span>
-                    <i class="glyphicon glyphicon-resize-horizontal"></i>
-                </button>
-                <button type="button" class="md-admin-muted-action" onclick="hideHintCookie('alert_hide_hint2');">
-                    <#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#> <i class="glyphicon glyphicon-arrow-up"></i>
-                </button>
+        <div class="md-admin-sidebar__brand">
+            <img src="<#ROOTHTML#>img/logo-md.png" alt="MajorDoMo">
+            <div>
+                <strong>MajorDoMo</strong>
+                <span><#LANG_CONTROL_PANEL#></span>
             </div>
+            <button type="button" class="md-admin-sidebar__close" data-md-admin-sidebar-close aria-label="Close menu">
+                <i class="glyphicon glyphicon-remove"></i>
+            </button>
         </div>
 
         <nav class="md-admin-sidebar__nav" aria-label="Admin modules">
@@ -21,7 +19,7 @@
                     <span>[#CATEGORY#]</span>
                     <i class="glyphicon glyphicon-arrow-down"></i>
                 </button>
-                <div id="row_[#CATEGORY_ID#]" class="panel-collapse collapse out">
+                <div id="row_[#CATEGORY_ID#]" class="collapse show">
                     <ul class="md-admin-sidebar__list">
             [#endif NEW_CATEGORY#]
 
