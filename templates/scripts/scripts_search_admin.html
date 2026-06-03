@@ -1,69 +1,41 @@
-<script language="javascript">
-function showHide(id) {
- if ($('#sub'+id).is(":visible")) {
-  $('#sub'+id).collapse('hide');
-  $.cookie("script_categories_item"+id, null);
- } else {
-  $.cookie("script_categories_item"+id, "1");
-  $('#sub'+id).collapse('show');
- }
- return false;
-}
-
-function exportScriptsCount() {
- total = 0;
- $('input.md-scripts-export-input').each(function(index) {
-  if($(this).is(':checked')) total++;
- });
-
- $('input[name=export]').val('<#LANG_EXPORT#> ' + total + ' <#LANG_ONCHANGE_SCRIPT_EV#>');
- $('input[name=export]').show();
-
- if(total == 0) $('input[name=export]').hide();
-}
-</script>
-
 <div class="md-scripts-card">
- <form action="?" method="get" class="md-scripts-toolbar">
-  <div class="md-scripts-toolbar__filters">
-   <div class="md-scripts-search">
-    <input type="text" name="title" value="<#TITLE#>" class="form-control" placeholder="<#LANG_SEARCH#>">
-    <button type="submit" class="btn btn-primary"><#LANG_SEARCH#></button>
-   </div>
-   <select name="recently_updated" id="recently_updated" class="form-control md-scripts-select" onchange="this.form.submit();">
+ <div class="md-scripts-toolbar md-scripts-toolbar--stacked">
+  <form action="?" method="get" class="md-scripts-toolbar__filters md-scripts-searchbar" data-scripts-search-form>
+   <input type="text" name="title" value="<#TITLE#>" class="form-control md-scripts-searchbar__input" placeholder="<#LANG_SEARCH#>" autocomplete="off" data-scripts-filter>
+   <button type="submit" class="btn btn-primary"><#LANG_SEARCH#></button>
+   <select name="recently_updated" id="recently_updated" class="form-control md-scripts-select" data-scripts-recently-updated>
     <option value=""><#LANG_UPDATED#></option>
     [#begin RECENTLY_UPDATED#]
     <option value="[#ID#]">[#TITLE#] ([#PASSED#])</option>
     [#end RECENTLY_UPDATED#]
    </select>
-  </div>
+  </form>
   <div class="md-scripts-toolbar__actions">
    <a href="?view_mode=edit_scripts" class="btn btn-primary">+ <#LANG_ADD_NEW_SCRIPT#></a>
    <a href="?view_mode=edit_categories&data_source=categories" class="btn btn-default">+ <#LANG_ADD_NEW_CATEGORY#></a>
   </div>
- </form>
+ </div>
 
  [#if RESULT#]
-  <form action="?" method="post" class="md-admin-module-list__form">
+  <form action="?" method="post" class="md-admin-module-list__form md-scripts-export-form" data-scripts-export-form>
    <div class="md-scripts-category-list">
     [#begin RESULT#]
      [#if NEW_CATEGORY#]
       [#if FIRST != 1#]
-        </div>
        </div>
+      </details>
       [#endif#]
-
-      <div class="md-scripts-category">
-       <button type="button" class="md-scripts-category__header" onclick="showHide('[#CATEGORY_ID#]');">
+      <details class="md-scripts-category" data-scripts-category data-category-id="[#CATEGORY_ID#]">
+       <summary class="md-scripts-category__header">
         <span class="md-scripts-category__title">[#CATEGORY#]</span>
-        <span class="md-scripts-category__toggle">v</span>
-       </button>
-       <div class="collapse out md-scripts-category__body" id="sub[#CATEGORY_ID#]">
+        <span class="md-scripts-category__toggle" aria-hidden="true">▾</span>
+       </summary>
+       <div class="md-scripts-category__body">
         <div class="md-admin-record-list">
      [#endif#]
           <article class="md-admin-record-card md-scripts-record">
            <div class="md-admin-record-card__main">
-            <button type="button" class="md-admin-record-card__search" onclick="setFilter('[#TITLE#]');return false;" title="<#LANG_SEARCH#>">?</button>
+            <button type="button" class="md-admin-record-card__search md-scripts-record__search" title="<#LANG_SEARCH#>" data-scripts-search-open data-scripts-search-term="[#TITLE#]">?</button>
             <div class="md-admin-record-card__content">
              <div class="md-admin-record-card__title">
               <a href="?view_mode=edit_scripts&id=[#ID#]">[#TITLE#]</a>
@@ -74,27 +46,27 @@ function exportScriptsCount() {
            </div>
            <div class="md-scripts-record__meta">
             <label class="md-scripts-export">
-             <input type="checkbox" class="md-scripts-export-input" onchange="exportScriptsCount();" name="ids[]" value="[#ID#]">
+             <input type="checkbox" class="md-scripts-export-input" data-scripts-export-checkbox name="ids[]" value="[#ID#]">
              <span><#LANG_EXPORT#></span>
             </label>
            </div>
            <div class="md-admin-record-card__actions">
             [#if "<#ACTION#>"=="admin"#]
-             <a href="?view_mode=run_script&id=[#ID#]" target="_blank" onclick="return confirm('<#LANG_ARE_YOU_SURE#>')" class="btn btn-primary btn-sm"><#LANG_RUN_SCRIPT_BTN#></a>
-             <a href="?view_mode=delete_scripts&id=[#ID#]" onclick="return confirm('<#LANG_ARE_YOU_SURE#>')" class="btn btn-danger btn-sm"><#LANG_DELETE#></a>
+             <a href="?view_mode=run_script&id=[#ID#]" target="_blank" class="btn btn-primary btn-sm" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a>
+             <a href="?view_mode=delete_scripts&id=[#ID#]" class="btn btn-danger btn-sm" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a>
             [#endif ACTION#]
            </div>
           </article>
      [#if LAST == 1#]
         </div>
        </div>
-      </div>
+      </details>
      [#endif#]
     [#end RESULT#]
    </div>
    <div class="md-scripts-export-bar">
     <input type="hidden" name="view_mode" value="multiple">
-    <input type="submit" class="btn btn-warning" name="export" value="<#LANG_EXPORT#>">
+    <button type="submit" class="btn btn-warning" name="export" value="<#LANG_EXPORT#>" data-scripts-export-submit data-scripts-export-label="<#LANG_EXPORT#>"><#LANG_EXPORT#></button>
    </div>
   </form>
  [#else RESULT#]
@@ -102,30 +74,16 @@ function exportScriptsCount() {
  [#endif RESULT#]
 </div>
 
-<div class="md-scripts-card md-scripts-import">
- <button type="button" class="md-scripts-import__header" data-toggle="collapse" data-target="#scriptsImportPanel">
+<details class="md-scripts-card md-scripts-import" data-scripts-import>
+ <summary class="md-scripts-import__header">
   <span><#LANG_IMPORT#></span>
-  <span class="md-scripts-category__toggle">v</span>
- </button>
- <div class="collapse out" id="scriptsImportPanel">
+  <span class="md-scripts-category__toggle" aria-hidden="true">▾</span>
+ </summary>
+ <div class="md-scripts-import__body">
   <form action="?" enctype="multipart/form-data" method="post" class="md-scripts-import__form">
    <input type="file" name="file" enctype="multipart/form-data" class="form-control">
    <input type="submit" name="submit" value="<#LANG_IMPORT#>" class="btn btn-primary">
    <input type="hidden" name="view_mode" value="import">
   </form>
  </div>
-</div>
-
-<script language="javascript">
-[#if TITLE != ''#]
- [#begin RESULT#]
- $('#sub[#CATEGORY_ID#]').collapse('show');
- [#end RESULT#]
-[#else#]
- [#begin RESULT#]
- if ($.cookie("script_categories_item[#CATEGORY_ID#]") || (<#TOTAL_CATEGORIES#>==1)) {
-  $('#sub[#CATEGORY_ID#]').collapse('show');
- }
- [#end RESULT#]
-[#endif#]
-</script>
+</details>

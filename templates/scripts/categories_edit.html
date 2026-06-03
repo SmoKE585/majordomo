@@ -1,24 +1,10 @@
-<script>
-$(window).load(function() {
- [#if ID!=""#]
-  $('.breadcrumb:eq(0)').append('<li class="md-scripts-breadcrumb-muted"><#LANG_EDIT_RECORD#></li>');
- [#else#]
-  $('.breadcrumb:eq(0)').append('<li class="md-scripts-breadcrumb-muted"><#LANG_NEW_RECORD#></li>');
- [#endif#]
-
- setTimeout(function () {
-  $('#alert_msg').hide('slow');
- }, 5000);
-});
-</script>
-
-<div class="md-scripts-card md-scripts-edit-card">
+<div class="md-scripts-card md-scripts-edit-card" data-scripts-edit-page data-scripts-edit-mode="[#if ID!=""#]edit[#else#]new[#endif#]" data-scripts-breadcrumb-edit="<#LANG_EDIT_RECORD#>" data-scripts-breadcrumb-new="<#LANG_NEW_RECORD#>">
  <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" id="frmEdit" class="md-scripts-form">
   [#if OK#]
-   <div class="alert alert-success" id="alert_msg"><#LANG_DATA_SAVED#></div>
+   <div class="alert alert-success" id="alert_msg" data-scripts-auto-hide><#LANG_DATA_SAVED#></div>
   [#endif OK#]
   [#if ERR#]
-   <div class="alert alert-danger" id="alert_msg"><#LANG_FILLOUT_REQURED#></div>
+   <div class="alert alert-danger" id="alert_msg" data-scripts-auto-hide><#LANG_FILLOUT_REQURED#></div>
   [#endif ERR#]
 
   <div class="md-scripts-form__grid">

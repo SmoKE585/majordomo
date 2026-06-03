@@ -2,8 +2,11 @@
  @version 0.1 (auto-set)
 #-->
 
-<div class="md-scripts-page">
- <div class="md-scripts-hero">
+<link rel="stylesheet" href="<#ROOTHTML#>templates/scripts/scripts.css?v=2026-06-03-3" type="text/css">
+<script src="<#ROOTHTML#>templates/scripts/scripts.js?v=2026-06-03-2"></script>
+
+<div class="md-scripts-page" data-scripts-page>
+ <div class="md-scripts-hero md-scripts-hero--compact">
   <div>
    <div class="md-scripts-hero__eyebrow"><#LANG_SECTION_OBJECTS#></div>
    <h2 class="md-scripts-hero__title"><#LANG_MODULE_SCRIPTS#></h2>
@@ -15,7 +18,7 @@
   </div>
  </div>
 
- <div class="md-scripts-tabs" role="tablist">
+ <div class="md-scripts-tabs" role="tablist" aria-label="<#LANG_MODULE_SCRIPTS#>">
   <a class="md-scripts-tabs__item [#if DATA_SOURCE="scripts" || DATA_SOURCE=""#]is-active[#endif#]" href="?data_source=scripts"><#LANG_MODULE_SCRIPTS#></a>
   <a class="md-scripts-tabs__item [#if DATA_SOURCE="categories"#]is-active[#endif#]" href="?data_source=categories"><#LANG_CATEGORIES#></a>
  </div>

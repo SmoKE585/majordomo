@@ -1307,6 +1307,7 @@
     }
 
     function boot(root) {
+        window.MDJAdminLastBootRoot = root;
         copyLegacyBootstrapAttributes(root);
         normalizeLegacyClasses(root);
         initBootstrapWidgets(root);
@@ -1319,6 +1320,18 @@
         initGlobalSearchDrawer(root);
         initObjectPropertyHistoryDrawer(root);
         initAdminConsoleDrawer(root);
+        initRegisteredModuleUIs(root);
+    }
+
+    var registeredModuleUIs = {};
+
+    function initRegisteredModuleUIs(root) {
+        Object.keys(registeredModuleUIs).forEach(function (name) {
+            var moduleUI = registeredModuleUIs[name];
+            if (moduleUI && typeof moduleUI.init === 'function') {
+                moduleUI.init(root);
+            }
+        });
     }
 
     function initAdminSidebarDrawer() {
@@ -1403,6 +1416,23 @@
         copyLegacyBootstrapAttributes: copyLegacyBootstrapAttributes,
         initBootstrapWidgets: initBootstrapWidgets,
         installJqueryBridge: installJqueryBridge,
+        registerModuleUI: function (name, moduleUI) {
+            if (!name || !moduleUI) {
+                return;
+            }
+            registeredModuleUIs[name] = moduleUI;
+            if (window.MDJAdminLastBootRoot) {
+                moduleUI.init(window.MDJAdminLastBootRoot);
+            }
+        },
+        unregisterModuleUI: function (name) {
+            if (name && registeredModuleUIs[name]) {
+                delete registeredModuleUIs[name];
+            }
+        },
+        getBootRoot: function () {
+            return window.MDJAdminLastBootRoot || document;
+        },
         openSearch: function (value) {
             if (window.MDJAdminSearch) {
                 window.MDJAdminSearch.open(value);
