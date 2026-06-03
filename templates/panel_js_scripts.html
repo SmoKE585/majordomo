@@ -235,7 +235,7 @@
             if(data.CONTENT) {
                 $('#console_debug').html(data.CONTENT);
             } else {
-                $('#console_debug').html('<img style="background: white;border-radius: 50px;padding: 5px;" src="<#ROOTHTML#>img/ajax-loader.gif"/> Console is empty... Wait new data...');
+                $('#console_debug').html('<img style="background: white;border-radius: 50px;padding: 5px;" src="<#ROOTHTML#>img/ajax-loader.gif"/> Консоль пуста. Дождитесь новых данных...');
             }
         });
         consoleDebugTimer=setTimeout(updateConsoleDebug, 1000);
@@ -421,6 +421,40 @@
             }
         });
 
+        $.ajax({
+            url: '<#ROOTHTML#>admin.php?action=xray&md=xray&inst=adm&view_mode=properties&ajax=1&op=getcontent',
+            success: function(data) {
+                data = safeJsonParse(data, {});
+                if (!data.LIST || !data.LIST.length) {
+                    $('#recentProperties').html('<div class="md-admin-empty-state">Пока нет свежих изменений свойств.</div>');
+                    return;
+                }
+
+                var list = data.LIST.slice().reverse().slice(0, 8);
+                var html = '<ul class="md-admin-property-feed__list">';
+
+                for (var i = 0; i < list.length; i++) {
+                    var item = list[i];
+                    html += '<li class="md-admin-property-feed__item">' +
+                        '<div class="md-admin-property-feed__main">' +
+                            '<strong>' + $('<div/>').text(item.NAME || '').html() + '</strong>' +
+                            '<span>' + $('<div/>').text(item.VALUE || '—').html() + '</span>' +
+                        '</div>' +
+                        '<div class="md-admin-property-feed__meta">' +
+                            '<span>' + $('<div/>').text(item.UPDATE || '').html() + '</span>' +
+                            '<small>' + $('<div/>').text(item.SOURCE || '—').html() + '</small>' +
+                        '</div>' +
+                    '</li>';
+                }
+
+                html += '</ul>';
+                $('#recentProperties').html(html);
+            },
+            error: function(data) {
+                $('#recentProperties').html('<div class="md-admin-empty-state">Не удалось загрузить последние изменения свойств.</div>');
+            }
+        });
+
 
         return false;
     }
@@ -442,37 +476,6 @@
     }
 
     [#if ACTION==""#]
-    function checkDidYouKnow() {
-        var urlDidyouknow = '<#ROOTHTML#>ajax/market.html?op=didyouknow';
-        $.ajax({
-            url: urlDidyouknow
-        }).done(function(data) {
-            if (data!='') {
-                $('#didyouknow_body').html(data);
-                $('#didyouknow').show();
-            }
-        });
-        return false;
-    }
-
-    function checkNews() {
-        var urlCheckNews = '<#ROOTHTML#>ajax/market.html?op=news';
-        $.ajax({
-            url: urlCheckNews,
-            success: function(data) {
-                if (data!='') {
-                    $('#news').show();
-                    $('#news_body').html(data);
-                }
-            },
-            error: function(data) {
-                $('#news_body').html('<div class="md-admin-error-state">Error sending request - checkNews()</div>');
-            },
-        });
-
-        return false;
-    }
-
     function myBlockOnDash() {
         var urlCheckNews = '<#ROOTHTML#>objects/?script=dash_my_block';
         $.ajax({
@@ -505,7 +508,6 @@
                     }
                 } else {
                     $('#myBlockOnDash').hide();
-                    $('#addMyBlockHint').show();
                 }
             },
         });

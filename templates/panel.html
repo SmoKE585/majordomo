@@ -5,7 +5,7 @@
 		<title>{#TITLE#}</title>
 		[#inc common_header_admin.html#]
 		<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/fonts/rubik/rubik.css?v=2026-06-03" type="text/css">
-		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03-7" type="text/css">
+		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03-8" type="text/css">
 		[#inc websockets.html#]
 	</head>
 
@@ -22,15 +22,6 @@
 				<img src="<#ROOTHTML#>img/logo-md.png" alt="MajorDoMo">
 				<span><#LANG_CONTROL_PANEL#></span>
 			</a>
-			<button type="button" class="btn md-admin-header__toggle md-admin-header__search-toggle" data-md-search-open aria-label="<#LANG_SEARCH#>">
-				<i class="glyphicon glyphicon-search"></i>
-			</button>
-
-			<div class="md-admin-header__actions" id="searchbtnhide">
-				<button type="button" class="btn md-admin-search-button" data-md-search-open>
-					<i class="glyphicon glyphicon-search"></i> <#LANG_SEARCH#>
-				</button>
-			</div>
 		</div>
 	</nav>
 	
@@ -61,21 +52,18 @@
 			<div>
 				<div class="md-admin-console-drawer__eyebrow"><#LANG_CONTROL_PANEL#></div>
 				<h2 id="mdAdminConsoleTitle"><#LANG_CONSOLE#></h2>
-				<div class="md-admin-console-drawer__subtitle">Textarea, история команд и список методов без старой консольной обвязки.</div>
+				<div class="md-admin-console-drawer__subtitle">Редактор кода, история команд и список методов без лишней обвязки.</div>
 			</div>
 			<button type="button" class="btn-close" id="btnConsoleClose" data-md-console-close aria-label="<#LANG_CLOSE#>"></button>
 		</div>
 		<div class="md-admin-console-drawer__body">
 			<div class="md-admin-console-alerts">
-				<div class="alert alert-danger text-center" id="dangerAlertConsole" hidden><#LANG_NEWDASH_CONSOLE_ERROR_EMPTY#></div>
-				<div class="alert alert-warning text-center" id="warningAlertConsole" hidden><#LANG_NEWDASH_CONSOLE_ERROR_FAIL#></div>
+				<div class="alert alert-danger text-center" id="dangerAlertConsole" hidden>Команда пуста. Введите код или выражение.</div>
+				<div class="alert alert-warning text-center" id="warningAlertConsole" hidden>Не удалось выполнить запрос к консоли.</div>
 			</div>
 
 			<form id="adminConsoleForm" class="md-admin-console-composer" action="?" method="post">
-				<div class="md-admin-console-label">Command</div>
-				<textarea name="command" id="command" class="form-control md-admin-console-textarea" rows="5" placeholder="Code, method, expression..."></textarea>
-				<div class="md-admin-console-toolbar">
-					<button type="submit" class="btn btn-success"><#LANG_SEND#></button>
+				<div class="md-admin-console-toolbar md-admin-console-toolbar--top">
 					<button type="button" id="btnConsoleToggleModule" class="btn btn-info">Подключить модуль</button>
 					<button type="button" id="btnConsoleClearHistory" class="btn btn-default">Очистить историю</button>
 				</div>
@@ -86,15 +74,46 @@
 					[#end SUB_MODULES#]
 				</select>
 				<input type="hidden" id="module_add" name="module_add" value="">
+				<div class="md-code-editor md-admin-console-editor"
+				     data-code-editor
+				     data-code-editor-key="admin_console"
+				     data-code-editor-mode="php"
+				     data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
+				     data-code-editor-autosave="0"
+				     data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
+				     data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
+				     data-code-editor-min-lines="8"
+				     data-code-editor-max-lines="0"
+				     data-code-editor-autofocus="1"
+				     data-code-editor-validate-url=""
+				     data-code-editor-autosave-url=""
+				     data-code-editor-id="0"
+				     data-code-editor-md="admin_console"
+				     data-code-editor-hide-errors-on-edit="1">
+					<div class="md-code-editor__toolbar" data-code-editor-toolbar>
+						<label class="md-code-editor__mode-switch">
+							<span>Режим</span>
+							<select class="form-control form-control-sm" name="code_editor_mode" data-code-editor-mode-select>
+								<option value="php" selected>PHP</option>
+								<option value="python">Python</option>
+							</select>
+						</label>
+						<button type="submit" class="btn btn-success btn-sm" data-code-editor-action="save">Выполнить</button>
+						<button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
+						<button type="button" class="btn btn-outline-secondary btn-sm" id="btnConsoleClearCommand">Очистить</button>
+						<span class="md-code-editor__status" data-code-editor-status></span>
+					</div>
+					<textarea name="command" id="command" class="form-control md-admin-console-textarea" rows="8" placeholder="Введите код, метод или выражение"></textarea>
+				</div>
 				<div class="md-admin-console-label">История</div>
 				<div class="md-admin-console-history" id="consoleHistoryList" aria-live="polite"></div>
 			</form>
 
-			<div class="md-admin-console-split">
+			<div class="md-admin-console-panels">
 				<div class="md-admin-console-panel">
 					<div class="md-admin-console-panel__header">
-						<h3>Output</h3>
-						<div class="md-admin-console-panel__hint" id="console_output_hintResize">Ctrl+Enter to send, arrows to reuse history.</div>
+						<h3>Результат</h3>
+						<div class="md-admin-console-panel__hint" id="console_output_hintResize">Ctrl+Enter - выполнить, стрелки - история, F11 - полноэкранный режим.</div>
 					</div>
 					<div id="loaderConsole" class="md-admin-console-loader text-center">
 						<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
@@ -105,8 +124,8 @@
 				<div class="md-admin-console-methods" id="methodsModule" hidden>
 					<div class="md-admin-console-panel">
 						<div class="md-admin-console-panel__header">
-							<h3>Methods</h3>
-							<div class="md-admin-console-panel__hint">Click to insert into textarea.</div>
+							<h3>Методы</h3>
+							<div class="md-admin-console-panel__hint">Нажмите, чтобы вставить в редактор.</div>
 						</div>
 						<div id="loaderConsoleModule" class="md-admin-console-loader text-center">
 							<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
@@ -138,7 +157,10 @@
 			<div class="col-lg-[#if HIDE_LEFT_PANEL="1"#]12[#else#]10[#endif#] col-md-[#if HIDE_LEFT_PANEL="1"#]12[#else#]9[#endif#] col-sm-[#if HIDE_LEFT_PANEL="1"#]12[#else#]8[#endif#] col-xs-12 md-admin-main" id="main-content">
 		[#if PRINT!="1"#]
 		<section class="md-admin-page-links" aria-label="<#LANG_CONTROL_PANEL#>">
-			[#if HIDE_LEFT_PANEL!="1"#]
+			<a class="md-admin-page-link md-admin-page-link--primary" href="#" data-md-search-open>
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-search"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_SEARCH#></strong><small><#LANG_SECTION_SYSTEM#></small></span>
+			</a>
 			<a class="md-admin-page-link" href="?action=xray">
 				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-dashboard"></i></span>
 				<span class="md-admin-page-link__content"><strong>X-Ray</strong><small><#LANG_SECTION_SYSTEM#></small></span>
@@ -147,7 +169,6 @@
 				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-flash"></i></span>
 				<span class="md-admin-page-link__content"><strong><#LANG_CONSOLE#></strong><small><#LANG_SECTION_SYSTEM#></small></span>
 			</a>
-			[#endif HIDE_LEFT_PANEL#]
 		</section>
 		[#endif PRINT#]
 				[#if PRINT!="1"#]
@@ -315,15 +336,6 @@ $(document).ready(function() {
 	}, function() {
 		//$(this).popover('hide');
 	});
-	
-	//Применяем тему
-	/*
-	if($.cookie('theme') == 'dark') {
-		document.documentElement.setAttribute('data-bs-theme', 'dark');
-	} else if($.cookie('theme') == 'light') {
-		document.documentElement.setAttribute('data-bs-theme', 'light');
-	} */
-	
 	
 	var $adminHeader = $('.md-admin-header');
 	function updateAdminHeaderState() {

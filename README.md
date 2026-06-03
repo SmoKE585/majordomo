@@ -33,3 +33,6 @@ Contribution
 
 Feel free to join our team! Join discussions on forums below or mail us directly at ip@mdmi.by 
 Any help is much appreciated. 
+
+Docs for shared CodeMirror integration:
+- [docs/codemirror-module-integration.md](docs/codemirror-module-integration.md)

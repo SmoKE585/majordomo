@@ -8,24 +8,13 @@
         <div>
             <p class="md-admin-eyebrow">MajorDoMo</p>
             <h1><#LANG_CONTROL_PANEL#></h1>
-            <p class="md-admin-dashboard__lead"><#LANG_NEWDASH_SYSTEM_INFO#> / X-Ray / <#LANG_NEWDASH_LAST_SCRIPTS#></p>
+            <p class="md-admin-dashboard__lead"><#LANG_NEWDASH_SYSTEM_INFO#> / X-Ray / Последние изменения свойств</p>
         </div>
         <div class="md-admin-dashboard__hero-actions">
             <a href="?(panel:{action=scripts})&md=scripts&inst=adm&view_mode=edit_scripts" class="btn btn-outline-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_SCRIPT#></a>
             <a href="?action=xray" class="btn btn-light"><i class="glyphicon glyphicon-dashboard"></i> X-Ray</a>
         </div>
     </section>
-
-    <div id="hint_blockaddnewdev" class="md-admin-hint-card">
-        <div class="md-admin-section-card md-admin-section-card--compact">
-            <div class="md-admin-section-card__body md-admin-quick-actions">
-                <a href="?(panel:{action=scripts})&md=scripts&inst=adm&view_mode=edit_scripts" class="btn btn-light"><i class="glyphicon glyphicon-plus"></i> <#LANG_SCRIPT#></a>
-                <a href="?(panel:{action=objects})&md=objects&view_mode=edit_objects&id=" class="btn btn-light"><i class="glyphicon glyphicon-plus"></i> <#LANG_OBJECT#></a>
-                <a href="?(panel:{action=classes})&md=classes&inst=adm&view_mode=edit_classes" class="btn btn-light"><i class="glyphicon glyphicon-plus"></i> <#LANG_NEWDASH_CLASS#></a>
-                <button type="button" class="btn btn-link md-admin-muted-link" data-md-hide-hint="blockaddnewdev"><#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#></button>
-            </div>
-        </div>
-    </div>
 
     <section class="md-admin-kpi-grid" aria-label="System summary">
         <article class="md-admin-kpi-card">
@@ -52,7 +41,7 @@
 
     <div class="md-admin-dashboard-grid">
         <div class="md-admin-dashboard-grid__main">
-            <section class="md-admin-section-card" id="myBlockOnDash">
+            <section class="md-admin-section-card" id="myBlockOnDash" style="display:none;">
                 <header class="md-admin-section-card__header">
                     <h2 id="myBlockOnDash_title"><#LANG_NEWDASH_DMB_TITLE#></h2>
                     <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="myBlockDiv" aria-expanded="true" aria-controls="row_myBlockDiv" aria-label="Hide"><i id="hideTogglemyBlock" class="glyphicon glyphicon-eye-close"></i></button>
@@ -64,13 +53,6 @@
                     </div>
                 </div>
             </section>
-
-            <div id="hint_addMyBlockHint" class="md-admin-hint-card">
-                <div id="addMyBlockHint" class="md-admin-empty-state">
-                    <a href="javascript://" data-bs-toggle="modal" data-bs-target="#modalHowMyBlock"><#LANG_NEWDASH_DMB_TITLE#></a>
-                    <button type="button" class="btn btn-link md-admin-muted-link" data-md-hide-hint="addMyBlockHint"><#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#></button>
-                </div>
-            </div>
 
             <section class="md-admin-section-card">
                 <header class="md-admin-section-card__header">
@@ -97,8 +79,10 @@
                         <div class="md-admin-info-row">
                             <span><#LANG_THEME#></span>
                             <span class="md-admin-theme-switch" role="group" aria-label="<#LANG_THEME#>">
-                                <label class="btn btn-sm btn-outline-secondary"><input type="radio" onChange="if($(this).is(':checked')) document.documentElement.setAttribute('data-bs-theme', 'dark');$.cookie('theme', 'dark', {expires: 180});"> <#LANG_THEME_DARK#></label>
-                                <label class="btn btn-sm btn-outline-secondary"><input type="radio" onChange="if($(this).is(':checked')) document.documentElement.setAttribute('data-bs-theme', 'light');$.cookie('theme', 'light', {expires: 180});"> <#LANG_THEME_LIGHT#></label>
+                                <input class="btn-check" type="radio" name="adminTheme" id="adminThemeDark" value="dark" data-md-theme-choice="dark"[#if "<#SETTINGS_THEME#>"!="light"#] checked[#endif#]>
+                                <label class="btn btn-sm btn-outline-secondary" for="adminThemeDark"><#LANG_THEME_DARK#></label>
+                                <input class="btn-check" type="radio" name="adminTheme" id="adminThemeLight" value="light" data-md-theme-choice="light"[#if "<#SETTINGS_THEME#>"=="light"#] checked[#endif#]>
+                                <label class="btn btn-sm btn-outline-secondary" for="adminThemeLight"><#LANG_THEME_LIGHT#></label>
                             </span>
                         </div>
                     </div>
@@ -139,21 +123,13 @@
                 </div>
             </section>
 
-            <div id="hint_blockdidyouknow" class="md-admin-hint-card">
-                <div id="didyouknow" class="alert alert-dismissible md-admin-soft-alert">
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<#LANG_CLOSE#>"></button>
-                    <div id="didyouknow_body"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></div>
-                </div>
-                <button type="button" class="btn btn-link md-admin-muted-link" data-md-hide-hint="blockdidyouknow"><#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#></button>
-            </div>
-
-            <section class="md-admin-section-card" id="news">
+            <section class="md-admin-section-card">
                 <header class="md-admin-section-card__header">
-                    <h2><#LANG_NEWDASH_NEWS#> <a href="https://connect.smartliving.ru/blog.html" target="_blank"><#LANG_NEWDASH_NEWS_MORE#></a></h2>
-                    <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="newsBlockDiv" aria-expanded="true" aria-controls="row_newsBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
+                    <h2>Последние изменения свойств <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=properties">X-Ray</a></h2>
+                    <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="propertiesBlockDiv" aria-expanded="true" aria-controls="row_propertiesBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
-                <div id="row_newsBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div class="md-admin-news-list" id="news_body"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></div>
+                <div id="row_propertiesBlockDiv" class="collapse show md-admin-section-card__body">
+                    <div class="md-admin-property-feed" id="recentProperties"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></div>
                 </div>
             </section>
 
@@ -161,37 +137,6 @@
                 <button type="button" class="btn btn-light btn-sm" data-md-reset-hints data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-eye-open"></i> <#LANG_NEWDASH_RESET_VISIBILITY#></button>
             </div>
         </aside>
-    </div>
-</div>
-
-<div class="modal fade" id="modalHowMyBlock" tabindex="-1" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content md-admin-modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="myModalLabel"><#LANG_NEWDASH_DMB_TITLE_MODAL#></h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<#LANG_CLOSE#>"></button>
-            </div>
-            <div class="modal-body">
-                <div class="md-admin-inline-note md-admin-inline-note--success"><i class="glyphicon glyphicon-exclamation-sign"></i> <#LANG_NEWDASH_DMB_TITLE_MODAL_HINT#> <a href="https://mjdm.ru/forum/viewtopic.php?f=6&t=7303#p124597" target="_blank"><#LANG_NEWDASH_DMB_TITLE_MODAL_HINT_FORUM#></a></div>
-                <ol class="md-admin-steps">
-                    <li><#LANG_NEWDASH_DMB_TITLE_MODAL_STEP1#> <code>dash_my_block</code></li>
-                    <li><#LANG_NEWDASH_DMB_TITLE_MODAL_STEP2#><pre class="md-admin-code-sample">$array = array(
-    'status' => 1,
-    'name' => 'Супер блок',
-    'reload' => true,
-    'reload_time' => 5,
-    'data' => array(
-        'data' => 'Привет! Тут любой html!'
-    ),
-);
-echo json_encode($array);</pre></li>
-                    <li><#LANG_NEWDASH_DMB_TITLE_MODAL_STEP3#></li>
-                </ol>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><#LANG_CLOSE#></button>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -298,12 +243,7 @@ am4core.ready(function() {
 
 $(document).ready(function() {
     checkUpdatesAvailable();
-    checkDidYouKnow();
-    checkNews();
     hideHintCookie('alert_hide_hint2', 1);
-    hideHintCookie('blockdidyouknow', 1);
-    hideHintCookie('blockaddnewdev', 1);
-    hideHintCookie('addMyBlockHint', 1);
     setInterval(function() { checkSystemInfo(); }, 300000);
     checkSystemInfo();
     myBlockOnDash();

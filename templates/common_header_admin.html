@@ -15,8 +15,13 @@
 <script type="text/javascript" src="<#ROOTHTML#>3rdparty/bootstrap5/js/bootstrap.bundle.min.js"></script>
 <script type="text/javascript">
 window.MDJAdminDefaultTheme = '[#if "<#SETTINGS_THEME#>"!="dark" || PANEL_THEME=="light"#]light[#else#]dark[#endif#]';
+ (function () {
+    var match = document.cookie.match(/(?:^|;\s*)theme=([^;]+)/);
+    var theme = match ? decodeURIComponent(match[1]) : window.MDJAdminDefaultTheme;
+    document.documentElement.setAttribute('data-bs-theme', theme === 'dark' ? 'dark' : 'light');
+})();
 </script>
-<script type="text/javascript" src="<#ROOTHTML#>js/admin/admin_panel.js?v=2026-06-03-6"></script>
+<script type="text/javascript" src="<#ROOTHTML#>js/admin/admin_panel.js?v=2026-06-03-7"></script>
 
 <!-- Legacy plugins still used by admin modules. Move/remove them module by module. -->
 <link rel="stylesheet" type="text/css" href="<#ROOTHTML#>3rdparty/bootstrap-datetimepicker/bootstrap-datetimepicker.min.css"/>
