@@ -508,10 +508,12 @@
         var chartSummary = document.getElementById('mdObjectHistoryChartSummary');
         var feed = document.getElementById('mdObjectHistoryFeed');
         var feedCount = document.getElementById('mdObjectHistoryFeedCount');
+        var tabs = document.getElementById('mdObjectHistoryTabs');
         var body = document.body;
         var activeTrigger = null;
         var activeRange = '7d';
         var activeRequest = null;
+        var activeTab = 'history';
 
         if (!drawer || !panel || !state) {
             return;
@@ -543,6 +545,31 @@
             });
         }
 
+        function setActiveTab(tabName) {
+            activeTab = tabName || 'history';
+            drawer.querySelectorAll('[data-md-history-tab]').forEach(function (button) {
+                var isActive = button.getAttribute('data-md-history-tab') === activeTab;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            });
+            drawer.querySelectorAll('[data-md-history-panel]').forEach(function (panelNode) {
+                panelNode.hidden = panelNode.getAttribute('data-md-history-panel') !== activeTab;
+            });
+        }
+
+        function toggleChartTab(isVisible) {
+            var chartButton = drawer.querySelector('[data-md-history-tab="chart"]');
+            if (tabs) {
+                tabs.hidden = !isVisible;
+            }
+            if (chartButton) {
+                chartButton.hidden = !isVisible;
+            }
+            if (!isVisible) {
+                setActiveTab('history');
+            }
+        }
+
         function openDrawer(trigger) {
             activeTrigger = trigger;
             body.classList.add('md-object-history-open');
@@ -550,6 +577,7 @@
             title.textContent = trigger.getAttribute('data-property-name') || 'История свойства';
             subtitle.textContent = trigger.getAttribute('data-property-description') || '';
             setRangeButtons(activeRange);
+            setActiveTab('history');
             loadHistory();
         }
 
@@ -634,16 +662,16 @@
         function renderFeed(items) {
             feedCount.textContent = items.length ? ('Записей: ' + items.length) : '';
             if (!items.length) {
-                feed.innerHTML = '<div class="md-object-history-feed__empty">История за выбранный период пока пуста.</div>';
+                feed.innerHTML = '<tr><td colspan="3" class="md-object-history-table__empty">История за выбранный период пока пуста.</td></tr>';
                 return;
             }
 
             feed.innerHTML = items.map(function (item) {
-                return '<article class="md-object-history-feed__item">' +
-                    '<div class="md-object-history-feed__value">' + escapeHtml(formatValue(item.value)) + '</div>' +
-                    '<div class="md-object-history-feed__time">' + escapeHtml(item.added_label || '') + '</div>' +
-                    (item.source ? '<div class="md-object-history-feed__source">' + escapeHtml(item.source) + '</div>' : '') +
-                '</article>';
+                return '<tr>' +
+                    '<td class="md-object-history-table__time">' + escapeHtml(item.added_label || '') + '</td>' +
+                    '<td class="md-object-history-table__value">' + escapeHtml(formatValue(item.value)) + '</td>' +
+                    '<td class="md-object-history-table__source">' + escapeHtml(item.source || '—') + '</td>' +
+                '</tr>';
             }).join('');
         }
 
@@ -663,11 +691,18 @@
             currentMeta.textContent = metaParts.join(' • ');
 
             renderStats(data.stats || {});
-            renderChart(data.chart || {});
             renderFeed(data.history || []);
+            toggleChartTab(!!(data.meta && data.meta.is_numeric));
+            if (data.meta && data.meta.is_numeric) {
+                renderChart(data.chart || {});
+            } else {
+                chart.innerHTML = '';
+                chartSummary.textContent = '';
+            }
 
             state.hidden = true;
             panel.hidden = false;
+            setActiveTab('history');
         }
 
         function loadHistory() {
@@ -746,6 +781,19 @@
                 activeRange = nextRange;
                 setRangeButtons(activeRange);
                 loadHistory();
+            });
+        });
+
+        drawer.querySelectorAll('[data-md-history-tab]').forEach(function (button) {
+            if (button.dataset.mdHistoryTabBound === '1') {
+                return;
+            }
+            button.dataset.mdHistoryTabBound = '1';
+            button.addEventListener('click', function () {
+                if (button.hidden) {
+                    return;
+                }
+                setActiveTab(button.getAttribute('data-md-history-tab') || 'history');
             });
         });
 

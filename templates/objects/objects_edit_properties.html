@@ -60,12 +60,17 @@
                                 type="button"
                                 class="md-object-property-card__history"
                                 data-md-prop-history-open
-                                data-history-url="admin.php?action=objects&ajax=1&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&op=property_history&property_id=[#ID#]"
+                                data-history-url="index.php?action=objects&ajax=1&id=<#ID#>&op=property_history&property_id=[#ID#]"
                                 data-property-name="<#TITLE#>.[#TITLE#]"
                                 data-property-title="[#TITLE#]"
                                 data-property-description="[#DESCRIPTION#]"
                                 data-property-history="[#KEEP_HISTORY#]">
-                                <i class="glyphicon glyphicon-stats"></i>
+                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <path d="M5 19.25h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M7.5 16V10.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M12 16V7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    <path d="M16.5 16v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                </svg>
                             </button>
                             [#endif#]
                         </div>
@@ -107,7 +112,6 @@
                     </div>
                 </div>
                 <div class="md-admin-record-card__actions">
-                    <button type="button" class="btn btn-light btn-sm" data-md-prop-edit="[#ID#]"><i class="glyphicon glyphicon-pencil"></i><span><#LANG_UPDATE#></span></button>
                     [#if CLASS_ID="0"#]
                     <button type="button" class="btn btn-light btn-sm" data-md-prop-config-toggle="[#ID#]"><i class="glyphicon glyphicon-cog"></i><span><#LANG_EDIT#></span></button>
                     <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_prop=[#ID#]" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')" title="<#LANG_DELETE#>" class="btn btn-outline-danger btn-sm"><i class="glyphicon glyphicon-remove"></i><span><#LANG_DELETE#></span></a>
@@ -197,7 +201,29 @@
                 <div class="md-object-history-hero__meta" id="mdObjectHistoryCurrentMeta"></div>
             </section>
             <section class="md-object-history-stats" id="mdObjectHistoryStats"></section>
-            <section class="md-object-history-chart-card">
+            <section class="md-object-history-tabs" id="mdObjectHistoryTabs">
+                <button type="button" class="md-object-history-tabs__button is-active" data-md-history-tab="history">История</button>
+                <button type="button" class="md-object-history-tabs__button" data-md-history-tab="chart" hidden>График</button>
+            </section>
+            <section class="md-object-history-feed" data-md-history-panel="history">
+                <div class="md-object-history-feed__header">
+                    <h3>Изменения свойства</h3>
+                    <span id="mdObjectHistoryFeedCount"></span>
+                </div>
+                <div class="md-object-history-table-wrap">
+                    <table class="md-object-history-table">
+                        <thead>
+                        <tr>
+                            <th>Когда</th>
+                            <th>Значение</th>
+                            <th>Источник</th>
+                        </tr>
+                        </thead>
+                        <tbody id="mdObjectHistoryFeed"></tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="md-object-history-chart-card" data-md-history-panel="chart" hidden>
                 <div class="md-object-history-chart-card__header">
                     <div>
                         <h3>График</h3>
@@ -205,13 +231,6 @@
                     </div>
                 </div>
                 <div class="md-object-history-chart" id="mdObjectHistoryChart"></div>
-            </section>
-            <section class="md-object-history-feed">
-                <div class="md-object-history-feed__header">
-                    <h3>Последние изменения</h3>
-                    <span id="mdObjectHistoryFeedCount"></span>
-                </div>
-                <div class="md-object-history-feed__list" id="mdObjectHistoryFeed"></div>
             </section>
         </div>
     </div>

@@ -230,15 +230,19 @@ class objects extends module
         if ($this->ajax) {
 
             header("HTTP/1.0: 200 OK\n");
-            header('Content-Type: text/html; charset=utf-8');
+            header('Content-Type: application/json; charset=utf-8');
 
             global $op;
             global $id;
             $res = array();
             if ($op == 'get_object') {
                 $res = $this->processObject($id);
+            } elseif ($op == 'property_history') {
+                $property_id = (int)gr('property_id');
+                $range = gr('history_range', 'trim');
+                $res = $this->buildPropertyHistoryResponse((int)$id, $property_id, $range);
             }
-            echo json_encode($res);
+            echo json_encode($res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             global $db;
             exit;
@@ -1206,6 +1210,10 @@ class objects extends module
 
         $current_value = isset($pvalue['VALUE']) ? $pvalue['VALUE'] : getGlobal($property_name);
         $chart_data = $this->preparePropertyHistoryChart($history, 160);
+        $is_numeric_property = !empty($chart_data['is_numeric']);
+        if (!$is_numeric_property && $current_value !== '' && $current_value !== null && is_numeric($current_value)) {
+            $is_numeric_property = true;
+        }
 
         return array(
             'status' => 'ok',
@@ -1216,7 +1224,8 @@ class objects extends module
                 'property_title' => $property['TITLE'],
                 'property_name' => $property_name,
                 'description' => $property['DESCRIPTION'],
-                'keep_history' => (int)$property['KEEP_HISTORY']
+                'keep_history' => (int)$property['KEEP_HISTORY'],
+                'is_numeric' => $is_numeric_property
             ),
             'range' => array(
                 'key' => $range_data['key'],
@@ -1314,6 +1323,7 @@ class objects extends module
 
         return array(
             'has_data' => count($sampled_points) > 1,
+            'is_numeric' => count($points) > 0,
             'points' => $sampled_points,
             'min' => count($values) ? min($values) : null,
             'max' => count($values) ? max($values) : null,
