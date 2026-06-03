@@ -90,7 +90,7 @@ if($action == 'save' && !empty($key)) {
 	$code = str_replace("!plus", "+", $code);
 	$code = str_replace("!minus", "-", $code);
 	
-	$errorDetails = code_syntax_error_details($code);
+	$errorDetails = code_syntax_error_details($code, $mode);
 	
 	echo json_encode(array(
 		'status' => 'ok',

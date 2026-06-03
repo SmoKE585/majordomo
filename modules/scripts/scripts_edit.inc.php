@@ -35,6 +35,7 @@ if ($this->mode == 'update') {
     $rec['RETURN_JSON'] = (int)$return_json;
 
     global $code;
+    global $code_editor_mode;
 
     if ($rec['TYPE'] == 1) {
         global $xml;
@@ -50,7 +51,7 @@ if ($this->mode == 'update') {
     $rec['CODE'] = $code;
 
     if ($rec['CODE'] != '') {
-        $errorDetails = code_syntax_error_details($rec['CODE']);
+        $errorDetails = code_syntax_error_details($rec['CODE'], $code_editor_mode);
 
         if ($errorDetails) {
             $out['ERR_LINE'] = (int)$errorDetails['line'];

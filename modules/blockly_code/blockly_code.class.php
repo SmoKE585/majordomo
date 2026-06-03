@@ -283,12 +283,13 @@ class blockly_code extends module
             $old_rec = $rec;
             $rec['XML'] = gr('xml');
             $rec['CODE'] = gr('code');
+            $code_editor_mode = gr('code_editor_mode');
             $rec['UPDATED'] = date('Y-m-d H:i:s');
             $rec['SYSTEM_NAME'] = $this->system_name;
             $rec['CODE_TYPE'] = $code_type;
             $valid_code = 1;
             if ($rec['CODE'] != '') {
-                $errorDetails = code_syntax_error_details($rec['CODE']);
+                $errorDetails = code_syntax_error_details($rec['CODE'], $code_editor_mode);
                 if ($errorDetails) {
                     $valid_code = 0;
                     $out['ERR_LINE'] = (int)$errorDetails['line'];

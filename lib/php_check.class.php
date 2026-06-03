@@ -66,13 +66,44 @@ function python_syntax_error_offset()
 	return $offset;
 }
 
-function code_syntax_error_details($code)
+function normalize_code_editor_mode($mode)
+{
+	$mode = strtolower(trim((string)$mode));
+	if ($mode === 'text/x-php' || $mode === 'php' || $mode === 'application/x-httpd-php' || $mode === 'application/x-httpd-php-open') {
+		return 'php';
+	}
+	if ($mode === 'text/x-python' || $mode === 'python') {
+		return 'python';
+	}
+	if ($mode === 'html' || $mode === 'htmlmixed' || $mode === 'text/html') {
+		return 'htmlmixed';
+	}
+	if ($mode === 'javascript' || $mode === 'text/javascript' || $mode === 'application/javascript') {
+		return 'javascript';
+	}
+	if ($mode === 'css') {
+		return 'css';
+	}
+	if ($mode === 'xml' || $mode === 'text/xml' || $mode === 'application/xml') {
+		return 'xml';
+	}
+	return '';
+}
+
+function code_syntax_error_details($code, $mode = '')
 {
 	if (!trim((string)$code)) {
 		return false;
 	}
 
-	$isPython = isItPythonCode($code);
+	$mode = normalize_code_editor_mode($mode);
+	if ($mode === 'python') {
+		$isPython = true;
+	} elseif ($mode === 'php') {
+		$isPython = false;
+	} else {
+		$isPython = isItPythonCode($code);
+	}
 	$errors = $isPython ? python_syntax_error($code) : php_syntax_error($code);
 	if (!$errors) {
 		return false;

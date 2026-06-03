@@ -83,6 +83,13 @@
           data-code-editor-md="[#SYSTEM_NAME#]"
           data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
       <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+       <label class="md-code-editor__mode-switch">
+        <span>Mode</span>
+        <select class="form-control form-control-sm" name="code_editor_mode" data-code-editor-mode-select>
+         <option value="php"[#if CODE_EDITOR_MODE="php"#] selected[#endif#]>PHP</option>
+         <option value="python"[#if CODE_EDITOR_MODE="python"#] selected[#endif#]>Python</option>
+        </select>
+       </label>
        <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
        [#if CODE_EDITOR_VALIDATE="1"#]
         <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>

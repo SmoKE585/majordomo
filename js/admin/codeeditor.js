@@ -102,9 +102,61 @@
 
     function editorModeConfig(mode) {
         if (mode === 'php') {
-            return {name: 'php', startOpen: true};
+            return {name: 'text/x-php', startOpen: true};
+        }
+        if (mode === 'python') {
+            return 'text/x-python';
         }
         return mode;
+    }
+
+    function modeStorageKey(wrapper) {
+        return 'md-codeeditor-mode:' + String(wrapper.dataset.codeEditorKey || '');
+    }
+
+    function getStoredMode(wrapper) {
+        try {
+            return normalizeMode(window.localStorage.getItem(modeStorageKey(wrapper)) || '');
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function storeMode(wrapper, mode) {
+        try {
+            window.localStorage.setItem(modeStorageKey(wrapper), normalizeMode(mode));
+        } catch (e) {
+            // Ignore storage failures.
+        }
+    }
+
+    function getCurrentMode(wrapper) {
+        var select = wrapper.querySelector('[data-code-editor-mode-select]');
+        if (select && select.value) {
+            return normalizeMode(select.value);
+        }
+        return normalizeMode(wrapper.dataset.codeEditorMode || 'php');
+    }
+
+    function setEditorMode(wrapper, editor, mode, persist) {
+        mode = normalizeMode(mode || 'php');
+        if (!editor || !mode) {
+            return Promise.resolve();
+        }
+        wrapper.dataset.codeEditorMode = mode;
+        if (persist !== false) {
+            storeMode(wrapper, mode);
+        }
+        var select = wrapper.querySelector('[data-code-editor-mode-select]');
+        if (select && select.value !== mode) {
+            select.value = mode;
+        }
+        return ensureCodeMirror(mode, wrapper.dataset.codeEditorTheme || 'codemirror').then(function () {
+            editor.setOption('mode', editorModeConfig(mode));
+            editor.setOption('autoCloseTags', mode === 'htmlmixed');
+            editor.setOption('matchTags', mode === 'htmlmixed');
+            editor.refresh();
+        });
     }
 
     function modeAssets(mode) {
@@ -412,6 +464,18 @@
             return;
         }
 
+        var modeSelect = toolbar.querySelector('[data-code-editor-mode-select]');
+        if (modeSelect && !modeSelect.dataset.codeEditorBound) {
+            modeSelect.dataset.codeEditorBound = '1';
+            modeSelect.addEventListener('change', function () {
+                setEditorMode(wrapper, editor, modeSelect.value, true).catch(function (error) {
+                    if (window.console && window.console.warn) {
+                        window.console.warn(error);
+                    }
+                });
+            });
+        }
+
         toolbar.addEventListener('click', function (event) {
             var button = event.target.closest('[data-code-editor-action]');
             if (!button || !toolbar.contains(button)) {
@@ -540,6 +604,7 @@
             key: wrapper.dataset.codeEditorKey || '',
             id: wrapper.dataset.codeEditorId || '',
             md: wrapper.dataset.codeEditorMd || '',
+            mode: getCurrentMode(wrapper),
             code: editor.getValue()
         });
 
@@ -566,7 +631,7 @@
     }
 
     function scheduleHints(wrapper, editor, change) {
-        var mode = normalizeMode(wrapper.dataset.codeEditorMode || 'php');
+        var mode = getCurrentMode(wrapper);
         var hintDelay = hintDelayForMode(mode);
         if (!hintDelay || !editor || !change || !change.text || !change.text.length) {
             return;
@@ -584,7 +649,7 @@
                 return;
             }
             editor.showHint({
-                hint: CodeMirror.hint.auto,
+                hint: CodeMirror.hint.anyword || CodeMirror.hint.auto,
                 completeSingle: false,
                 closeOnUnfocus: true
             });
@@ -722,9 +787,11 @@
             return;
         }
 
-        var mode = normalizeMode(wrapper.dataset.codeEditorMode || 'php');
+        var mode = getStoredMode(wrapper) || normalizeMode(wrapper.dataset.codeEditorMode || 'php');
         var theme = wrapper.dataset.codeEditorTheme || 'codemirror';
         wrapper.dataset.codeEditorReady = '1';
+        wrapper.dataset.codeEditorMode = mode;
+        storeMode(wrapper, mode);
         bindDrawer(wrapper);
 
         ensureCodeMirror(mode, theme).then(function () {

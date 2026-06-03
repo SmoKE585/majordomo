@@ -66,8 +66,6 @@
 }
 
 .md-scripts-toolbar--stacked {
-  align-items: stretch;
-  flex-direction: column;
   justify-content: flex-start;
   gap: 12px;
 }
