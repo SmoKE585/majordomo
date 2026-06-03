@@ -5,19 +5,11 @@
 	}
 }
 
-.xray-shell {
-	background: #f5f8fb;
-	border: 1px solid rgba(31, 41, 51, 0.08);
-	border-radius: 16px;
-	box-shadow: 0 8px 24px rgba(31, 41, 51, 0.06);
-	padding: 18px;
-}
-
 .xray-hero {
 	background: linear-gradient(135deg, #ffffff 0%, #eef5fb 100%);
 	border: 1px solid rgba(71, 146, 209, 0.14);
 	border-radius: 16px;
-	padding: 18px 20px;
+	padding: 14px 16px;
 	margin-bottom: 14px;
 }
 
@@ -138,21 +130,27 @@
 	width: 100%;
 }
 
+.xray-search-line {
+	margin-bottom: 10px;
+}
+
 .xray-search .form-control {
 	height: 42px;
-	border-radius: 12px 0 0 12px;
+	border-radius: 12px;
 }
 
-.xray-search .input-group-btn .btn {
+.xray-action-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.xray-action-button {
 	height: 42px;
-}
-
-.xray-search .input-group-btn .btn:first-child {
-	border-radius: 0;
-}
-
-.xray-search .input-group-btn .btn:last-child {
-	border-radius: 0 12px 12px 0;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border-radius: 12px;
 }
 
 .xray-layout {
@@ -398,10 +396,6 @@
 }
 
 @media (max-width: 991px) {
-	.xray-shell {
-		padding: 14px;
-	}
-
 	.xray-toolbar-grid,
 	.xray-summary-grid {
 		grid-template-columns: 1fr;
@@ -414,13 +408,6 @@
 }
 
 @media (max-width: 767px) {
-	.xray-shell {
-		border-radius: 0;
-		border-left: 0;
-		border-right: 0;
-		padding: 12px;
-	}
-
 	.xray-hero h2 {
 		font-size: 24px;
 	}
@@ -429,15 +416,12 @@
 		border-radius: 12px;
 	}
 
-	.xray-search .input-group-btn {
-		display: flex;
-		width: 100%;
+	.xray-action-buttons {
 		margin-top: 8px;
 	}
 
-	.xray-search .input-group-btn .btn {
+	.xray-action-button {
 		flex: 1 1 auto;
-		border-radius: 12px !important;
-		margin-left: 0 !important;
+		min-width: 0;
 	}
 }

@@ -48,8 +48,7 @@
 </script>
 <script src="<#ROOTHTML#>templates/xray/xray.js?v=2026-06-03-2"></script>
 
-<div class="xray-shell">
-	<div class="xray-hero">
+<div class="xray-hero">
 		<div class="row">
 			<div class="col-md-8">
 				<h2>X-Ray</h2>
@@ -86,8 +85,8 @@
 		[#endif VIEW_MODE#]
 	</div>
 
-	<div class="xray-tabs-wrap">
-		<ul class="nav nav-tabs xray-tabs">
+<div class="xray-tabs-wrap">
+	<ul class="nav nav-tabs xray-tabs">
 			<li [#if VIEW_MODE=""#]class="active"[#endif#]><a href="?view_mode="><#LANG_LOG#></a></li>
 			<li [#if VIEW_MODE="properties"#]class="active"[#endif#]><a href="?view_mode=properties"><#LANG_PROPERTIES#></a></li>
 			<li [#if VIEW_MODE="methods"#]class="active"[#endif#]><a href="?view_mode=methods"><#LANG_METHODS#></a></li>
@@ -99,11 +98,11 @@
 			<li [#if VIEW_MODE="performance"#]class="active"[#endif#]><a href="?view_mode=performance"><#LANG_XRAY_PERFORMANCE#></a></li>
 			<li [#if VIEW_MODE="dead"#]class="active"[#endif#]><a href="?view_mode=dead"><#LANG_XRAY_NOT_ALIVE#></a></li>
 			<li><a href="print_all.php" target="_blank"><#LANG_XRAY_STRUCTURE#></a></li>
-		</ul>
-	</div>
+	</ul>
+</div>
 
-	[#if VIEW_MODE!="services"#]
-	<form action="?" method="get" class="xray-toolbar">
+[#if VIEW_MODE!="services"#]
+<form action="?" method="get" class="xray-toolbar">
 		<input type="hidden" name="tab" value="<#TAB#>">
 		<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
 		[#if VIEW_MODE=""#]
@@ -131,95 +130,94 @@
 		</div>
 		[#endif VIEW_MODE#]
 		<div class="xray-search">
-			<div class="input-group">
+			<div class="xray-search-line">
 				<input type="text" name="filter" id="filter" value="<#FILTER#>" placeholder="<#LANG_XRAY_LINE_FILTER#>" class="form-control">
-				<span class="input-group-btn">
-					<button type="submit" class="btn btn-success"><#LANG_SUBMIT#></button>
-					<a href="#" class="btn btn-primary" id="playpausebtn"><i class="glyphicon glyphicon-pause"></i> <#LANG_XRAY_PAUSE#></a>
-					[#if VIEW_MODE=""#]
-					<a href="#" class="btn btn-danger" id="clearlogsbtn" title="Очистить выбранные логи"><i class="glyphicon glyphicon-trash"></i> Очистить лог</a>
-					[#endif VIEW_MODE#]
-				</span>
+			</div>
+			<div class="xray-action-buttons">
+				<button type="submit" class="btn btn-success xray-action-button"><#LANG_SUBMIT#></button>
+				<a href="#" class="btn btn-primary xray-action-button" id="playpausebtn"><i class="glyphicon glyphicon-pause"></i> <#LANG_XRAY_PAUSE#></a>
+				[#if VIEW_MODE=""#]
+				<a href="#" class="btn btn-danger xray-action-button" id="clearlogsbtn" title="Очистить выбранные логи"><i class="glyphicon glyphicon-trash"></i> Очистить лог</a>
+				[#endif VIEW_MODE#]
 			</div>
 		</div>
 	</form>
 	[#endif VIEW_MODE#]
 
-	<div class="row xray-layout">
-		<div class="col-md-[#if VIEW_MODE=""#]8[#else#]12[#endif VIEW_MODE#]">
-			<div class="xray-card">
-				<div class="xray-progress">
-					<div class="progress">
-						<div class="progress-bar progress-bar-success" id="reloadProgress" role="progressbar" data-now="0"></div>
-					</div>
+<div class="row xray-layout">
+	<div class="col-md-[#if VIEW_MODE=""#]8[#else#]12[#endif VIEW_MODE#]">
+		<div class="xray-card">
+			<div class="xray-progress">
+				<div class="progress">
+					<div class="progress-bar progress-bar-success" id="reloadProgress" role="progressbar" data-now="0"></div>
 				</div>
-				<div class="xray-content" id="xrayContent" aria-live="polite">
-					<div class="xray-empty-state">
-						<div>
-							<div class="xray-spinner"></div>
-							<strong><#LANG_NEWDASH_LOADING#></strong>
-							<div>Собираем данные и обновляем представление.</div>
-						</div>
+			</div>
+			<div class="xray-content" id="xrayContent" aria-live="polite">
+				<div class="xray-empty-state">
+					<div>
+						<div class="xray-spinner"></div>
+						<strong><#LANG_NEWDASH_LOADING#></strong>
+						<div>Собираем данные и обновляем представление.</div>
 					</div>
 				</div>
 			</div>
 		</div>
-		[#if VIEW_MODE=""#]
-		<div class="col-md-4">
-			<div class="xray-card">
-				<div class="xray-card-header">
-					<div class="xray-card-title">Файлы логов</div>
-					<div class="xray-card-subtitle">Быстрый доступ к сегодняшним файлам и скачиванию.</div>
-				</div>
-				<div class="table-responsive xray-table-wrap">
-					<table class="table table-condensed table-hover xray-table">
-						<thead>
-							<tr>
-								<th>Файл</th>
-								<th class="text-right">Размер</th>
-								<th class="text-right">Изменен</th>
-								<th class="text-center xray-download-col"></th>
-							</tr>
-						</thead>
-						<tbody>
-						[#begin TODAY_FILES#]
-							<tr>
-								<td class="xray-cell-wrap">
-									<a href="?files[]=[#TITLE#]" title="[#TITLE#]">[#BASENAME#]</a>
-								</td>
-								<td class="text-right">[#SIZE#]</td>
-								<td class="text-right">[#PASSED#]</td>
-								<td class="text-center">
-									<a href="?download_file=[#TITLE#]" class="btn btn-default btn-xs" title="Скачать">
-										<i class="glyphicon glyphicon-download"></i>
-									</a>
-								</td>
-							</tr>
-						[#end TODAY_FILES#]
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</div>
-		[#endif VIEW_MODE#]
 	</div>
-
-	[#if VIEW_MODE="services"#]
-	<div class="modal fade xray-log-modal" id="cycleLogModal" tabindex="-1" aria-hidden="true">
-		<div class="modal-dialog modal-lg">
-			<div class="modal-content">
-				<div class="modal-header">
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-					<h4 class="modal-title">Лог цикла <span id="cycleLogTitle"></span></h4>
-				</div>
-				<div class="modal-body">
-					<pre id="cycleLogBody"></pre>
-				</div>
+	[#if VIEW_MODE=""#]
+	<div class="col-md-4">
+		<div class="xray-card">
+			<div class="xray-card-header">
+				<div class="xray-card-title">Файлы логов</div>
+				<div class="xray-card-subtitle">Быстрый доступ к сегодняшним файлам и скачиванию.</div>
+			</div>
+			<div class="table-responsive xray-table-wrap">
+				<table class="table table-condensed table-hover xray-table">
+					<thead>
+						<tr>
+							<th>Файл</th>
+							<th class="text-right">Размер</th>
+							<th class="text-right">Изменен</th>
+							<th class="text-center xray-download-col"></th>
+						</tr>
+					</thead>
+					<tbody>
+					[#begin TODAY_FILES#]
+						<tr>
+							<td class="xray-cell-wrap">
+								<a href="?files[]=[#TITLE#]" title="[#TITLE#]">[#BASENAME#]</a>
+							</td>
+							<td class="text-right">[#SIZE#]</td>
+							<td class="text-right">[#PASSED#]</td>
+							<td class="text-center">
+								<a href="?download_file=[#TITLE#]" class="btn btn-default btn-xs" title="Скачать">
+									<i class="glyphicon glyphicon-download"></i>
+								</a>
+							</td>
+						</tr>
+					[#end TODAY_FILES#]
+					</tbody>
+				</table>
 			</div>
 		</div>
 	</div>
 	[#endif VIEW_MODE#]
 </div>
+
+[#if VIEW_MODE="services"#]
+<div class="modal fade xray-log-modal" id="cycleLogModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				<h4 class="modal-title">Лог цикла <span id="cycleLogTitle"></span></h4>
+			</div>
+			<div class="modal-body">
+				<pre id="cycleLogBody"></pre>
+			</div>
+		</div>
+	</div>
+</div>
+[#endif VIEW_MODE#]
 [#endif ACTION#]
 
 [#if ACTION="context"#]
