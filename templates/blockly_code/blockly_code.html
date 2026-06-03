@@ -31,7 +31,7 @@
     <span class="md-code-editor__status" data-code-editor-status></span>
    </div>
 
-   [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS#]
+   [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS!=""#]
     <div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
      <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
      <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>

@@ -135,6 +135,7 @@
             'lib/codemirror.css',
             'addon/display/fullscreen.css',
             'addon/fold/foldgutter.css',
+            'addon/hint/show-hint.css',
             'lib/codemirror.js',
             'addon/edit/matchbrackets.js',
             'addon/edit/closebrackets.js',
@@ -148,7 +149,9 @@
             'addon/fold/comment-fold.js',
             'addon/search/searchcursor.js',
             'addon/dialog/dialog.js',
-            'addon/search/search.js'
+            'addon/search/search.js',
+            'addon/hint/show-hint.js',
+            'addon/hint/anyword-hint.js'
         ];
     }
 
@@ -176,6 +179,13 @@
         }, sequence).then(function () {
             return ensureTheme(theme);
         });
+    }
+
+    function hintDelayForMode(mode) {
+        if (mode === 'php' || mode === 'python') {
+            return 160;
+        }
+        return 0;
     }
 
     function setText(el, value) {
@@ -549,6 +559,32 @@
         });
     }
 
+    function scheduleHints(wrapper, editor, change) {
+        var mode = normalizeMode(wrapper.dataset.codeEditorMode || 'php');
+        var hintDelay = hintDelayForMode(mode);
+        if (!hintDelay || !editor || !change || !change.text || !change.text.length) {
+            return;
+        }
+        if (editor.state && editor.state.completionActive) {
+            return;
+        }
+        var inserted = change.text.join('\n');
+        if (!/[\w$.:>\-]/.test(inserted)) {
+            return;
+        }
+        clearTimeout(wrapper._codeEditorHintTimer);
+        wrapper._codeEditorHintTimer = setTimeout(function () {
+            if (!editor || editor.getOption('readOnly')) {
+                return;
+            }
+            editor.showHint({
+                hint: CodeMirror.hint.auto,
+                completeSingle: false,
+                closeOnUnfocus: true
+            });
+        }, hintDelay);
+    }
+
     function autosaveCode(wrapper, editor) {
         var interval = parseInt(wrapper.dataset.codeEditorAutosave || '0', 10) || 0;
         if (!interval) {
@@ -712,6 +748,9 @@
                 clearValidationMarker(wrapper, editor);
                 autosaveCode(wrapper, editor);
                 updateSize(wrapper, editor);
+            });
+            editor.on('inputRead', function (cm, change) {
+                scheduleHints(wrapper, cm, change);
             });
             editor.on('update', function () {
                 updateSize(wrapper, editor);
