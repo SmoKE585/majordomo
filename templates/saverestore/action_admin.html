@@ -32,32 +32,168 @@
 			<script>
 				$(document).ready(function() {
 					$('#myModal').modal('show');
-					
-					$("#myModal").on("hidden.bs.modal", function () {
-						$('#myModal').modal('show');
-					});
 				});
 			</script>
 		[#endif#]
-		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		<style>
+			.system-update-modal .modal-dialog {
+				width: 820px;
+				max-width: calc(100% - 20px);
+			}
+			.system-update-modal .modal-content {
+				border: 0;
+				border-radius: 9px;
+				overflow: hidden;
+				box-shadow: 0 18px 60px rgba(0,0,0,.35);
+			}
+			.system-update-modal .modal-header {
+				background: linear-gradient(135deg, #263b73, #0d7d7a);
+				color: #fff;
+				border-bottom: 0;
+			}
+			.system-update-modal .modal-title {
+				font-weight: 600;
+			}
+			.system-update-status {
+				border: 1px solid #d9edf7;
+				background: #f5fbff;
+				border-radius: 7px;
+				padding: 13px 15px;
+				margin-bottom: 12px;
+			}
+			.system-update-status .progress {
+				height: 9px;
+				margin: 11px 0 0;
+			}
+			.system-update-steps {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+				margin-bottom: 12px;
+			}
+			.system-update-step {
+				border: 1px solid #ddd;
+				border-radius: 20px;
+				padding: 6px 10px;
+				background: #fff;
+				color: #777;
+				font-size: 12px;
+			}
+			.system-update-step.active {
+				border-color: #31b0d5;
+				color: #1f6f78;
+				background: #eefaff;
+			}
+			.system-update-step.done {
+				border-color: #5cb85c;
+				color: #3c763d;
+				background: #f0fff0;
+			}
+			.system-update-console {
+				width: 100%;
+				height: 430px;
+				border: 0;
+				border-radius: 6px;
+				background: #000080;
+			}
+			@media (max-width: 767px) {
+				.system-update-modal .modal-dialog {
+					margin: 10px;
+					max-width: none;
+					width: auto;
+				}
+				.system-update-steps {
+					display: block;
+				}
+				.system-update-step {
+					display: block;
+					margin-bottom: 6px;
+				}
+				.system-update-console {
+					height: 360px;
+				}
+			}
+		</style>
+		<script>
+			function systemUpdateSetStatus(text, state, percent, step) {
+				var label = $('#systemUpdateStatusText');
+				var icon = $('#systemUpdateStatusIcon');
+				var progress = $('#systemUpdateProgress .progress-bar');
+				label.text(text);
+				if (typeof percent == 'undefined' || percent === null) {
+					percent = state == 'success' || state == 'error' ? 100 : 35;
+				}
+				if (state == 'success') {
+					icon.removeClass().addClass('glyphicon glyphicon-ok-sign text-success');
+					progress.removeClass('progress-bar-info active progress-bar-striped progress-bar-danger').addClass('progress-bar-success');
+				} else if (state == 'error') {
+					icon.removeClass().addClass('glyphicon glyphicon-exclamation-sign text-danger');
+					progress.removeClass('progress-bar-info active progress-bar-striped progress-bar-success').addClass('progress-bar-danger');
+				} else {
+					icon.removeClass().addClass('glyphicon glyphicon-refresh text-info');
+					progress.removeClass('progress-bar-success progress-bar-danger').addClass('progress-bar-info active progress-bar-striped');
+				}
+				progress.css('width', percent + '%');
+				if (step) {
+					$('.system-update-step').each(function() {
+						var item = $(this);
+						var order = parseInt(item.data('order'), 10);
+						var activeOrder = parseInt($('#systemUpdateStep_' + step).data('order'), 10);
+						item.toggleClass('active', item.attr('id') == 'systemUpdateStep_' + step);
+						item.toggleClass('done', !isNaN(order) && !isNaN(activeOrder) && order < activeOrder);
+					});
+				}
+			}
+			function systemUpdateFinish(text, state) {
+				window.onbeforeunload = null;
+				systemUpdateSetStatus(text || 'Операция завершена, выполняется переход...', state || 'success', 100, 'finish');
+			}
+			$(document).ready(function() {
+				[#if MODE="getlatest_iframe"#]
+				systemUpdateSetStatus('Подготовка обновления. Журнал выполнения появится ниже.', 'active', 20, 'prepare');
+				[#else#]
+				systemUpdateSetStatus('Выберите параметры обновления и запустите процесс.', 'active', 10, 'prepare');
+				[#endif#]
+			});
+		</script>
+		<div class="modal fade system-update-modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static">
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<form action="?" method="post" enctype="multipart/form-data" class="form-horizontal">
 						<div class="modal-header">
-							<h4 class="modal-title"><#LANG_NEWSAVERESTORE_CONSOLE#></h4>
+							<h4 class="modal-title" id="myModalLabel"><i class="glyphicon glyphicon-cloud-download"></i> Обновление системы</h4>
 						</div>
 						<div class="modal-body">
-							<div class="alert" style="background: radial-gradient(circle farthest-corner at 450px 10px, #e5c15b, #e94949);color: white;text-align: center;border: 0px;"><i class="glyphicon glyphicon-exclamation-sign" style="font-weight: normal;font-size: 13pt;vertical-align: sub;margin-right: 10px;"></i><#LANG_LONG_OPERATION_WARNING#></div>
+							<div class="system-update-status">
+								<div><i id="systemUpdateStatusIcon" class="glyphicon glyphicon-refresh text-info"></i> <span id="systemUpdateStatusText">Подготовка операции...</span></div>
+								<div id="systemUpdateProgress" class="progress">
+									<div class="progress-bar progress-bar-info progress-bar-striped active" style="width: 10%"></div>
+								</div>
+							</div>
+							<div class="system-update-steps">
+								<span id="systemUpdateStep_prepare" data-order="1" class="system-update-step active">1. Подготовка</span>
+								<span id="systemUpdateStep_backup" data-order="2" class="system-update-step">2. Резервная копия</span>
+								<span id="systemUpdateStep_download" data-order="3" class="system-update-step">3. Скачивание</span>
+								<span id="systemUpdateStep_apply" data-order="4" class="system-update-step">4. Применение</span>
+								<span id="systemUpdateStep_cleanup" data-order="5" class="system-update-step">5. Очистка</span>
+								<span id="systemUpdateStep_finish" data-order="6" class="system-update-step">6. Завершение</span>
+							</div>
 							[#if MODE="getlatest_iframe"#]
-								<iframe id="processUpdateFrame" style="border-radius: 5px;height: 400px;" src="<#ROOTHTML#>modules/saverestore/update_iframe.php?with_extensions=[#WITH_EXTENSIONS#]&with_backup=[#WITH_BACKUP#]&backup=<#BACKUP#>&design=<#DESIGN#>&code=<#CODE#>&data=<#DATA#>&save_files=<#SAVE_FILES#>&link=<#LINK_URL#>" width="100%" frameborder="0"></iframe>
+								<div class="alert alert-warning" style="margin-bottom: 12px;">
+									<i class="glyphicon glyphicon-info-sign"></i>
+									Не закрывайте окно до окончания обновления. После завершения страница обновится автоматически.
+								</div>
+								<iframe id="processUpdateFrame" class="system-update-console" src="<#ROOTHTML#>modules/saverestore/update_iframe.php?with_extensions=[#WITH_EXTENSIONS#]&with_backup=[#WITH_BACKUP#]&backup=<#BACKUP#>&design=<#DESIGN#>&code=<#CODE#>&data=<#DATA#>&save_files=<#SAVE_FILES#>&link=<#LINK_URL#>" frameborder="0"></iframe>
 							[#else#]
-								<p id="updateParams">
-									<input type="checkbox" name="with_extensions" value="1"> <#LANG_UPDATE_ALL_EXTENSIONS#><br/>
-									<#LANG_MANDATORY_DB_BACKUP#>
+								<div id="updateParams">
+									<label><input type="checkbox" name="with_extensions" value="1"> <#LANG_UPDATE_ALL_EXTENSIONS#></label><br/>
+									<div class="alert alert-info" style="margin-top: 10px;margin-bottom: 0;">
+										<i class="glyphicon glyphicon-lock"></i> <#LANG_MANDATORY_DB_BACKUP#>
+									</div>
 									<input type="hidden" name="with_backup" value="0">
 									<input type="hidden" name="link" id="update_link" value="">
 									<div id="update_link_text" style="display:none"></div>
-								</p>
+								</div>
 							[#endif#]
 						</div>
 						[#if MODE!="getlatest_iframe"#]
