@@ -139,6 +139,9 @@ class scripts extends module
 
         $rec = SQLSelectOne("SELECT * FROM scripts WHERE ID='" . (int)$id . "' OR TITLE = '" . DBSafe($id) . "'");
         if (isset($rec['ID'])) {
+            if (!empty($rec['RETURN_JSON']) && !headers_sent() && PHP_SAPI !== 'cli' && PHP_SAPI !== 'phpdbg' && (isset($_SERVER['REQUEST_METHOD']) || isset($_SERVER['REQUEST_URI']))) {
+                header('Content-Type: application/json; charset=utf-8');
+            }
             $update_rec = array('ID' => $rec['ID']);
             $update_rec['EXECUTED'] = date('Y-m-d H:i:s');
             if (defined('CALL_SOURCE')) {
@@ -264,7 +267,7 @@ class scripts extends module
         }
         $fields = implode(',', array(
             'scripts.ID', 'scripts.TITLE', 'scripts.DESCRIPTION', 'CODE', 'RUN_PERIODICALLY', 'RUN_DAYS', 'RUN_TIME',
-            'AUTO_LINK', 'LINKED_OBJECT', 'LINKED_PROPERTY', 'script_categories.TITLE as CATEGORY_TITLE'
+            'AUTO_LINK', 'LINKED_OBJECT', 'LINKED_PROPERTY', 'RETURN_JSON', 'script_categories.TITLE as CATEGORY_TITLE'
         ));
         $scripts = SQLSelect("SELECT $fields FROM scripts LEFT JOIN script_categories ON scripts.CATEGORY_ID=script_categories.ID WHERE scripts.ID IN (" . implode(',', $ids) . ")");
         $total = count($scripts);
@@ -323,6 +326,7 @@ class scripts extends module
                     $script_rec['RUN_PERIODICALLY'] = $scripts[$i]['RUN_PERIODICALLY'];
                     $script_rec['RUN_DAYS'] = $scripts[$i]['RUN_DAYS'];
                     $script_rec['RUN_TIME'] = $scripts[$i]['RUN_TIME'];
+                    $script_rec['RETURN_JSON'] = (int)($scripts[$i]['RETURN_JSON'] ?? 0);
                     if ($scripts[$i]['AUTO_LINK']) {
                         $script_rec['AUTO_LINK'] = 1;
                         $script_rec['LINKED_OBJECT'] = $scripts[$i]['LINKED_OBJECT'];
@@ -538,6 +542,7 @@ class scripts extends module
  scripts: AUTO_LINK_AVAILABLE int(3) unsigned NOT NULL DEFAULT 0 
  scripts: LINKED_OBJECT varchar(255) NOT NULL DEFAULT ''
  scripts: LINKED_PROPERTY varchar(255) NOT NULL DEFAULT ''
+ scripts: RETURN_JSON int(3) unsigned NOT NULL DEFAULT 0
 
  script_categories: ID int(10) unsigned NOT NULL auto_increment
  script_categories: TITLE varchar(255) NOT NULL DEFAULT ''

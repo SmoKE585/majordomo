@@ -21,7 +21,7 @@ $ext = strtolower(substr($file, -3));
 
 if ($ext == 'jpg' || $ext == 'gif' || $ext == 'css')
 {
-   header("HTTP/1.0: 404 Page not found\n");
+   header("HTTP/1.0 404 Page not found\n");
    exit;
 }
 

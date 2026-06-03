@@ -154,7 +154,7 @@ if (isset($_GET['dynids']) and is_array($_GET['dynids'])) {
 
 
 if (!headers_sent()) {
-    header("HTTP/1.0: 200 OK\n");
+    header("HTTP/1.0 200 OK\n");
     header('Content-Type: text/html; charset=utf-8');
     if (!ob_get_length()) {
         if (!ob_start("ob_gzhandler")) ob_start();

@@ -569,7 +569,7 @@ class scenes extends module
         }
         if ($ajax) {
             global $op;
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: text/html; charset=utf-8');
 
             if ($op == 'resized' || $op == 'dragged') {

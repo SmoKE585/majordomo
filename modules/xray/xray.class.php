@@ -264,7 +264,7 @@ class xray extends module
                 $this->queueCycleCommand($service, $op);
             }
 
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: application/json; charset=utf-8');
 
             $updated = gg($service . 'Run');
@@ -317,7 +317,7 @@ class xray extends module
     {
         global $ajax;
         if ($ajax) {
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: text/html; charset=utf-8');
             global $op;
             if ($op == 'process') {
@@ -698,7 +698,7 @@ class xray extends module
             $op = gr('op');
             $filter = gr('filter');
             if ($op == 'clearlog') {
-                header("HTTP/1.0: 200 OK\n");
+                header("HTTP/1.0 200 OK\n");
                 header('Content-Type: application/json; charset=utf-8');
 
                 if (defined('SETTINGS_SYSTEM_DEBMES_PATH') && SETTINGS_SYSTEM_DEBMES_PATH != '') {
@@ -751,7 +751,7 @@ class xray extends module
                 exit;
             }
             if ($op == 'cyclelog') {
-                header("HTTP/1.0: 200 OK\n");
+                header("HTTP/1.0 200 OK\n");
                 header('Content-Type: application/json; charset=utf-8');
                 $cycle = gr('cycle');
                 $cycle = $this->normalizeCycleTitle($cycle);
@@ -784,7 +784,7 @@ class xray extends module
                 exit;
             }
             if ($op == 'getcontent') {
-                header("HTTP/1.0: 200 OK\n");
+                header("HTTP/1.0 200 OK\n");
                 header('Content-Type: text/html; charset=utf-8');
                 if ($this->view_mode == 'properties') {
                     $qry = "1";
@@ -816,7 +816,7 @@ class xray extends module
 
                 if ($this->view_mode == '') {
 
-                    header("HTTP/1.0: 200 OK\n");
+                    header("HTTP/1.0 200 OK\n");
                     header('Content-Type: text/html; charset=utf-8');
                     $limit = $out['LINES'];
                     $filter = $out['FILTER'];

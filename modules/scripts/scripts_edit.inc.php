@@ -31,6 +31,9 @@ if ($this->mode == 'update') {
     global $description;
     $rec['DESCRIPTION'] = $description;
 
+    global $return_json;
+    $rec['RETURN_JSON'] = (int)$return_json;
+
     global $code;
 
     if ($rec['TYPE'] == 1) {

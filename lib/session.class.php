@@ -63,8 +63,10 @@ class session
 
          $this->data = array();
 
-         if (isset($_SESSION['DATA']))
-            $this->data = unserialize($_SESSION['DATA']);
+         if (isset($_SESSION['DATA'])) {
+            $data = @unserialize($_SESSION['DATA']);
+            $this->data = is_array($data) ? $data : array();
+         }
 
          $this->started = 1;
          

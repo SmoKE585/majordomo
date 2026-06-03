@@ -1444,6 +1444,8 @@ $dictionary = array(
     'WIDGET_IMAGE_REFRESH_INTERVAL' => 'Период обновления, секунд',
 
     'AUTO_LINK' => 'Автоматический запуск сценария',
+    'RETURN_JSON' => 'Возвращать ответ в JSON',
+    'RETURN_JSON_HINT' => 'При HTTP-вызове сценария будет отправлен заголовок Content-Type: application/json',
     'FAVORITE_DEVICE' => 'В списке быстрого доступа',
     'SYSTEM_DEVICE' => 'Системное устройство',
 	'ARCHIVED_DEVICE' => 'Архивное утройство',

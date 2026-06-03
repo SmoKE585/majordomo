@@ -229,7 +229,7 @@ class objects extends module
 
         if ($this->ajax) {
 
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: application/json; charset=utf-8');
 
             global $op;
@@ -1136,7 +1136,7 @@ class objects extends module
 
     function renderPropertyHistoryJson()
     {
-        header("HTTP/1.0: 200 OK\n");
+        header("HTTP/1.0 200 OK\n");
         header('Content-Type: application/json; charset=utf-8');
 
         $object_id = (int)$this->id;

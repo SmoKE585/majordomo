@@ -1446,6 +1446,8 @@ $dictionary = array(
     'WIDGET_IMAGE_REFRESH_INTERVAL' => 'Refresh interval, seconds',
 
     'AUTO_LINK' => 'Execute script automatically',
+    'RETURN_JSON' => 'Return response as JSON',
+    'RETURN_JSON_HINT' => 'Send the Content-Type: application/json header when the script is called over HTTP',
     'FAVORITE_DEVICE' => 'Favorite device',
     'SYSTEM_DEVICE' => 'System device',
 	'ARCHIVED_DEVICE' => 'Archived device',

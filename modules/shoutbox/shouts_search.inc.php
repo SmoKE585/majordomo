@@ -193,7 +193,7 @@ if (isset($rooms[0])) {
 $out['SERVER_NAME'] = $_SERVER['SERVER_NAME'];
 
 if ($this->action == '' && $getdata != '') {
-    header("HTTP/1.0: 200 OK\n");
+    header("HTTP/1.0 200 OK\n");
     header('Content-Type: text/html; charset=utf-8');
     echo $txtdata;
     $session->save();

@@ -139,6 +139,8 @@ function getLocalIp()
         $local_ip_address = $local_ip_address_cached;
     } elseif (isset($_SERVER['SERVER_ADDR']) && $_SERVER['SERVER_ADDR'] != '127.0.0.1') {
         $local_ip_address = $_SERVER['SERVER_ADDR'];
+    } elseif (!function_exists('socket_create')) {
+        $local_ip_address = defined('LOCAL_IP') ? LOCAL_IP : '127.0.0.1';
     } else {
         $s = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
         socket_connect($s, '8.8.8.8', 53);  // connecting to a UDP address doesn't send packets

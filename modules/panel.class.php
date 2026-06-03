@@ -40,6 +40,13 @@ class panel extends module
     function run()
     {
         global $session;
+        if (!$session instanceof session) {
+            $session = new session("prj");
+        }
+        if (!is_array($session->data)) {
+            $session->data = array();
+        }
+
         Define('ALTERNATIVE_TEMPLATES', 'templates_alt');
 
         if (isset($_COOKIE['theme'])) {

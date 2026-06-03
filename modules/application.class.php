@@ -64,7 +64,7 @@ class application extends module
         Define('THEME', $theme);
 
         if ($this->action == 'ajaxgetglobal') {
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: text/html; charset=utf-8');
             $var = gr('var');
             $var = str_replace('%', '', $var);
@@ -74,7 +74,7 @@ class application extends module
         }
 
         if ($this->action == 'ajaxsetglobal') {
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: text/html; charset=utf-8');
             $var = gr('var');
             $var = str_replace('%', '', $var);
@@ -85,7 +85,7 @@ class application extends module
         }
 
         if ($this->action == 'getlatestnote') {
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: text/html; charset=utf-8');
 
             $msg = SQLSelectOne("SELECT * FROM shouts WHERE MEMBER_ID=0 ORDER BY ID DESC LIMIT 1");
@@ -96,7 +96,7 @@ class application extends module
         }
 
         if ($this->action == 'getlatestmp3') {
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: text/html; charset=utf-8');
             if ($dir = @opendir(ROOT . "cms/cached/voice")) {
                 while (($file = readdir($dir)) !== false) {

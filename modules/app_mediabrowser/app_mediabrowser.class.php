@@ -422,7 +422,7 @@ class app_mediabrowser extends module
             global $title;
             global $dir;
 
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: text/html; charset=utf-8');
 
             $tmp_path = $dir;

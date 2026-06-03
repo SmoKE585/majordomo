@@ -668,7 +668,7 @@ class devices extends module
         if ($view) $this->view = $view;
 
         if ($this->ajax) {
-            header("HTTP/1.0: 200 OK\n");
+            header("HTTP/1.0 200 OK\n");
             header('Content-Type: text/html; charset=utf-8');
             $op = gr('op');
             $res = array();
