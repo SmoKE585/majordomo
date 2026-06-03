@@ -251,6 +251,111 @@ class saverestore extends module
         return false;
     }
 
+    function getObsoleteSystemUpdatePaths()
+    {
+        return array(
+            'directories' => array(
+                'modules/commands',
+                'modules/patterns',
+                'modules/plans',
+                'modules/scenes',
+                'modules/devices',
+                'templates/commands',
+                'templates/patterns',
+                'templates/plans',
+                'templates/scenes',
+                'templates/devices',
+                'cms/scenes',
+            ),
+            'files' => array(
+                'templates/scenes.html',
+                'css/devices.css',
+                'js/easySlider1.7.js',
+                'img/modules/commands.png',
+                'img/modules/patterns.png',
+                'img/modules/plans.png',
+                'img/modules/scenes.png',
+                'img/modules/devices.png',
+            ),
+            'patterns' => array(
+                'templates/classes/views/S*.html',
+            ),
+        );
+    }
+
+    function getSafeSystemUpdateTargetPath($relative_path)
+    {
+        $relative_path = $this->normalizeManifestPath($relative_path);
+        if ($relative_path == '' || preg_match('#(^|/)\.\.(/|$)#', $relative_path)) {
+            return false;
+        }
+
+        $target = DOC_ROOT . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_path);
+        $real_target = realpath($target);
+        $real_root = realpath(DOC_ROOT);
+        if ($real_target === false || $real_root === false) {
+            return false;
+        }
+        if ($real_target !== $real_root && strpos($real_target, $real_root . DIRECTORY_SEPARATOR) !== 0) {
+            return false;
+        }
+
+        return $real_target;
+    }
+
+    function removeObsoleteSystemUpdatePaths($iframe = 0)
+    {
+        $paths = $this->getObsoleteSystemUpdatePaths();
+
+        foreach ($paths['files'] as $relative_path) {
+            $real_target = $this->getSafeSystemUpdateTargetPath($relative_path);
+            if ($real_target === false || !is_file($real_target)) {
+                continue;
+            }
+            @unlink($real_target);
+            DebMes('Removed obsolete system file: ' . $relative_path, 'restore');
+            if ($iframe) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed obsolete system file ' . htmlspecialchars($relative_path) . '</div>');
+            }
+        }
+
+        foreach ($paths['patterns'] as $relative_pattern) {
+            $relative_pattern = $this->normalizeManifestPath($relative_pattern);
+            if ($relative_pattern == '' || preg_match('#(^|/)\.\.(/|$)#', $relative_pattern)) {
+                continue;
+            }
+            $pattern = DOC_ROOT . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_pattern);
+            $files = glob($pattern);
+            if (!is_array($files)) {
+                continue;
+            }
+            foreach ($files as $file) {
+                $relative_path = str_replace('\\', '/', substr($file, strlen(DOC_ROOT) + 1));
+                $real_target = $this->getSafeSystemUpdateTargetPath($relative_path);
+                if ($real_target === false || !is_file($real_target)) {
+                    continue;
+                }
+                @unlink($real_target);
+                DebMes('Removed obsolete system file: ' . $relative_path, 'restore');
+                if ($iframe) {
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed obsolete system file ' . htmlspecialchars($relative_path) . '</div>');
+                }
+            }
+        }
+
+        foreach ($paths['directories'] as $relative_path) {
+            $real_target = $this->getSafeSystemUpdateTargetPath($relative_path);
+            if ($real_target === false || !is_dir($real_target)) {
+                continue;
+            }
+            removeTree($real_target);
+            DebMes('Removed obsolete system directory: ' . $relative_path, 'restore');
+            if ($iframe) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed obsolete system directory ' . htmlspecialchars($relative_path) . '</div>');
+            }
+        }
+    }
+
     function buildSystemUpdateManifest($root_path, $base_path = '', &$result = array())
     {
         $root_path = rtrim($root_path, DIRECTORY_SEPARATOR . '/');
@@ -1764,6 +1869,7 @@ class saverestore extends module
             $this->stopCyclesBeforeSystemUpdate($iframe);
             if ($is_system_update) {
                 $this->removeFilesDeletedFromSystemUpdate($old_manifest, $new_manifest, $iframe);
+                $this->removeObsoleteSystemUpdatePaths($iframe);
             }
 
             // UPDATING FILES DIRECTLY Исправлено верно на док_руут - потому что функция копиТрее не воспринимает других слешей 

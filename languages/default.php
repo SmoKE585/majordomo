@@ -147,7 +147,6 @@ $dictionary = array(
     'MODULE_SAVERESTORE' => 'System updates',
     'MODULE_WEBVARS' => 'Web Variables',
     'MODULE_ACTIONS_LOG' => 'Actions history',
-    'MODULE_DEVICES' => 'Simple Devices',
     'MODULE_CHARTS' => 'Graphics',
 
     'MODULE_DASHBOARD' => 'Dashboard',
@@ -1150,51 +1149,11 @@ $dictionary = array(
     'ERRORS_SAVED' => 'Errors detected',
     'RUNNING_WITH_ERRORS' => 'Warning! System is running with errors.',
 
-// DEVICES
-    'DEVICES_MODULE_TITLE' => 'Simple Devices',
 
-    'DEVICES_COPY_SETTINGS' => 'Copy settings',
-    'DEVICES_LINKED_WARNING' => 'Please note that when linking to existing object, it will be assigned to the new class.',
-    'DEVICES_SUB_DEVICES' => 'Sub-devices',
-    'DEVICES_PARENT_DEVICE' => 'Parent device',
 
-    'DEVICES_RELAY' => 'Relay/Switch',
-    'DEVICES_DIMMER' => 'Dimmer',
-    'DEVICES_RGB' => 'RGB-light',
-    'DEVICES_MOTION' => 'Motion sensor',
-    'DEVICES_BUTTON' => 'Button',
-    'DEVICES_SWITCH' => 'Switch',
-    'DEVICES_OPENCLOSE' => 'Open/Close sensor',
-    'DEVICES_GENERAL_SENSOR' => 'General sensor',
-    'DEVICES_TEMP_SENSOR' => 'Temperature sensor',
-    'DEVICES_HUM_SENSOR' => 'Humidity sensor',
-    'DEVICES_MOISTURE_SENSOR' => 'Moisture sensor',
-    'DEVICES_CO2_SENSOR' => 'CO2 sensor',
-    'DEVICES_RADIATION_SENSOR' => 'Radiation sensor',
-    'DEVICES_STATE_SENSOR' => 'State sensor',
-    'DEVICES_PERCENTAGE_SENSOR' => 'Percentage value sensor',
-    'DEVICES_PRESSURE_SENSOR' => 'Atmospheric pressure sensor',
-    'DEVICES_POWER_SENSOR' => 'Watt sensor',
-    'DEVICES_VOLTAGE_SENSOR' => 'Voltage sensor',
-    'DEVICES_CURRENT_SENSOR' => 'Current sensor',
-    'DEVICES_LIGHT_SENSOR' => 'Light sensor',
-    'DEVICES_LEAK_SENSOR' => 'Leak detector',
-    'DEVICES_SMOKE_SENSOR' => 'Smoke detector',
-    'DEVICES_UNIT' => 'Units',
-    'DEVICES_COUNTER' => 'Meter/Counter',
-    'DEVICES_BATTERY_LOW' => 'Low battery',
     'DEVICES_UNKNOWN_COMMAND'=>'Unknown command...',
-    'DEVICES_MSG_OPENING'=>'Opening message text',
-    'DEVICES_MSG_CLOSING'=>'Closing message text',
-    'DEVICES_MSG_REMINDER'=>'Reminder message text',
-    'DEVICES_CONFIRMATION_REQUIRED'=>'Commands delivery confirmation required',
 
-    'DEVICES_OPENABLE' => 'Openable (Gateways/Doors/Curtains/etc)',
-    'DEVICES_OPENABLE_SUPPORT_LEVEL' => 'Support level of open',
 
-	'DEVICES_VACUUM' =>'Vacuum cleaner',
-	'DEVICES_MEDIA' =>'Media player',
-	'DEVICES_TV' =>'TV',
 
 // Measure
     'M_VOLTAGE' => 'V',
@@ -1203,148 +1162,34 @@ $dictionary = array(
     'M_WATT' => 'W',
 
 //----
-    'DEVICES_LINKS' => 'Linked devices',
 
     'DEVICES_STATUS' => 'Status',
 
     'DEVICES_LOGIC_ACTION' => 'Action',
-    'DEVICES_SCHEDULE' => 'Schedule',
-    'DEVICES_IS_ADDED' => 'New device added',
-
-    'DEVICES_CURRENT_VALUE' => 'Current value',
-    'DEVICES_CURRENT_HUMIDITY' => 'Humidity',
-    'DEVICES_CURRENT_TEMPERATURE' => 'Temperature',
-
-    'DEVICES_MIN_VALUE' => 'Minimum value',
-    'DEVICES_MAX_VALUE' => 'Maximum value',
-    'DEVICES_NOTIFY' => 'Notify when value out of range',
-    'DEVICES_NORMAL_VALUE' => 'Value within range',
-    'DEVICES_DIRECTION_TIMEOUT' => 'Direction tracking time period (seconds)',
-    'DEVICES_NOTIFY_STATUS' => 'Notify status',
-    'DEVICES_NOTIFY_ELIMINATED' => 'Notify every minute until problem solved',
-    'DEVICES_SENSOR_ALERT' => 'Attention! Alert signal from sensor',
-    'DEVICES_NOTIFY_OUTOFRANGE' => 'Value is out of normal range',
-    'DEVICES_NOTIFY_BACKTONORMAL' => 'Value is back to normal',
-    'DEVICES_NOTIFY_NOT_CLOSED' => 'Notify when left open',
-    'DEVICES_MOTION_IGNORE' => 'Ignore device events when nobody\'s home',
-    'DEVICES_MOTION_RESET' => 'Reset "nobody home" status w/o setting timer',
-    'DEVICES_MOTION_PRESENCE' => 'This is presence sensor',
-    'DEVICES_MOTION_TIMEOUT' => 'Activity timeout (sec)',
-    'DEVICES_TURNOFF_LIGHTS_ON_IDLE' => 'Turn off lights in the room on idle',
-    'DEVICES_ALIVE_TIMEOUT' => 'Possible inactivity timeout (hours)',
-    'DEVICES_MAIN_SENSOR' => 'Main sensor for the room',
-    'DEVICES_BATTERY_OPERATED' => 'Device is battery operated',
-    'DEVICES_BATTERY_LEVEL' => 'Battery level',
-    'DEVICES_BATTERY_WARNING' => 'Low battery warning',
-    'DEVICES_LOW_BATTERY' => 'low battery level',
-    'DEVICES_GROUP_STATE' => 'Group state',
-    'DEVICES_GROUP_STATE_SAVE' => 'Save',
-    'DEVICES_GROUP_STATE_RESTORE' => 'Restore',
-    'DEVICES_GROUP_OPERATION_DELAY' => 'Group operation delay (sec)',
-
-    'DEVICES_IS_ON' => 'is ON',
-    'DEVICES_IS_CLOSED' => 'is Closed',
-    'DEVICES_NOT_UPDATING' => 'is not updating',
-
-    'DEVICES_MOTION_DETECTED' => 'Detected',
-
-    'DEVICES_PRESS' => 'Press',
-    'DEVICES_TURN_ON' => 'Turn On',
-    'DEVICES_TURN_OFF' => 'Turn Off',
-    'DEVICES_SET_COLOR' => 'Set Color',
-
-    'DEVICES_GROUP_ECO' => 'Turn it off in ECO mode',
-    'DEVICES_GROUP_ECO_ON' => 'Turn it on leaving ECO mode',
-    'DEVICES_GROUP_SUNRISE' => 'Turn it off with Sunrise',
-    'DEVICES_GROUP_SUNSET' => 'Turn it on with Sunset',
-    'DEVICES_GROUP_NIGHT' => 'Turn it off entering Night mode',
-    'DEVICES_IS_ACTIVITY' => 'Status change means activity in the room',
-    'DEVICES_NCNO' => 'Device/Sensor type',
-    'DEVICES_LOADTYPE' => 'Device type',
-    'DEVICES_LOADTYPE_VENT' => 'Ventilation',
-    'DEVICES_LOADTYPE_HEATING' => 'Heating',
-    'DEVICES_LOADTYPE_AC' => 'Air conditioner',
-    'DEVICES_LOADTYPE_CURTAINS' => 'Curtains',
-    'DEVICES_LOADTYPE_GATES' => 'Gates',
-    'DEVICES_LOADTYPE_LIGHT' => 'Light',
-    'DEVICES_LOADTYPE_LIGHT_ALT' => 'Light',
-    'DEVICES_LOADTYPE_POWER' => 'Other',
-
-    'DEVICES_OPENTYPE' => 'Device type',
-    'DEVICES_OPENTYPE_CURTAINS' => 'Curtains',
-    'DEVICES_OPENTYPE_SHUTTERS' => 'Shutters',
-    'DEVICES_OPENTYPE_GATES' => 'Gates',
-    'DEVICES_OPENTYPE_WINDOW' => 'Window',
-    'DEVICES_OPENTYPE_DOOR' => 'Door',
-    'DEVICES_OPENTYPE_VALVE' => 'Valve',
-
-    'DEVICES_ADD_MENU' => 'Add device to Menu',
-    'DEVICES_ADD_SCENE' => 'Add device to Scene',
-
-    'DEVICES_LINKS_NOT_ADDED' => 'No linked devices set',
-    'DEVICES_LINKS_AVAILABLE' => 'Available links',
-    'DEVICES_LINKS_COMMENT' => 'Comment (optional)',
-    'DEVICES_LINKS_LINKED_DEVICE' => 'Linked device',
-    'DEVICES_LINKS_ADDED' => 'Links added',
-
-    'DEVICES_LINK_ACTION_TYPE' => 'Action type',
-    'DEVICES_LINK_TYPE_TURN_ON' => 'Turn On',
-    'DEVICES_LINK_TYPE_TURN_OFF' => 'Turn Off',
-    'DEVICES_LINK_TYPE_SYNC' => 'Sync status',
-    'DEVICES_LINK_TYPE_SYNC_INVERTED' => 'Sync status (inverted)',
-	'DEVICES_LINK_TYPE_OPEN' => 'Open',
-	'DEVICES_LINK_TYPE_CLOSE' => 'Close',
-    'DEVICES_LINK_TYPE_SWITCH' => 'Switch',
-
-    'DEVICES_LINK_SWITCH_IT' => 'Switch it',
-    'DEVICES_LINK_SWITCH_IT_DESCRIPTION' => 'Control another devices when action triggered',
-    'DEVICES_LINK_SWITCH_IT_PARAM_ACTION_DELAY' => 'Delay (seconds)',
-
-    'DEVICES_LINK_SWITCH_TIMER' => 'Turn on for some time',
-    'DEVICES_LINK_SWITCH_TIMER_DESCRIPTION' => 'Turn on another devices for some time when action triggered',
-    'DEVICES_LINK_SWITCH_TIMER_PARAM_ACTION_DELAY' => 'For how long (seconds)',
-    'DEVICES_LINK_SWITCH_TIMER_PARAM_DARKTIME' => 'Only when it\'s dark',
-
-    'DEVICES_LINK_SET_COLOR' => 'Set Color',
-    'DEVICES_LINK_SET_COLOR_DESCRIPTION' => 'Change color when action triggered',
-    'DEVICES_LINK_SET_COLOR_PARAM_ACTION_COLOR' => 'Color',
-
-    'DEVICES_LINK_SENSOR_VALUE_TYPE' => 'Source value',
-    'DEVICES_LINK_SENSOR_VALUE_TYPE_CURRENT' => 'Current sensor value',
-    'DEVICES_LINK_SENSOR_VALUE_TYPE_MIN' => 'Minimum sensor value for period',
-    'DEVICES_LINK_SENSOR_VALUE_TYPE_AVG' => 'Average sensor value for period',
-    'DEVICES_LINK_SENSOR_VALUE_TYPE_MAX' => 'Maximum sensor value for period',
-    'DEVICES_LINK_SENSOR_VALUE_FOR_PERIOD' => 'For period',
-
-    'DEVICES_LINK_SENSOR_SWITCH' => 'Sensor control',
-    'DEVICES_LINK_SENSOR_SWITCH_DESCRIPTION' => 'Control another devices based on sensor\'s value',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION' => 'Condition type',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION_ABOVE' => 'Above',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION_BELOW' => 'Below',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_VALUE' => 'Value',
-
-    'DEVICES_LINK_SENSOR_PASS' => 'Sensor data pass',
-    'DEVICES_LINK_SENSOR_PASS_DESCRIPTION' => 'Pass sensor\'s value to another device',
-
-    'DEVICES_LINK_THERMOSTAT_SWITCH' => 'Thermostat device control',
-    'DEVICES_LINK_THERMOSTAT_SWITCH_DESCRIPTION' => 'Control another device based on thermostat status',
-    'DEVICES_LINK_THERMOSTAT_INVERT' => 'Invert device\'s status',
 
 
-    'DEVICES_UPDATE_CLASSSES' => 'Update classes',
-    'DEVICES_ADD_OBJECT_AUTOMATICALLY' => 'Add automatically',
 
-    'DEVICES_PATTERN_TURNON' => 'turn on',
-    'DEVICES_PATTERN_TURNOFF' => 'turn off',
-    'DEVICES_DEGREES' => 'degrees',
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     'DEVICES_STATUS_OPEN' => 'is open',
     'DEVICES_STATUS_CLOSED' => 'is closed',
     'DEVICES_STATUS_ALARM' => 'alarm state',
-    'DEVICES_COMMAND_CONFIRMATION' => 'Done|Ok',
 
-    'DEVICES_ROOMS_NOBODYHOME' => 'Nobody home',
-    'DEVICES_ROOMS_SOMEBODYHOME' => 'Somebody home',
-    'DEVICES_ROOMS_ACTIVITY' => 'Latest activity',
 
     'DEVICES_PASSED_NOW' => 'Now',
     'DEVICES_PASSED_INCORRECT_TIME' => 'Incorrect time',
@@ -1358,67 +1203,11 @@ $dictionary = array(
     'DEVICES_PASSED_SECONDS_AGO' => 'seconds ago',
     'DEVICES_PASSED_MINUTES_AGO' => 'minutes ago',
     'DEVICES_PASSED_HOURS_AGO' => 'hours ago',
-    'DEVICES_CHOOSE_EXISTING' => '... or choose existing device record',
 
-    'DEVICES_CAMERA' => 'IP camera',
-    'DEVICES_CAMERA_STREAM_URL' => 'Stream URL',
-    'DEVICES_CAMERA_USERNAME' => 'Camera Username',
-    'DEVICES_CAMERA_PASSWORD' => 'Camera Password',
-    'DEVICES_CAMERA_SNAPSHOT_URL' => 'Snapshot URL',
-    'DEVICES_CAMERA_SNAPSHOT' => 'Snapshot',
-    'DEVICES_CAMERA_TAKE_SNAPSHOT' => 'Take Snapshot',
-    'DEVICES_CAMERA_SNAPSHOT_HISTORY' => 'History',
-    'DEVICES_CAMERA_STREAM_TRANSPORT' => 'Stream transport',
-    'DEVICES_CAMERA_PREVIEW_TYPE' => 'Preview image',
-    'DEVICES_CAMERA_PREVIEW_TYPE_STATIC' => 'Static',
-    'DEVICES_CAMERA_PREVIEW_TYPE_SLIDESHOW' => 'Slideshow',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK' => 'OnClick action',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK_ENLARGE' => 'Enlarge image',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK_ORIGINAL' => 'Go to stream',
 
-    'DEVICES_THERMOSTAT' => 'Thermostat',
-    'DEVICES_THERMOSTAT_MODE' => 'Mode',
-    'DEVICES_THERMOSTAT_MODE_NORMAL' => 'Normal',
-    'DEVICES_THERMOSTAT_MODE_ECO' => 'Eco',
-    'DEVICES_THERMOSTAT_MODE_OFF' => 'Off',
-    'DEVICES_THERMOSTAT_ECO_MODE' => 'ECO mode',
-    'DEVICES_THERMOSTAT_NORMAL_TEMP' => 'Normal target temperature',
-    'DEVICES_THERMOSTAT_ECO_TEMP' => 'ECO target temperature',
-    'DEVICES_THERMOSTAT_CURRENT_TEMP' => 'Current temperature',
-    'DEVICES_THERMOSTAT_CURRENT_TARGET_TEMP' => 'Current target temperature',
-    'DEVICES_THERMOSTAT_THRESHOLD' => 'Temperature threshold (0.25 by default)',
-    'DEVICES_THERMOSTAT_INCREMENT' => 'Change increment (0.5 by default)',
-    'DEVICES_THERMOSTAT_RELAY_STATUS' => 'Relay status',
-    'DEVICES_THERMOSTAT_SET_TARGET_TEMPERATURE' => 'Set target temperature',
-    'DEVICES_THERMOSTAT_OPENABLE' => 'Linked Doors/windows',
-    'DEVICES_THERMOSTAT_RELAY_READONLY' => 'Read-only mode for heating/cooling relay',
-    'DEVICES_ALL_BY_TYPE' => 'List all by types',
-    'DEVICES_ALL_BY_ROOM' => 'List all by rooms',
-    'DEVICES_LOAD_TIMEOUT' => 'Load status timeout',
 
-    'DEVICES_AC'=>'Air conditioner',
-    'DEVICES_AC_FAN_SPEED'=>'Fan speed',
-    'DEVICES_AC_FAN_SPEED_HIGH'=>'High',
-    'DEVICES_AC_FAN_SPEED_MEDIUM'=>'Medium',
-    'DEVICES_AC_FAN_SPEED_LOW'=>'Low',
-    'DEVICES_AC_FAN_SPEED_AUTO'=>'Auto',
-    'DEVICES_AC_THERMOSTAT'=>'Thermostat',
-    'DEVICES_AC_THERMOSTAT_FAN_ONLY'=>'Fan Only',
-    'DEVICES_AC_THERMOSTAT_HEAT'=>'Heat',
-    'DEVICES_AC_THERMOSTAT_COOL'=>'Cool',
-    'DEVICES_AC_THERMOSTAT_DRY'=>'Dry',
-    'DEVICES_AC_THERMOSTAT_AUTO'=>'Auto',
-    'DEVICES_AC_TEMP_STEP'=>'Temperature change step',
 
-    'DEVICES_DIMMER_MIN_WORK' => 'Min level (work)',
-    'DEVICES_DIMMER_MAX_WORK' => 'Max level (work)',
-    'DEVICES_DIMMER_SWITCH_LEVEL' => 'Do not change level on switch',
-    'DEVICES_DIMMER_SET_MAX' => 'Set maximum level when turning on',
-    'DEVICES_DIMMER_SET_TARGET_LEVEL' => 'Set target level, %',
 
-    'DEVICES_COLLECTION_IS_ON' => 'Is turned on now',
-    'DEVICES_COLLECTION_IS_OPEN' => 'Is open now',
-    'DEVICES_COLLECTION_IS_HEATING' => 'Heating now',
 
     'GROUPS' => 'Groups',
     'APPLIES_TO' => 'Applies to',

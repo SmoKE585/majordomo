@@ -17,7 +17,6 @@
 		    lastItem.insertAdjacentHTML('beforeend', ' &rarr; <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>">[#TITLE#]</a>');
 
 		    [#if DEVICE_ID!=""#]
-		    lastItem.insertAdjacentHTML('beforeend', ' <a href="?(panel:{action=devices})&md=devices&view_mode=edit_devices&id=[#DEVICE_ID#]">([#DEVICE_TITLE#])</a>');
 		    [#endif DEVICE_ID#]
 		});
 		</script>
@@ -55,7 +54,6 @@
 						</div>
 						<div class="md-objects-page__hero-actions">
 							[#if DEVICE_ID!=""#]
-							<a href="?(panel:{action=devices})&md=devices&view_mode=edit_devices&id=[#DEVICE_ID#]" class="btn btn-light">[#DEVICE_TITLE#]</a>
 							[#endif#]
 							<a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
 						</div>

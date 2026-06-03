@@ -107,33 +107,6 @@ $settings_structure = array(
             'data' => '0=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_ONLY_HANDS . '|5=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_5 . '|10=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_10 . '|15=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_15 . '|30=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_30 . '|60=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_60
         )
     ),
-    'scenes' => array(
-        'SCENES_VERTICAL_NAV' => array(
-            'title' => 'Vertical navigation'
-        ),
-        'SCENES_BACKGROUND' => array(
-            'title' => 'Path to background',
-            'type' => 'path'
-        ),
-        'SCENES_BACKGROUND_VIDEO' => array(
-            'title' => 'Path to video background',
-            'type' => 'path'
-        ),
-        'SCENES_CLICKSOUND' => array(
-            'title' => 'Path to click-sound file',
-            'type' => 'path'
-        ),
-        'SCENES_BACKGROUND_FIXED' => array(
-            'title' => 'Backround Fixed',
-            'type' => 'onoff',
-            'default' => '0'
-        ),
-        'SCENES_BACKGROUND_NOREPEAT' => array(
-            'title' => 'Background No repeat',
-            'type' => 'onoff',
-            'default' => '0'
-        )
-    ),
     'backup' => array(
         'BACKUP_PATH' => array(
             'title' => 'Path to store backup',

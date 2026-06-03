@@ -190,10 +190,6 @@ if ($op == 'filter') {
         $addResult('Скрипты', 'script', $script['TITLE'], '/panel/script/' . (int)$script['ID'] . '.html', '', ['Скрипт']);
     }
 
-    $patterns = SQLSelect("SELECT ID, TITLE FROM patterns WHERE (TITLE LIKE '%" . $like . "%' OR SCRIPT LIKE '%" . $like . "%' OR PATTERN LIKE '%" . $like . "%') ORDER BY TITLE LIMIT " . $limit);
-    foreach ($patterns as $pattern) {
-        $addResult('Шаблоны поведения', 'pattern', $pattern['TITLE'], '/panel/pattern/' . (int)$pattern['ID'] . '.html', '', ['Pattern']);
-    }
 
     if (file_exists(DIR_MODULES . 'zwave/zwave.class.php')) {
         $devices = SQLSelect("SELECT ID, DEVICE_ID, TITLE, LINKED_OBJECT, LINKED_PROPERTY FROM zwave_properties WHERE (TITLE LIKE '%" . $like . "%' OR LINKED_OBJECT LIKE '%" . $like . "%' OR LINKED_PROPERTY LIKE '%" . $like . "%') ORDER BY TITLE LIMIT " . $limit);
@@ -202,12 +198,6 @@ if ($op == 'filter') {
         }
     }
 
-    if (file_exists(DIR_MODULES . 'devices/devices.class.php')) {
-        $devices = SQLSelect("SELECT ID, TITLE, LINKED_OBJECT FROM devices WHERE (TITLE LIKE '%" . $like . "%' OR LINKED_OBJECT LIKE '%" . $like . "%') ORDER BY TITLE LIMIT " . $limit);
-        foreach ($devices as $device) {
-            $addResult('Простые устройства', 'device', $device['TITLE'], '/panel/devices/' . (int)$device['ID'] . '.html', '', [$device['LINKED_OBJECT'] ?? '']);
-        }
-    }
 
     if (file_exists(DIR_MODULES . 'app_gpstrack/app_gpstrack.class.php')) {
         $actions = SQLSelect("SELECT gpsactions.ID, gpslocations.TITLE, users.NAME FROM gpsactions LEFT JOIN users ON gpsactions.USER_ID=users.ID LEFT JOIN gpslocations ON gpsactions.LOCATION_ID=gpslocations.ID WHERE (gpslocations.TITLE LIKE '%" . $like . "%' OR gpsactions.CODE LIKE '%" . $like . "%') ORDER BY gpslocations.TITLE LIMIT " . $limit);

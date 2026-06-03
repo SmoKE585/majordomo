@@ -207,7 +207,7 @@ function usual(&$out) {
  function delete_locations($id) {
   $rec=SQLSelectOne("SELECT * FROM locations WHERE ID='$id'");
 
-     $tables=array('devices','objects');
+     $tables=array('objects');
      foreach($tables as $t) {
          SQLExec("UPDATE $t SET LOCATION_ID=0 WHERE LOCATION_ID=".$rec['ID']);
      }

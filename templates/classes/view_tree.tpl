@@ -13,7 +13,7 @@
     <form action="?" method="post" name="frmList_classes" class="md-classes-tree">
         {function name=classes}
         {foreach $items as $item}
-        <article class="md-classes-card {if $item.TITLE == 'SDevices'}md-classes-card--primary{else}{if $item.TITLE == 'Computer' OR $item.TITLE == 'systemStates' OR $item.TITLE == 'OperationalModes' OR $item.TITLE == 'Timer'}md-classes-card--system{/if}{/if} {if isset($item.CAN_DELETE)}is-muted{/if}" {if $item.LEVEL_PAD!=0}style="--md-classes-level: {$item.LEVEL_PAD};"{/if}>
+        <article class="md-classes-card {if $item.TITLE == 'Computer' OR $item.TITLE == 'systemStates' OR $item.TITLE == 'OperationalModes' OR $item.TITLE == 'Timer'}md-classes-card--system{/if} {if isset($item.CAN_DELETE)}is-muted{/if}" {if $item.LEVEL_PAD!=0}style="--md-classes-level: {$item.LEVEL_PAD};"{/if}>
             <header class="md-classes-card__header">
                 <button type="button" class="md-classes-card__toggle" data-md-class-toggle="{if $item.SUB_LIST!=$item.ID}{$item.ID},{/if}{$item.SUB_LIST}" aria-controls="sub_{$item.ID}" aria-expanded="false">
                     <span class="md-classes-card__chevron" aria-hidden="true"></span>

@@ -1074,172 +1074,42 @@ $dictionary = array(
 'MODULES_UPDATES_AVAILABLE' => 'Οι ενημερώσεις ενότητας είναι διαθέσιμες',
 'SYSTEM_UPDATES_AVAILABLE' => 'Οι ενημερώσεις συστήματος είναι διαθέσιμες',
 'ERRORS_SAVED' => 'Αποθηκευμένα σφάλματα',
-// DEVICES
-'DEVICES_MODULE_TITLE' => 'Απλές συσκευές',
-'DEVICES_LINKED_WARNING' => 'Προειδοποίηση: η επιλογή ενός υπάρχοντος αντικειμένου θα οδηγήσει στη σύνδεση του σε μια νέα κλάση.',
-'DEVICES_RELAY' => 'Ελεγχόμενη ρελέ / διακόπτης',
-'DEVICES_DIMMER' => 'Έλεγχος φωτισμού',
-'DEVICES_RGB' => 'Ελεγκτής RGB',
-'DEVICES_MOTION' => 'Αισθητήρας κίνησης',
-'DEVICES_BUTTON' => 'Κουμπί',
-'DEVICES_SWITCH' => 'Διακόπτης',
-'DEVICES_OPENCLOSE' => 'Άνοιγμα / κλείσιμο αισθητήρα',
-'DEVICES_GENERAL_SENSOR' => 'Κοινός αισθητήρας',
-'DEVICES_TEMP_SENSOR' => 'Αισθητήρας θερμοκρασίας',
-'DEVICES_HUM_SENSOR' => 'Αισθητήρας υγρασίας',
-'DEVICES_STATE_SENSOR' => 'Αισθητήρας κατάστασης',
-'DEVICES_PERCENTAGE_SENSOR' => 'Ποσοστό αισθητήρων',
-'DEVICES_PRESSURE_SENSOR' => 'αισθητήρας ατμοσφαιρικής πίεσης',
-'DEVICES_POWER_SENSOR' => 'Αισθητήρας ισχύος',
-'DEVICES_VOLTAGE_SENSOR' => 'Αισθητήρας τάσης',
-'DEVICES_CURRENT_SENSOR' => 'Αισθητήρας ρεύματος',
-'DEVICES_LIGHT_SENSOR' => 'Αισθητήρας φωτός',
-'DEVICES_LEAK_SENSOR' => 'αισθητήρας διαρροής',
-'DEVICES_SMOKE_SENSOR' => 'Ανιχνευτής καπνού',
-'DEVICES_COUNTER' => 'Μετρητής',
-'DEVICES_UNIT' => 'Μονάδα μέτρησης',
-'DEVICES_BATTERY_LOW' =>'Χαμηλή μπαταρία',
 'M_VOLTAGE'=>'Β',
 'M_CURRENT' => 'Α',
 'M_PRESSURE' => 'Torr',
 'M_WATT' => 'W',
 
 // ----
-'DEVICES_LINKS' => 'Συνδεδεμένες συσκευές',
 
 'DEVICES_STATUS' => 'Κατάσταση',
 
 'DEVICES_LOGIC_ACTION' => 'Ενέργειες',
 
-'DEVICES_CURRENT_VALUE' => 'Τρέχουσα τιμή',
-'DEVICES_CURRENT_HUMIDITY' => 'Υγρασία',
-'DEVICES_CURRENT_TEMPERATURE' => 'Θερμοκρασία',
-
-'DEVICES_MIN_VALUE' => 'Κάτω όριο',
-'DEVICES_MAX_VALUE' => 'Υψηλό όριο',
-'DEVICES_NOTIFY' => 'Ειδοποιήστε όταν υπερβαίνετε το όριο',
-'DEVICES_NORMAL_VALUE' => 'Η τιμή είναι εντός των κανονικών ορίων',
-'DEVICES_DIRECTION_TIMEOUT' => 'Χρονικό διάστημα για τον υπολογισμό της κατεύθυνσης αλλαγών (sec)',
-'DEVICES_NOTIFY_STATUS' => 'Ειδοποίηση κατά την αλλαγή της κατάστασης',
-'DEVICES_NOTIFY_OUTOFRANGE' => 'Τιμή αισθητήρα εκτός ορίου',
-'DEVICES_NOTIFY_BACKTONORMAL' => 'Η τιμή του αισθητήρα επέστρεψε στο κανονικό',
-'DEVICES_NOTIFY_NOT_CLOSED' => 'Υπενθύμιση για την ανοιχτή κατάσταση',
-'DEVICES_MOTION_IGNORE' => 'Παράβλεψη συμβάντων από τη συσκευή όταν κανείς δεν είναι στο σπίτι',
-'DEVICES_MOTION_TIMEOUT' => 'Χρόνος δραστηριότητας (δευτερόλεπτα)',
-'DEVICES_ALIVE_TIMEOUT' => 'Επιτρεπτός χρόνος για δεδομένα που λείπουν (ώρες)',
-'DEVICES_MAIN_SENSOR' => 'Κύριος αισθητήρας δωματίου',
-'DEVICES_NOT_UPDATING' => 'δεν ενημερώθηκε',
-
-'DEVICES_IS_ON' => 'Ενεργοποιημένο',
-'DEVICES_IS_CLOSED' => 'Κλειστό',
-
-'DEVICES_MOTION_DETECTED' => 'Εντοπίστηκε',
-
-'DEVICES_PRESS' => 'Κάντε κλικ',
-'DEVICES_TURN_ON' => 'Ενεργοποίηση',
-'DEVICES_TURN_OFF' => 'Απενεργοποίηση',
-'DEVICES_SET_COLOR' => 'Ορισμός χρώματος',
-
-'DEVICES_GROUP_ECO' => 'Απενεργοποίηση σε λειτουργία οικονομίας',
-'DEVICES_GROUP_ECO_ON' => 'Ενεργοποίηση κατά την έξοδο από τη λειτουργία οικονομίας',
-'DEVICES_GROUP_SUNRISE' => 'Απενεργοποίηση την αυγή',
-'DEVICES_IS_ACTIVITY' => 'Αλλαγή σημαίνει εσωτερική δραστηριότητα',
-'DEVICES_NCNO' => 'Τύπος συσκευής / αισθητήρα',
-'DEVICES_LOADTYPE' => 'Τύπος συσκευής',
-'DEVICES_LOADTYPE_VENT' => 'Εξαερισμός',
-'DEVICES_LOADTYPE_HEATING' => 'Θέρμανση',
-'DEVICES_LOADTYPE_CURTAINS' => 'Κουρτίνες',
-'DEVICES_LOADTYPE_GATES' => 'Πύλη',
-'DEVICES_LOADTYPE_LIGHT' => 'Φωτισμός',
-'DEVICES_LOADTYPE_LIGHT_ALT' => 'Φως',
-'DEVICES_LOADTYPE_POWER' => 'Διάφορα',
-
-'DEVICES_ADD_MENU' => 'Προσθήκη συσκευής στο μενού',
-'DEVICES_ADD_SCENE' => 'Προσθήκη συσκευής στο στάδιο',
-
-'DEVICES_LINKS_NOT_ADDED' => 'Δεν υπάρχουν συνδεδεμένες συσκευές',
-'DEVICES_LINKS_AVAILABLE' => 'Διαθέσιμοι τύποι σύνδεσης',
-'DEVICES_LINKS_COMMENT' => 'Σχόλιο (προαιρετικό)',
-'DEVICES_LINKS_LINKED_DEVICE' => 'Συνδεδεμένη συσκευή',
-'DEVICES_LINKS_ADDED' => 'Συνδεδεμένες συσκευές',
-
-'DEVICES_LINK_ACTION_TYPE' => 'Δράση',
-'DEVICES_LINK_TYPE_TURN_ON' => 'Ενεργοποίηση',
-'DEVICES_LINK_TYPE_TURN_OFF' => 'Απενεργοποίηση',
-'DEVICES_LINK_TYPE_SWITCH' => 'Εναλλαγή',
-
-'DEVICES_LINK_SWITCH_IT' => 'Ενεργοποίηση / Απενεργοποίηση',
-'DEVICES_LINK_SWITCH_IT_DESCRIPTION' => 'Διαχείριση άλλης συσκευής σε ένα συμβάν',
-'DEVICES_LINK_SWITCH_IT_PARAM_ACTION_DELAY' => 'Διάρκεια εκτέλεσης (δευτερόλεπτα)',
-
-'DEVICES_LINK_SET_COLOR' => 'Ορισμός χρώματος',
-'DEVICES_LINK_SET_COLOR_DESCRIPTION' => 'Ορισμός χρώματος ανά συμβάν',
-'DEVICES_LINK_SET_COLOR_PARAM_ACTION_COLOR' => 'Χρώμα',
-
-'DEVICES_LINK_SENSOR_SWITCH' => 'Υπό όρους έλεγχος',
-'DEVICES_LINK_SENSOR_SWITCH_DESCRIPTION' => 'Έλεγχος άλλης συσκευής με ανάγνωση αισθητήρα',
-'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION' => 'Τύπος κατάστασης',
-'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION_ABOVE' => 'Πάνω Σετ',
-'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION_BELOW' => 'Κάτω από αυτό',
-'DEVICES_LINK_SENSOR_SWITCH_PARAM_VALUE' => 'Τιμή κατωφλίου',
-
-'DEVICES_LINK_SENSOR_PASS' => 'Μεταφορά δεδομένων',
-'DEVICES_LINK_SENSOR_PASS_DESCRIPTION' => 'Μεταφορά δεδομένων από τον αισθητήρα σε άλλη συσκευή',
-
-'DEVICES_LINK_THERMOSTAT_SWITCH' => 'Διαχείριση Συσκευών',
-'DEVICES_LINK_THERMOSTAT_SWITCH_DESCRIPTION' => 'Έλεγχος άλλων συσκευών ανάλογα με την κατάσταση του θερμοστάτη',
-'DEVICES_LINK_THERMOSTAT_INVERT' => 'Αντιστροφή ρύθμισης κατάστασης',
 
 
-'DEVICES_UPDATE_CLASSSES' => 'Ενημέρωση κλάσεων',
-'DEVICES_ADD_OBJECT_AUTOMATICALLY' => 'Δημιουργία αυτόματης',
 
-'DEVICES_PATTERN_TURNON' => 'Ανάψτε το φως',
-'DEVICES_PATTERN_TURNOFF' => 'απενεργοποίηση | σβήνει | απενεργοποίηση',
-'DEVICES_DEGREES' => 'βαθμοί',
+
+
+
+
+
+
+
+
+
+
+
+
+
 'DEVICES_STATUS_OPEN' => 'ανοιχτό',
 'DEVICES_STATUS_CLOSED' => 'κλειστό',
 'DEVICES_STATUS_ALARM' => 'κατάσταση συναγερμού',
-'DEVICES_COMMAND_CONFIRMATION' => 'Έγινε Done όπως σας αρέσει',
 
-'DEVICES_ROOMS_NOBODYHOME' => 'Κανένας.',
-'DEVICES_ROOMS_SOMEBODYHOME' => 'Κάποιος είναι.',
-'DEVICES_ROOMS_ACTIVITY' => 'Ενεργός:',
 
 'DEVICES_PASSED_NOW' => 'ακριβώς',
 'DEVICES_PASSED_SECONDS_AGO' => 'sec. πίσω ',
 'DEVICES_PASSED_MINUTES_AGO' => 'min. πίσω ',
 'DEVICES_PASSED_HOURS_AGO' => 'h. πίσω ',
-'DEVICES_CHOOSE_EXISTING' => '... ή επιλέξτε μια ήδη προστιθέμενη συσκευή',
-
-'DEVICES_CAMERA' => 'Κάμερα IP',
-'DEVICES_CAMERA_STREAM_URL' => 'URL ροής βίντεο',
-'DEVICES_CAMERA_USERNAME' => 'Όνομα χρήστη',
-'DEVICES_CAMERA_PASSWORD' => 'Κωδικός πρόσβασης',
-'DEVICES_CAMERA_SNAPSHOT_URL' => 'Στατική URL στιγμιότυπου',
-'DEVICES_CAMERA_SNAPSHOT' => 'Στιγμιότυπο',
-'DEVICES_CAMERA_TAKE_SNAPSHOT' => 'Αποθήκευση στιγμιότυπου',
-'DEVICES_CAMERA_SNAPSHOT_HISTORY' => 'Ιστορικό',
-'DEVICES_CAMERA_STREAM_TRANSPORT' => 'Μεταφορά ρεύματος',
-'DEVICES_CAMERA_PREVIEW_TYPE' => 'Προεπισκόπηση',
-'DEVICES_CAMERA_PREVIEW_TYPE_STATIC' => 'Στατικό στιγμιότυπο',
-'DEVICES_CAMERA_PREVIEW_TYPE_SLIDESHOW' => 'Slideshow',
-'DEVICES_CAMERA_PREVIEW_ONCLICK' => 'Ενέργεια κάνοντας κλικ στην εικόνα',
-'DEVICES_CAMERA_PREVIEW_ONCLICK_ENLARGE' => 'Μεγέθυνση εικόνας',
-'DEVICES_CAMERA_PREVIEW_ONCLICK_ORIGINAL' => 'Γρήγορα στο ροή',
-
-'DEVICES_THERMOSTAT' => 'Θερμοστάτης',
-'DEVICES_THERMOSTAT_MODE' => 'Λειτουργία',
-'DEVICES_THERMOSTAT_MODE_NORMAL' => 'Συνήθης',
-'DEVICES_THERMOSTAT_MODE_ECO' => 'Eco',
-'DEVICES_THERMOSTAT_MODE_OFF' => 'Off',
-'DEVICES_THERMOSTAT_ECO_MODE' => 'λειτουργία ECO',
-'DEVICES_THERMOSTAT_NORMAL_TEMP' => 'Κανονική θερμοκρασία στόχος',
-'DEVICES_THERMOSTAT_ECO_TEMP' => 'Θερμοκρασία στόχου ECO',
-'DEVICES_THERMOSTAT_CURRENT_TEMP' => 'Τρέχουσα θερμοκρασία',
-'DEVICES_THERMOSTAT_CURRENT_TARGET_TEMP' => 'Στόχευση της θερμοκρασίας',
-'DEVICES_THERMOSTAT_THRESHOLD' => 'ιριο θερμοστάτης (0,25 από προεπιλογή)',
-'DEVICES_THERMOSTAT_RELAY_STATUS' => 'Κατάσταση αναμετάδοσης',
 
 
 
@@ -1254,9 +1124,8 @@ $dictionary = array(
 
 
 
-'DEVICES_ALL_BY_TYPE' => 'Όλα από τον τύπο',
-'DEVICES_ALL_BY_ROOM' => 'Όλα τα δωμάτια',
-'DEVICES_LOAD_TIMEOUT'=>'Χρονοδιακόπτης κατάστασης φόρτωσης',
+
+
 'GROUPS' => 'Ομάδες',
 'APPLIES_TO' => 'Εφαρμογή σε',
 

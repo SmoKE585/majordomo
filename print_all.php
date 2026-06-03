@@ -15,14 +15,6 @@ include_once("./load_settings.php");
 
 header('Content-Type: text/html; charset=utf-8');
 
-$sqlQuery = "SELECT COUNT(*) as TOTAL
-               FROM commands
-              WHERE 1";
-
-$tmp = SQLSelectOne($sqlQuery);
-
-if ($tmp['TOTAL'])
-    $out['HAVE_MENU'] = 1;
 
 $sqlQuery = "SELECT COUNT(*) as TOTAL
                FROM scripts
@@ -151,14 +143,6 @@ if ($tmp['TOTAL']) {
     $out['CLASSES'] = buildTree_classes($classes);
 }
 
-$tmp = SQLSelectOne("SELECT COUNT(*) as TOTAL FROM patterns WHERE 1");
-
-if ($tmp['TOTAL']) {
-    $out['HAVE_PATTERNS'] = 1;
-    $patterns = SQLSelect("SELECT * FROM patterns WHERE 1 ORDER BY PARENT_ID, TITLE");
-    $out['PATTERNS'] = buildTree_patterns($patterns);
-}
-
 if (file_exists(DIR_MODULES . 'zwave/zwave.class.php')) {
     $devices = SQLSelect("SELECT * FROM zwave_devices ORDER BY NODE_ID, INSTANCE_ID, TITLE");
     $total = count($devices);
@@ -183,33 +167,6 @@ echo $p->result;
 
 //registerError('custom', 'Some error details');
 //$tmp=SQLSelect("SELECT FROM unknown");
-
-/**
- * Summary of buildTree_patterns
- * @param mixed $res array
- * @param mixed $parentID parent id
- * @param mixed $level level
- * @return array
- */
-function buildTree_patterns($res, $parentID = 0, $level = 0)
-{
-    $total = count($res);
-    $res2 = array();
-
-    for ($i = 0; $i < $total; $i++) {
-        if ($res[$i]['PARENT_ID'] == $parentID) {
-            $res[$i]['LEVEL'] = $level;
-            $res[$i]['PATTERNS'] = buildTree_patterns($res, $res[$i]['ID'], ($level + 1));
-
-            $res2[] = $res[$i];
-        }
-    }
-
-    $total2 = count($res2);
-
-    if ($total2)
-        return $res2;
-}
 
 /**
  * Summary of buildTree_classes

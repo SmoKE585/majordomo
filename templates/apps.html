@@ -1,3 +1,6 @@
+[#if APP_REMOVED="1"#]
+<div class="alert alert-warning">Module [#APP_REMOVED_NAME#] has been removed.</div>
+[#else#]
 [#if APP_ACTION!=""#]
 [#if APP_TITLE!=""#]
 <div style="padding:10px">
@@ -25,3 +28,5 @@
 [#end APPS#]
 </div>
 [#endif APP_ACTION#]
+
+[#endif APP_REMOVED#]

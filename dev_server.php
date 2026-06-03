@@ -355,7 +355,6 @@ function devEnsureRuntimeDirs($projectRoot)
         'cms/cached',
         'cms/debmes',
         'cms/images',
-        'cms/scenes',
         'cms/saverestore',
         'cms/texts'
     );

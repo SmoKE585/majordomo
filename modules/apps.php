@@ -1,14 +1,19 @@
 <?php
 
+if ($this->app_action && in_array($this->app_action, array('commands', 'patterns', 'plans', 'scenes', 'devices'), true)) {
+    http_response_code(410);
+    $out['APP_ACTION'] = '';
+    $out['APP_REMOVED'] = 1;
+    $out['APP_REMOVED_NAME'] = $this->app_action;
+    return;
+}
+
 if ($this->app_action) {
 
     $out['APP_ACTION'] = $this->app_action;
     $rec = SQLSelectOne("SELECT * FROM project_modules WHERE NAME LIKE '" . DBSafe($this->app_action) . "'");
     if ($rec['ID']) {
         $out['APP_TITLE'] = $rec['TITLE'];
-        if ($this->app_action == 'devices') {
-            $out['APP_TITLE'] = '';
-        }
     }
 
 } else {

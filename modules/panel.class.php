@@ -175,9 +175,9 @@ class panel extends module
             $sqlQuery = "SELECT *
                   FROM project_modules
                  WHERE (`HIDDEN`='0' OR NAME='control_modules')
-                 ORDER BY FIELD(CATEGORY, '<#LANG_SECTION_OBJECTS#>', '<#LANG_SECTION_DEVICES#>', '<#LANG_SECTION_APPLICATIONS#>',
+                 ORDER BY FIELD(CATEGORY, '<#LANG_SECTION_OBJECTS#>', '<#LANG_SECTION_APPLICATIONS#>',
                                 '<#LANG_SECTION_SETTINGS#>', '<#LANG_SECTION_SYSTEM#>'),
-                          FIELD(`NAME`,'classes','devices','settings','system_errors','xray','saverestore','market') DESC,
+                          FIELD(`NAME`,'classes','settings','system_errors','xray','saverestore','market') DESC,
                           `PRIORITY`, `TITLE`";
 
             $modules = SQLSelect($sqlQuery);
@@ -224,41 +224,6 @@ class panel extends module
                     $modules[$i]['ICON_SM'] = ROOTHTML . 'img/modules/' . $modules[$i]['NAME'] . '.png';
                 } else {
                     $modules[$i]['ICON_SM'] = ROOTHTML . 'img/modules/default.png';
-                }
-                if ($modules[$i]['NAME'] == 'devices') {
-                    $links = array();
-                    $devices = SQLSelect("SELECT devices.LOCATION_ID, locations.TITLE, COUNT(devices.ID) as TOTAL FROM devices LEFT JOIN locations ON devices.LOCATION_ID=locations.ID WHERE locations.ID>0 GROUP BY devices.LOCATION_ID ORDER BY locations.TITLE");
-                    if (is_array($devices)) {
-                        $links[] = array('TITLE' => LANG_ALL, 'LINK' => ROOTHTML . 'admin.php?action=' . $modules[$i]['NAME']);
-                        foreach ($devices as $device) {
-                            $links[] = array('TITLE' => processTitle($device['TITLE']) . ' (' . $device['TOTAL'] . ')', 'LINK' => ROOTHTML . 'admin.php?action=' . $modules[$i]['NAME'] . '&location_id=' . $device['LOCATION_ID']);
-                        }
-                    }
-
-                    $devices = SQLSelect("SELECT devices.TYPE, COUNT(devices.ID) as TOTAL FROM devices GROUP BY devices.TYPE ORDER BY devices.TYPE");
-                    $totall = count($devices);
-                    if ($totall) {
-                        $links[] = array('DIVIDER' => 1);
-                        require DIR_MODULES . 'devices/devices_structure.inc.php';
-
-                        foreach ($devices as &$device) {
-                            if (!isset($this->device_types[$device['TYPE']])) {
-                                $device['TITLE'] = '';
-                            } else {
-                                $device['TITLE'] = processTitle($this->device_types[$device['TYPE']]['TITLE']);
-                            }
-                        }
-                        usort($devices, function ($a, $b) {
-                            return strcmp($a["TITLE"], $b["TITLE"]);
-                        });
-
-                        for ($il = 0; $il < $totall; $il++) {
-                            $links[] = array('TITLE' => $devices[$il]['TITLE'] . ' (' . $devices[$il]['TOTAL'] . ')', 'LINK' => ROOTHTML . 'admin.php?action=' . $modules[$i]['NAME'] . '&type=' . $devices[$il]['TYPE']);
-                        }
-                    }
-                    if (isset($links[0])) {
-                        $modules[$i]['LINKS'] = $links;
-                    }
                 }
             }
             $modules[$last_allow]['LAST_IN_CATEGORY'] = 1;

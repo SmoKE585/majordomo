@@ -125,7 +125,7 @@ class control_modules extends module
 
         $lst = $this->modules;
 
-        $prelist = array('settings', 'objects', 'devices');
+        $prelist = array('settings', 'objects');
         $prelist = array_reverse($prelist);
         foreach ($prelist as $v) {
             $rec = array('FILENAME' => $v);

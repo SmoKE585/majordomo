@@ -15,61 +15,6 @@ if ($rec['ID']) {
 
 if ($this->tab == '') {
     if ($rec['ID']) {
-        if (!defined('DISABLE_SIMPLE_DEVICES') || !DISABLE_SIMPLE_DEVICES) {
-            require DIR_MODULES . 'devices/devices_structure.inc.php';
-            $properties = $this->device_types['rooms']['PROPERTIES'];
-            $res_properties = array();
-            $onchanges = array();
-
-            foreach ($properties as $k => $v) {
-                if ($v['_CONFIG_TYPE']) {
-                    if ($this->mode == 'update') {
-                        global ${$k . '_value'};
-                        if (isset(${$k . '_value'})) {
-                            if (is_array(${$k . '_value'})) {
-                                $value = implode(',', ${$k . '_value'});
-                            } else {
-                                $value = trim(${$k . '_value'});
-                            }
-                            setGlobal($locationObject . '.' . $k, $value);
-                        }
-                        $out['OK'] = 1;
-                        if ($v['ONCHANGE'] != '') {
-                            $onchanges[$v['ONCHANGE']] = 1;
-                        }
-                    }
-                    $v['NAME'] = $k;
-                    if (isset($v['_CONFIG_HELP'])) $v['CONFIG_HELP'] = $v['_CONFIG_HELP'];
-                    $v['CONFIG_TYPE'] = $v['_CONFIG_TYPE'];
-                    $v['VALUE'] = getGlobal($locationObject . '.' . $k);
-                    if ($v['CONFIG_TYPE'] == 'select' || $v['CONFIG_TYPE'] == 'multi_select') {
-                        $selected_options = explode(',', gg($locationObject . '.' . $k));
-                        $tmp = explode(',', $v['_CONFIG_OPTIONS']);
-                        $total = count($tmp);
-                        for ($i = 0; $i < $total; $i++) {
-                            $data_s = explode('=', trim($tmp[$i]));
-                            $value = $data_s[0];
-                            if (isset($data_s[1])) {
-                                $title = $data_s[1];
-                            } else {
-                                $title = $value;
-                            }
-                            $option = array('VALUE' => $value, 'TITLE' => $title);
-                            if (in_array($value, $selected_options)) $option['SELECTED'] = 1;
-                            $v['OPTIONS'][] = $option;
-                        }
-                    } elseif ($v['CONFIG_TYPE'] == 'style_image') {
-                        include_once(DIR_MODULES . 'scenes/scenes.class.php');
-                        $scene_class = new scenes();
-                        $styles = $scene_class->getAllTypes();
-                        $v['FOLDERS'] = $styles;
-                    }
-                    $res_properties[] = $v;
-                }
-
-                $out['PROPERTIES'] = $res_properties;
-            }
-        }
     }
 
     if ($this->mode == 'update') {

@@ -140,7 +140,10 @@ class linkedobject extends module
         if ($op == 'redirect') {
             $device_id = gr('device_id', 'int');
             if ($device_id) {
-                redirect(ROOTHTML . 'panel/devices/' . $device_id . '.html?tab=settings','',1);
+                $object_rec = SQLSelectOne("SELECT ID FROM objects WHERE TITLE LIKE '" . DBSafe($this->linked_object) . "'");
+                if (!empty($object_rec['ID'])) {
+                    redirect(ROOTHTML . 'admin.php?action=objects&view_mode=edit_objects&id=' . (int)$object_rec['ID'], '', 1);
+                }
             }
 
             $object = gr('object');

@@ -100,38 +100,8 @@ function context_activate($id, $no_action = 0, $history = '', $user_id = 0, $det
     if (!$user_id) {
         $user_id = context_getuser();
     }
-    $user = SQLSelectOne("SELECT * FROM users WHERE ID = '" . (int)$user_id . "'");
-
-    $user['ACTIVE_CONTEXT_ID'] = $id;
-    $user['ACTIVE_CONTEXT_EXTERNAL'] = 0;
-    $user['ACTIVE_CONTEXT_UPDATED'] = date('Y-m-d H:i:s');
-
-    if ($history)
-        $user['ACTIVE_CONTEXT_HISTORY'] .= ' ' . $history;
-
-    SQLUpdate('users', $user);
-
-    if ($id) {
-        //execute pattern
-        $context = SQLSelectOne("SELECT * FROM patterns WHERE ID = '" . (int)$id . "'");
-        $timeout = $context['TIMEOUT'];
-
-        if (!$timeout)
-            $timeout = 60;
-
-        $timeoutTitle = 'user_' . $user_id . '_contexttimeout';
-        $timeoutCommand = 'context_timeout(' . (int)$context['ID'] . ', ' . $user_id . ');';
-        setTimeOut($timeoutTitle, $timeoutCommand, $timeout);
-
-        if (!$no_action) {
-            include_once(DIR_MODULES . 'patterns/patterns.class.php');
-            $pt = new patterns();
-            $pt->runPatternAction((int)$context['ID'], array(), '', $details);
-        }
-    } else {
-        context_clear($user_id);
-        clearTimeOut('user_' . $user_id . '_contexttimeout');
-    }
+    context_clear($user_id);
+    clearTimeOut('user_' . $user_id . '_contexttimeout');
 }
 
 /**
@@ -188,40 +158,10 @@ function context_activate_ext($id, $timeout = 0, $timeout_code = '', $timeout_co
  */
 function context_timeout($id, $user_id = 0)
 {
-
     if (!$user_id) {
         $user_id = context_getuser();
-    } else {
-        global $context_user_id;
-        $context_user_id = $user_id;
     }
-    //global $session;
-    //$user = SQLSelectOne("SELECT * FROM users WHERE ID = '" . (int)$user_id . "'");
-    //$session->data['SITE_USER_ID'] = $user['ID'];
-
-    $context = SQLSelectOne("SELECT * FROM patterns WHERE ID = '" . (int)$id . "'");
-
-    if (!$context['TIMEOUT_CONTEXT_ID']) context_activate(0, 0, '', $user_id);
-
-    if ($context['TIMEOUT_SCRIPT']) {
-        try {
-            $code = $context['TIMEOUT_SCRIPT'];
-            setEvalCode($code);
-            $success = eval($code);
-            setEvalCode();
-
-            if ($success === false) {
-                DebMes("Error in context timeout code: " . $code);
-                registerError('context_timeout_action', "Error in context timeout code: " . $code);
-            }
-        } catch (Exception $e) {
-            DebMes('Error: exception ' . get_class($e) . ', ' . $e->getMessage() . '.');
-            registerError('context_timeout_action', get_class($e) . ', ' . $e->getMessage());
-        }
-    }
-
-    if ($context['TIMEOUT_CONTEXT_ID'])
-        context_activate((int)$context['TIMEOUT_CONTEXT_ID'], 0, '', $user_id);
+    context_clear($user_id);
 }
 
 /**
@@ -233,22 +173,5 @@ function context_timeout($id, $user_id = 0)
  */
 function addPattern($title, $options = array(), $overwrite = 0)
 {
-    $old = SQLSelectOne("SELECT ID FROM patterns WHERE TITLE LIKE '" . DBSafe($title) . "'");
-
-    if ($old['ID']) {
-        if ($overwrite) {
-            SQLExec("DELETE FROM patterns WHERE ID = '" . $old['ID'] . "'");
-        } else {
-            return;
-        }
-    }
-
-    $rec = array();
-    $rec['TITLE'] = $title;
-
-    foreach ($options as $k => $v) {
-        $rec[$k] = $v;
-    }
-
-    SQLInsert('patterns', $rec);
+    return;
 }

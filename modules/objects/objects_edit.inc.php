@@ -11,11 +11,6 @@ $table_name = 'objects';
 $rec = SQLSelectOne("SELECT * FROM $table_name WHERE ID='$id'");
 
 if (isset($rec['TITLE'])) {
-    $device_rec = SQLSelectOne("SELECT * FROM devices WHERE LINKED_OBJECT='" . $rec['TITLE'] . "'");
-    if (isset($device_rec['ID'])) {
-        $out['DEVICE_ID'] = $device_rec['ID'];
-        $out['DEVICE_TITLE'] = $device_rec['TITLE'];
-    }
 }
 
 $class_changed_from = '';

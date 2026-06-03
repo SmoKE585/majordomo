@@ -162,7 +162,6 @@ $dictionary = array(
     'MODULE_USERLOG' => 'Журнал действий',
     'MODULE_PLANS' => 'Планы',
     'MODULE_ACTIONS_LOG' => 'История действий',
-    'MODULE_DEVICES' => 'Простые устройства',
     'MODULE_CHARTS' => 'Графики',
 
     'SCENE_HIDDEN' => 'Не включать в список переключающихся сцен',
@@ -1148,50 +1147,10 @@ $dictionary = array(
     'ERRORS_SAVED'=>'Сохранены ошибки',
     'RUNNING_WITH_ERRORS' => 'Внимание! Система работает с ошибками.',
 
-// DEVICES
-    'DEVICES_MODULE_TITLE' => 'Простые устройства',
-    'DEVICES_COPY_SETTINGS' => 'Копировать настройки',
-    'DEVICES_LINKED_WARNING' => 'Внимание: выбор существующего объекта приведёт к привязке его к новому классу.',
-    'DEVICES_SUB_DEVICES' => 'Дочерние устройства',
-    'DEVICES_PARENT_DEVICE' => 'Родительское устройство',
 
-    'DEVICES_RELAY' => 'Реле/Управляемый выключатель',
-    'DEVICES_DIMMER' => 'Освещение (Диммер)',
-    'DEVICES_RGB' => 'Освещение (RGB)',
-    'DEVICES_MOTION' => 'Датчик движения',
-    'DEVICES_BUTTON' => 'Клавиша (запуск действий)',
-    'DEVICES_SWITCH' => 'Выключатель',
-    'DEVICES_OPENCLOSE' => 'Датчик открытия/закрытия',
-    'DEVICES_GENERAL_SENSOR' => 'Датчик (общий)',
-    'DEVICES_TEMP_SENSOR' => 'Датчик температуры',
-    'DEVICES_HUM_SENSOR' => 'Датчик влажности воздуха',
-    'DEVICES_MOISTURE_SENSOR' => 'Датчик влажности почвы',
-    'DEVICES_CO2_SENSOR' => 'Датчик CO2',
-    'DEVICES_RADIATION_SENSOR' => 'Датчик радиоактивного излучения',
-    'DEVICES_STATE_SENSOR' => 'Датчик состояния',
-    'DEVICES_PERCENTAGE_SENSOR' => 'Датчик процентное значение',
-    'DEVICES_PRESSURE_SENSOR' => 'Датчик атмосферного давления',
-    'DEVICES_POWER_SENSOR' => 'Датчик мощности',
-    'DEVICES_VOLTAGE_SENSOR' => 'Датчик напряжения',
-    'DEVICES_CURRENT_SENSOR' => 'Датчик тока',
-    'DEVICES_LIGHT_SENSOR' => 'Датчик освещённости',
-    'DEVICES_LEAK_SENSOR' => 'Датчик протечки',
-    'DEVICES_SMOKE_SENSOR' => 'Датчик дыма',
-    'DEVICES_COUNTER' => 'Счётчик',
-    'DEVICES_UNIT' => 'Единица измерения',
-    'DEVICES_BATTERY_LOW' => 'Низкий уровень заряда батареи',
     'DEVICES_UNKNOWN_COMMAND'=>'Неизвестная команда...',
-    'DEVICES_MSG_OPENING'=>'Сообщение при открытии',
-    'DEVICES_MSG_CLOSING'=>'Сообщение при закрытии',
-    'DEVICES_MSG_REMINDER'=>'Сообщение при напоминании',
-    'DEVICES_CONFIRMATION_REQUIRED'=>'Требуется подтверждение доставки команд',
 
-    'DEVICES_OPENABLE' => 'Открываемое (Ворота/Двери/Шторы/и т.п.)',
-    'DEVICES_OPENABLE_SUPPORT_LEVEL' => 'Поддержка уровня открытия',
 
-    'DEVICES_VACUUM' =>'Пылесос',
-    'DEVICES_MEDIA' =>'Медиа-проигрыватель',
-    'DEVICES_TV' =>'Телевизор',
 
 // Measure
     'M_VOLTAGE' => 'В',
@@ -1200,150 +1159,34 @@ $dictionary = array(
     'M_WATT' => 'Вт',
 
 //----
-    'DEVICES_LINKS' => 'Связанные устройства',
 
     'DEVICES_STATUS' => 'Статус',
 
     'DEVICES_LOGIC_ACTION' => 'Действия',
-    'DEVICES_SCHEDULE' => 'Расписание',
-    'DEVICES_IS_ADDED' => 'Добавлено новое устройство',
-
-    'DEVICES_CURRENT_VALUE' => 'Текущее значение',
-    'DEVICES_CURRENT_HUMIDITY' => 'Влажность',
-    'DEVICES_CURRENT_TEMPERATURE' => 'Температура',
-
-    'DEVICES_MIN_VALUE' => 'Нижний порог',
-    'DEVICES_MAX_VALUE' => 'Верхний порог',
-    'DEVICES_NOTIFY' => 'Уведомлять при выходе за порог',
-    'DEVICES_NORMAL_VALUE' => 'Значение в нормальных пределах',
-    'DEVICES_DIRECTION_TIMEOUT' => 'Интервал времени расчета направления изменений (сек)',
-    'DEVICES_NOTIFY_STATUS' => 'Уведомлять при смене статуса',
-    'DEVICES_NOTIFY_ELIMINATED' => 'Уведомлять каждую минуту до восстановления статуса',
-    'DEVICES_SENSOR_ALERT' => 'Внимание! Сигнал тревоги от датчика',
-    'DEVICES_NOTIFY_OUTOFRANGE' => 'Значение датчика вышло за порог',
-    'DEVICES_NOTIFY_BACKTONORMAL' => 'Значение датчика вернулось к норме',
-    'DEVICES_NOTIFY_NOT_CLOSED' => 'Напоминать об открытом состоянии',
-    'DEVICES_MOTION_IGNORE' => 'Игнорировать события от устройства, когда никого нет дома',
-    'DEVICES_MOTION_RESET' => 'Сброс статуса "никого нет дома" без таймера установки',
-    'DEVICES_MOTION_PRESENCE' => 'Это датчик присутствия',
-    'DEVICES_MOTION_TIMEOUT' => 'Время активности (секунд)',
-    'DEVICES_TURNOFF_LIGHTS_ON_IDLE' => 'Выключать освещение в комнате по истечение периода активности',
-    'DEVICES_ALIVE_TIMEOUT' => 'Допустимое время отсутствия данных (часов)',
-    'DEVICES_MAIN_SENSOR' => 'Основной сенсор помещения',
-    'DEVICES_NOT_UPDATING' => 'не обновляется',
-    'DEVICES_BATTERY_OPERATED' => 'Устройство работает от батареи',
-    'DEVICES_BATTERY_LEVEL' => 'Уровень заряда батареи',
-    'DEVICES_BATTERY_WARNING' => 'Предупреждение о низком заряде батареи',
-    'DEVICES_LOW_BATTERY' => 'низкий уровень заряда',
-    'DEVICES_GROUP_STATE' => 'Состояние группы',
-    'DEVICES_GROUP_STATE_SAVE' => 'Сохранить',
-    'DEVICES_GROUP_STATE_RESTORE' => 'Восстановить',
-    'DEVICES_GROUP_OPERATION_DELAY' => 'Задержка исполнения команд (сек)',
-
-    'DEVICES_IS_ON' => 'Включено',
-    'DEVICES_IS_CLOSED' => 'Закрыто',
-
-    'DEVICES_MOTION_DETECTED' => 'Обнаружено',
-
-    'DEVICES_PRESS' => 'Нажать',
-    'DEVICES_TURN_ON' => 'Включить',
-    'DEVICES_TURN_OFF' => 'Выключить',
-    'DEVICES_SET_COLOR' => 'Установить цвет',
-
-    'DEVICES_GROUP_ECO' => 'Выключать в режиме экономии',
-    'DEVICES_GROUP_ECO_ON' => 'Включать при выходе из режима экономии',
-    'DEVICES_GROUP_SUNRISE' => 'Выключать с рассветом',
-    'DEVICES_GROUP_SUNSET' => 'Включать с закатом',
-    'DEVICES_GROUP_NIGHT' => 'Выключать при входе в ночной режим',
-    'DEVICES_IS_ACTIVITY' => 'Изменение означает активность в помещении',
-    'DEVICES_NCNO' => 'Тип устройства/сенсора',
-    'DEVICES_LOADTYPE' => 'Тип устройства',
-    'DEVICES_LOADTYPE_VENT' => 'Вентиляция',
-    'DEVICES_LOADTYPE_HEATING' => 'Обогрев',
-    'DEVICES_LOADTYPE_AC' => 'Кондиционер',
-    'DEVICES_LOADTYPE_CURTAINS' => 'Шторы',
-    'DEVICES_LOADTYPE_GATES' => 'Ворота',
-    'DEVICES_LOADTYPE_LIGHT' => 'Освещение',
-    'DEVICES_LOADTYPE_LIGHT_ALT' => 'Свет',
-    'DEVICES_LOADTYPE_POWER' => 'Разное',
-
-    'DEVICES_OPENTYPE' => 'Тип устройства',
-    'DEVICES_OPENTYPE_CURTAINS' => 'Шторы',
-    'DEVICES_OPENTYPE_SHUTTERS' => 'Ставни',
-    'DEVICES_OPENTYPE_GATES' => 'Ворота',
-    'DEVICES_OPENTYPE_WINDOW' => 'Окно',
-    'DEVICES_OPENTYPE_DOOR' => 'Дверь',
-    'DEVICES_OPENTYPE_VALVE' => 'Кран',
-
-    'DEVICES_ADD_MENU' => 'Добавить устройство в Меню',
-    'DEVICES_ADD_SCENE' => 'Добавить устройство на Сцену',
-
-    'DEVICES_LINKS_NOT_ADDED' => 'Нет связанных устройств',
-    'DEVICES_LINKS_AVAILABLE' => 'Доступные типы связей',
-    'DEVICES_LINKS_COMMENT' => 'Комментарий (не обязательно)',
-    'DEVICES_LINKS_LINKED_DEVICE' => 'Связанное устройство',
-    'DEVICES_LINKS_ADDED' => 'Связанные устройства',
-
-    'DEVICES_LINK_ACTION_TYPE' => 'Действие',
-    'DEVICES_LINK_TYPE_TURN_ON' => 'Включить',
-    'DEVICES_LINK_TYPE_TURN_OFF' => 'Выключить',
-    'DEVICES_LINK_TYPE_SYNC' => 'Синхронизировать включение/выключение по статусу',
-    'DEVICES_LINK_TYPE_SYNC_INVERTED' => 'Синхронизировать включение/выключение по статусу (инверсно)',
-    'DEVICES_LINK_TYPE_OPEN' => 'Открыть',
-    'DEVICES_LINK_TYPE_CLOSE' => 'Закрыть',
-    'DEVICES_LINK_TYPE_SWITCH' => 'Переключить',
-
-    'DEVICES_LINK_SWITCH_IT' => 'Включить/Выключить',
-    'DEVICES_LINK_SWITCH_IT_DESCRIPTION' => 'Управление другим устройством по событию',
-    'DEVICES_LINK_SWITCH_IT_PARAM_ACTION_DELAY' => 'Задержка выполнения (секунд)',
-
-    'DEVICES_LINK_SWITCH_TIMER' => 'Включить на время',
-    'DEVICES_LINK_SWITCH_TIMER_DESCRIPTION' => 'Включить другое устройство на некоторое время по событию',
-    'DEVICES_LINK_SWITCH_TIMER_PARAM_ACTION_DELAY' => 'Включить на какое время (секунд)',
-    'DEVICES_LINK_SWITCH_TIMER_PARAM_DARKTIME' => 'Только в тёмное время',
-
-    'DEVICES_LINK_SET_COLOR' => 'Установить цвет',
-    'DEVICES_LINK_SET_COLOR_DESCRIPTION' => 'Установить цвет по событию',
-    'DEVICES_LINK_SET_COLOR_PARAM_ACTION_COLOR' => 'Цвет',
-
-    'DEVICES_LINK_SENSOR_VALUE_TYPE' => 'Исходное значение',
-    'DEVICES_LINK_SENSOR_VALUE_TYPE_CURRENT' => 'Текущее значение сенсора',
-    'DEVICES_LINK_SENSOR_VALUE_TYPE_MIN' => 'Минимальное значение за период',
-    'DEVICES_LINK_SENSOR_VALUE_TYPE_AVG' => 'Среднее значение за период',
-    'DEVICES_LINK_SENSOR_VALUE_TYPE_MAX' => 'Максимальное значение за период',
-    'DEVICES_LINK_SENSOR_VALUE_FOR_PERIOD' => 'Использовать период',
-
-    'DEVICES_LINK_SENSOR_SWITCH' => 'Условное управление',
-    'DEVICES_LINK_SENSOR_SWITCH_DESCRIPTION' => 'Управление другим устройством по показаниям датчика',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION' => 'Тип условия',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION_ABOVE' => 'Выше заданного',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION_BELOW' => 'Ниже заданного',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_VALUE' => 'Пороговое значение',
-
-    'DEVICES_LINK_SENSOR_PASS' => 'Пересылка данных',
-    'DEVICES_LINK_SENSOR_PASS_DESCRIPTION' => 'Пересылка данных от сенсора на другое устройство',
-
-    'DEVICES_LINK_THERMOSTAT_SWITCH' => 'Управление устройством',
-    'DEVICES_LINK_THERMOSTAT_SWITCH_DESCRIPTION' => 'Управление другим устройствам в зависимости от статуса термостата',
-    'DEVICES_LINK_THERMOSTAT_INVERT' => 'Инвертная установка статуса',
 
 
-    'DEVICES_UPDATE_CLASSSES' => 'Обновить классы',
-    'DEVICES_ADD_OBJECT_AUTOMATICALLY' => 'Создать автоматически',
 
-    'DEVICES_PATTERN_OPEN' => 'открой',
-    'DEVICES_PATTERN_CLOSE' => 'закрой',
-    'DEVICES_PATTERN_TURNON' => 'включи|зажги',
-    'DEVICES_PATTERN_TURNOFF' => 'выключи|потуши|отключи',
-    'DEVICES_DEGREES' => 'градусов',
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     'DEVICES_STATUS_OPEN' => 'открыт',
     'DEVICES_STATUS_CLOSED' => 'закрыт',
     'DEVICES_STATUS_ALARM' => 'состояние тревоги',
-    'DEVICES_COMMAND_CONFIRMATION' => 'Готово|Сделано|Как пожелаете|Хорошо',
 
-    'DEVICES_ROOMS_NOBODYHOME' => 'Никого нет.',
-    'DEVICES_ROOMS_SOMEBODYHOME' => 'Кто-то есть',
-    'DEVICES_ROOMS_ACTIVITY' => 'Активность',
 
     'DEVICES_PASSED_NOW' => 'только что',
     'DEVICES_PASSED_INCORRECT_TIME' => 'Неверное время',
@@ -1357,69 +1200,13 @@ $dictionary = array(
     'DEVICES_PASSED_SECONDS_AGO' => 'сек. назад',
     'DEVICES_PASSED_MINUTES_AGO' => 'мин. назад',
     'DEVICES_PASSED_HOURS_AGO' => 'ч. назад',
-    'DEVICES_CHOOSE_EXISTING' => '... или выберите уже добавленное устройство',
 
-    'DEVICES_CAMERA' =>'Камера (IP)',
-    'DEVICES_CAMERA_STREAM_URL' =>'URL видео-потока',
-    'DEVICES_CAMERA_USERNAME' =>'Имя пользователя',
-    'DEVICES_CAMERA_PASSWORD' =>'Пароль',
-    'DEVICES_CAMERA_SNAPSHOT_URL' =>'URL статического снимка',
-    'DEVICES_CAMERA_SNAPSHOT' =>'Снимок',
-    'DEVICES_CAMERA_TAKE_SNAPSHOT' =>'Сохранить снимок',
-    'DEVICES_CAMERA_SNAPSHOT_HISTORY' =>'История',
-    'DEVICES_CAMERA_STREAM_TRANSPORT' =>'Транспорт потока',
-    'DEVICES_CAMERA_PREVIEW_TYPE' =>'Предпросмотр',
-    'DEVICES_CAMERA_PREVIEW_TYPE_STATIC' =>'Статический снимок',
-    'DEVICES_CAMERA_PREVIEW_TYPE_SLIDESHOW' =>'Слайд-шоу',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK' =>'Действие по нажатию на изображение',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK_ENLARGE' =>'Увеличить изображеие',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK_ORIGINAL' =>'Перейти на поток',
 
-    'DEVICES_THERMOSTAT' => 'Термостат',
-    'DEVICES_THERMOSTAT_MODE' => 'Режим',
-    'DEVICES_THERMOSTAT_MODE_NORMAL' => 'Обычный',
-    'DEVICES_THERMOSTAT_MODE_ECO' => 'Эко',
-    'DEVICES_THERMOSTAT_MODE_OFF' => 'Выкл',
-    'DEVICES_THERMOSTAT_ECO_MODE' => 'ECO режим',
-    'DEVICES_THERMOSTAT_NORMAL_TEMP' => 'Обычная целевая температура',
-    'DEVICES_THERMOSTAT_ECO_TEMP' => 'ECO целевая температура',
-    'DEVICES_THERMOSTAT_CURRENT_TEMP' => 'Текущая температура',
-    'DEVICES_THERMOSTAT_CURRENT_TARGET_TEMP' => 'Целевая температура',
-    'DEVICES_THERMOSTAT_THRESHOLD' => 'Порог срабатывания термостата (0.25 по-умолчанию)',
-    'DEVICES_THERMOSTAT_INCREMENT' => 'Шаг регулирования (0.5 по-умолчанию)',
-    'DEVICES_THERMOSTAT_RELAY_STATUS' => 'Статус реле',
-    'DEVICES_THERMOSTAT_SET_TARGET_TEMPERATURE' => 'Установить желаемую температуру',
-    'DEVICES_THERMOSTAT_OPENABLE' => 'Окна/двери',
-    'DEVICES_THERMOSTAT_RELAY_READONLY' => 'Режим "только чтение" для реле нагрева/охлаждения',
-    'DEVICES_ALL_BY_TYPE' => 'Все по типам',
-    'DEVICES_ALL_BY_ROOM' => 'Все по комнатам',
-    'DEVICES_LOAD_TIMEOUT'=>'Таймер изменения статуса нагрузки',
     'GROUPS' => 'Группы',
     'APPLIES_TO' => 'Применительно к',
 
-    'DEVICES_AC'=>'Кондиционер',
-    'DEVICES_AC_FAN_SPEED'=>'Обдув',
-    'DEVICES_AC_FAN_SPEED_HIGH'=>'Сильный',
-    'DEVICES_AC_FAN_SPEED_MEDIUM'=>'Средний',
-    'DEVICES_AC_FAN_SPEED_LOW'=>'Малый',
-    'DEVICES_AC_FAN_SPEED_AUTO'=>'Авто',
-    'DEVICES_AC_THERMOSTAT'=>'Термостат',
-    'DEVICES_AC_THERMOSTAT_FAN_ONLY'=>'Только обдув',
-    'DEVICES_AC_THERMOSTAT_HEAT'=>'Подогрев',
-    'DEVICES_AC_THERMOSTAT_COOL'=>'Охлаждение',
-    'DEVICES_AC_THERMOSTAT_DRY'=>'Осушение',
-    'DEVICES_AC_THERMOSTAT_AUTO'=>'Авто',
-    'DEVICES_AC_TEMP_STEP'=>'Шаг изменения температуры',
 
-    'DEVICES_DIMMER_MIN_WORK' => 'Мин. уровень (рабочий)',
-    'DEVICES_DIMMER_MAX_WORK' => 'Макс. уровень (рабочий)',
-    'DEVICES_DIMMER_SWITCH_LEVEL' => 'Не изменять уровень при переключении',
-    'DEVICES_DIMMER_SET_MAX' => 'Устанавливать максимальную яркость при включении',
-    'DEVICES_DIMMER_SET_TARGET_LEVEL' => 'Установить желаемый уровень, %',
 
-    'DEVICES_COLLECTION_IS_ON' => 'Сейчас включено',
-    'DEVICES_COLLECTION_IS_OPEN' => 'Сейчас открыто',
-    'DEVICES_COLLECTION_IS_HEATING' => 'Сейчас греет',
 
     'WIDGET' => 'Виджет',
     'WIDGETS' => 'Виджеты',

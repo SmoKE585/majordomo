@@ -154,7 +154,6 @@ Define('GETURL_WARNING_TIMEOUT', 5);        // Порог (сек.) для warni
  *  12) UI и доступ | UI and access
  * ============================================================================
  */
-//Define('DISABLE_SIMPLE_DEVICES', 1); // Отключить поведение модуля simple devices | Disable Simple Devices module behavior
 //Define('DISABLE_USERS_LIST', 1);     // Скрыть список пользователей на форме логина | Hide users list on login form
 
 /*

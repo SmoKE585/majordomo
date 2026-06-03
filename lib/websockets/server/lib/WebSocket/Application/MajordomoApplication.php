@@ -11,10 +11,8 @@ class MajordomoApplication extends Application
 {
     private $_clients = array();
     private $_cachedProperties = array();
-    private $_scenesUpdated = 0;
     private $_filename = '';
     private $_latestAlive = 0;
-    private $_scenesDynamicElements = array();
     private $_started;
     
     public function __construct() {
@@ -175,111 +173,6 @@ class MajordomoApplication extends Application
 
             if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
                 DebMes($this->_clients[$client_id]->getClientIp() . " Subscription from client to " . $data['TYPE'] . "\n" . json_encode($data), 'websockets');
-            }
-
-            if ($data['TYPE'] == 'scenes') {
-
-                $this->refreshSceneDynamicElements();
-
-                if ($data['SCENE_ID'] == '') {
-                    $data['SCENE_ID'] = 'all';
-                }
-                if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                    DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to scene: " . $data['SCENE_ID'], 'websockets');
-                }
-                $this->_clients[$client_id]->subscribedTo['scenes'][$data['SCENE_ID']] = 1;
-                global $scenes;
-                $properties = $scenes->getWatchedProperties($this->_clients[$client_id]->subscribedTo['scenes']);
-                if (is_array($properties)) {
-
-                    if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                        DebMes($this->_clients[$client_id]->getClientIp() . " Watching: " . json_encode($properties), 'websockets');
-                    }
-                    foreach ($properties as $v) {
-                        $this->_clients[$client_id]->watchedProperties[$v['PROPERTY']]['states'][$v['STATE_ID']] = 1;
-                    }
-                }
-            }
-
-            if ($data['TYPE'] == 'plans') {
-                //$this->refreshSceneDynamicElements();
-                if ($data['PLAN_ID'] == '') {
-                    $data['PLAN_ID'] = 'all';
-                }
-                if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                    DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to plan: " . $data['PLAN_ID'], 'websockets');
-                }
-                $this->_clients[$client_id]->subscribedTo['plans'][$data['PLAN_ID']] = 1;
-                global $plans;
-                $properties = $plans->getWatchedProperties($this->_clients[$client_id]->subscribedTo['plans']);
-                if (is_array($properties)) {
-                    if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                        DebMes($this->_clients[$client_id]->getClientIp() . " Watching: " . json_encode($properties), 'websockets');
-                    }
-                    foreach ($properties as $v) {
-                        $this->_clients[$client_id]->watchedProperties[$v['PROPERTY']]['plan_states'][$v['STATE_ID']] = $v;
-                    }
-                }
-            }
-
-            if ($data['TYPE'] == 'commands') {
-                if ($data['PARENT_ID'] == '') {
-                    $data['PARENT_ID'] = '0';
-                }
-                if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                    DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to menu: " . $data['PARENT_ID'], 'websockets');
-                }
-                $this->_clients[$client_id]->subscribedTo['commands']['PARENT_ID'] = $data['PARENT_ID'];
-                global $commands;
-                $properties = $commands->getWatchedProperties($this->_clients[$client_id]->subscribedTo['commands']['PARENT_ID']);
-                if (is_array($properties)) {
-                    if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                        DebMes($this->_clients[$client_id]->getClientIp() . " Watching:\n" . json_encode($properties), 'websockets');
-                    }
-                    foreach ($properties as $v) {
-                        $this->_clients[$client_id]->watchedProperties[$v['PROPERTY']]['commands'][$v['COMMAND_ID']] = 1;
-                    }
-                }
-            }
-
-            if ($data['TYPE'] == 'devices') {
-                if ($data['DEVICE_ID'] == '') {
-                    $data['DEVICE_ID'] = '0';
-                }
-                if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                    DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to device: " . $data['DEVICE_ID'], 'websockets');
-                }
-                $this->_clients[$client_id]->subscribedTo['devices']['DEVICE_ID'] = $data['DEVICE_ID'];
-                global $devices;
-                $properties = $devices->getWatchedProperties($this->_clients[$client_id]->subscribedTo['devices']['DEVICE_ID']);
-                if (is_array($properties)) {
-                    if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                        DebMes($this->_clients[$client_id]->getClientIp() . " Watching:\n" . json_encode($properties), 'websockets');
-                    }
-                    foreach ($properties as $v) {
-                        $this->_clients[$client_id]->watchedProperties[$v['PROPERTY']]['devices'][$v['DEVICE_ID']] = 1;
-                    }
-                }
-            }
-
-            if ($data['TYPE'] == 'devices_data') {
-                if ($data['DEVICE_ID'] == '') {
-                    $data['DEVICE_ID'] = '0';
-                }
-                if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                    DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to device data: " . $data['DEVICE_ID'], 'websockets');
-                }
-                $this->_clients[$client_id]->subscribedTo['devices_data']['DEVICE_ID'] = $data['DEVICE_ID'];
-                global $devices;
-                $properties = $devices->getWatchedProperties($this->_clients[$client_id]->subscribedTo['devices_data']['DEVICE_ID']);
-                if (is_array($properties)) {
-                    if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                        DebMes($this->_clients[$client_id]->getClientIp() . " Watching:\n" . json_encode($properties), 'websockets');
-                    }
-                    foreach ($properties as $v) {
-                        $this->_clients[$client_id]->watchedProperties[$v['PROPERTY']]['devices_data'][$v['DEVICE_ID']] = 1;
-                    }
-                }
             }
 
             if ($data['TYPE'] == 'objects') {
@@ -630,10 +523,6 @@ class MajordomoApplication extends Application
             }
         }
 
-        global $scenes;
-        global $plans;
-        global $commands;
-        global $devices;
         global $objects_module;
 
 
@@ -650,176 +539,6 @@ class MajordomoApplication extends Application
             foreach ($this->_clients as $client) {
                 $tmp = explode('.', $property_name_lc);
                 if (IsSet($client->watchedProperties['*']['properties']) || IsSet($client->watchedProperties[$property_name_lc]) || IsSet($client->watchedProperties[$tmp[0]])) {
-                    //scenes
-                    if (isset($client->watchedProperties[$property_name_lc]['states'])) {
-                        $send_states = array();
-                        $seen_state = array();
-                        foreach ($client->watchedProperties[$property_name_lc]['states'] as $k => $v) {
-                            if (isset($seen_state[$k])) {
-                                continue;
-                            }
-                            $seen_state[$k] = 1;
-                            $state = $this->_scenesDynamicElements[$k];
-                            $scenes->processState($state);
-                            $send_states[] = $state;
-                        }
-
-                        if (isset($send_states[0])) {
-                            if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                                DebMes($client->getClientIp() . " Sending updated state\n" . json_encode($send_states), 'websockets');
-                            }
-                            $encodedData = $this->_encodeData('states', json_encode($send_states));
-                            $client->send($encodedData);
-                        }
-                    }
-
-                    //plans
-                    if (isset($client->watchedProperties[$property_name_lc]['plan_states'])) {
-                        $send_plan_states = array();
-                        $seen_plan_state = array();
-                        foreach ($client->watchedProperties[$property_name_lc]['plan_states'] as $k => $v) {
-                            if (isset($seen_plan_state[$k])) {
-                                continue;
-                            }
-                            $seen_plan_state[$k] = 1;
-                            //$state = $this->_scenesDynamicElements[$k];
-                            $state=array('ID'=>$k,'PROPERTY_NAME'=>$property_name,'PROPERTY_VALUE'=>$property_value);
-                            if ($v['TEMPLATE']!='') {
-                                $state['TEMPLATE']=$v['TEMPLATE'];
-                                $state['ITEM']=$k;
-                            }
-                            if ($v['ATTRIBUTES']) {
-                                $state['ATTRIBUTES'] = $v['ATTRIBUTES'];
-                                $state['ITEM']=$k;
-                            }
-                            if (preg_match('/^component(\d+)$/',$k,$m)) {
-                                $state['COMPONENT_ID']=$m[1];
-                                $state['ITEM']=$k;
-                            }
-                            $plans->processState($state);
-                            if ($state['TEMPLATE']) {
-                                unset($state['TEMPLATE']);
-                            }
-                            if ($state['ATTRIBUTES'] && is_array($state['ATTRIBUTES'])) {
-                                foreach($state['ATTRIBUTES'] as &$attribute) {
-                                    if ($attribute['TEMPLATE'] != '') {
-                                        unset($attribute['TEMPLATE']);
-                                    }
-                                }
-                                unset($attribute);
-                            }
-                            $send_plan_states[] = $state;
-                        }
-
-                        if (isset($send_plan_states[0])) {
-                            if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                                DebMes($client->getClientIp() . " Sending updated state\n" . json_encode($send_plan_states), 'websockets');
-                            }
-                            $encodedData = $this->_encodeData('plan_states', json_encode($send_plan_states));
-                            $client->send($encodedData);
-                        }
-                    }
-
-                    //commands (menu)
-                    if (isset($client->watchedProperties[$property_name_lc]['commands'])) {
-                        $send_values = array();
-                        $send_labels = array();
-                        $seen_commands = array();
-                        foreach ($client->watchedProperties[$property_name_lc]['commands'] as $k => $v) {
-                            if (isset($seen_commands[$k])) {
-                                continue;
-                            }
-                            $seen_commands[$k] = 1;
-                            $item = $commands->processMenuItem($k); //, true, $property_value
-                            if (isset($item['VALUE'])) {
-                                $send_values[] = array('ID' => $item['ID'], 'DATA' => $item['VALUE']);
-                            }
-                            if (isset($item['LABEL'])) {
-                                $send_labels[] = array('ID' => $item['ID'], 'DATA' => $item['LABEL']);
-                            }
-                        }
-
-                        if (isset($send_labels[0])) {
-                            $send_data = array('LABELS' => $send_labels, 'VALUES' => $send_values);
-                            if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                                DebMes($client->getClientIp() . " Sending updated menu items\n" . json_encode($send_data), 'websockets');
-                            }
-                            $encodedData = $this->_encodeData('commands', json_encode($send_data));
-                            $client->send($encodedData);
-                        }
-                    }
-
-                    //devices
-                    if (isset($client->watchedProperties[$property_name_lc]['devices'])) {
-                        $send_values = array();
-                        $seen_devices = array();
-                        foreach ($client->watchedProperties[$property_name_lc]['devices'] as $k => $v) {
-                            if (isset($seen_devices[$k])) {
-                                continue;
-                            }
-                            $seen_devices[$k] = 1;
-                            $item = $devices->processDevice($k);
-                            if (isset($item['HTML'])) {
-                                $send_values[] = array('DEVICE_ID' => $item['DEVICE_ID'], 'DATA' => $item['HTML']);
-                            }
-                        }
-
-                        if (isset($send_values[0])) {
-                            $send_data = array('DATA' => $send_values);
-                            if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                                DebMes($client->getClientIp() . " Sending updated device items\n" . json_encode($send_data), 'websockets');
-                            }
-                            $encodedData = $this->_encodeData('devices', json_encode($send_data));
-                            $client->send($encodedData);
-                        }
-                    }
-
-                    //devices data
-                    if (isset($client->watchedProperties[$property_name_lc]['devices_data'])) {
-                        $send_values=array();
-                        $seen_devices=array();
-                        foreach($client->watchedProperties[$property_name_lc]['devices_data'] as $k=>$v) {
-                            if (isset($seen_devices[$k])) {
-                                continue;
-                            }
-                            $seen_devices[$k]=1;
-                            if ($k>0) {
-                                $devices_=SQLSelect("SELECT * FROM devices WHERE ID=".$k);
-                                $total = count($devices_);
-                                $cached_properties=array();
-                                for ($i = 0; $i < $total; $i++) {
-                                    $device=array();
-                                    $device['id']=$devices_[$i]['ID'];
-                                    $device['title']=$devices_[$i]['TITLE'];
-                                    $device['object']=$devices_[$i]['LINKED_OBJECT'];
-                                    $device['type']=$devices_[$i]['TYPE'];
-                                    $device['favorite']=$devices_[$i]['FAVORITE'];
-                                    $obj = getObject($device['object']);
-                                    if (!isset($cached_properties[$obj->class_id])) {
-                                        $cached_properties[$obj->class_id]=getClassProperties($obj->class_id);
-                                    }
-                                    $properties = $cached_properties[$obj->class_id];
-                                    foreach($properties as $p) {
-                                        $device[$p['TITLE']]=getGlobal($device['object'].'.'.$p['TITLE']);
-                                    }
-                                    $send_values[]=$device;
-                                }
-                            }
-                            //  $item=$devices->processDevice($k);
-                            if (isset($item['HTML'])) {
-                                //  $send_values[]=array('DEVICE_ID'=>$item['DEVICE_ID'], 'DATA'=>$item);
-                            }
-                        }
-                        if (isset($send_values[0])) {
-                            $send_data=array('DATA'=>$send_values);
-                            if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS==1) {
-                                DebMes($client->getClientIp()." Sending updated device data items\n".json_encode($send_data),'websockets');
-                            }
-                            $encodedData = $this->_encodeData('devices_data', json_encode($send_data));
-                            $client->send($encodedData);
-                        }
-                    }
-
                     //objects
                     if (isset($client->watchedProperties[$property_name_lc]['objects'])) {
                         $send_values = array();
@@ -895,31 +614,6 @@ class MajordomoApplication extends Application
 
     }
 
-
-    private function refreshSceneDynamicElements()
-    {
-        global $scenes;
-
-        if (time() == $this->_scenesUpdated) {
-            return;
-        }
-
-        $this->_scenesUpdated = time();
-
-        unset($this->_scenesDynamicElements);
-        $this->_scenesDynamicElements = array();
-        $elements = $scenes->getDynamicElements();
-        $total = count($elements);
-        for ($i = 0; $i < $total; $i++) {
-            if (is_array($elements[$i]['STATES'])) {
-                foreach ($elements[$i]['STATES'] as $st) {
-                    $states[] = $st;
-                    $this->_scenesDynamicElements[$st['ID']] = $st;
-                }
-            }
-        }
-
-    }
 
 
     private function _actionEcho($text, $client_id)

@@ -232,6 +232,15 @@ for ($i = 0; $i < $total_history_tables; $i++) {
     maintenanceEnsureTableIndex($table_name, 'idx_phistory_value_id', 'VALUE_ID,ID');
 }
 
+// removing obsolete code editor modes
+DebMes('Checking blockly code types.', 'maintenance');
+if (SQLSelectOne("SHOW TABLES LIKE 'blockly_code'")) {
+    SQLExec("UPDATE blockly_code SET CODE_TYPE=0 WHERE CODE_TYPE NOT IN (0,1)");
+}
+if (SQLSelectOne("SHOW TABLES LIKE 'blockly_code_history'")) {
+    SQLExec("UPDATE blockly_code_history SET CODE_TYPE=0 WHERE CODE_TYPE NOT IN (0,1)");
+}
+
 // removing incorrect pvalues
 DebMes("Checking for incorrect pvalues.", 'maintenance');
 $sqlQuery = "SELECT pvalues.*, properties.ID AS PROP_ID, objects.ID as OBJ_ID  FROM `pvalues` LEFT JOIN properties ON pvalues.PROPERTY_ID=properties.ID LEFT JOIN objects ON pvalues.OBJECT_ID=objects.ID";

@@ -14,7 +14,8 @@
    $rec['SYSTEM_NAME']=$system_name;
   //updating 'CODE_TYPE' (int)
    global $code_type;
-   $rec['CODE_TYPE']=(int)$code_type;
+   $code_type=(int)$code_type;
+   $rec['CODE_TYPE']=in_array($code_type, array(0, 1), true) ? $code_type : 0;
   //updating 'CODE' (text)
    global $code;
    $rec['CODE']=$code;

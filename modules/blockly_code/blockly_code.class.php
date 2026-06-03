@@ -33,6 +33,12 @@ class blockly_code extends module
         $this->checkInstalled();
     }
 
+    function normalizeCodeType($code_type)
+    {
+        $code_type = (int)$code_type;
+        return in_array($code_type, array(0, 1), true) ? $code_type : 0;
+    }
+
     /**
      * saveParams
      *
@@ -239,7 +245,8 @@ class blockly_code extends module
 
         $rec = SQLSelectOne("SELECT * FROM blockly_code WHERE SYSTEM_NAME LIKE '" . DBSafe($this->system_name) . "'");
         if (isset($rec['CODE_TYPE'])) {
-            $out['CODE_TYPE'] = (int)$rec['CODE_TYPE'];
+            $rec['CODE_TYPE'] = $this->normalizeCodeType($rec['CODE_TYPE']);
+            $out['CODE_TYPE'] = $rec['CODE_TYPE'];
         }
         if (!isset($rec['ID']) && isset($this->owner->xml)) {
             $rec['XML'] = $this->owner->xml;
@@ -286,7 +293,7 @@ class blockly_code extends module
 
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && $out['TYPE'] == 'php') {
-            $code_type = gr($this->code_field . "_code_type", 'int');
+            $code_type = $this->normalizeCodeType(gr($this->code_field . "_code_type", 'int'));
             $rec = SQLSelectOne("SELECT * FROM blockly_code WHERE SYSTEM_NAME LIKE '" . DBSafe($this->system_name) . "'");
             $old_rec = $rec;
             $rec['XML'] = gr('xml');
@@ -321,10 +328,9 @@ class blockly_code extends module
             $out['XML'] = $rec['XML'];
         }
 
-        $out['CODE_TYPE'] = isset($rec['CODE_TYPE']) ? (int)$rec['CODE_TYPE'] : 0;
+        $out['CODE_TYPE'] = isset($rec['CODE_TYPE']) ? $this->normalizeCodeType($rec['CODE_TYPE']) : 0;
 
 
-        $out['DEVICES'] = SQLSelect("SELECT ID,TITLE,TYPE,LINKED_OBJECT FROM devices WHERE TYPE IN ('relay','dimmer','button','thermostat') ORDER BY TITLE");
 
         if (isset($this->data_source) && !$_GET['data_source'] && !$_POST['data_source']) {
             $out['SET_DATASOURCE'] = 1;

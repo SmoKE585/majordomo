@@ -1111,39 +1111,7 @@ $dictionary = array (
     'SYSTEM_UPDATES_AVAILABLE' => 'Доступні оновлення системи',
     'ERRORS_SAVED' => 'Збережено помилки',
 
-    // DEVICES
-    'DEVICES_MODULE_TITLE' => 'Прості пристрої',
-    'DEVICES_LINKED_WARNING' => 'Увага: вибір існуючого об’єкта призведе до прив’язки його до нового класу.',
-    'DEVICES_RELAY' => 'Реле/Керований вимикач',
-    'DEVICES_DIMMER' => 'Освітлення (Диммер)',
-    'DEVICES_RGB' => 'RGB-контролер',
-    'DEVICES_MOTION' => 'Датчик руху',
-    'DEVICES_BUTTON' => 'Кнопка',
-    'DEVICES_SWITCH' => 'Вимикач',
-    'DEVICES_OPENCLOSE' => 'Датчик відкриття / закриття',
-    'DEVICES_OPENABLE' => 'Відкривається (Ворота/Двері/Штори/і т.д.)',
-    'DEVICES_GENERAL_SENSOR' => 'Загальний датчик',
-    'DEVICES_TEMP_SENSOR' => 'Датчик температури',
-    'DEVICES_HUM_SENSOR' => 'Датчик вологості',
-    'DEVICES_MOISTURE_SENSOR' => 'Датчик вологості грунту',
-    'DEVICES_CO2_SENSOR' => 'Датчик CO2',
-    'DEVICES_RADIATION_SENSOR' => 'Датчик радіоактивного випромінювання',
-    'DEVICES_STATE_SENSOR' => 'Датчик стану',
-    'DEVICES_PERCENTAGE_SENSOR' => 'Датчик процентне значення',
-    'DEVICES_PRESSURE_SENSOR' => 'Датчик атмосферного тиску',
-    'DEVICES_POWER_SENSOR' => 'Датчик потужності',
-    'DEVICES_VOLTAGE_SENSOR' => 'Датчик напруги',
-    'DEVICES_CURRENT_SENSOR' => 'Датчик струму',
-    'DEVICES_LIGHT_SENSOR' => 'Датчик освітленості',
-    'DEVICES_LEAK_SENSOR' => 'Датчик протікання',
-    'DEVICES_SMOKE_SENSOR' => 'Датчик диму',
-    'DEVICES_COUNTER' => 'Лічильник',
-    'DEVICES_UNIT' => 'Одиниця виміру',
-    'DEVICES_BATTERY_LOW' => 'Низький рівень заряду батареї',
     'DEVICES_UNKNOWN_COMMAND' => 'Невідома команда...',
-    'DEVICES_MSG_OPENING'=>'Повідомлення при відкритті',
-    'DEVICES_MSG_CLOSING'=>'Повідомлення при закритті',
-    'DEVICES_MSG_REMINDER'=>'Повідомлення при нагадуванні',
 
     // Measure
     'M_VOLTAGE' => 'В',
@@ -1152,128 +1120,33 @@ $dictionary = array (
     'M_WATT' => 'Вт',
 
     // ----
-    'DEVICES_LINKS' => 'Зв’язані пристрої',
 
     'DEVICES_STATUS' => 'Статус',
 
     'DEVICES_LOGIC_ACTION' => 'Дії',
-    'DEVICES_SCHEDULE' => 'Розклад керування',
-
-    'DEVICES_CURRENT_VALUE' => 'Поточне значення',
-    'DEVICES_CURRENT_HUMIDITY' => 'Вологість',
-    'DEVICES_CURRENT_TEMPERATURE' => 'Температура',
-
-    'DEVICES_MIN_VALUE' => 'Нижній поріг',
-    'DEVICES_MAX_VALUE' => 'Верхній поріг',
-    'DEVICES_NOTIFY' => 'Повідомляти при виході за поріг',
-    'DEVICES_NORMAL_VALUE' => 'Значення в нормальних межах',
-    'DEVICES_DIRECTION_TIMEOUT' => 'Інтервал часу розрахунку зміни напрямків (сек)',
-    'DEVICES_NOTIFY_STATUS' => 'Повідомляти при зміні статусу',
-    'DEVICES_NOTIFY_ELIMINATED' => 'Повідомляти кожну хвилину до відновлення статусу',
-    'DEVICES_SENSOR_ALERT' => 'Увага! Сигнал тривоги від датчика',
-    'DEVICES_NOTIFY_OUTOFRANGE' => 'Значення датчика вийшло за поріг',
-    'DEVICES_NOTIFY_BACKTONORMAL' => 'Значення датчика повернулося до норми',
-    'DEVICES_NOTIFY_NOT_CLOSED' => 'Нагадувати про відкритий стан',
-    'DEVICES_MOTION_IGNORE' => 'Ігнорувати події від пристрою, коли нікого немає вдома',
-    'DEVICES_MOTION_RESET' => 'Скидання статусу "нікого немає вдома" без таймера установки',
-    'DEVICES_MOTION_TIMEOUT' => 'Час активності (секунд)',
-    'DEVICES_ALIVE_TIMEOUT' => 'Допустимий час відсутності даних (годин)',
-    'DEVICES_MAIN_SENSOR' => 'Основний сенсор приміщення',
-    'DEVICES_NOT_UPDATING' => 'не оновлюється',
-
-    'DEVICES_IS_ON' => 'Включено',
-    'DEVICES_IS_CLOSED' => 'Закрито',
-
-    'DEVICES_MOTION_DETECTED' => 'Виявлено',
-
-    'DEVICES_PRESS' => 'Натиснути',
-    'DEVICES_TURN_ON' => 'Ввімкнути',
-    'DEVICES_TURN_OFF' => 'Вимкнути',
-    'DEVICES_SET_COLOR' => 'Встановити колір',
-
-    'DEVICES_GROUP_ECO' => 'Вимикати в режимі економії',
-    'DEVICES_GROUP_ECO_ON' => 'Вмикати при виході з режиму економії',
-    'DEVICES_GROUP_SUNRISE' => 'Вимикати на світанку',
-    'DEVICES_GROUP_SUNSET' => 'Вмикати при заході сонця',
-    'DEVICES_GROUP_NIGHT' => 'Вимикати при вході в нічний режим',
-    'DEVICES_IS_ACTIVITY' => 'Зміна означає активність в приміщенні',
-    'DEVICES_NCNO' => 'Тип пристрою/сенсора',
-    'DEVICES_LOADTYPE' => 'Тип пристрою',
-    'DEVICES_LOADTYPE_VENT' => 'Вентиляція',
-    'DEVICES_LOADTYPE_HEATING' => 'Обігрів',
-    'DEVICES_LOADTYPE_CURTAINS' => 'Штори',
-    'DEVICES_LOADTYPE_GATES' => 'Ворота',
-    'DEVICES_LOADTYPE_LIGHT' => 'Освітлення',
-    'DEVICES_LOADTYPE_LIGHT_ALT' => 'Світло',
-    'DEVICES_LOADTYPE_POWER' => 'Різне',
-
-    'DEVICES_OPENTYPE' => 'Тип пристрою',
-    'DEVICES_OPENTYPE_CURTAINS' => 'Штори',
-    'DEVICES_OPENTYPE_SHUTTERS' => 'Віконниці',
-    'DEVICES_OPENTYPE_GATES' => 'Ворота',
-    'DEVICES_OPENTYPE_WINDOW' => 'Вікно',
-    'DEVICES_OPENTYPE_DOOR' => 'Двері',
-
-    'DEVICES_ADD_MENU' => 'Додати пристрій в Меню',
-    'DEVICES_ADD_SCENE' => 'Додати пристрій на Сцену',
-
-    'DEVICES_LINKS_NOT_ADDED' => 'Немає пов’язаних пристроїв',
-    'DEVICES_LINKS_AVAILABLE' => 'Доступні типи зв’язків',
-    'DEVICES_LINKS_COMMENT' => 'Коментар (не обов’язково)',
-    'DEVICES_LINKS_LINKED_DEVICE' => 'Пов’язаний пристрій',
-    'DEVICES_LINKS_ADDED' => 'Зв’язані пристрої',
-
-    'DEVICES_LINK_ACTION_TYPE' => 'Дія',
-    'DEVICES_LINK_TYPE_TURN_ON' => 'Ввімкнути',
-    'DEVICES_LINK_TYPE_TURN_OFF' => 'Вимкнути',
-    'DEVICES_LINK_TYPE_OPEN' => 'Відкрити',
-    'DEVICES_LINK_TYPE_CLOSE' => 'Закрити',
-    'DEVICES_LINK_TYPE_SWITCH' => 'Перемкнути',
-
-    'DEVICES_LINK_SWITCH_IT' => 'Ввімкнути / Вимкнути',
-    'DEVICES_LINK_SWITCH_IT_DESCRIPTION' => 'Використання іншого пристроєм за подією',
-    'DEVICES_LINK_SWITCH_IT_PARAM_ACTION_DELAY' => 'Затримка виконання (секунд)',
-
-    'DEVICES_LINK_SWITCH_TIMER' => 'Ввімкнути на час',
-    'DEVICES_LINK_SWITCH_TIMER_DESCRIPTION' => 'Ввімкнути інший пристрій на деякий час за подією',
-    'DEVICES_LINK_SWITCH_TIMER_PARAM_ACTION_DELAY' => 'Ввімкнути на який час (секунд)',
-    'DEVICES_LINK_SWITCH_TIMER_PARAM_DARKTIME' => 'Тільки в темний час',
-
-    'DEVICES_LINK_SET_COLOR' => 'Встановити колір',
-    'DEVICES_LINK_SET_COLOR_DESCRIPTION' => 'Встановити колір за подією',
-    'DEVICES_LINK_SET_COLOR_PARAM_ACTION_COLOR' => 'Колір',
-
-    'DEVICES_LINK_SENSOR_SWITCH' => 'Умовне керування',
-    'DEVICES_LINK_SENSOR_SWITCH_DESCRIPTION' => 'Використання іншого пристрою за показаннями датчика',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION' => 'Тип умови',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION_ABOVE' => 'Вище заданого',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_CONDITION_BELOW' => 'Нижче заданого',
-    'DEVICES_LINK_SENSOR_SWITCH_PARAM_VALUE' => 'Граничне значення',
-
-    'DEVICES_LINK_SENSOR_PASS' => 'Пересилання даних',
-    'DEVICES_LINK_SENSOR_PASS_DESCRIPTION' => 'Пересилання даних від сенсора на інший пристрій',
-
-    'DEVICES_LINK_THERMOSTAT_SWITCH' => 'Керування пристроєм',
-    'DEVICES_LINK_THERMOSTAT_SWITCH_DESCRIPTION' => 'Керування інших пристроїв в залежності від статусу термостата',
-    'DEVICES_LINK_THERMOSTAT_INVERT' => 'Інвертоване встановлення статусу',
 
 
-    'DEVICES_UPDATE_CLASSSES' => 'Оновити класи',
-    'DEVICES_ADD_OBJECT_AUTOMATICALLY' => 'Створити автоматично',
 
-    'DEVICES_PATTERN_OPEN' => 'відкрий',
-    'DEVICES_PATTERN_CLOSE' => 'закрий',
-    'DEVICES_PATTERN_TURNON' => 'включи|запали|ввімкни',
-    'DEVICES_PATTERN_TURNOFF' => 'вимкни|потушкуй|відключи|виключи',
-    'DEVICES_DEGREES' => 'градусів',
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     'DEVICES_STATUS_OPEN' => 'відкритий',
     'DEVICES_STATUS_CLOSED' => 'закритий',
     'DEVICES_STATUS_ALARM' => 'стан тривоги',
-    'DEVICES_COMMAND_CONFIRMATION' => 'Готово|Зроблено|Як побажаєте',
 
-    'DEVICES_ROOMS_NOBODYHOME' => 'Нікого немає.',
-    'DEVICES_ROOMS_SOMEBODYHOME' => 'Хтось є',
-    'DEVICES_ROOMS_ACTIVITY' => 'Активність',
     
     'DEVICES_PASSED_INCORRECT_TIME' => 'Невірний час',
     'DEVICES_PASSED_AGO' => 'назад',
@@ -1287,63 +1160,13 @@ $dictionary = array (
     'DEVICES_PASSED_SECONDS_AGO' => 'сек. назад',
     'DEVICES_PASSED_MINUTES_AGO' => 'хв. назад',
     'DEVICES_PASSED_HOURS_AGO' => 'г. назад',
-    'DEVICES_CHOOSE_EXISTING' => '... або виберіть вже доданий пристрій',
 
-    'DEVICES_CAMERA' => 'IP-камера',
-    'DEVICES_CAMERA_STREAM_URL' => 'URL відео-потоку',
-    'DEVICES_CAMERA_USERNAME' => 'Ім’я користувача',
-    'DEVICES_CAMERA_PASSWORD' => 'Пароль',
-    'DEVICES_CAMERA_SNAPSHOT_URL' => 'URL статичного знімка',
-    'DEVICES_CAMERA_SNAPSHOT' => 'Знімок',
-    'DEVICES_CAMERA_TAKE_SNAPSHOT' => 'Зберегти знімок',
-    'DEVICES_CAMERA_SNAPSHOT_HISTORY' => 'Історія',
-    'DEVICES_CAMERA_STREAM_TRANSPORT' => 'Транспорт потоку',
-    'DEVICES_CAMERA_PREVIEW_TYPE' => 'Попередній',
-    'DEVICES_CAMERA_PREVIEW_TYPE_STATIC' => 'Статичний знімок',
-    'DEVICES_CAMERA_PREVIEW_TYPE_SLIDESHOW' => 'Слайд-шоу',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK' => 'Дія після натискання на зображення',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK_ENLARGE' => 'Збільшити зображення',
-    'DEVICES_CAMERA_PREVIEW_ONCLICK_ORIGINAL' => 'Перейти на потік',
 
-    'DEVICES_THERMOSTAT' => 'Термостат',
-    'DEVICES_THERMOSTAT_MODE' => 'Режим',
-    'DEVICES_THERMOSTAT_MODE_NORMAL' => 'Звичайний',
-    'DEVICES_THERMOSTAT_MODE_ECO' => 'Еко',
-    'DEVICES_THERMOSTAT_MODE_OFF' => 'Вимк.',
-    'DEVICES_THERMOSTAT_ECO_MODE' => 'ECO режим',
-    'DEVICES_THERMOSTAT_NORMAL_TEMP' => 'Звичайна цільова температура',
-    'DEVICES_THERMOSTAT_ECO_TEMP' => 'ECO цільова температура',
-    'DEVICES_THERMOSTAT_CURRENT_TEMP' => 'Поточна температура',
-    'DEVICES_THERMOSTAT_CURRENT_TARGET_TEMP' => 'Цільова температура',
-    'DEVICES_THERMOSTAT_THRESHOLD' => 'Поріг спрацьовування термостата (0.25 за замовчуванням)',
-    'DEVICES_THERMOSTAT_RELAY_STATUS' => 'Статус реле',
-    'DEVICES_ALL_BY_TYPE' => 'Всі по типах',
-    'DEVICES_ALL_BY_ROOM' => 'Всі по кімнатах',
-    'DEVICES_LOAD_TIMEOUT'=>'Таймер зміни статусу навантаження',
     'GROUPS' => 'Групи',
     'APPLIES_TO' => 'Застосовано до',
 
-    'DEVICES_AC'=>'Кондиціонер',
-    'DEVICES_AC_FAN_SPEED'=>'Обдув',
-    'DEVICES_AC_FAN_SPEED_HIGH'=>'Сильний',
-    'DEVICES_AC_FAN_SPEED_MEDIUM'=>'Середній',
-    'DEVICES_AC_FAN_SPEED_LOW'=>'Малий',
-    'DEVICES_AC_FAN_SPEED_AUTO'=>'Авто',
-    'DEVICES_AC_THERMOSTAT'=>'Термостат',
-    'DEVICES_AC_THERMOSTAT_FAN_ONLY'=>'Тільки обдув',
-    'DEVICES_AC_THERMOSTAT_HEAT'=>'Підігрів',
-    'DEVICES_AC_THERMOSTAT_COOL'=>'Охолодження',
-    'DEVICES_AC_THERMOSTAT_DRY'=>'Осушення',
-    'DEVICES_AC_THERMOSTAT_AUTO'=>'Авто',
-    'DEVICES_AC_TEMP_STEP'=>'Крок зміни температури',
 
-    'DEVICES_DIMMER_MIN_WORK' => 'Мін. рівень (робочий)',
-    'DEVICES_DIMMER_MAX_WORK' => 'Макс. рівень (робочий)',
-    'DEVICES_DIMMER_SET_MAX' => 'Встановлювати максимальну яскравість при включенні',
 
-    'DEVICES_COLLECTION_IS_ON' => 'Зараз ввімкнено',
-    'DEVICES_COLLECTION_IS_OPEN' => 'Зараз відкрито',
-    'DEVICES_COLLECTION_IS_HEATING' => 'Зараз гріє',
 
     'AUTO_LINK' => 'Автоматичний запуск сценарію',
     'FAVORITE_DEVICE' => 'У списку швидкого доступу',

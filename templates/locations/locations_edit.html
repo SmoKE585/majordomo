@@ -82,9 +82,7 @@
             [#if CONFIG_TYPE="style_image"#]
             <div id="style_image_set_[#NAME#]">
                 [#if VALUE!=""#]
-                <img src="[#VALUE#]" id="style_image_preview">
-                <a href="#" onclick="return setStyleImage_[#NAME#]('');"><i class="glyphicon glyphicon-remove"></i></a>
-                [#endif#]
+                <img src="[#VALUE#]" id="style_image_preview">                [#endif#]
             </div>
             <input type="hidden" name="[#NAME#]_value" id="[#NAME#]_value" value="[#VALUE#]">
             <script type="text/javascript">
@@ -103,9 +101,7 @@
             [#end FOLDERS#]
             [#begin FOLDERS#]
             <div id="style_[#TITLE#]" class="style_images" style="display:none">
-                [#begin STYLES#]
-                <a href="#" onclick="return setStyleImage_<#PROPERTIES.NAME#>('<#ROOTHTML#>cms/scenes/styles/[#IMAGE#]');"><img src="<#ROOTHTML#>cms/scenes/styles/[#IMAGE#]"></a>
-                [#end STYLES#]
+                [#begin STYLES#]                [#end STYLES#]
             </div>
             [#end FOLDERS#]
             [#endif#]

@@ -795,19 +795,6 @@ class market extends module
                     }
                 }
             }
-            if (is_dir($folder . '/import/scenes')) {
-                include_once(DIR_MODULES . 'scenes/scenes.class.php');
-                $scenes_module = new scenes();
-                $files_to_import = scandir($folder . '/import/scenes');
-                if (is_array($files_to_import)) {
-                    foreach ($files_to_import as $file) {
-                        $filename = $folder . '/import/scenes/' . $file;
-                        if (is_file($filename)) {
-                            $scenes_module->import_scene($filename, $plugin_name . '_' . strtolower($file));
-                        }
-                    }
-                }
-            }
             if (is_dir($folder . '/import/classes')) {
                 include_once(DIR_MODULES . 'classes/classes.class.php');
                 $classes_module = new classes();
