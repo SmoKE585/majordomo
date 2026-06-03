@@ -11,7 +11,7 @@
 			$('ul.classSearch>li').each(function(index) {
 				textForSearch = $(this).children().children().text().trim();
 				searchResult = textForSearch.toLowerCase().indexOf(term);
-				
+
 				if(searchResult >= 0) {
 					$(this).attr('style', 'padding: 5px;display: block;border: 0px;border-radius: 0px;border-bottom: 1px solid #ddd;color: red;background: #fff2f2;');
 					$($(this).prev()).attr('id', 'foundSearch');
@@ -20,20 +20,20 @@
 					$(this).removeAttr('id');
 				}
 			});
-			
+
 			if($('#foundSearch').length == 1) {
-				$('html, body').stop().animate({ 
-					scrollTop: $('#foundSearch').offset().top 
+				$('html, body').stop().animate({
+					scrollTop: $('#foundSearch').offset().top
 				}, 1000);
 			}
 		 }
-		 
+
 		function toggleClass(sub_id) {
 			splitSub = sub_id.split(',');
 			splitSubLength = splitSub.length-1;
-			
+
 			$('#sub_'+splitSub[0]).collapse('toggle');
-			
+
 			if($('#sub_'+splitSub[0]).attr('style') == 'height: 0px;') {
 				console.log('vis');
 				$.cookie("sub_classes_"+splitSub[0], '0');
@@ -41,12 +41,12 @@
 				console.log('hid');
 				$.cookie("sub_classes_"+splitSub[0], '1');
 			}
-			
+
 			if(splitSubLength != 1) {
 				$.each(splitSub,function(index,value){
 					if($('#sub_'+splitSub[0]).is(':hidden')) {
 						$('#sub_'+value).collapse('hide');
-					}		
+					}
 				});
 			}
 		}
@@ -77,14 +77,14 @@
 					<div class="row">
 						<div class="col-lg-8 col-md-8 col-sm-7 col-xs-9" onclick="toggleClass('[#if SUB_LIST != ID#][#ID#],[#endif#][#SUB_LIST#]');" style="cursor: pointer;[#if CAN_DELETE="1"#]opacity: 0.3;[#endif#]">
 							<h3 class="panel-title">
-								<i class="glyphicon glyphicon-search" style="margin-right: 10px;vertical-align: text-top;cursor: pointer;" onclick="$('#filter_modules').val('[#TITLE#]');filterSearch();$('#mdmGlobalSearchModal').modal('show');"></i> [#TITLE#] 
+								<i class="glyphicon glyphicon-search" style="margin-right: 10px;vertical-align: text-top;cursor: pointer;" onclick="setFilter('[#TITLE#]');return false;"></i> [#TITLE#]
 							</h3>
 							[#if DESCRIPTION != ''#]<div style="font-size: 1rem;padding-left: 30px;">[#DESCRIPTION#]</div>[#endif#]
 						</div>
 						<div class="col-lg-4 col-md-4 col-sm-5 col-xs-3 text-right">
 							<div class="btn-group btn-group-xs">
 							<a href="?view_mode=edit_classes&id=[#ID#]" class="btn btn-success btn-sm" title="<#LANG_EDIT#>"><i class="glyphicon glyphicon-pencil"></i></a>
-							
+
 							<a href="?view_mode=edit_classes&id=[#ID#]&tab=properties" class="btn btn-default btn-sm" title="<#LANG_PROPERTIES#>"><i class="glyphicon glyphicon-th"></i></a>
 							<a href="?view_mode=edit_classes&id=[#ID#]&tab=methods" class="btn btn-default btn-sm hidden-xs" title="<#LANG_METHODS#>"><i class="glyphicon glyphicon-th-list"></i></a>
 							<a href="?view_mode=edit_classes&id=[#ID#]&tab=objects" class="btn btn-default btn-sm hidden-xs" title="<#LANG_OBJECTS#>"><i class="glyphicon glyphicon-th-large"></i></a>
@@ -106,7 +106,7 @@
 								<div class="col-md-12">
 									<a href="?(panel:{action=classes}classes:{view_mode=edit_classes,instance=adm,tab=objects,id=<#RESULT.ID#>})&md=objects&view_mode=edit_objects&id=[#ID#]">[#TITLE#]</a> [#if DESCRIPTION != ''#]<span style="font-size: 1rem;color: gray;vertical-align: middle;">→ [#DESCRIPTION#]</span>[#endif#]
 									[#if KEY_DATA!=""#] → <i>[#KEY_DATA#]</i>[#endif#]
-									
+
 									[#if METHODS#]
 										<div style="padding-left: 10px">
 										[#begin METHODS#]

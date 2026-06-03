@@ -111,43 +111,16 @@
     var filterTimer;
 
     function filterSearch() {
-        $('#filter_add').show().html('<center><img src="<#ROOTHTML#>img/ajax-loader.gif"/> <#LANG_NEWDASH_LOADING#></center>');
-        $('.searchNoty').hide();
-
-        var title = $('#filter_modules').val();
-        var urlFilter="?";
-
-        if(title.length <= 2) {
-            $('#filter_add').show().html('<div style="padding: 15px;text-align: center;"><i class="glyphicon glyphicon-info-sign"></i> Введите более 2-х символов для поиска...</div>');
-            return;
+        if (window.MDJAdminSearch) {
+            window.MDJAdminSearch.search();
         }
-
-        urlFilter+='&ajax_panel=1&op=filter&title='+encodeURIComponent(title);
-
-        $.ajax({
-            url: urlFilter,
-            success: function(data){
-                $('#filter_add').show();
-
-                if(data) {
-                    $('#filter_add').html(data);
-                } else {
-                    $('#filter_add').html('<div style="padding: 15px;text-align: center;"><i class="glyphicon glyphicon-info-sign"></i> Ничего не найдено :(</div>');
-                }
-
-
-            },
-            error: function(data){
-                $('#filter_add').show();
-                $('#filter_add').html('<div style="min-width: 200px;padding: 10px;background: #ffafaf;border-radius: 10px;text-align: center;">Error sending request - filterSearch()</div>');
-            },
-        });
         return false;
     }
 
     function setFilter(value) {
-        $('#filter_modules').val(value);
-        filterSearch();
+        if (window.MDJAdminSearch) {
+            return window.MDJAdminSearch.setFilter(value);
+        }
         return false;
     }
 

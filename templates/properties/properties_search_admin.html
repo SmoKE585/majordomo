@@ -4,7 +4,7 @@
 			<a href="?view_mode=edit_properties" class="btn btn-success"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_PROPERTY#></a>
 		</div>
 	</div>
-	
+
 	<div class="row" style="margin-right: -15px;margin-left: -15px;">
 		<div class="col-md-12">
 			[#if RESULT#]
@@ -13,10 +13,10 @@
 					[#begin RESULT#]
 					<li class="list-group-item">
 						<div class="row" style="margin-right: -15px;margin-left: -15px;">
-							<div class="col-lg-3 col-md-3 col-sm-12 col-xs-12" style="margin-bottom: 5px;"> 
-								<i class="glyphicon glyphicon-search" style="color: silver;margin-right: 10px;vertical-align: top;cursor: pointer;" onclick="$('#filter_modules').val('[#TITLE#]');filterSearch();$('#mdmGlobalSearchModal').modal('show');"></i>
+							<div class="col-lg-3 col-md-3 col-sm-12 col-xs-12" style="margin-bottom: 5px;">
+								<i class="glyphicon glyphicon-search" style="color: silver;margin-right: 10px;vertical-align: top;cursor: pointer;" onclick="setFilter('[#TITLE#]');return false;"></i>
 								[#if "<#IS_SET_CLASS_ID#>"!="1"#][#CLASS_ID#] - [#endif IS_SET_CLASS_ID#]<b>[#TITLE#]</b>
-								
+
 								[#if KEEP_HISTORY != 0#]<p style="color: gray;font-size: 1.2rem;margin: 0px;">↳ <span class="label label-warning">История: [#KEEP_HISTORY#] дней</span></p>[#endif#]
 								[#if VALIDATION_TYPE != 0#]<p style="color: gray;font-size: 1.2rem;margin: 0px;">↳ <span class="label label-info">Валидация</span></p>[#endif#]
 								[#if ONCHANGE != ''#]<p style="color: gray;font-size: 1.2rem;margin: 0px;">↳ <span class="label label-primary">Запуск метода: [#ONCHANGE#]</span></p>[#endif#]
@@ -25,7 +25,7 @@
 								<pre style="margin: 0px;[#if DESCRIPTION==""#]color: #cacaca;[#endif#]">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</pre>
 							</div>
 							<div class="col-lg-2 col-md-2 text-center"  style="margin-top: 5px;">
-								<a href="?view_mode=edit_properties&id=[#ID#]" title="<#LANG_EDIT#>" class="btn btn-success btn-sm"><i class="glyphicon glyphicon-pencil"></i></a> 
+								<a href="?view_mode=edit_properties&id=[#ID#]" title="<#LANG_EDIT#>" class="btn btn-success btn-sm"><i class="glyphicon glyphicon-pencil"></i></a>
 								<a href="?view_mode=delete_properties&id=[#ID#]" onClick="return confirm('<#ARE_YOU_SURE#>')" title="<#LANG_DELETE#>" class="btn btn-danger btn-sm"><i class="glyphicon glyphicon-remove"></i></a>
 								<input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
 								<input type="hidden" name="view_mode" value="multiple_properties">
@@ -57,8 +57,8 @@
 							[#begin PARENT_PROPERTIES#]
 							<li class="list-group-item">
 								<div class="row" style="margin-right: -15px;margin-left: -15px;">
-									<div class="col-lg-3 col-md-3 col-sm-12 col-xs-12"> 
-										<i class="glyphicon glyphicon-search" style="color: silver;margin-right: 10px;vertical-align: top;cursor: pointer;" onclick="$('#filter_modules').val('[#TITLE#]');filterSearch();$('#mdmGlobalSearchModal').modal('show');"></i>
+									<div class="col-lg-3 col-md-3 col-sm-12 col-xs-12">
+										<i class="glyphicon glyphicon-search" style="color: silver;margin-right: 10px;vertical-align: top;cursor: pointer;" onclick="setFilter('[#TITLE#]');return false;"></i>
 										<a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=properties">[#CLASS_TITLE#]</a>.[#TITLE#]
 									</div>
 									<div class="col-lg-9 col-md-9 col-sm-12 col-xs-12">

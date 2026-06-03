@@ -194,6 +194,306 @@
         });
     }
 
+    function initConfirmActions(root) {
+        root.querySelectorAll('[data-md-confirm]').forEach(function (element) {
+            if (element.dataset.mdConfirmBound === '1') {
+                return;
+            }
+            element.dataset.mdConfirmBound = '1';
+            element.addEventListener('click', function (event) {
+                var message = element.getAttribute('data-md-confirm');
+                if (message && !window.confirm(message)) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            });
+        });
+    }
+
+    function initClassesTree(root) {
+        root.querySelectorAll('[data-md-class-collapse]').forEach(function (target) {
+            var classId = target.getAttribute('data-md-class-collapse');
+            if (getCookie('sub_classes_' + classId) === '1') {
+                setCollapseState(target, 'show');
+            }
+        });
+
+        root.querySelectorAll('[data-md-class-toggle]').forEach(function (button) {
+            var ids = (button.getAttribute('data-md-class-toggle') || '')
+                .split(',')
+                .map(function (id) {
+                    return id.trim();
+                })
+                .filter(Boolean);
+            var primaryId = ids[0];
+            var primaryTarget = primaryId ? document.getElementById('sub_' + primaryId) : null;
+
+            if (primaryTarget) {
+                button.setAttribute('aria-expanded', primaryTarget.classList.contains('show') ? 'true' : 'false');
+            }
+
+            if (button.dataset.mdClassToggleBound === '1') {
+                return;
+            }
+            button.dataset.mdClassToggleBound = '1';
+            button.addEventListener('click', function () {
+                if (!primaryTarget) {
+                    return;
+                }
+                var isOpen = primaryTarget.classList.contains('show');
+                var nextOpen = !isOpen;
+                setCollapseState(primaryTarget, 'toggle');
+                setCookie('sub_classes_' + primaryId, nextOpen ? '1' : '0', 180);
+                button.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+
+                if (!nextOpen && ids.length > 1) {
+                    ids.slice(1).forEach(function (id) {
+                        setCollapseState(document.getElementById('sub_' + id), 'hide');
+                        setCookie('sub_classes_' + id, '0', 180);
+                    });
+                }
+            });
+        });
+
+        root.querySelectorAll('[data-md-class-search]').forEach(function (input) {
+            if (input.dataset.mdClassSearchBound === '1') {
+                return;
+            }
+            input.dataset.mdClassSearchBound = '1';
+            input.addEventListener('input', function () {
+                var term = input.value.trim().toLowerCase();
+                var matches = [];
+                document.querySelectorAll('[data-md-class-object-item]').forEach(function (item) {
+                    item.classList.remove('is-filter-match');
+                    if (term.length > 2 && item.textContent.toLowerCase().indexOf(term) !== -1) {
+                        item.classList.add('is-filter-match');
+                        matches.push(item);
+                    }
+                });
+                if (matches.length === 1) {
+                    matches[0].scrollIntoView({behavior: 'smooth', block: 'center'});
+                }
+            });
+        });
+
+        root.querySelectorAll('[data-md-global-search]').forEach(function (button) {
+            if (button.dataset.mdGlobalSearchBound === '1') {
+                return;
+            }
+            button.dataset.mdGlobalSearchBound = '1';
+            button.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                var term = button.getAttribute('data-md-global-search') || '';
+                if (window.MDJAdminUI && typeof window.MDJAdminUI.openSearch === 'function') {
+                    window.MDJAdminUI.openSearch(term);
+                }
+            });
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (char) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char];
+        });
+    }
+
+    function initGlobalSearchDrawer(root) {
+        var drawer = document.getElementById('mdmGlobalSearchDrawer');
+        var input = document.getElementById('filter_modules');
+        var results = document.getElementById('filter_add');
+        var summary = document.getElementById('filter_summary');
+        var hint = document.querySelector('.searchNoty');
+        var body = document.body;
+        var searchTimer = 0;
+        var searchRequest = null;
+
+        if (!drawer || !input || !results) {
+            return;
+        }
+
+        function setSummary(text) {
+            if (summary) {
+                summary.textContent = text || '';
+            }
+        }
+
+        function renderState(className, title, text) {
+            results.innerHTML = '<div class="md-admin-search-state ' + className + '"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(text || '') + '</span></div>';
+        }
+
+        function renderResults(data) {
+            var sections = data.sections || {};
+            var total = Number(data.total || 0);
+
+            if (hint) {
+                hint.hidden = total > 0;
+            }
+            setSummary(total ? ('Найдено: ' + total) : '');
+
+            if (!total) {
+                renderState('is-empty', data.message || 'Ничего не найдено', 'Попробуйте другое название, объект, свойство, метод или фрагмент кода.');
+                return;
+            }
+
+            var html = Object.keys(sections).map(function (sectionName) {
+                var items = sections[sectionName] || [];
+                if (!items.length) {
+                    return '';
+                }
+                var cards = items.map(function (item) {
+                    var meta = (item.meta || []).map(function (metaItem) {
+                        return '<span>' + escapeHtml(metaItem) + '</span>';
+                    }).join('');
+                    return '<a class="md-admin-search-result" href="' + escapeHtml(item.url || '#') + '">' +
+                        '<span class="md-admin-search-result__type md-admin-search-result__type--' + escapeHtml(item.type || 'item') + '">' + escapeHtml(item.type || 'item') + '</span>' +
+                        '<span class="md-admin-search-result__content">' +
+                            '<strong>' + escapeHtml(item.title) + '</strong>' +
+                            (item.description ? '<small>' + escapeHtml(item.description) + '</small>' : '') +
+                            (meta ? '<span class="md-admin-search-result__meta">' + meta + '</span>' : '') +
+                        '</span>' +
+                    '</a>';
+                }).join('');
+                return '<section class="md-admin-search-section">' +
+                    '<header><h3>' + escapeHtml(sectionName) + '</h3><span>' + items.length + '</span></header>' +
+                    '<div class="md-admin-search-section__items">' + cards + '</div>' +
+                '</section>';
+            }).join('');
+
+            results.innerHTML = html;
+        }
+
+        function performSearch() {
+            var term = input.value.trim();
+
+            if (searchRequest) {
+                searchRequest.abort();
+                searchRequest = null;
+            }
+
+            if (term.length <= 2) {
+                setSummary('');
+                if (hint) {
+                    hint.hidden = false;
+                }
+                renderState('is-idle', 'Введите больше 2 символов', 'Поиск смотрит модули, классы, объекты, свойства, методы, скрипты и поддерживаемые устройства.');
+                return;
+            }
+
+            renderState('is-loading', 'Ищем...', term);
+            searchRequest = new AbortController();
+            fetch('?ajax_panel=1&op=filter&title=' + encodeURIComponent(term), {
+                headers: {
+                    'Accept': 'application/json'
+                },
+                signal: searchRequest.signal
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Search request failed: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(renderResults)
+                .catch(function (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    setSummary('');
+                    renderState('is-error', 'Ошибка поиска', error.message || 'Не удалось получить результаты.');
+                });
+        }
+
+        function scheduleSearch() {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(performSearch, 220);
+        }
+
+        function openSearch(value) {
+            body.classList.add('md-admin-search-open');
+            drawer.setAttribute('aria-hidden', 'false');
+            if (typeof value === 'string') {
+                input.value = value;
+            }
+            window.setTimeout(function () {
+                input.focus();
+                input.select();
+            }, 60);
+            performSearch();
+        }
+
+        function closeSearch() {
+            body.classList.remove('md-admin-search-open');
+            drawer.setAttribute('aria-hidden', 'true');
+        }
+
+        window.MDJAdminSearch = {
+            open: openSearch,
+            close: closeSearch,
+            search: performSearch,
+            setFilter: function (value) {
+                openSearch(value || '');
+                return false;
+            }
+        };
+
+        root.querySelectorAll('[data-md-search-open]').forEach(function (button) {
+            if (button.dataset.mdSearchOpenBound === '1') {
+                return;
+            }
+            button.dataset.mdSearchOpenBound = '1';
+            button.addEventListener('click', function () {
+                openSearch();
+            });
+        });
+
+        root.querySelectorAll('[data-md-search-close]').forEach(function (button) {
+            if (button.dataset.mdSearchCloseBound === '1') {
+                return;
+            }
+            button.dataset.mdSearchCloseBound = '1';
+            button.addEventListener('click', closeSearch);
+        });
+
+        root.querySelectorAll('[data-md-search-clear]').forEach(function (button) {
+            if (button.dataset.mdSearchClearBound === '1') {
+                return;
+            }
+            button.dataset.mdSearchClearBound = '1';
+            button.addEventListener('click', function () {
+                input.value = '';
+                input.focus();
+                performSearch();
+            });
+        });
+
+        if (input.dataset.mdSearchInputBound !== '1') {
+            input.dataset.mdSearchInputBound = '1';
+            input.addEventListener('input', scheduleSearch);
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && body.classList.contains('md-admin-search-open')) {
+                closeSearch();
+            }
+        });
+
+        results.addEventListener('click', function (event) {
+            var link = event.target.closest('a');
+            if (link) {
+                closeSearch();
+            }
+        });
+
+        renderState('is-idle', 'Введите больше 2 символов', 'Поиск смотрит модули, классы, объекты, свойства, методы, скрипты и поддерживаемые устройства.');
+    }
+
     function boot(root) {
         copyLegacyBootstrapAttributes(root);
         normalizeLegacyClasses(root);
@@ -202,6 +502,9 @@
         initPersistentCollapses(root);
         initToggleTargets(root);
         initHintActions(root);
+        initConfirmActions(root);
+        initClassesTree(root);
+        initGlobalSearchDrawer(root);
     }
 
     function initAdminSidebarDrawer() {
@@ -285,7 +588,12 @@
         boot: boot,
         copyLegacyBootstrapAttributes: copyLegacyBootstrapAttributes,
         initBootstrapWidgets: initBootstrapWidgets,
-        installJqueryBridge: installJqueryBridge
+        installJqueryBridge: installJqueryBridge,
+        openSearch: function (value) {
+            if (window.MDJAdminSearch) {
+                window.MDJAdminSearch.open(value);
+            }
+        }
     };
 
     installJqueryBridge();

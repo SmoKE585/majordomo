@@ -1,30 +1,30 @@
  [#if VIEW_MODE="search_classes" || VIEW_MODE=""#]
   [#inc classes_search_admin.html#]
  [#endif VIEW_MODE#]
- <!-- / table classes search -->
- <!-- table classes edit -->
+
  [#if VIEW_MODE="edit_classes"#]
    [#if ID!=""#]
-
 <script>
-$(window).load(function() {
-	//Вставляем данные в бредкрумбс
-	[#begin HISTORY_LIST#]
-		$('.breadcrumb:eq(0)').append('<li><a href="?view_mode=<#VIEW_MODE#>&id=[#ID#]&tab=<#TAB#>">[#TITLE#]</a></li>');
-	[#end HISTORY_LIST#]
-	
-	$('.breadcrumb:eq(0)').append('<li><a href="?md=classes&action=classes&inst=adm&data_source=&view_mode=edit_classes&id=[#ID#]&tab=objects">[#TITLE#]</a></li>');
+document.addEventListener('DOMContentLoaded', function () {
+    var breadcrumb = document.querySelector('.breadcrumb');
+    if (!breadcrumb) {
+        return;
+    }
+    [#begin HISTORY_LIST#]
+    breadcrumb.insertAdjacentHTML('beforeend', '<li class="breadcrumb-item"><a href="?view_mode=<#VIEW_MODE#>&id=[#ID#]&tab=<#TAB#>">[#TITLE#]</a></li>');
+    [#end HISTORY_LIST#]
+    breadcrumb.insertAdjacentHTML('beforeend', '<li class="breadcrumb-item"><a href="?md=classes&action=classes&inst=adm&data_source=&view_mode=edit_classes&id=[#ID#]&tab=objects">[#TITLE#]</a></li>');
 });
 </script>
 
-<ul class="nav nav-tabs">
- <li [#if TAB=""#]class="active"[#endif#]><a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_MAIN#></a></li>
- <li [#if TAB="properties"#]class="active"[#endif#]><a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a></li>
- <li [#if TAB="methods"#]class="active"[#endif#]><a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a></li>
- <li [#if TAB="objects"#]class="active"[#endif#]><a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=objects"><#LANG_OBJECTS#></a></li>
- <li [#if TAB="template"#]class="active"[#endif#]><a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=template"><#LANG_CLASS_TEMPLATE#></a></li>
-</ul>
-
+<div class="md-admin-module-page md-classes-page">
+    <nav class="md-admin-module-tabs" aria-label="<#LANG_CLASSES#>">
+        <a class="md-admin-module-tabs__link [#if TAB=""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_MAIN#></a>
+        <a class="md-admin-module-tabs__link [#if TAB="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>
+        <a class="md-admin-module-tabs__link [#if TAB="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>
+        <a class="md-admin-module-tabs__link [#if TAB="objects"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=objects"><#LANG_OBJECTS#></a>
+        <a class="md-admin-module-tabs__link [#if TAB="template"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=template"><#LANG_CLASS_TEMPLATE#></a>
+    </nav>
 [#endif ID#]
 
    [#if TAB=""#]
@@ -35,25 +35,37 @@ $(window).load(function() {
     [#inc classes_edit_template.html#]
    [#endif TAB#]
 
-
    [#if TAB="properties"#]
-    [#inc classes_edit_properties.html#]
-   [#endif TAB#]
-   [#if TAB="methods"#]
-    [#inc classes_edit_methods.html#]
-   [#endif TAB#]
-   [#if TAB="objects"#]
-	<div style="padding: 10px;border: 1px solid #dddddd;border-top: 0px;">
-    [#module name="objects" action="admin" class_id="<#ID#>"#]
-	</div>
+    <section class="md-admin-section-card md-classes-module-host">
+        <div class="md-admin-section-card__body">
+            [#inc classes_edit_properties.html#]
+        </div>
+    </section>
    [#endif TAB#]
 
+   [#if TAB="methods"#]
+    <section class="md-admin-section-card md-classes-module-host">
+        <div class="md-admin-section-card__body">
+            [#inc classes_edit_methods.html#]
+        </div>
+    </section>
+   [#endif TAB#]
+
+   [#if TAB="objects"#]
+    <section class="md-admin-section-card md-classes-module-host">
+        <div class="md-admin-section-card__body">
+            [#module name="objects" action="admin" class_id="<#ID#>"#]
+        </div>
+    </section>
+   [#endif TAB#]
+
+[#if ID!=""#]
+</div>
+[#endif ID#]
  [#endif VIEW_MODE#]
- <!-- / table classes edit -->
- <!-- table classes view --> 
+
  [#if VIEW_MODE="view_classes"#]
    [#if TAB=""#]
     [#inc classes_view_default.html#]
    [#endif TAB#]
  [#endif VIEW_MODE#]
- <!-- / table classes view -->
