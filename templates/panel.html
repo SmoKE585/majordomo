@@ -22,62 +22,15 @@
 				<img src="<#ROOTHTML#>img/logo-md.png" alt="MajorDoMo">
 				<span><#LANG_CONTROL_PANEL#></span>
 			</a>
-			<button type="button" class="navbar-toggler md-admin-header__toggle" data-bs-toggle="collapse" data-bs-target="#responsive-menu" aria-controls="responsive-menu" aria-expanded="false" aria-label="Toggle navigation">
-				<span class="navbar-toggler-icon"></span>
+			<button type="button" class="btn md-admin-header__toggle md-admin-header__search-toggle" data-md-search-open aria-label="<#LANG_SEARCH#>">
+				<i class="glyphicon glyphicon-search"></i>
 			</button>
 
-			<div class="collapse navbar-collapse md-admin-header__nav" id="responsive-menu">
-				<ul class="navbar-nav md-admin-header__links">
-					<li class="nav-item"><a class="nav-link" href="<#ROOTHTML#>"><i class="glyphicon glyphicon-home"></i> <#LANG_FRONTEND#></a></li>
-
-					<li class="nav-item dropdown">
-						<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false"><i class="glyphicon glyphicon-globe"></i> <#LANG_NEWDASH_MJDM_RESOURCE#></a>
-						<ul class="dropdown-menu">
-						<li><a class="dropdown-item" href="<#LANG_WIKI_URL#>?utm_source=SetupFile&utm_medium=link&utm_campaign=mainlink" target="_blank"><i class="glyphicon glyphicon-globe"></i> MajorDoMo Project</a></li>
-						<li><a class="dropdown-item" href="https://mjdm.ru/forum/" target="_blank"><i class="glyphicon glyphicon-edit"></i> <#LANG_NEWDASH_FORUM#></a></li>
-						[#if APP_TDWIKI_INSTALLED="1"#]
-						<li><a class="dropdown-item" onClick="return openModalTWindow('tdWiki', 'Wiki', '/panel/popup/app_tdwiki.html', 1000, 800)" href="#"><i class="glyphicon glyphicon-book"></i> <#LANG_APP_TDWIKI#></a></li>
-						[#endif#]
-						<li><a class="dropdown-item" href="<#LANG_KB_URL#>?utm_source=system&utm_medium=help&utm_campaign=GeneralHelp" target="_blank"><i class="glyphicon glyphicon-question-sign"></i> <#LANG_KNOWLEDGE_BASE#></a></li>
-						<li><a class="dropdown-item" href="https://mdminfo.ru/wiki/MajorDoMo" target="_blank"><i class="glyphicon glyphicon-question-sign"></i> MJDM Wiki</a></li>
-						<li><hr class="dropdown-divider"></li>
-						<li class="dropdown-header"><#LANG_NEWDASH_CHAT_TELEGRAM#></li>
-						<li><a class="dropdown-item" href="https://t.me/MajorDoMoRu" target="_blank"><#LANG_NEWDASH_CHAT_TELEGRAM_MAIN#></a></li>
-						<li><a class="dropdown-item" href="https://t.me/MajorDoMoRuKurilka" target="_blank"><#LANG_NEWDASH_CHAT_TELEGRAM_SMOKE#></a></li>
-					</ul>
-				</li>
-				<li class="nav-item dropdown">
-					<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false"><i class="glyphicon glyphicon-th-list"></i> <#LANG_NEWDASH_WEB_PAGE#></a>
-					<ul class="dropdown-menu">
-						<li><a class="dropdown-item" href="<#ROOTHTML#>pages.html" target="_blank"><i class="glyphicon glyphicon-th-list"></i> <#LANG_MODULE_LAYOUTS#></a></li>
-						<li><a class="dropdown-item" href="<#ROOTHTML#>apps.html" target="_blank"><i class="glyphicon glyphicon-th-list"></i> <#LANG_SECTION_APPLICATIONS#></a></li>
-						<li><a class="dropdown-item" href="<#ROOTHTML#>menu.html" target="_blank"><i class="glyphicon glyphicon-th-list"></i> <#LANG_CONTROL_MENU#></a></li>
-						<li><a class="dropdown-item" href="<#ROOTHTML#>apps/devices.html" target="_blank"><i class="glyphicon glyphicon-th-list"></i> <#LANG_DEVICES#></a></li>
-					</ul>
-				</li>
-				[#if HIDE_LEFT_PANEL="1"#]
-				[#inc panel_nav_top.tpl#]
-				[#else#]
-				<li class="nav-item dropdown">
-					<a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false"><i class="glyphicon glyphicon-dashboard"></i> <#LANG_SECTION_SYSTEM#></a>
-					<ul class="dropdown-menu">
-						<li><a class="dropdown-item" href="?action=xray"><i class="glyphicon glyphicon-dashboard"></i> X-Ray</a></li>
-						<li><a class="dropdown-item" href="#console" onClick='return consoleToggle();'><i class="glyphicon glyphicon-flash"></i> <#LANG_CONSOLE#></a></li>
-					</ul>
-				</li>
-				[#endif HIDE_LEFT_PANEL#]
-				<!---
-				<li>
-					<a href="?action=control_access&mode=logoff">[#if HIDE_LEFT_PANEL!="1"#]<i class="glyphicon glyphicon-log-out" style="vertical-align: top;font-size: 11pt;"></i> [#endif#]<#LANG_LOGOFF#></a>
-				</li>
-				--->
-				</ul>
 			<div class="md-admin-header__actions" id="searchbtnhide">
 				<button type="button" class="btn md-admin-search-button" data-md-search-open>
 					<i class="glyphicon glyphicon-search"></i> <#LANG_SEARCH#>
 				</button>
 			</div>
-		</div>
 		</div>
 	</nav>
 	
@@ -161,19 +114,61 @@
 
 	
 	<div id="partLoadContent" class="md-admin-page">
-		<div class="visible-xs">
-			<div class="row" style="margin: 0 15px;">
-				<div class="col-xs-12" style="margin-bottom: 10px;">
-					<button type="button" class="form-control md-admin-mobile-search-trigger" data-md-search-open><#LANG_SEARCH#></button>
-				</div>
-			</div>
-		</div>
+
 		<div class="md-admin-sidebar-backdrop" data-md-admin-sidebar-close></div>
 		<div class="row md-admin-layout" id="content">
 			[#if PRINT!="1" && HIDE_LEFT_PANEL!="1"#]
 			[#inc panel_nav_left.html#]
 			[#endif PRINT#]
 			<div class="col-lg-[#if HIDE_LEFT_PANEL="1"#]12[#else#]10[#endif#] col-md-[#if HIDE_LEFT_PANEL="1"#]12[#else#]9[#endif#] col-sm-[#if HIDE_LEFT_PANEL="1"#]12[#else#]8[#endif#] col-xs-12 md-admin-main" id="main-content">
+		[#if PRINT!="1"#]
+		<section class="md-admin-page-links" aria-label="<#LANG_CONTROL_PANEL#>">
+			<a class="md-admin-page-link md-admin-page-link--primary" href="<#ROOTHTML#>">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-home"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_FRONTEND#></strong><small>Frontend</small></span>
+			</a>
+			<a class="md-admin-page-link" href="<#LANG_WIKI_URL#>?utm_source=SetupFile&utm_medium=link&utm_campaign=mainlink" target="_blank">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-globe"></i></span>
+				<span class="md-admin-page-link__content"><strong>MajorDoMo Project</strong><small><#LANG_NEWDASH_MJDM_RESOURCE#></small></span>
+			</a>
+			<a class="md-admin-page-link" href="https://mjdm.ru/forum/" target="_blank">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-edit"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_NEWDASH_FORUM#></strong><small>Community</small></span>
+			</a>
+			[#if APP_TDWIKI_INSTALLED="1"#]
+			<a class="md-admin-page-link" onClick="return openModalTWindow('tdWiki', 'Wiki', '/panel/popup/app_tdwiki.html', 1000, 800)" href="#">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-book"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_APP_TDWIKI#></strong><small>Wiki</small></span>
+			</a>
+			[#endif#]
+			<a class="md-admin-page-link" href="<#LANG_KB_URL#>?utm_source=system&utm_medium=help&utm_campaign=GeneralHelp" target="_blank">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-question-sign"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_KNOWLEDGE_BASE#></strong><small>Help</small></span>
+			</a>
+			<a class="md-admin-page-link" href="<#ROOTHTML#>pages.html" target="_blank">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-th-list"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_MODULE_LAYOUTS#></strong><small><#LANG_NEWDASH_WEB_PAGE#></small></span>
+			</a>
+			<a class="md-admin-page-link" href="<#ROOTHTML#>apps.html" target="_blank">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-th-list"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_SECTION_APPLICATIONS#></strong><small>Apps</small></span>
+			</a>
+			<a class="md-admin-page-link" href="<#ROOTHTML#>apps/devices.html" target="_blank">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-th-list"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_DEVICES#></strong><small>Devices</small></span>
+			</a>
+			[#if HIDE_LEFT_PANEL!="1"#]
+			<a class="md-admin-page-link" href="?action=xray">
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-dashboard"></i></span>
+				<span class="md-admin-page-link__content"><strong>X-Ray</strong><small><#LANG_SECTION_SYSTEM#></small></span>
+			</a>
+			<a class="md-admin-page-link" href="#console" onClick='return consoleToggle();'>
+				<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-flash"></i></span>
+				<span class="md-admin-page-link__content"><strong><#LANG_CONSOLE#></strong><small><#LANG_SECTION_SYSTEM#></small></span>
+			</a>
+			[#endif HIDE_LEFT_PANEL#]
+		</section>
+		[#endif PRINT#]
 				[#if PRINT!="1"#]
 				<div class="row md-admin-contextbar">
 					[#if ACTION!="" AND ACTION!='xray'#]

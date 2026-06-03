@@ -1,68 +1,63 @@
 [#if RESULT#]
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-	[#if PAGES#]
-	<div class="col-md-6" style="margin-bottom: 15px;">
-		<ul class="pagination" style="margin: 0px;">
-			[#begin PREVPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
-			[#begin PAGES#]
-			<li [#if SELECTED =='1'#]class="active"[#endif#]><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
-			[#end PAGES#]
-			[#begin NEXTPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
-		</ul>
-	</div>
-	[#endif PAGES#]
+<div class="md-admin-module-list md-objects-admin-list">
+    <div class="md-admin-module-list__toolbar">
+        <div class="md-admin-module-list__pagination">
+            [#if PAGES#]
+            <ul class="pagination">
+                [#begin PREVPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
+                [#begin PAGES#]
+                <li class="page-item [#if SELECTED =='1'#]active[#endif#]"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
+                [#end PAGES#]
+                [#begin NEXTPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
+            </ul>
+            [#endif PAGES#]
+        </div>
+        <a href="?view_mode=edit_objects" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_OBJECT#></a>
+    </div>
 
-	<div class="col-md-[#if PAGES#]6[#else#]12[#endif PAGES#] text-right" style="margin-bottom: 15px;">
-		<a href="?view_mode=edit_objects" class="btn btn-success"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_OBJECT#></a>
-	</div>
-</div>
-
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-	<div class="col-md-12">
-		<form action="?" method="post" name="frmList_objects" style="padding:0px">
-			<ul class="list-group" id="proplist">
-				[#begin RESULT#]
-				<li class="list-group-item">
-					<div class="row" style="margin-right: -15px;margin-left: -15px;">
-						<div class="col-lg-3 col-md-3 col-sm-12 col-xs-12" style="margin-top: 5px;">
-							<i class="glyphicon glyphicon-search" style="color: silver;margin-right: 10px;vertical-align: top;cursor: pointer;" onclick="setFilter('[#TITLE#]');return false;"></i>
-							<a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=methods">[#CLASS_TITLE#]</a> → <a href="?view_mode=edit_objects&id=[#ID#]&tab=properties" title="<#LANG_EDIT#>"><b>[#TITLE#]</b></a>
-
-							[#if ADD_DESCRIPTION != ''#]<p style="color: gray;font-size: 1.2rem;margin: 0px;">↳ <span class="label label-default">[#ADD_DESCRIPTION#]</span></p>[#endif#]
-						</div>
-						<div class="col-lg-4 col-md-4 col-sm-12 col-xs-12" style="margin-top: 5px;">
-							<pre style="margin: 0px;[#if DESCRIPTION==""#]color: #cacaca;[#endif#]">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</pre>
-						</div>
-						<div class="col-lg-3 col-md-3 col-sm-12 col-xs-12" style="margin-top: 5px;">
-							<pre style="margin: 0px;[#if LOCATION_ID==0#]color: #cacaca;[#endif#]">[#if LOCATION_ID == 0#]Room not selected[#else#][#LOCATION_TITLE#][#endif#]</pre>
-						</div>
-						<div class="col-lg-2 col-md-2 text-center" style="margin-top: 5px;">
-							<a href="?view_mode=edit_objects&id=[#ID#]" class="btn btn-default btn-sm" title="<#LANG_EDIT#>"><i class="glyphicon glyphicon-pencil"></i></a>
-							<a href="?view_mode=edit_objects&id=[#ID#]&tab=properties" class="btn btn-default btn-sm" title="<#LANG_PROPERTIES#>"><i class="glyphicon glyphicon-th"></i></a>
-							<a href="?view_mode=edit_objects&id=[#ID#]&tab=methods" class="btn btn-default btn-sm" title="<#LANG_METHODS#>"><i class="glyphicon glyphicon-th-list"></i></a>
-							<a href="?view_mode=delete_objects&id=[#ID#]" onClick="return confirm('Delete record?')" class="btn btn-default btn-sm" title="<#LANG_DELETE#>"><i class="glyphicon glyphicon-remove"></i></a>
-
-							<input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
-							<input type="hidden" name="view_mode" value="multiple_objects">
-						</div>
-					</div>
-				</li>
-				[#end RESULT#]
-			</ul>
-		</form>
-	</div>
+    <form action="?" method="post" name="frmList_objects" class="md-admin-module-list__form">
+        <div class="md-admin-record-list" id="proplist">
+            [#begin RESULT#]
+            <article class="md-admin-record-card md-admin-record-card--object">
+                <div class="md-admin-record-card__main">
+                    <button type="button" class="md-admin-record-card__search" data-md-global-search="[#TITLE#]" aria-label="<#LANG_SEARCH#>">
+                        <i class="glyphicon glyphicon-search"></i>
+                    </button>
+                    <div class="md-admin-record-card__content">
+                        <div class="md-admin-record-card__title">
+                            <a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=methods" class="md-admin-record-card__class">[#CLASS_TITLE#]</a>
+                            <span class="md-admin-record-card__separator">/</span>
+                            <a href="?view_mode=edit_objects&id=[#ID#]&tab=properties" title="<#LANG_EDIT#>">[#TITLE#]</a>
+                        </div>
+                        [#if ADD_DESCRIPTION != ''#]
+                        <div class="md-admin-record-card__badges">
+                            <span class="label label-default">[#ADD_DESCRIPTION#]</span>
+                        </div>
+                        [#endif#]
+                    </div>
+                </div>
+                <div class="md-admin-record-card__meta">
+                    <div class="md-admin-record-card__field [#if DESCRIPTION==""#]is-empty[#endif#]">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</div>
+                    <div class="md-admin-record-card__field [#if LOCATION_ID==0#]is-empty[#endif#]">[#if LOCATION_ID == 0#]Room not selected[#else#][#LOCATION_TITLE#][#endif#]</div>
+                </div>
+                <div class="md-admin-record-card__actions">
+                    <a href="?view_mode=edit_objects&id=[#ID#]" class="btn btn-light btn-sm" title="<#LANG_EDIT#>"><i class="glyphicon glyphicon-pencil"></i><span><#LANG_EDIT#></span></a>
+                    <a href="?view_mode=edit_objects&id=[#ID#]&tab=properties" class="btn btn-light btn-sm" title="<#LANG_PROPERTIES#>"><i class="glyphicon glyphicon-th"></i><span><#LANG_PROPERTIES#></span></a>
+                    <a href="?view_mode=edit_objects&id=[#ID#]&tab=methods" class="btn btn-light btn-sm" title="<#LANG_METHODS#>"><i class="glyphicon glyphicon-th-list"></i><span><#LANG_METHODS#></span></a>
+                    <a href="?view_mode=delete_objects&id=[#ID#]" data-md-confirm="Delete record?" class="btn btn-outline-danger btn-sm" title="<#LANG_DELETE#>"><i class="glyphicon glyphicon-remove"></i><span><#LANG_DELETE#></span></a>
+                    <input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
+                    <input type="hidden" name="view_mode" value="multiple_objects">
+                </div>
+            </article>
+            [#end RESULT#]
+        </div>
+    </form>
 </div>
 [#else#]
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-	<div class="col-md-12 text-right" style="margin-bottom: 15px;">
-		<a href="?view_mode=edit_objects" class="btn btn-success"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_OBJECT#></a>
-	</div>
+<div class="md-admin-module-list md-objects-admin-list">
+    <div class="md-admin-module-list__toolbar justify-content-end">
+        <a href="?view_mode=edit_objects" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_OBJECT#></a>
+    </div>
+    <div class="md-admin-empty-state"><#LANG_NO_OBJECTS_DEFINED#></div>
 </div>
-
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-	<div class="col-md-12 text-center" style="margin-bottom: 15px;">
-		<div class="alert alert-warning"><#LANG_NO_OBJECTS_DEFINED#></div>
-	</div>
-</div>
-
 [#endif RESULT#]

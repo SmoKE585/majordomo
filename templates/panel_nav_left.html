@@ -2,40 +2,41 @@
     <div class="md-admin-sidebar__inner">
         <a class="md-admin-sidebar__brand" href="<#ROOTHTML#>admin.php">
             <img src="<#ROOTHTML#>img/logo-md.png" alt="MajorDoMo">
-            <div>
-                <strong>MajorDoMo</strong>
-                <span><#LANG_CONTROL_PANEL#></span>
-            </div>
         </a>
-            <button type="button" class="md-admin-sidebar__close" data-md-admin-sidebar-close aria-label="Close menu">
-                <i class="glyphicon glyphicon-remove"></i>
-            </button>
+        <button type="button" class="md-admin-sidebar__close" data-md-admin-sidebar-close aria-label="Close menu">
+            <i class="glyphicon glyphicon-remove"></i>
+        </button>
 
         <nav class="md-admin-sidebar__nav" aria-label="Admin modules">
             [#begin SUB_MODULES#]
             [#if NEW_CATEGORY#]
             <section class="md-admin-sidebar__group" data-md-sidebar-category="[#CATEGORY_ID#]">
-                <button type="button" class="md-admin-sidebar__group-title" data-md-sidebar-category-toggle="[#CATEGORY_ID#]" aria-expanded="true" aria-controls="row_[#CATEGORY_ID#]">
+                <button type="button" class="md-admin-sidebar__group-title"
+                        data-md-sidebar-category-toggle="[#CATEGORY_ID#]" aria-expanded="true"
+                        aria-controls="row_[#CATEGORY_ID#]">
                     <span>[#CATEGORY#]</span>
                     <i class="glyphicon glyphicon-arrow-down"></i>
                 </button>
                 <div id="row_[#CATEGORY_ID#]" class="collapse show">
                     <ul class="md-admin-sidebar__list">
-            [#endif NEW_CATEGORY#]
+                        [#endif NEW_CATEGORY#]
 
-            [#if !DENIED#]
-                        <li class="md-admin-sidebar__item [#if SELECTED#]active[#endif#] category[#CATEGORY_ID#]" id="module_[#NAME#]_link">
+                        [#if !DENIED#]
+                        <li class="md-admin-sidebar__item [#if SELECTED#]active[#endif#] category[#CATEGORY_ID#]"
+                            id="module_[#NAME#]_link">
                             <a class="md-admin-sidebar__link leftmenutab" href="?action=[#NAME#]">
                                 <img src="[#ICON_SM#]" alt="" class="md-admin-sidebar__icon">
                                 <span class="md-admin-sidebar__label">[#TITLE#]</span>
                                 [#if NOTIFICATIONS_COUNT != 0#]
-                                <span class="badge md-admin-sidebar__badge alert-[#NOTIFICATIONS_TYPE#]" data-bs-container="body" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-html="true">[#NOTIFICATIONS_COUNT#]</span>
+                                <span class="badge md-admin-sidebar__badge alert-[#NOTIFICATIONS_TYPE#]"
+                                      data-bs-container="body" data-bs-toggle="popover" data-bs-trigger="manual"
+                                      data-bs-placement="bottom" data-bs-html="true">[#NOTIFICATIONS_COUNT#]</span>
                                 [#endif NOTIFICATIONS_COUNT#]
                             </a>
                         </li>
-            [#endif DENIED#]
+                        [#endif DENIED#]
 
-            [#if LAST_IN_CATEGORY#]
+                        [#if LAST_IN_CATEGORY#]
                     </ul>
                 </div>
             </section>

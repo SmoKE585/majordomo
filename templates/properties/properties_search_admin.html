@@ -1,77 +1,72 @@
-<div style="padding: 10px;border: 1px solid #dddddd;border-top: 0px;">
-	<div class="row" style="margin-right: -15px;margin-left: -15px;">
-		<div class="col-md-12 text-right" style="margin-bottom: 15px;">
-			<a href="?view_mode=edit_properties" class="btn btn-success"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_PROPERTY#></a>
-		</div>
-	</div>
+<section class="md-admin-module-list md-properties-admin-list">
+    <div class="md-admin-module-list__toolbar justify-content-end">
+        <a href="?view_mode=edit_properties" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_PROPERTY#></a>
+    </div>
 
-	<div class="row" style="margin-right: -15px;margin-left: -15px;">
-		<div class="col-md-12">
-			[#if RESULT#]
-			<form action="?" method="post" name="frmList_properties" style="padding:0px">
-				<ul class="list-group" id="proplist">
-					[#begin RESULT#]
-					<li class="list-group-item">
-						<div class="row" style="margin-right: -15px;margin-left: -15px;">
-							<div class="col-lg-3 col-md-3 col-sm-12 col-xs-12" style="margin-bottom: 5px;">
-								<i class="glyphicon glyphicon-search" style="color: silver;margin-right: 10px;vertical-align: top;cursor: pointer;" onclick="setFilter('[#TITLE#]');return false;"></i>
-								[#if "<#IS_SET_CLASS_ID#>"!="1"#][#CLASS_ID#] - [#endif IS_SET_CLASS_ID#]<b>[#TITLE#]</b>
+    [#if RESULT#]
+    <form action="?" method="post" name="frmList_properties" class="md-admin-module-list__form">
+        <div class="md-admin-record-list" id="proplist">
+            [#begin RESULT#]
+            <article class="md-admin-record-card md-admin-record-card--property">
+                <div class="md-admin-record-card__main">
+                    <button type="button" class="md-admin-record-card__search" data-md-global-search="[#TITLE#]" aria-label="<#LANG_SEARCH#>">
+                        <i class="glyphicon glyphicon-search"></i>
+                    </button>
+                    <div class="md-admin-record-card__content">
+                        <div class="md-admin-record-card__title">
+                            [#if "<#IS_SET_CLASS_ID#>"!="1"#]<span class="md-admin-record-card__class">[#CLASS_ID#]</span><span class="md-admin-record-card__separator">/</span>[#endif IS_SET_CLASS_ID#]
+                            <strong>[#TITLE#]</strong>
+                        </div>
+                        <div class="md-admin-record-card__badges">
+                            [#if KEEP_HISTORY != 0#]<span class="label label-warning">История: [#KEEP_HISTORY#] дней</span>[#endif#]
+                            [#if VALIDATION_TYPE != 0#]<span class="label label-info">Валидация</span>[#endif#]
+                            [#if ONCHANGE != ''#]<span class="label label-primary">Запуск метода: [#ONCHANGE#]</span>[#endif#]
+                        </div>
+                    </div>
+                </div>
+                <div class="md-admin-record-card__meta">
+                    <div class="md-admin-record-card__field [#if DESCRIPTION==""#]is-empty[#endif#]">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</div>
+                </div>
+                <div class="md-admin-record-card__actions">
+                    <a href="?view_mode=edit_properties&id=[#ID#]" title="<#LANG_EDIT#>" class="btn btn-light btn-sm"><i class="glyphicon glyphicon-pencil"></i><span><#LANG_EDIT#></span></a>
+                    <a href="?view_mode=delete_properties&id=[#ID#]" data-md-confirm="<#ARE_YOU_SURE#>" title="<#LANG_DELETE#>" class="btn btn-outline-danger btn-sm"><i class="glyphicon glyphicon-remove"></i><span><#LANG_DELETE#></span></a>
+                    <input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
+                    <input type="hidden" name="view_mode" value="multiple_properties">
+                </div>
+            </article>
+            [#end RESULT#]
+        </div>
+    </form>
+    [#else RESULT#]
+    <div class="md-admin-empty-state"><#LANG_NO_RECORDS_FOUND#></div>
+    [#endif RESULT#]
 
-								[#if KEEP_HISTORY != 0#]<p style="color: gray;font-size: 1.2rem;margin: 0px;">↳ <span class="label label-warning">История: [#KEEP_HISTORY#] дней</span></p>[#endif#]
-								[#if VALIDATION_TYPE != 0#]<p style="color: gray;font-size: 1.2rem;margin: 0px;">↳ <span class="label label-info">Валидация</span></p>[#endif#]
-								[#if ONCHANGE != ''#]<p style="color: gray;font-size: 1.2rem;margin: 0px;">↳ <span class="label label-primary">Запуск метода: [#ONCHANGE#]</span></p>[#endif#]
-							</div>
-							<div class="col-lg-7 col-md-7 col-sm-12 col-xs-12">
-								<pre style="margin: 0px;[#if DESCRIPTION==""#]color: #cacaca;[#endif#]">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</pre>
-							</div>
-							<div class="col-lg-2 col-md-2 text-center"  style="margin-top: 5px;">
-								<a href="?view_mode=edit_properties&id=[#ID#]" title="<#LANG_EDIT#>" class="btn btn-success btn-sm"><i class="glyphicon glyphicon-pencil"></i></a>
-								<a href="?view_mode=delete_properties&id=[#ID#]" onClick="return confirm('<#ARE_YOU_SURE#>')" title="<#LANG_DELETE#>" class="btn btn-danger btn-sm"><i class="glyphicon glyphicon-remove"></i></a>
-								<input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
-								<input type="hidden" name="view_mode" value="multiple_properties">
-							</div>
-						</div>
-					</li>
-					[#end RESULT#]
-				</ul>
-			</form>
-			[#else RESULT#]
-			<div class="row" style="margin-right: -15px;margin-left: -15px;">
-				<div class="col-md-12 text-center" style="margin-bottom: 15px;">
-					<div class="alert alert-warning"><#LANG_NO_RECORDS_FOUND#></div>
-				</div>
-			</div>
-			[#endif RESULT#]
-		</div>
-	</div>
-	[#if PARENT_PROPERTIES#]
-	<div class="row" style="margin-right: -15px;margin-left: -15px;">
-		<div class="col-md-12">
-			<div class="panel panel-info">
-				<div class="panel-heading" onClick="$($(this).parent().children()[1]).toggle('slow');" style="cursor: pointer;">
-					<h3 class="panel-title"><#LANG_PARENT_PROPERTIES#></h3>
-				</div>
-				<div class="panel-collapse out in" style="height: auto;">
-					<div class="panel-body">
-						<ul class="list-group" id="">
-							[#begin PARENT_PROPERTIES#]
-							<li class="list-group-item">
-								<div class="row" style="margin-right: -15px;margin-left: -15px;">
-									<div class="col-lg-3 col-md-3 col-sm-12 col-xs-12">
-										<i class="glyphicon glyphicon-search" style="color: silver;margin-right: 10px;vertical-align: top;cursor: pointer;" onclick="setFilter('[#TITLE#]');return false;"></i>
-										<a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=properties">[#CLASS_TITLE#]</a>.[#TITLE#]
-									</div>
-									<div class="col-lg-9 col-md-9 col-sm-12 col-xs-12">
-										<pre style="margin: 0px;">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</pre>
-									</div>
-								</div>
-							</li>
-							[#end PARENT_PROPERTIES#]
-						</ul>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-	[#endif#]
-</div>
+    [#if PARENT_PROPERTIES#]
+    <section class="md-admin-section-card md-parent-properties-card">
+        <button type="button" class="md-admin-section-card__header md-parent-properties-card__toggle" data-md-toggle-target="#parentPropertiesList">
+            <h2><#LANG_PARENT_PROPERTIES#></h2>
+        </button>
+        <div id="parentPropertiesList" class="md-admin-section-card__body md-parent-properties-card__body is-visible">
+            <div class="md-admin-record-list md-admin-record-list--compact">
+                [#begin PARENT_PROPERTIES#]
+                <article class="md-admin-record-card md-admin-record-card--parent-property">
+                    <div class="md-admin-record-card__main">
+                        <button type="button" class="md-admin-record-card__search" data-md-global-search="[#TITLE#]" aria-label="<#LANG_SEARCH#>">
+                            <i class="glyphicon glyphicon-search"></i>
+                        </button>
+                        <div class="md-admin-record-card__content">
+                            <div class="md-admin-record-card__title">
+                                <a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=properties">[#CLASS_TITLE#]</a><span class="md-admin-record-card__separator">.</span><strong>[#TITLE#]</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md-admin-record-card__meta">
+                        <div class="md-admin-record-card__field [#if DESCRIPTION==""#]is-empty[#endif#]">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</div>
+                    </div>
+                </article>
+                [#end PARENT_PROPERTIES#]
+            </div>
+        </div>
+    </section>
+    [#endif#]
+</section>
