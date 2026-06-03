@@ -100,6 +100,13 @@
         return mode;
     }
 
+    function editorModeConfig(mode) {
+        if (mode === 'php') {
+            return {name: 'php', startOpen: true};
+        }
+        return mode;
+    }
+
     function modeAssets(mode) {
         var assets = [];
         if (mode === 'php') {
@@ -658,6 +665,8 @@
             'Cmd-E': function () {
                 validateCode(wrapper, editor);
             },
+            'Ctrl-Space': 'autocomplete',
+            'Cmd-Space': 'autocomplete',
             'Ctrl-/': 'toggleComment',
             'Cmd-/': 'toggleComment',
             'Ctrl-D': function (cm) {
@@ -726,7 +735,7 @@
             var editor = window.CodeMirror.fromTextArea(textarea, {
                 lineNumbers: true,
                 lineWrapping: wrapper.dataset.codeEditorWraplines === '1',
-                mode: mode,
+                mode: editorModeConfig(mode),
                 theme: theme === 'codemirror' ? 'default' : theme,
                 autofocus: wrapper.dataset.codeEditorAutofocus === '1',
                 indentUnit: 4,
