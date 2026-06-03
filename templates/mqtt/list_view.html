@@ -28,19 +28,19 @@
                         </div>
                         <div class="md-admin-record-card__badges">
                             [#if PATH!=""#]<span class="label label-default">[#PATH#]</span>[#endif#]
-                            [#if PATH_WRITE!="" && PATH_WRITE!=PATH#]<span class="label label-info">write: [#PATH_WRITE#]</span>[#endif#]
+                            [#if PATH_WRITE!=""#]<span class="label label-info">запись: [#PATH_WRITE#]</span>[#endif#]
                             [#if LINKED_OBJECT!=""#]
                             <span class="label label-success">[#if LINKED_PROPERTY=""#]M:[#else#]P:[#endif#] [#LINKED_OBJECT#].[#if LINKED_PROPERTY!=""#][#LINKED_PROPERTY#][#else#][#LINKED_METHOD#][#endif#]</span>
                             [#endif LINKED_OBJECT#]
                             [#if READONLY="1"#]<span class="label label-warning"><#LANG_READ_ONLY#></span>[#endif#]
-                            [#if ONLY_NEW_VALUE="1"#]<span class="label label-primary">Only new</span>[#endif#]
-                            [#if LOGGING="1"#]<span class="label label-default">Logging</span>[#endif#]
+                            [#if ONLY_NEW_VALUE="1"#]<span class="label label-primary">Только новое</span>[#endif#]
+                            [#if LOGGING="1"#]<span class="label label-default">Логирование</span>[#endif#]
                         </div>
                     </div>
                 </div>
                 <div class="md-admin-record-card__meta">
                     <div class="md-admin-record-card__field [#if VALUE==""#]is-empty[#endif#]">
-                        <span class="text-muted">Value</span><br>
+                        <span class="text-muted">Значение</span><br>
                         [#if VALUE!=""#][#VALUE#][#else#]&mdash;[#endif#]
                     </div>
                     <div class="md-admin-record-card__field [#if UPDATED==""#]is-empty[#endif#]">

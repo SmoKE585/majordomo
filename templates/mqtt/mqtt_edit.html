@@ -1,231 +1,263 @@
-<div class="row g-3">
-    <div class="col-lg-8">
-        <section class="md-admin-section-card md-admin-form-card md-mqtt-edit-card">
-            <div class="md-admin-section-card__body">
-                [#if OK#]
-                <div class="alert alert-success">
-                    <#LANG_DATA_SAVED#>
+<a href="<#ROOTHTML#>panel/mqtt.html" class="md-mqtt-topic-backdrop" aria-hidden="true"></a>
+<aside class="md-mqtt-topic-drawer md-mqtt-topic-drawer--open" aria-label="Редактор MQTT-топика">
+    <div class="md-mqtt-topic-drawer__header">
+        <div class="md-mqtt-topic-drawer__headline">
+            <div class="md-mqtt-topic-drawer__eyebrow">MQTT</div>
+            <h1 class="md-mqtt-topic-drawer__title">
+                [#if ID!=""#]Редактирование топика[#else#]Новый топик[#endif#]
+            </h1>
+            <div class="md-mqtt-topic-drawer__subtitle">
+                [#if PATH!=""#][#PATH#][#else#]Путь топика пока не задан[#endif#]
+            </div>
+        </div>
+
+        <div class="md-mqtt-topic-drawer__actions">
+            <a href="<#ROOTHTML#>panel/mqtt.html" class="btn btn-light">
+                <i class="glyphicon glyphicon-arrow-left"></i> К списку
+            </a>
+            [#if ID!=""#]
+            <a href="?view_mode=delete_mqtt&id=[#ID#]" data-md-confirm="<#ARE_YOU_SURE#>" class="btn btn-outline-danger">
+                <i class="glyphicon glyphicon-remove"></i> <#LANG_DELETE#>
+            </a>
+            [#endif#]
+        </div>
+    </div>
+
+    <div class="md-mqtt-topic-drawer__body">
+        <div class="md-mqtt-topic-page">
+            <section class="md-admin-section-card md-admin-form-card md-mqtt-topic-hero">
+                <div class="md-admin-section-card__body">
+                    [#if OK#]
+                    <div class="alert alert-success">
+                        <#LANG_DATA_SAVED#>
+                    </div>
+                    [#endif OK#]
+                    [#if ERR#]
+                    <div class="alert alert-danger">
+                        <#LANG_FILLOUT_REQURED#>
+                    </div>
+                    [#endif ERR#]
+
+                    <div class="md-mqtt-topic-hero__layout">
+                        <div class="md-mqtt-topic-hero__main">
+                            <div class="md-mqtt-topic-hero__eyebrow">Сводка</div>
+                            <div class="md-mqtt-topic-hero__summary">
+                                [#if ID!=""#]Путь, привязки, правила записи и история изменений собраны на одном экране.[#else#]Создайте топик и сразу задайте способ записи и привязку к объекту.[#endif#]
+                            </div>
+                            <div class="md-mqtt-topic-hero__chips">
+                                [#if PATH_WRITE!=""#]<span class="md-mqtt-chip">Запись: <strong>[#PATH_WRITE#]</strong></span>[#endif#]
+                                <span class="md-mqtt-chip">QoS: <strong>[#QOS#]</strong></span>
+                                <span class="md-mqtt-chip">Retain: <strong>[#if RETAIN="1" #]да[#else#]нет[#endif#]</strong></span>
+                                <span class="md-mqtt-chip">Только новое: <strong>[#if ONLY_NEW_VALUE="1" #]да[#else#]нет[#endif#]</strong></span>
+                                <span class="md-mqtt-chip">Логирование: <strong>[#if LOGGING="1" #]включено[#else#]выключено[#endif#]</strong></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                [#endif OK#]
-                [#if ERR#]
-                <div class="alert alert-danger">
-                    <#LANG_FILLOUT_REQURED#>
-                </div>
-                [#endif ERR#]
+            </section>
 
-                <script>
-                    document.addEventListener('DOMContentLoaded', function () {
-                        var breadcrumb = document.querySelector('.breadcrumb');
-                        if (!breadcrumb) {
-                            return;
-                        }
-                        breadcrumb.insertAdjacentHTML('beforeend', '<li class="breadcrumb-item"><a href="?view_mode=edit_mqtt&id=[#ID#]">[#PATH#]</a></li>');
-                    });
-                </script>
-
-                <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
-                    <div class="row g-3 align-items-start mb-3">
-                        <div class="col-lg-6">
-                            <label class="form-label"><#LANG_PATH#>: *</label>
-                            <input type="text" name="path" value="[#PATH#]" class="form-control" required>
-                            [#if ERR_PATH#]<div class="invalid-feedback d-block"><#LANG_PATH#></div>[#endif#]
-                        </div>
-                        <div class="col-lg-6">
-                            <label class="form-label"><#LANG_PATH#> (write)</label>
-                            <input type="text" name="path_write" value="[#PATH_WRITE#]" class="form-control">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 align-items-start mb-3">
-                        <div class="col-lg-4">
-                            <label class="form-label">Write method</label>
-                            <div class="pt-2">
-                                <label class="radio-inline"><input type="radio" name="write_type" value="0" [#if WRITE_TYPE="0"#] checked[#endif#]> <#LANG_DEFAULT#></label>
-                                <label class="radio-inline"><input type="radio" name="write_type" value="1" [#if WRITE_TYPE="1"#] checked[#endif#]> Instant (new connection)</label>
-                                <label class="radio-inline"><input type="radio" name="write_type" value="2" [#if WRITE_TYPE="2"#] checked[#endif#]> Queue</label>
-                            </div>
-                        </div>
-                        [#if !IS_SET_LOCATION_ID#]
-                        <div class="col-lg-4">
-                            <label class="form-label"><#LANG_LOCATION#></label>
-                            <select name="location_id" class="form-control form-select">
-                                <option value="">select</option>
-                                [#begin LOCATION_ID_OPTIONS#]
-                                <option value="[#ID#]" [#if SELECTED#] selected[#endif#]>[#TITLE#]</option>
-                                [#end LOCATION_ID_OPTIONS#]
-                            </select>
-                        </div>
-                        [#endif IS_SET_LOCATION_ID#]
-                        <div class="col-lg-4">
-                            <label class="form-label"><#LANG_READ_ONLY#></label>
-                            <div class="pt-2">
-                                <label class="radio-inline"><input type="radio" name="readonly" value="1" [#if READONLY="1" #] checked[#endif#]> <#LANG_YES#></label>
-                                <label class="radio-inline"><input type="radio" name="readonly" value="0" [#if READONLY!="1" #] checked[#endif#]> <#LANG_NO#></label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 align-items-start mb-3">
-                        <div class="col-lg-4">
-                            <label class="form-label">QoS</label>
-                            <div class="pt-2">
-                                <label class="radio-inline"><input type="radio" name="qos" value="0" [#if QOS="0" #] checked[#endif#]> 0</label>
-                                <label class="radio-inline"><input type="radio" name="qos" value="1" [#if QOS="1" #] checked[#endif#]> 1</label>
-                                <label class="radio-inline"><input type="radio" name="qos" value="2" [#if QOS="2" #] checked[#endif#]> 2</label>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label">Retain</label>
-                            <div class="pt-2">
-                                <label class="radio-inline"><input type="radio" name="retain" value="1" [#if RETAIN="1" #] checked[#endif#]> <#LANG_YES#></label>
-                                <label class="radio-inline"><input type="radio" name="retain" value="0" [#if RETAIN!="1" #] checked[#endif#]> <#LANG_NO#></label>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label">Flags</label>
-                            <div class="pt-2">
-                                <label class="checkbox-inline"><input type="checkbox" name="only_new_value" value="1" [#if ONLY_NEW_VALUE="1" #]checked[#endif#]> Update only on change</label><br>
-                                <label class="checkbox-inline"><input type="checkbox" name="logging" value="1" [#if LOGGING="1" #]checked[#endif#]> Detailed logging</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    [#if ID!=""#]
-                    <section class="md-admin-section-card md-admin-section-card--compact mb-3">
+            <div class="row g-3 md-mqtt-topic-page__layout">
+                <div class="col-xl-8">
+                    <section class="md-admin-section-card md-admin-form-card">
                         <div class="md-admin-section-card__body">
-                            <div class="row g-3 align-items-center">
-                                <div class="col-lg-8">
-                                    <div class="text-muted small text-uppercase fw-bold"><#LANG_VALUE#></div>
-                                    <div class="md-admin-record-card__field">
-                                        <span id="mqtt[#ID#]" class="mqtt_value">[#VALUE#]</span>
+                            <div class="md-mqtt-topic-section">
+                                <div class="md-mqtt-topic-section__title">Основные параметры</div>
+                                <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid md-mqtt-topic-form">
+                                    <div class="row g-3 align-items-start mb-3">
+                                        <div class="col-lg-8">
+                                            <label class="form-label"><#LANG_PATH#> <span class="text-danger">*</span></label>
+                                            <input type="text" name="path" value="[#PATH#]" class="form-control" required>
+                                            [#if ERR_PATH#]<div class="invalid-feedback d-block"><#LANG_PATH#></div>[#endif#]
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <label class="form-label"><#LANG_LOCATION#></label>
+                                            [#if IS_SET_LOCATION_ID#]
+                                            <input type="text" class="form-control" value="<#LOCATION_ID#>" disabled>
+                                            [#else#]
+                                            <select name="location_id" class="form-control form-select">
+                                                <option value="">не выбрано</option>
+                                                [#begin LOCATION_ID_OPTIONS#]
+                                                <option value="[#ID#]" [#if SELECTED#] selected[#endif#]>[#TITLE#]</option>
+                                                [#end LOCATION_ID_OPTIONS#]
+                                            </select>
+                                            [#endif#]
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-lg-4 text-right">
-                                    <div class="text-muted small text-uppercase fw-bold"><#LANG_UPDATED#></div>
-                                    <div class="fw-semibold">[#UPDATED#]</div>
+
+                                    <div class="row g-3 align-items-start mb-3">
+                                        <div class="col-lg-8">
+                                            <label class="form-label"><#LANG_PATH#> для записи</label>
+                                            <input type="text" name="path_write" value="[#PATH_WRITE#]" class="form-control" placeholder="Оставьте пустым, если писать в тот же топик">
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Метод записи</label>
+                                            <div class="pt-2 md-mqtt-radio-stack">
+                                                <label class="radio-inline"><input type="radio" name="write_type" value="0" [#if WRITE_TYPE="0"#] checked[#endif#]> По умолчанию</label>
+                                                <label class="radio-inline"><input type="radio" name="write_type" value="1" [#if WRITE_TYPE="1"#] checked[#endif#]> Новое соединение</label>
+                                                <label class="radio-inline"><input type="radio" name="write_type" value="2" [#if WRITE_TYPE="2"#] checked[#endif#]> Очередь</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 align-items-start mb-3">
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Только чтение</label>
+                                            <div class="pt-2 md-mqtt-radio-stack">
+                                                <label class="radio-inline"><input type="radio" name="readonly" value="1" [#if READONLY="1" #] checked[#endif#]> Да</label>
+                                                <label class="radio-inline"><input type="radio" name="readonly" value="0" [#if READONLY!="1" #] checked[#endif#]> Нет</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <label class="form-label">QoS</label>
+                                            <div class="pt-2 md-mqtt-radio-stack">
+                                                <label class="radio-inline"><input type="radio" name="qos" value="0" [#if QOS="0" #] checked[#endif#]> 0</label>
+                                                <label class="radio-inline"><input type="radio" name="qos" value="1" [#if QOS="1" #] checked[#endif#]> 1</label>
+                                                <label class="radio-inline"><input type="radio" name="qos" value="2" [#if QOS="2" #] checked[#endif#]> 2</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Retain</label>
+                                            <div class="pt-2 md-mqtt-radio-stack">
+                                                <label class="radio-inline"><input type="radio" name="retain" value="1" [#if RETAIN="1" #] checked[#endif#]> Да</label>
+                                                <label class="radio-inline"><input type="radio" name="retain" value="0" [#if RETAIN!="1" #] checked[#endif#]> Нет</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 align-items-start mb-3">
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Только новое значение</label>
+                                            <div class="pt-2">
+                                                <label class="checkbox-inline">
+                                                    <input type="checkbox" name="only_new_value" value="1" [#if ONLY_NEW_VALUE="1" #]checked[#endif#]>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Подробное логирование</label>
+                                            <div class="pt-2">
+                                                <label class="checkbox-inline">
+                                                    <input type="checkbox" name="logging" value="1" [#if LOGGING="1" #]checked[#endif#]>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Текущее значение</label>
+                                            <div class="md-mqtt-value-box">
+                                                <span id="mqtt[#ID#]" class="mqtt_value">[#VALUE#]</span>
+                                                <small>Обновлено: [#UPDATED#]</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 align-items-start mb-3">
+                                        <div class="col-lg-3">
+                                            <label class="form-label"><#LANG_SET#></label>
+                                            <div class="pt-2">
+                                                <label class="checkbox-inline">
+                                                    <input type="checkbox" name="set_new_value" value="1">
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-9">
+                                            <label class="form-label">Установить значение</label>
+                                            <input type="text" name="new_value" value="" class="form-control" placeholder="Введите новое значение">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 align-items-start mb-3">
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Связанный объект</label>
+                                            <input type="text" name="linked_object" id="linked_object" value="[#LINKED_OBJECT#]" class="form-control">
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Свойство</label>
+                                            <input type="text" name="linked_property" id="linked_property" value="[#LINKED_PROPERTY#]" class="form-control">
+                                        </div>
+                                        <div class="col-lg-4">
+                                            <label class="form-label">Метод</label>
+                                            <input type="text" name="linked_method" id="linked_method" value="[#LINKED_METHOD#]" class="form-control">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 align-items-start mb-3">
+                                        <div class="col-lg-12">
+                                            <label class="form-label">Список замен</label>
+                                            <input type="text" name="replace_list" id="replace_list" value="[#REPLACE_LIST#]" class="form-control" placeholder="например: on=1,off=0">
+                                        </div>
+                                    </div>
+
+                                    <div class="md-admin-form-actions">
+                                        [#if ID!=""#]
+                                        <button class="btn btn-primary" type="submit" name="subm">
+                                            <i class="glyphicon glyphicon-floppy-saved"></i> Сохранить
+                                        </button>
+                                        [#else ID#]
+                                        <button class="btn btn-primary" type="submit" name="subm">
+                                            <i class="glyphicon glyphicon-floppy-saved"></i> Добавить
+                                        </button>
+                                        [#endif ID#]
+                                        <a href="<#ROOTHTML#>panel/mqtt.html" class="btn btn-outline-secondary">
+                                            <i class="glyphicon glyphicon-remove"></i> Отмена
+                                        </a>
+                                        <input type="hidden" name="id" value="<#ID#>">
+                                        <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
+                                        <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
+                                        <input type="hidden" name="mode" value="update">
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </section>
+
+                    [#if CHILDS#]
+                    <section class="md-admin-section-card md-admin-form-card">
+                        <div class="md-admin-section-card__body">
+                            <div class="md-mqtt-topic-section">
+                                <div class="md-mqtt-topic-section__title">Дочерние топики</div>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover align-middle">
+                                        <thead>
+                                        <tr>
+                                            <th>Путь</th>
+                                            <th>Значение</th>
+                                            <th>Обновлено</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        [#begin CHILDS#]
+                                        <tr>
+                                            <td><a href="?view_mode=edit_mqtt&id=[#ID#]">[#PATH#]</a></td>
+                                            <td><span id="mqtt[#ID#]" class="mqtt_value">[#VALUE#]</span></td>
+                                            <td><span id="mqtt[#ID#]" class="mqtt_updated">[#UPDATED#]</span></td>
+                                        </tr>
+                                        [#end CHILDS#]
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
                     </section>
                     [#endif#]
+                </div>
 
-                    <div class="row g-3 align-items-start mb-3">
-                        <div class="col-lg-3">
-                            <label class="form-label"><#LANG_SET#></label>
-                            <div class="pt-2">
-                                <label class="checkbox-inline">
-                                    <input type="checkbox" name="set_new_value" value="1">
-                                </label>
+                <div class="col-xl-4">
+                    <section class="md-admin-section-card md-admin-form-card md-mqtt-history-card">
+                        <div class="md-admin-section-card__body">
+                            <div class="md-mqtt-topic-section">
+                                <div class="md-mqtt-topic-section__title">История изменений</div>
+                                <div id="history" class="md-mqtt-history-feed">[#HISTORY#]</div>
                             </div>
                         </div>
-                        <div class="col-lg-9">
-                            <label class="form-label"><#LANG_VALUE#></label>
-                            <input type="text" name="new_value" value="" class="form-control" placeholder="<#LANG_VALUE#>">
-                        </div>
-                    </div>
-
-                    [#if ID!=""#]
-                    <div class="row g-3 align-items-start mb-3">
-                        <div class="col-lg-12">
-                            <label class="form-label"><#LANG_DEVICE#></label>
-                            <div class="md-admin-section-card md-admin-section-card--compact">
-                                <div class="md-admin-section-card__body">
-                                    [#module name="devices" action="link" type="unknow" prefix="mqtt" source_table="mqtt" source_table_id="<#ID#>" linked_object="<#LINKED_OBJECT#>"#]
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    [#endif#]
-
-                    <div class="row g-3 align-items-start mb-3">
-                        <div class="col-lg-4">
-                            <label class="form-label"><#LANG_LINKED_OBJECT#></label>
-                            <input type="text" name="linked_object" id="linked_object" value="[#LINKED_OBJECT#]" class="form-control">
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label"><#LANG_PROPERTY#></label>
-                            <input type="text" name="linked_property" id="linked_property" value="[#LINKED_PROPERTY#]" class="form-control">
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label"><#LANG_METHOD#></label>
-                            <input type="text" name="linked_method" id="linked_method" value="[#LINKED_METHOD#]" class="form-control">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 align-items-start mb-3">
-                        <div class="col-lg-12">
-                            [#module name="linkedobject" object_field="linked_object" property_field="linked_property" method_field="linked_method" width="100%"#]
-                        </div>
-                    </div>
-
-                    <div class="row g-3 align-items-start mb-3">
-                        <div class="col-lg-12">
-                            <label class="form-label">Replace list</label>
-                            <input type="text" name="replace_list" id="replace_list" value="[#REPLACE_LIST#]" class="form-control">
-                        </div>
-                    </div>
-
-                    <div class="md-admin-form-actions">
-                        [#if ID!=""#]
-                        <button class="btn btn-primary" type="submit" name="subm">
-                            <i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_SUBMIT#>
-                        </button>
-                        [#else ID#]
-                        <button class="btn btn-primary" type="submit" name="subm">
-                            <i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_ADD#>
-                        </button>
-                        [#endif ID#]
-                        <a href="?" class="btn btn-outline-secondary">
-                            <i class="glyphicon glyphicon-remove"></i> <#LANG_CANCEL#>
-                        </a>
-                        [#if ID!=""#]
-                        <a href="?view_mode=delete_mqtt&id=[#ID#]" data-md-confirm="<#ARE_YOU_SURE#>" class="btn btn-outline-danger" title="<#LANG_DELETE#>">
-                            <i class="glyphicon glyphicon-remove"></i> <#LANG_DELETE#>
-                        </a>
-                        [#endif#]
-                    </div>
-
-                    <input type="hidden" name="id" value="<#ID#>">
-                    <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-                    <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-                    <input type="hidden" name="mode" value="update">
-                </form>
+                    </section>
+                </div>
             </div>
-        </section>
-    </div>
-
-    <div class="col-lg-4">
-        <section class="md-admin-section-card md-admin-form-card">
-            <div class="md-admin-section-card__body" id="history">
-                [#HISTORY#]
-            </div>
-        </section>
-    </div>
-</div>
-
-[#if CHILDS#]
-<section class="md-admin-section-card mt-3">
-    <div class="md-admin-section-card__body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle">
-                <thead>
-                <tr>
-                    <th><#LANG_PATH#></th>
-                    <th><#LANG_VALUE#></th>
-                    <th><#LANG_UPDATED#></th>
-                </tr>
-                </thead>
-                <tbody>
-                [#begin CHILDS#]
-                <tr>
-                    <td><a href="?view_mode=edit_mqtt&id=[#ID#]">[#PATH#]</a></td>
-                    <td><span id="mqtt[#ID#]" class="mqtt_value">[#VALUE#]</span></td>
-                    <td><span id="mqtt[#ID#]" class="mqtt_updated">[#UPDATED#]</span></td>
-                </tr>
-                [#end CHILDS#]
-                </tbody>
-            </table>
         </div>
     </div>
-</section>
-[#endif#]
+</aside>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.body.classList.add('md-mqtt-topic-open');
+    });
+</script>

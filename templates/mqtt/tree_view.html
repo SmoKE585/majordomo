@@ -1,103 +1,245 @@
 <style type="text/css">
-    .HandCursorStyle {
-        cursor: pointer;
-        cursor: hand;
+    .md-mqtt-tree {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .md-mqtt-tree__node {
+        padding: 14px;
+        background: rgba(255, 255, 255, .92);
+        border: 1px solid rgba(31, 41, 51, .08);
+        border-radius: 18px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .md-mqtt-tree__node:hover {
+        transform: translateY(-1px);
+        border-color: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .22);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
+    }
+
+    .md-mqtt-tree__row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .md-mqtt-tree__toggle,
+    .md-mqtt-tree__toggle--leaf {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        color: var(--md-admin-primary, #4792d1);
+        background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .11);
+        border: 0;
+        border-radius: 12px;
+    }
+
+    .md-mqtt-tree__toggle i {
+        transition: transform .18s ease;
+    }
+
+    .md-mqtt-tree__toggle[aria-expanded="true"] i {
+        transform: rotate(180deg);
+    }
+
+    .md-mqtt-tree__toggle:focus-visible,
+    .md-mqtt-tree__toggle--leaf:focus-visible,
+    .md-mqtt-tree__delete:focus-visible {
+        outline: 0;
+        box-shadow: 0 0 0 .18rem rgba(var(--md-admin-primary-rgb, 71, 146, 209), .18);
+    }
+
+    .md-mqtt-tree__toggle i,
+    .md-mqtt-tree__toggle--leaf i {
+        font-size: 1rem;
+    }
+
+    .md-mqtt-tree__content {
+        min-width: 0;
+    }
+
+    .md-mqtt-tree__title {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        color: var(--md-admin-text, #1f2933);
+        font-size: .98rem;
+        font-weight: 800;
+        word-break: break-word;
+    }
+
+    .md-mqtt-tree__title:hover,
+    .md-mqtt-tree__title:focus-visible {
+        color: var(--md-admin-primary, #4792d1);
+    }
+
+    .md-mqtt-tree__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .md-mqtt-tree__value,
+    .md-mqtt-tree__linked {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 9px;
+        color: var(--md-admin-text, #1f2933);
+        background: rgba(248, 251, 254, .95);
+        border: 1px solid rgba(31, 41, 51, .06);
+        border-radius: 999px;
+        font-size: .84rem;
+        overflow-wrap: anywhere;
+    }
+
+    .md-mqtt-tree__linked {
+        color: var(--md-admin-muted, #6b7a88);
+    }
+
+    .md-mqtt-tree__delete {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        color: #c92a2a;
+        border-radius: 12px;
+        opacity: .35;
+        transition: opacity .15s ease, background .15s ease;
+    }
+
+    .md-mqtt-tree__delete:hover,
+    .md-mqtt-tree__delete:focus-visible {
+        opacity: 1;
+        background: rgba(201, 42, 42, .08);
+    }
+
+    .md-mqtt-tree__children {
+        margin-top: 12px;
+        padding-left: 16px;
+        margin-left: 2px;
+        border-left: 2px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
+    }
+
+    .md-mqtt-tree__children .md-mqtt-tree__node {
+        margin-top: 10px;
+        background: rgba(248, 251, 254, .9);
+    }
+
+    .md-mqtt-tree__node.is-leaf .md-mqtt-tree__toggle--leaf {
+        color: rgba(148, 163, 184, .95);
+        background: rgba(148, 163, 184, .12);
     }
 </style>
 
-<script type="text/JavaScript">
-    // Add this to the onload event of the BODY element
-    function addEvents() {
-        activateTree(document.getElementById("LinkedList1"));
-    }
-
-    // This function traverses the list and add links
-    // to nested list items
-    function activateTree(oList) {
-        // Collapse the tree
-        /*
-      for (var i=0; i < oList.getElementsByTagName("ul").length; i++) {
-        oList.getElementsByTagName("ul")[i].style.display="none";
-      }
-                                                                     */
-        // Add the click-event handler to the list items
-        if (oList.addEventListener) {
-            oList.addEventListener("click", toggleBranch, false);
-        } else if (oList.attachEvent) { // For IE
-            oList.attachEvent("onclick", toggleBranch);
-        }
-        // Make the nested items look like links
-        addLinksToBranches(oList);
-    }
-
+<script type="text/javascript">
     function rememberBranchStatus(title, status) {
         var url="?ajax=1&op=branch_status&status="+status+"&branch="+encodeURIComponent(title);
-        $.ajax({
-            url: url
-        }).done(function(data) {
-            //alert(data);
-        });
+        $.ajax({url: url});
     }
 
-    // This is the click-event handler
-    function toggleBranch(event) {
-        var oBranch, cSubBranches;
-        if (event.target) {
-            oBranch = event.target;
-        } else if (event.srcElement) { // For IE
-            oBranch = event.srcElement;
+    function getDirectChildren(node) {
+        if (!node || !node.children) {
+            return null;
         }
-        cSubBranches = oBranch.getElementsByTagName("ul");
-        if (cSubBranches.length > 0) {
-            if (cSubBranches[0].style.display != "none") {
-                $(cSubBranches[0]).hide('slow');
-                rememberBranchStatus(oBranch.title,0);
-            } else {
-                $(cSubBranches[0]).show('slow');
-                rememberBranchStatus(oBranch.title,1);
+        for (var i = 0; i < node.children.length; i++) {
+            if (node.children[i].classList && node.children[i].classList.contains('md-mqtt-tree__children')) {
+                return node.children[i];
             }
         }
+        return null;
     }
 
-    // This function makes nested list items look like links
-    function addLinksToBranches(oList) {
-        var cBranches = oList.getElementsByTagName("li");
-        var i, n, cSubBranches;
-        if (cBranches.length > 0) {
-            for (i=0, n = cBranches.length; i < n; i++) {
-                cSubBranches = cBranches[i].getElementsByTagName("ul");
-                if (cSubBranches.length > 0) {
-                    addLinksToBranches(cSubBranches[0]);
-                    cBranches[i].className = "HandCursorStyle";
-                    //cBranches[i].style.fontWeight="bold";
-                    cSubBranches[0].style.color = "black";
-                    cSubBranches[0].style.fontWeight = "normal";
-                    cSubBranches[0].style.cursor = "auto";
+    function editItem(item_id) {
+        window.location.href = '{$smarty.const.ROOTHTML}panel/mqtt.html?view_mode=edit_mqtt&id='+item_id;
+    }
+
+    function deletePath(path) {
+        if (confirm('{$smarty.const.LANG_ARE_YOU_SURE}')) {
+            window.location.href = '{$smarty.const.ROOTHTML}panel/mqtt.html?view_mode=delete_path&path='+path;
+        }
+        return false;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-md-mqtt-tree-toggle]').forEach(function (button) {
+            button.title = button.getAttribute('aria-expanded') === 'true' ? 'Свернуть ветку' : 'Развернуть ветку';
+            button.addEventListener('click', function () {
+                var node = button.closest('.md-mqtt-tree__node');
+                var children = getDirectChildren(node);
+                if (!children) {
+                    return;
                 }
-            }
-        }
-    }
+                var isOpen = !children.hidden;
+                children.hidden = isOpen;
+                button.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                button.title = isOpen ? 'Развернуть ветку' : 'Свернуть ветку';
+                rememberBranchStatus(node.getAttribute('data-branch-title') || node.title || '', isOpen ? 0 : 1);
+            });
+        });
+
+        document.querySelectorAll('[data-md-mqtt-tree-edit]').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                event.preventDefault();
+                editItem(link.getAttribute('data-md-mqtt-tree-edit'));
+            });
+        });
+    });
 </script>
-<ul id="LinkedList1" class="LinkedList" style="padding-left: 0px;">
+
+<div class="md-mqtt-tree">
     [#begin RESULT#]
-    <li style="list-style-type: none; color:[#COLOR#]" title="[#TITLE#]" onmouseout="$(this).find('.delIcon_[#ID#]').hide().removeClass('text-danger');" onmouseover="$(this).find('.delIcon_[#ID#]').show().addClass('text-danger');">
-        [#if RESULT#]<i class="glyphicon glyphicon-folder-close" style="font-size: 1.2rem;"></i>[#else#]<i class="glyphicon glyphicon-arrow-right" style="font-size: 1.2rem;color: #ddd;"></i>[#endif RESULT#]
-        [#if ID!=""#]
-        <a href="?view_mode=edit_mqtt&id=[#ID#]" title="[#PATH#]" style="color:[#COLOR#];text-decoration: none;">
-            [#if TITLE!=""#][#TITLE#][#else#][..][#endif#]
-        </a>
-        : <span id="mqtt[#ID#]" class="mqtt_value">[#VALUE#]</span>
-        [#if LINKED_OBJECT!=""#]<i>
-        ([#if LINKED_PROPERTY=""#]M: [#else#]P: [#endif LINKED_PROPERTY#][#LINKED_OBJECT#].[#if LINKED_PROPERTY!=""#][#LINKED_PROPERTY#][#else#][#LINKED_METHOD#][#endif LINKED_PROPERTY#])
-        </i>[#endif LINKED_OBJECT#]
-        [#else#]
-        &nbsp;[#TITLE#]
-        [#endif#]
-        <a href="?view_mode=delete_path&path=[#PATH_URL#]" onclick="return confirm('<#LANG_ARE_YOU_SURE#>');"><i style="display: none;" class="glyphicon glyphicon-remove delIcon_[#ID#]"></i></a>
-        [#if RESULT#]<ul [#if IS_VISIBLE!="1" #] style="display:none" [#endif#]>[#tree RESULT#]</ul>[#endif RESULT#]
-    </li>
+    <article class="md-mqtt-tree__node [#if RESULT#]is-branch[#else#]is-leaf[#endif#]" title="[#TITLE#]" data-branch-title="[#TITLE#]">
+        <div class="md-mqtt-tree__row">
+            [#if RESULT#]
+            <button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="[#if IS_VISIBLE="1"#]true[#else#]false[#endif#]" aria-label="Toggle branch">
+                <i class="glyphicon glyphicon-chevron-down"></i>
+            </button>
+            [#else#]
+            <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
+                <i class="glyphicon glyphicon-record"></i>
+            </span>
+            [#endif#]
+
+            <div class="md-mqtt-tree__content">
+                [#if ID!=""#]
+                <a href="?view_mode=edit_mqtt&id=[#ID#]" data-md-mqtt-tree-edit="[#ID#]" class="md-mqtt-tree__title" title="[#PATH#]">
+                    [#if TITLE!=""#][#TITLE#][#else#][..][#endif#]
+                </a>
+                <div class="md-mqtt-tree__meta">
+                    <span id="mqtt[#ID#]" class="mqtt_value md-mqtt-tree__value">[#VALUE#]</span>
+                    [#if LINKED_OBJECT!=""#]
+                    <span class="md-mqtt-tree__linked">
+                        [#if LINKED_PROPERTY=""#]M: [#else#]P: [#endif LINKED_PROPERTY#][#LINKED_OBJECT#].[#if LINKED_PROPERTY!=""#][#LINKED_PROPERTY#][#else#][#LINKED_METHOD#][#endif LINKED_PROPERTY#]
+                    </span>
+                    [#endif LINKED_OBJECT#]
+                </div>
+                [#else#]
+                <div class="md-mqtt-tree__title">[#TITLE#]</div>
+                [#endif#]
+            </div>
+
+            [#if ID!=""#]
+            <a href="#" class="md-mqtt-tree__delete" onclick="return deletePath('[#PATH_URL#]');" aria-label="<#LANG_DELETE#>">
+                <i class="glyphicon glyphicon-remove"></i>
+            </a>
+            [#endif#]
+        </div>
+
+        [#if RESULT#]
+        <div class="md-mqtt-tree__children" [#if IS_VISIBLE!="1" #]hidden[#endif#]>
+            [#tree RESULT#]
+        </div>
+        [#endif RESULT#]
+    </article>
     [#end RESULT#]
-</ul>
-<script type="text/JavaScript">
-    addEvents();
-</script>
+</div>

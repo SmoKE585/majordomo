@@ -1,166 +1,227 @@
 <style type="text/css">
-    .HandCursorStyle {
-        cursor: pointer;
-        cursor: hand;
+    .md-mqtt-tree {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .md-mqtt-tree__node {
+        padding: 14px;
+        background: rgba(255, 255, 255, .92);
+        border: 1px solid rgba(31, 41, 51, .08);
+        border-radius: 18px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .md-mqtt-tree__node:hover {
+        transform: translateY(-1px);
+        border-color: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .22);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
+    }
+
+    .md-mqtt-tree__row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .md-mqtt-tree__toggle,
+    .md-mqtt-tree__toggle--leaf {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        color: var(--md-admin-primary, #4792d1);
+        background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .11);
+        border: 0;
+        border-radius: 12px;
+    }
+
+    .md-mqtt-tree__toggle i {
+        transition: transform .18s ease;
+    }
+
+    .md-mqtt-tree__toggle[aria-expanded="true"] i {
+        transform: rotate(180deg);
+    }
+
+    .md-mqtt-tree__toggle:focus-visible,
+    .md-mqtt-tree__toggle--leaf:focus-visible,
+    .md-mqtt-tree__delete:focus-visible {
+        outline: 0;
+        box-shadow: 0 0 0 .18rem rgba(var(--md-admin-primary-rgb, 71, 146, 209), .18);
+    }
+
+    .md-mqtt-tree__content {
+        min-width: 0;
+    }
+
+    .md-mqtt-tree__title {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        color: var(--md-admin-text, #1f2933);
+        font-size: .98rem;
+        font-weight: 800;
+        word-break: break-word;
+    }
+
+    .md-mqtt-tree__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .md-mqtt-tree__value,
+    .md-mqtt-tree__linked {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 9px;
+        color: var(--md-admin-text, #1f2933);
+        background: rgba(248, 251, 254, .95);
+        border: 1px solid rgba(31, 41, 51, .06);
+        border-radius: 999px;
+        font-size: .84rem;
+        overflow-wrap: anywhere;
+    }
+
+    .md-mqtt-tree__linked {
+        color: var(--md-admin-muted, #6b7a88);
+    }
+
+    .md-mqtt-tree__delete {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        color: #c92a2a;
+        border-radius: 12px;
+        opacity: .35;
+        transition: opacity .15s ease, background .15s ease;
+    }
+
+    .md-mqtt-tree__children {
+        margin-top: 12px;
+        padding-left: 16px;
+        margin-left: 2px;
+        border-left: 2px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
+    }
+
+    .md-mqtt-tree__children .md-mqtt-tree__node {
+        margin-top: 10px;
+        background: rgba(248, 251, 254, .9);
     }
 </style>
 
 <script type="text/JavaScript">
-    // Add this to the onload event of the BODY element
-    function addEvents() {
-        activateTree(document.getElementById("LinkedList1"));
-    }
-
-    // This function traverses the list and add links
-    // to nested list items
-    function activateTree(oList) {
-        // Collapse the tree
-        /*
-      for (var i=0; i < oList.getElementsByTagName("ul").length; i++) {
-        oList.getElementsByTagName("ul")[i].style.display="none";
-      }
-                                                                     */
-        // Add the click-event handler to the list items
-        if (oList.addEventListener) {
-            oList.addEventListener("click", toggleBranch, false);
-        } else if (oList.attachEvent) { // For IE
-            oList.attachEvent("onclick", toggleBranch);
-        }
-        // Make the nested items look like links
-        addLinksToBranches(oList);
-    }
-
     function rememberBranchStatus(title, status) {
         var url="?ajax=1&op=branch_status&status="+status+"&branch="+encodeURIComponent(title);
-        $.ajax({
-            url: url
-        }).done(function(data) {
-            //alert(data);
-        });
+        $.ajax({url: url});
     }
 
-    // This is the click-event handler
-    function toggleBranch(event) {
-        var oBranch, cSubBranches;
-        if (event.target) {
-            oBranch = event.target;
-        } else if (event.srcElement) { // For IE
-            oBranch = event.srcElement;
+    function getDirectChildren(node) {
+        if (!node || !node.children) {
+            return null;
         }
-        cSubBranches = oBranch.getElementsByTagName("ul");
-        device_titles = oBranch.getElementsByClassName("device_title");
-        if (cSubBranches.length > 0) {
-            if (cSubBranches[0].style.display != "none") {
-                $(cSubBranches[0]).hide('slow');
-                rememberBranchStatus(oBranch.title,0);
-            } else {
-                $(cSubBranches[0]).show('slow');
-                rememberBranchStatus(oBranch.title,1);
+        for (var i = 0; i < node.children.length; i++) {
+            if (node.children[i].classList && node.children[i].classList.contains('md-mqtt-tree__children')) {
+                return node.children[i];
             }
         }
-        if (device_titles.length > 0) {
-            if (device_titles[0].style.display == "none") {
-                $(device_titles[0]).show('fast');
-            } else {
-                $(device_titles[0]).hide('fast');
-            }
-        }
-    }
-
-    // This function makes nested list items look like links
-    function addLinksToBranches(oList) {
-        var cBranches = oList.getElementsByTagName("li");
-        var i, n, cSubBranches;
-        if (cBranches.length > 0) {
-            for (i=0, n = cBranches.length; i < n; i++) {
-                cSubBranches = cBranches[i].getElementsByTagName("ul");
-                if (cSubBranches.length > 0) {
-                    addLinksToBranches(cSubBranches[0]);
-                    cBranches[i].className = "HandCursorStyle";
-                    //cBranches[i].style.fontWeight="bold";
-                    cSubBranches[0].style.color = "black";
-                    cSubBranches[0].style.fontWeight = "normal";
-                    cSubBranches[0].style.cursor = "auto";
-                }
-            }
-        }
-    }
-
-    function openObject(object_name) {
-        let url = '{$smarty.const.ROOTHTML}panel/classes.html?go_linked_object='+object_name;
-        window.location.href = url;
-    }
-
-    function openDevice(device_id) {
-        let url = '{$smarty.const.ROOTHTML}panel/devices.html?view_mode=edit_devices&tab=settings&id='+device_id;
-        window.location.href = url;
+        return null;
     }
 
     function editItem(item_id) {
-        let url = '{$smarty.const.ROOTHTML}panel/mqtt.html?view_mode=edit_mqtt&id='+item_id;
-        window.location.href = url;
+        window.location.href = '{$smarty.const.ROOTHTML}panel/mqtt.html?view_mode=edit_mqtt&id='+item_id;
     }
 
     function deletePath(path) {
         if (confirm('{$smarty.const.LANG_ARE_YOU_SURE}')) {
-            let url = '{$smarty.const.ROOTHTML}panel/mqtt.html?view_mode=delete_path&path='+path;
-            window.location.href = url;
+            window.location.href = '{$smarty.const.ROOTHTML}panel/mqtt.html?view_mode=delete_path&path='+path;
         }
         return false;
     }
 
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-md-mqtt-tree-toggle]').forEach(function (button) {
+            button.title = button.getAttribute('aria-expanded') === 'true' ? 'Свернуть ветку' : 'Развернуть ветку';
+            button.addEventListener('click', function () {
+                var node = button.closest('.md-mqtt-tree__node');
+                var children = getDirectChildren(node);
+                if (!children) {
+                    return;
+                }
+                var isOpen = !children.hidden;
+                children.hidden = isOpen;
+                button.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                button.title = isOpen ? 'Развернуть ветку' : 'Свернуть ветку';
+                rememberBranchStatus(node.getAttribute('data-branch-title') || node.title || '', isOpen ? 0 : 1);
+            });
+        });
+
+        document.querySelectorAll('[data-md-mqtt-tree-edit]').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                event.preventDefault();
+                editItem(link.getAttribute('data-md-mqtt-tree-edit'));
+            });
+        });
+    });
 </script>
 
-{if $RESULT}
+<div class="md-mqtt-tree">
+    {function name=menu}
+        {foreach $items as $item}
+            <article class="md-mqtt-tree__node {if isset($item.RESULT)}is-branch{else}is-leaf{/if}" title="{$item.TITLE}" data-branch-title="{$item.TITLE}">
+                <div class="md-mqtt-tree__row">
+                    {if isset($item.RESULT)}
+                        <button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="{if isset($item.IS_VISIBLE) && $item.IS_VISIBLE==1}true{else}false{/if}" aria-label="Toggle branch">
+                            <i class="glyphicon glyphicon-chevron-down"></i>
+                        </button>
+                    {else}
+                        <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
+                            <i class="glyphicon glyphicon-record"></i>
+                        </span>
+                    {/if}
 
-<div class="row">
-    <div class="col-md-8">
-        <ul id="LinkedList1" class="LinkedList" style="padding-left: 0px;">
-            {function name=menu}
-                {foreach $items as $item}
-                    <li style="list-style-type: none; {if isset($item.COLOR)}color:{$item.COLOR}{/if}"
-                        title="{$item.TITLE}"
-                        onmouseout="$(this).find('.delIcon_{if isset($item.ID)}{$item.ID}{/if}').hide().removeClass('text-danger');"
-                        onmouseover="$(this).find('.delIcon_{if isset($item.ID)}{$item.ID}{/if}').show().addClass('text-danger');">
-                        {if isset($item.RESULT)}
-                            <i class="glyphicon glyphicon-folder-close" style="font-size: 1.2rem;"></i>
-                        {else}
-                            <i class="glyphicon glyphicon-arrow-right" style="font-size: 1.2rem;color: #ddd;"></i>
-                        {/if}
+                    <div class="md-mqtt-tree__content">
                         {if isset($item.ID)}
-                            <a href="#" onclick="return editItem({$item.ID});" title="{$item.PATH}"
-                               style="{if isset($item.COLOR)}color:{$item.COLOR};{/if}text-decoration: none;">
+                            <a href="#" onclick="return editItem({$item.ID});" data-md-mqtt-tree-edit="{$item.ID}" title="{$item.PATH}" class="md-mqtt-tree__title">
                                 {if $item.TITLE!=""}{$item.TITLE}{else}[..]{/if}
                             </a>
-                            : <span id="mqtt{$item.ID}" class="mqtt_value">{$item.VALUE}</span>
-                            {if $item.LINKED_OBJECT!=""}
-                                <i>
-                                    ({if $item.LINKED_PROPERTY==""}M: {$item.LINKED_OBJECT}.{$item.LINKED_METHOD}{else}P: {$item.LINKED_OBJECT}.{$item.LINKED_PROPERTY}{/if})
-                                </i>
-                            {/if}
+                            <div class="md-mqtt-tree__meta">
+                                <span id="mqtt{$item.ID}" class="mqtt_value md-mqtt-tree__value">{$item.VALUE}</span>
+                                {if $item.LINKED_OBJECT!=""}
+                                    <span class="md-mqtt-tree__linked">
+                                        {if $item.LINKED_PROPERTY==""}M: {else}P: {/if}{$item.LINKED_OBJECT}.{if $item.LINKED_PROPERTY!=""}{$item.LINKED_PROPERTY}{else}{$item.LINKED_METHOD}{/if}
+                                    </span>
+                                {/if}
+                            </div>
                         {else}
-                            &nbsp;{$item.TITLE}
+                            <div class="md-mqtt-tree__title">{$item.TITLE}</div>
                         {/if}
-                        <span class="device_title" {if isset($item.IS_VISIBLE)} style="display:none"{/if}>{if isset($item.DEVICE_TITLE)}<span>&mdash;
-        <i><a href="{$smarty.const.ROOTHTML}panel/{if $item.DEVICE_ID!=0}devices.html?view_mode=edit_devices&tab=settings&id={$item.DEVICE_ID}{else}classes.html?go_linked_object={$item.DEVICE_TITLE}{/if}">{$item.DEVICE_TITLE}</a></i></span>{/if}</span>
-                        <a href="#" onclick="return deletePath('{$item.PATH_URL}');"><i style="display: none;" class="glyphicon glyphicon-remove delIcon_{if isset($item.ID)}{$item.ID}{/if}"></i></a>
-                        {if isset($item.RESULT)}
-                            <ul {if !isset($item.IS_VISIBLE)} style="display:none"{/if}>
-                                {menu items=$item.RESULT}
-                            </ul>
-                        {/if}
-                    </li>
-                {/foreach}
-            {/function}
-            {menu items=$RESULT}
+                    </div>
 
-        </ul>
-    </div>
-    <div class="col-md-4" id="history"></div>
+                    {if isset($item.ID)}
+                        <a href="#" class="md-mqtt-tree__delete" onclick="return deletePath('{$item.PATH_URL}');" aria-label="{$smarty.const.LANG_DELETE}">
+                            <i class="glyphicon glyphicon-remove"></i>
+                        </a>
+                    {/if}
+                </div>
+
+                {if isset($item.RESULT)}
+                    <div class="md-mqtt-tree__children" {if !isset($item.IS_VISIBLE) || $item.IS_VISIBLE!=1}hidden{/if}>
+                        {menu items=$item.RESULT}
+                    </div>
+                {/if}
+            </article>
+        {/foreach}
+    {/function}
+    {menu items=$RESULT}
 </div>
-
-{/if}
-
-<script type="text/JavaScript">
-    addEvents();
-</script>
