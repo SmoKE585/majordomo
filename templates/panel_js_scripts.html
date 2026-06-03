@@ -7,8 +7,25 @@
         } else {
             $.cookie('sub_'+id, 'off', {expires: 180});
         }
-        $('#row_'+id).collapse("toggle");
+        adminCollapse('row_'+id, 'toggle');
         return false;
+    }
+
+    function adminCollapse(elementId, command) {
+        var element = document.getElementById(elementId);
+        if (!element) {
+            return false;
+        }
+        if (window.bootstrap && window.bootstrap.Collapse) {
+            window.bootstrap.Collapse.getOrCreateInstance(element, {toggle: false})[command]();
+            return true;
+        }
+        if (window.jQuery && typeof jQuery.fn.collapse === 'function') {
+            jQuery(element).collapse(command);
+            return true;
+        }
+        element.classList.toggle('show', command === 'show' || (command === 'toggle' && !element.classList.contains('show')));
+        return true;
     }
 
     function resetHintCookies() {
@@ -24,7 +41,7 @@
             }
             if (cookieName.startsWith('sub_')) {
                 var id = cookieName.replace('sub_','');
-                $('#row_'+id).collapse('show');
+                adminCollapse('row_'+id, 'show');
                 $.cookie(cookieName, null);
             }
         }
@@ -50,7 +67,9 @@
         var vl = $.cookie('sub_'+id);
 
         if (vl == 'on' || vl == null) {
-            $('#row_'+id).collapse("show");
+            adminCollapse('row_'+id, 'show');
+        } else if (vl == 'off') {
+            adminCollapse('row_'+id, 'hide');
         }
         return false;
     }

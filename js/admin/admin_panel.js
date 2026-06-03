@@ -58,10 +58,150 @@
         document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
     }
 
+    function getCookie(name) {
+        var escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var match = document.cookie.match(new RegExp('(?:^|;\\s*)' + escapedName + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    function setCookie(name, value, days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + date.toUTCString() + '; path=/';
+    }
+
+    function deleteCookie(name) {
+        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    }
+
+    function setCollapseState(element, command) {
+        if (!element) {
+            return;
+        }
+        if (window.bootstrap && window.bootstrap.Collapse) {
+            window.bootstrap.Collapse.getOrCreateInstance(element, {toggle: false})[command]();
+            return;
+        }
+        element.classList.toggle('show', command === 'show' || (command === 'toggle' && !element.classList.contains('show')));
+    }
+
+    function initAdminSidebarSections(root) {
+        root.querySelectorAll('[data-md-sidebar-category-toggle]').forEach(function (button) {
+            var categoryId = button.getAttribute('data-md-sidebar-category-toggle');
+            var target = document.getElementById('row_' + categoryId);
+            var cookieName = 'sub_' + categoryId;
+            var shouldShow = getCookie(cookieName) !== 'off';
+
+            setCollapseState(target, shouldShow ? 'show' : 'hide');
+            button.setAttribute('aria-expanded', shouldShow ? 'true' : 'false');
+
+            if (button.dataset.mdSidebarBound === '1') {
+                return;
+            }
+            button.dataset.mdSidebarBound = '1';
+            button.addEventListener('click', function () {
+                var isOpen = target ? target.classList.contains('show') : false;
+                setCookie(cookieName, isOpen ? 'off' : 'on', 180);
+                setCollapseState(target, 'toggle');
+                button.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            });
+        });
+    }
+
+    function initPersistentCollapses(root) {
+        root.querySelectorAll('[data-md-collapse-toggle]').forEach(function (button) {
+            var collapseId = button.getAttribute('data-md-collapse-toggle');
+            var target = document.getElementById('row_' + collapseId);
+            var cookieName = 'sub_' + collapseId;
+            var shouldShow = getCookie(cookieName) !== 'off';
+
+            setCollapseState(target, shouldShow ? 'show' : 'hide');
+            button.setAttribute('aria-expanded', shouldShow ? 'true' : 'false');
+
+            if (button.dataset.mdCollapseBound === '1') {
+                return;
+            }
+            button.dataset.mdCollapseBound = '1';
+            button.addEventListener('click', function () {
+                var isOpen = target ? target.classList.contains('show') : false;
+                setCookie(cookieName, isOpen ? 'off' : 'on', 180);
+                setCollapseState(target, 'toggle');
+                button.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            });
+        });
+    }
+
+    function initToggleTargets(root) {
+        root.querySelectorAll('[data-md-toggle-target]').forEach(function (button) {
+            if (button.dataset.mdToggleTargetBound === '1') {
+                return;
+            }
+            button.dataset.mdToggleTargetBound = '1';
+            button.addEventListener('click', function () {
+                var selector = button.getAttribute('data-md-toggle-target');
+                if (!selector) {
+                    return;
+                }
+                document.querySelectorAll(selector).forEach(function (target) {
+                    target.classList.toggle('is-visible');
+                });
+            });
+        });
+    }
+
+    function initHintActions(root) {
+        root.querySelectorAll('[data-md-hide-hint]').forEach(function (button) {
+            if (button.dataset.mdHideHintBound === '1') {
+                return;
+            }
+            button.dataset.mdHideHintBound = '1';
+            button.addEventListener('click', function () {
+                var hintId = button.getAttribute('data-md-hide-hint');
+                var hint = document.getElementById('hint_' + hintId);
+                setCookie('hint_' + hintId, 'off', 180);
+                if (hint) {
+                    hint.style.display = 'none';
+                }
+            });
+        });
+
+        root.querySelectorAll('[data-md-reset-hints]').forEach(function (button) {
+            if (button.dataset.mdResetHintsBound === '1') {
+                return;
+            }
+            button.dataset.mdResetHintsBound = '1';
+            button.addEventListener('click', function () {
+                var message = button.getAttribute('data-confirm');
+                if (message && !window.confirm(message)) {
+                    return;
+                }
+
+                document.cookie.split(';').forEach(function (pair) {
+                    var cookieName = pair.split('=')[0].trim();
+                    if (cookieName.indexOf('hint_') === 0) {
+                        deleteCookie(cookieName);
+                        var hint = document.getElementById('hint_' + cookieName.replace('hint_', ''));
+                        if (hint) {
+                            hint.style.display = '';
+                        }
+                    }
+                    if (cookieName.indexOf('sub_') === 0) {
+                        deleteCookie(cookieName);
+                        setCollapseState(document.getElementById('row_' + cookieName.replace('sub_', '')), 'show');
+                    }
+                });
+            });
+        });
+    }
+
     function boot(root) {
         copyLegacyBootstrapAttributes(root);
         normalizeLegacyClasses(root);
         initBootstrapWidgets(root);
+        initAdminSidebarSections(root);
+        initPersistentCollapses(root);
+        initToggleTargets(root);
+        initHintActions(root);
     }
 
     function initAdminSidebarDrawer() {
@@ -144,8 +284,11 @@
     window.MDJAdminUI = {
         boot: boot,
         copyLegacyBootstrapAttributes: copyLegacyBootstrapAttributes,
-        initBootstrapWidgets: initBootstrapWidgets
+        initBootstrapWidgets: initBootstrapWidgets,
+        installJqueryBridge: installJqueryBridge
     };
+
+    installJqueryBridge();
 
     document.addEventListener('DOMContentLoaded', function () {
         applyThemeFromCookie();

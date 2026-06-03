@@ -14,8 +14,8 @@
         <nav class="md-admin-sidebar__nav" aria-label="Admin modules">
             [#begin SUB_MODULES#]
             [#if NEW_CATEGORY#]
-            <section class="md-admin-sidebar__group">
-                <button type="button" class="md-admin-sidebar__group-title" onClick="return toggleCategory('[#CATEGORY_ID#]');">
+            <section class="md-admin-sidebar__group" data-md-sidebar-category="[#CATEGORY_ID#]">
+                <button type="button" class="md-admin-sidebar__group-title" data-md-sidebar-category-toggle="[#CATEGORY_ID#]" aria-expanded="true" aria-controls="row_[#CATEGORY_ID#]">
                     <span>[#CATEGORY#]</span>
                     <i class="glyphicon glyphicon-arrow-down"></i>
                 </button>
@@ -44,11 +44,4 @@
         </nav>
     </div>
 
-    [#begin SUB_MODULES#]
-    [#if NEW_CATEGORY#]
-    <script language="javascript">
-        checkCategory('[#CATEGORY_ID#]');
-    </script>
-    [#endif NEW_CATEGORY#]
-    [#end SUB_MODULES#]
 </aside>
