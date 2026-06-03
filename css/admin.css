@@ -1,3 +1,16 @@
+/*
+ * ============================================================================
+ *  DEPRECATED
+ * ============================================================================
+ *  Admin shell styles were consolidated into css/admin/admin_panel.css.
+ *  This file is kept temporarily for manual verification and safe future removal.
+ *
+ *  Marked on: 2026-06-03
+ *  Reason: No inbound references remain after admin CSS consolidation.
+ *  Verified by: Codex
+ * ============================================================================
+ */
+
 @media (max-width: 1230px) {
 	.navbar-header {
 			float: none;

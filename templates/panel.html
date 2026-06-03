@@ -3,8 +3,8 @@
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 		<title>{#TITLE#}</title>
-		[#inc common_header.html#]
-		<link rel="stylesheet" href="<#ROOTHTML#>css/admin.css" type="text/css">
+		[#inc common_header_admin.html#]
+		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-03" type="text/css">
 		[#inc websockets.html#]
 	</head>
 
@@ -395,9 +395,9 @@ $(document).ready(function() {
 	//Применяем тему
 	/*
 	if($.cookie('theme') == 'dark') {
-		$('link#theme').attr('href', '<#ROOTHTML#>3rdparty/bootstrap/css/bootstrap_dark_admin.css');
+		document.documentElement.setAttribute('data-bs-theme', 'dark');
 	} else if($.cookie('theme') == 'light') {
-		$('link#theme').attr('href', '<#ROOTHTML#>3rdparty/bootstrap/css/bootstrap.min.css');
+		document.documentElement.setAttribute('data-bs-theme', 'light');
 	} */
 	
 	

@@ -1,102 +1,5 @@
 <script language="javascript">
 
-    let latestMessage = '';
-    let latestMessageTimer = 0;
-    let latestMessageInFlight = false;
-    let latestMessageLoopStarted = false;
-    const LATEST_MESSAGE_INTERVAL_ACTIVE = 10000;
-    const LATEST_MESSAGE_INTERVAL_HIDDEN = 60000;
-
-    function checkLatestMessage() {
-        if (latestMessageInFlight) {
-            return;
-        }
-        latestMessageInFlight = true;
-        $.ajax({
-            url: ROOTHTML+'getlatestnote.html',
-        }).done(function(data) {
-            if (data != latestMessage) {
-                latestMessage = data;
-                var dataJSON;
-                try {
-                    dataJSON = JSON.parse(latestMessage);
-                } catch (e) {
-                    dataJSON = null;
-                }
-                if (dataJSON && dataJSON.DATA!='' && latestMessageTimer!=0) {
-                    $.toast({
-                        text: dataJSON.DATA,
-                        showHideTransition: 'fade',
-                        allowToastClose: true,
-                        hideAfter: 3000,
-                        stack: 5,
-                        position: 'bottom-left',
-                        bgColor: '#444444',
-                        textColor: '#eeeeee',
-                        textAlign: 'left',
-                        loader: true,
-                        loaderBg: '#9EC600',
-                    });
-                }
-            }
-        }).always(function() {
-            latestMessageInFlight = false;
-            clearTimeout(latestMessageTimer);
-            latestMessageTimer = setTimeout(
-                checkLatestMessage,
-                document.hidden ? LATEST_MESSAGE_INTERVAL_HIDDEN : LATEST_MESSAGE_INTERVAL_ACTIVE
-            );
-        });
-    }
-
-    function safeJsonParse(data, fallback) {
-        try {
-            return JSON.parse(data);
-        } catch (e) {
-            return typeof fallback === 'undefined' ? null : fallback;
-        }
-    }
-
-    function applyDbBadgeState($el, value, warnThreshold, dangerThreshold) {
-        $el.removeClass('label-success label-warning label-danger').css('cursor', 'help');
-        if (value <= warnThreshold) {
-            $el.addClass('label-success');
-        } else if (value < dangerThreshold) {
-            $el.addClass('label-warning');
-        } else {
-            $el.addClass('label-danger');
-        }
-    }
-
-
-    $(document).ready(function() {
-        if (!latestMessageLoopStarted) {
-            latestMessageLoopStarted = true;
-            checkLatestMessage();
-        }
-        $(document).on('click', '#btnFilterCloseSearch', function() {
-            $('#filter_modules').val('');
-            filterSearch();
-        });
-        $(document).on('click', '#btnConsoleToggleModule', function() {
-            $('#currModuleName').toggle();
-        });
-        $(document).on('click', '#btnConsoleClose', function() {
-            return consoleToggle();
-        });
-        $(document).on('click', '#stopLoadBtnPreloader', function() {
-            $('#preloader').hide();
-        });
-        $(document).on('click', '#linkToggleLeftPanel', function(e) {
-            e.preventDefault();
-            return leftPanelToggle();
-        });
-        $(document).on('click', '#linkConsoleDebug', function(e) {
-            e.preventDefault();
-            return consoleDebugToggle();
-        });
-    });
-
     function toggleCategory(id) {
         var vl=$.cookie('sub_'+id);
         if (vl == 'off') {
@@ -415,6 +318,9 @@
         if (typeof cachedContent == 'string') {
             window.history.pushState('', window.title, link);
             $('#partLoadContent').html(cachedContent);
+            if (window.MDJAdminUI) {
+                window.MDJAdminUI.boot(document.getElementById('partLoadContent'));
+            }
         } else {
             cachedContent = '';
             loaderTimer=setTimeout(loadInProgress, 2000);
@@ -447,6 +353,9 @@
                 window.history.pushState('', window.title, link);
                 if (cachedContent!=obj.CONTENT) {
                     $('#partLoadContent').html(obj.CONTENT);
+                    if (window.MDJAdminUI) {
+                        window.MDJAdminUI.boot(document.getElementById('partLoadContent'));
+                    }
                     localStorage.setItem(cachedKey,obj.CONTENT);
                 }
                 if (("undefined" !== typeof obj.TITLE) && obj.TITLE != '') {
