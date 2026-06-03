@@ -129,6 +129,13 @@ class objects extends module
      */
     function admin(&$out)
     {
+        if ($this->ajax && $this->view_mode == 'edit_objects' && $this->tab == 'properties') {
+            global $op;
+            if ($op == 'property_history') {
+                $this->renderPropertyHistoryJson();
+            }
+        }
+
         if (isset($this->data_source) && !$_GET['data_source'] && !$_POST['data_source']) {
             $out['SET_DATASOURCE'] = 1;
         }
@@ -1121,6 +1128,227 @@ class objects extends module
         $template = getObjectClassTemplate($object_rec['TITLE']);
         $result['HTML'] = processTitle($template, $this);
         return $result;
+    }
+
+    function renderPropertyHistoryJson()
+    {
+        header("HTTP/1.0: 200 OK\n");
+        header('Content-Type: application/json; charset=utf-8');
+
+        $object_id = (int)$this->id;
+        $property_id = (int)gr('property_id');
+        $range = gr('history_range', 'trim');
+
+        $response = $this->buildPropertyHistoryResponse($object_id, $property_id, $range);
+        echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        global $db;
+        exit;
+    }
+
+    function buildPropertyHistoryResponse($object_id, $property_id, $range)
+    {
+        $object = SQLSelectOne("SELECT * FROM objects WHERE ID=" . (int)$object_id);
+        if (empty($object['ID'])) {
+            return array(
+                'status' => 'error',
+                'message' => 'Object not found'
+            );
+        }
+
+        $property = SQLSelectOne("SELECT * FROM properties WHERE ID=" . (int)$property_id);
+        if (empty($property['ID'])) {
+            return array(
+                'status' => 'error',
+                'message' => 'Property not found'
+            );
+        }
+
+        $object_instance = getObject($object['TITLE']);
+        if (!$object_instance) {
+            return array(
+                'status' => 'error',
+                'message' => 'Object instance not found'
+            );
+        }
+
+        $linked_property_id = $object_instance->getPropertyByName($property['TITLE'], $object_instance->class_id, $object_instance->id);
+        if ((int)$linked_property_id !== (int)$property['ID']) {
+            return array(
+                'status' => 'error',
+                'message' => 'Property is not linked to the selected object'
+            );
+        }
+
+        $range_data = $this->getPropertyHistoryRangeDefinition($range);
+        $property_name = $object['TITLE'] . '.' . $property['TITLE'];
+        $pvalue = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID='" . (int)$property['ID'] . "' AND OBJECT_ID='" . (int)$object['ID'] . "'");
+
+        $history = array();
+        $recent = array();
+        $stats = array(
+            'count' => 0,
+            'min' => null,
+            'max' => null,
+            'avg' => null
+        );
+
+        if (!empty($pvalue['ID'])) {
+            $history = getHistory($property_name, $range_data['start_time'], $range_data['stop_time']);
+            $stats = array(
+                'count' => count($history),
+                'min' => $this->normalizeHistoryMetric(getHistoryMin($property_name, $range_data['start_time'], $range_data['stop_time'])),
+                'max' => $this->normalizeHistoryMetric(getHistoryMax($property_name, $range_data['start_time'], $range_data['stop_time'])),
+                'avg' => $this->normalizeHistoryMetric(getHistoryAvg($property_name, $range_data['start_time'], $range_data['stop_time']))
+            );
+            $recent = $this->getPropertyRecentHistory($pvalue['ID'], $range_data['start_time'], $range_data['stop_time'], 30);
+        }
+
+        $current_value = isset($pvalue['VALUE']) ? $pvalue['VALUE'] : getGlobal($property_name);
+        $chart_data = $this->preparePropertyHistoryChart($history, 160);
+
+        return array(
+            'status' => 'ok',
+            'meta' => array(
+                'object_id' => (int)$object['ID'],
+                'property_id' => (int)$property['ID'],
+                'object_title' => $object['TITLE'],
+                'property_title' => $property['TITLE'],
+                'property_name' => $property_name,
+                'description' => $property['DESCRIPTION'],
+                'keep_history' => (int)$property['KEEP_HISTORY']
+            ),
+            'range' => array(
+                'key' => $range_data['key'],
+                'label' => $range_data['label'],
+                'started_at' => date('c', $range_data['start_time']),
+                'ended_at' => date('c', $range_data['stop_time'])
+            ),
+            'current' => array(
+                'value' => $current_value,
+                'updated' => !empty($pvalue['UPDATED']) ? date('c', strtotime($pvalue['UPDATED'])) : null,
+                'updated_label' => !empty($pvalue['UPDATED']) ? date('d.m.Y H:i:s', strtotime($pvalue['UPDATED'])) : '',
+                'source' => isset($pvalue['SOURCE']) ? $pvalue['SOURCE'] : ''
+            ),
+            'stats' => array(
+                'changes' => (int)$stats['count'],
+                'min' => $stats['min'],
+                'max' => $stats['max'],
+                'avg' => $stats['avg']
+            ),
+            'chart' => $chart_data,
+            'history' => $recent
+        );
+    }
+
+    function getPropertyHistoryRangeDefinition($range)
+    {
+        $definitions = array(
+            '24h' => array('seconds' => 24 * 60 * 60, 'label' => '24 часа'),
+            '7d' => array('seconds' => 7 * 24 * 60 * 60, 'label' => '7 дней'),
+            '30d' => array('seconds' => 30 * 24 * 60 * 60, 'label' => '30 дней'),
+            '90d' => array('seconds' => 90 * 24 * 60 * 60, 'label' => '90 дней')
+        );
+
+        if (empty($definitions[$range])) {
+            $range = '7d';
+        }
+
+        $stop_time = time();
+        $start_time = $stop_time - $definitions[$range]['seconds'];
+
+        return array(
+            'key' => $range,
+            'label' => $definitions[$range]['label'],
+            'start_time' => $start_time,
+            'stop_time' => $stop_time
+        );
+    }
+
+    function getPropertyRecentHistory($value_id, $start_time, $stop_time, $limit = 30)
+    {
+        if (defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1) {
+            $table_name = createHistoryTable($value_id);
+        } else {
+            $table_name = 'phistory';
+        }
+
+        $rows = SQLSelect("SELECT VALUE, SOURCE, ADDED FROM $table_name WHERE VALUE_ID='" . (int)$value_id . "' AND ADDED>=('" . date('Y-m-d H:i:s', $start_time) . "') AND ADDED<=('" . date('Y-m-d H:i:s', $stop_time) . "') ORDER BY ADDED DESC LIMIT " . (int)$limit);
+        $result = array();
+        $total = count($rows);
+
+        for ($i = 0; $i < $total; $i++) {
+            $result[] = array(
+                'value' => $rows[$i]['VALUE'],
+                'source' => $rows[$i]['SOURCE'],
+                'added' => date('c', strtotime($rows[$i]['ADDED'])),
+                'added_label' => date('d.m.Y H:i:s', strtotime($rows[$i]['ADDED']))
+            );
+        }
+
+        return $result;
+    }
+
+    function preparePropertyHistoryChart($history, $max_points = 160)
+    {
+        $points = array();
+        $total = is_array($history) ? count($history) : 0;
+
+        for ($i = 0; $i < $total; $i++) {
+            if (!isset($history[$i]['VALUE']) || !is_numeric($history[$i]['VALUE'])) {
+                continue;
+            }
+
+            $points[] = array(
+                'timestamp' => strtotime($history[$i]['ADDED']),
+                'value' => (float)$history[$i]['VALUE'],
+                'label' => date('d.m H:i', strtotime($history[$i]['ADDED']))
+            );
+        }
+
+        $sampled_points = $this->samplePropertyHistoryPoints($points, $max_points);
+        $values = array();
+        foreach ($sampled_points as $point) {
+            $values[] = $point['value'];
+        }
+
+        return array(
+            'has_data' => count($sampled_points) > 1,
+            'points' => $sampled_points,
+            'min' => count($values) ? min($values) : null,
+            'max' => count($values) ? max($values) : null,
+            'first_label' => count($sampled_points) ? $sampled_points[0]['label'] : '',
+            'last_label' => count($sampled_points) ? $sampled_points[count($sampled_points) - 1]['label'] : ''
+        );
+    }
+
+    function samplePropertyHistoryPoints($points, $max_points)
+    {
+        $total = count($points);
+        if ($total <= $max_points) {
+            return $points;
+        }
+
+        $result = array();
+        $last_index = $total - 1;
+        for ($i = 0; $i < $max_points; $i++) {
+            $index = (int)round(($i / ($max_points - 1)) * $last_index);
+            if (!isset($points[$index])) {
+                continue;
+            }
+            $result[] = $points[$index];
+        }
+
+        return $result;
+    }
+
+    function normalizeHistoryMetric($value)
+    {
+        if ($value === false || $value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (float)$value : $value;
     }
 
     /**
