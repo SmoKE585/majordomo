@@ -410,7 +410,7 @@
                     }
 
                     var scriptLastBlock = (i !== 0) ? $('#scriptLast').html() : '';
-                    $('#scriptLast').html(scriptLastBlock + '<li class="list-group-item"><span class="badge">'+dataCurr.EXECUTED+'</span>'+dataCurr.SCRIPT+'</li>')
+                    $('#scriptLast').html(scriptLastBlock + '<li><span>'+dataCurr.SCRIPT+'</span><span class="badge md-admin-status-badge">'+dataCurr.EXECUTED+'</span></li>')
 
                     i++;
                 }
@@ -431,7 +431,7 @@
                 $('#dashInfoDBReqM').html(data.minute);
                 $('#dashInfoDBReqH').html(data.hours);
                 $('#dashInfoDBConnections').html(data.connections);
-                $('#dashInfoDBConnections').removeClass('label-warning label-danger').addClass('label-success').css('cursor', 'help');
+                $('#dashInfoDBConnections').removeClass('label-warning label-danger').addClass('label-success');
                 applyDbBadgeState($('#dashInfoDBReqS'), data.second, 170, 250);
                 applyDbBadgeState($('#dashInfoDBReqM'), data.minute, 10200, 15000);
                 applyDbBadgeState($('#dashInfoDBReqH'), data.hours, 612000, 900000);
@@ -599,7 +599,7 @@
                 }
             },
             error: function(data) {
-                $('#news_body').html('<div style="min-width: 200px;padding: 10px;background: #ffafaf;border-radius: 10px;text-align: center;">Error sending request - checkNews()</div>');
+                $('#news_body').html('<div class="md-admin-error-state">Error sending request - checkNews()</div>');
             },
         });
 
@@ -616,7 +616,7 @@
                     if($('#myBlockOnDash').is(":hidden") == true) $('#myBlockOnDash').show();
                     $('#myBlockOnDash_title').text(data.name);
                     $('#myBlockOnDash_body').html(data.data.data);
-                    $('#myBlockOnDash').removeClass("panel-info").addClass('panel-'+data.type);
+                    $('#myBlockOnDash').attr('data-md-panel-type', data.type || 'default');
 
                     if(data.reload == true) {
                         setTimeout(function() {
@@ -632,7 +632,7 @@
                             var color = data.moreinfo[value].split('|color:');
                             var color_bg = color[1] ? color[1] : '#999';
 
-                            $('#more_myBlockOnDash_body').prepend('<li class="list-group-item">'+value+'<span class="badge" style="background:'+color_bg+';">'+color[0]+'</span></li>');
+                            $('#more_myBlockOnDash_body').prepend('<li class="list-group-item" style="--md-badge-bg:'+color_bg+';">'+value+'<span class="badge md-admin-status-badge">'+color[0]+'</span></li>');
                             i++;
                         }
                     }
@@ -660,7 +660,7 @@
             //$('#dashInfoBranch').html(data.currBranch.slice(0, -7));
             var versionText = data.currBranch + '_' + data.current_version.slice(0, -33);
             if (data.commitUrl) {
-                $('#dashInfoVersion').html('<a style="color: white;text-decoration: none;" href="' + data.commitUrl + data.current_version + '" target="_blank">' + versionText + '</a>');
+                $('#dashInfoVersion').html('<a class="md-admin-badge-link" href="' + data.commitUrl + data.current_version + '" target="_blank">' + versionText + '</a>');
             } else {
                 $('#dashInfoVersion').html(versionText);
             }

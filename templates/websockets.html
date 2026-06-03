@@ -32,7 +32,7 @@
 			console.log('%c%s', 'color: gray;', '... Подключение к серверу '+serverUrl);
 			
 			$('#wsStatus').html('<#LANG_NEWDASH_DISCONNECTED#>');
-			$('#wsStatus').attr('style', 'background: lightcoral');
+			$('#wsStatus').removeClass('md-admin-status-badge--success').addClass('md-admin-status-badge--danger');
 		if (window.MozWebSocket) {
 		   wsSocket = new MozWebSocket(serverUrl);
 		} else if (window.WebSocket) {
@@ -51,7 +51,7 @@
 			$.publish('wsConnected');
 			
 			$('#wsStatus').html('<#LANG_NEWDASH_CONNECTED#>');
-			$('#wsStatus').attr('style', 'background: #5cb85c');
+			$('#wsStatus').removeClass('md-admin-status-badge--danger').addClass('md-admin-status-badge--success');
 		};
 		wsSocket.onmessage = function(msg) {
 			var response;
@@ -73,7 +73,7 @@
 			console.error('%c%s', 'color: red;', '❌ Отключен от сервера, повтор подключения через 5 секунд...');
 			
 			$('#wsStatus').html('<#LANG_NEWDASH_DISCONNECTED#>');
-			$('#wsStatus').attr('style', 'background: lightcoral');
+			$('#wsStatus').removeClass('md-admin-status-badge--success').addClass('md-admin-status-badge--danger');
 			
 			return;
 		};
