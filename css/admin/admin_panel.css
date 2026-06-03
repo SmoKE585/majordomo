@@ -4634,12 +4634,12 @@ body.md-admin-search-open {
 
 .md-object-history-drawer {
   position: fixed;
-  right: 14px;
-  bottom: 14px;
-  left: 14px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 1090;
   display: flex;
-  max-height: min(86vh, 920px);
+  max-height: min(88vh, 920px);
   flex-direction: column;
   overflow: hidden;
   color: var(--md-admin-text, #1f2933);
@@ -5039,9 +5039,6 @@ body.md-object-history-open .md-object-history-drawer {
   }
 
   .md-object-history-drawer {
-    right: 0;
-    bottom: 0;
-    left: 0;
     max-height: 100vh;
     border-radius: 24px 24px 0 0;
   }
