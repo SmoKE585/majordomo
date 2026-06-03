@@ -59,9 +59,13 @@
   if ($res[0]['ID']) {
    colorizeArray($res);
    $total=count($res);
+   $out['RESULT_TOTAL']=$total;
    for($i=0;$i<$total;$i++) {
     // some action for every record if required
    }
    $out['RESULT']=$res;
+  }
+  if (isset($out['PARENT_METHODS'][0]['ID'])) {
+   $out['PARENT_METHODS_TOTAL']=count($out['PARENT_METHODS']);
   }
 ?>

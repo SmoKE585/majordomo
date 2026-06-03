@@ -46,6 +46,7 @@
   // SEARCH RESULTS
   $res=SQLSelect("SELECT objects.*, classes.TITLE as CLASS_TITLE, locations.TITLE as LOCATION_TITLE FROM objects LEFT JOIN locations ON locations.ID=objects.LOCATION_ID LEFT JOIN classes ON classes.ID=objects.CLASS_ID WHERE $qry ORDER BY objects.TITLE");
   if ($res[0]['ID']) {
+   $out['RESULT_TOTAL']=count($res);
    paging($res, 50, $out); // search result paging
    colorizeArray($res);
 

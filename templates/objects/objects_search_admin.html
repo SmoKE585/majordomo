@@ -1,5 +1,23 @@
-[#if RESULT#]
 <div class="md-admin-module-list md-objects-admin-list">
+    <section class="md-admin-section-card md-objects-list-hero">
+        <div class="md-admin-section-card__body">
+            <div class="md-objects-list-hero__layout">
+                <div class="md-objects-list-hero__main">
+                    <div class="md-objects-list-hero__eyebrow"><#LANG_OBJECTS#></div>
+                    <h1 class="md-objects-list-hero__title"><#LANG_OBJECTS#></h1>
+                    <div class="md-objects-list-hero__summary">Каталог объектов с быстрым переходом к свойствам, методам и связи с классом.</div>
+                    <div class="md-objects-list-hero__stats">
+                        <div class="md-objects-list-hero__stat"><span><#LANG_OBJECTS#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
+                    </div>
+                </div>
+                <div class="md-objects-list-hero__actions">
+                    <a href="?view_mode=edit_objects" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_OBJECT#></a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    [#if RESULT#]
     <div class="md-admin-module-list__toolbar">
         <div class="md-admin-module-list__pagination">
             [#if PAGES#]
@@ -12,7 +30,6 @@
             </ul>
             [#endif PAGES#]
         </div>
-        <a href="?view_mode=edit_objects" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_OBJECT#></a>
     </div>
 
     <form action="?" method="post" name="frmList_objects" class="md-admin-module-list__form">
@@ -25,20 +42,18 @@
                     </button>
                     <div class="md-admin-record-card__content">
                         <div class="md-admin-record-card__title">
-                            <a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=methods" class="md-admin-record-card__class">[#CLASS_TITLE#]</a>
+                            <a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=objects" class="md-admin-record-card__class">[#CLASS_TITLE#]</a>
                             <span class="md-admin-record-card__separator">/</span>
                             <a href="?view_mode=edit_objects&id=[#ID#]&tab=properties" title="<#LANG_EDIT#>">[#TITLE#]</a>
                         </div>
-                        [#if ADD_DESCRIPTION != ''#]
                         <div class="md-admin-record-card__badges">
-                            <span class="label label-default">[#ADD_DESCRIPTION#]</span>
+                            [#if ADD_DESCRIPTION != ''#]<span class="label label-default">[#ADD_DESCRIPTION#]</span>[#endif#]
                         </div>
-                        [#endif#]
                     </div>
                 </div>
                 <div class="md-admin-record-card__meta">
                     <div class="md-admin-record-card__field [#if DESCRIPTION==""#]is-empty[#endif#]">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</div>
-                    <div class="md-admin-record-card__field [#if LOCATION_ID==0#]is-empty[#endif#]">[#if LOCATION_ID == 0#]Room not selected[#else#][#LOCATION_TITLE#][#endif#]</div>
+                    <div class="md-admin-record-card__field [#if LOCATION_ID==0#]is-empty[#endif#]">[#if LOCATION_ID == 0#]-[#else#][#LOCATION_TITLE#][#endif#]</div>
                 </div>
                 <div class="md-admin-record-card__actions">
                     <a href="?view_mode=edit_objects&id=[#ID#]" class="btn btn-light btn-sm" title="<#LANG_EDIT#>"><i class="glyphicon glyphicon-pencil"></i><span><#LANG_EDIT#></span></a>
@@ -52,12 +67,7 @@
             [#end RESULT#]
         </div>
     </form>
-</div>
-[#else#]
-<div class="md-admin-module-list md-objects-admin-list">
-    <div class="md-admin-module-list__toolbar justify-content-end">
-        <a href="?view_mode=edit_objects" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_OBJECT#></a>
-    </div>
+    [#else#]
     <div class="md-admin-empty-state"><#LANG_NO_OBJECTS_DEFINED#></div>
+    [#endif RESULT#]
 </div>
-[#endif RESULT#]

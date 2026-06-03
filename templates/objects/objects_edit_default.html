@@ -1,69 +1,68 @@
-[#if ID#]<div style="padding: 10px;border: 1px solid #dddddd;border-top: 0px;">[#else#]<br>[#endif#]
-	<div class="row" style="margin-right: -15px;margin-left: -15px;">
-		<div class="col-md-12">
-			[#if OK#]
-				<div class="alert alert-success"><#LANG_DATA_SAVED#></div>
-			[#endif OK#]
-			[#if ERR#]
-				<div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
-			[#endif ERR#]
-			
-			
-			<form action="?" method="post" enctype="multipart/form-data" name="frmEdit"  class="form-horizontal">
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_TITLE#>:<font color="red">*</font> <#LANG_HCB#>title<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8"><input type="text"  class="form-control [#if ERR_TITLE#]alert-danger[#endif#]"  name="title" value="[#TITLE#]" required="true"></div>
-				</div>
+<section class="md-admin-section-card md-admin-form-card md-object-edit-card">
+    <div class="md-admin-section-card__body">
+        [#if OK#]
+        <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
+        [#endif OK#]
+        [#if ERR#]
+        <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
+        [#endif ERR#]
 
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_CLASS#>:<font color="red">*</font> <#LANG_HCB#>object_class<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8">
-						<select name="class_id" class="form-control [#if ERR_TITLE#]alert-danger[#endif#]" required="true">
-							<option value="">select
-							[#begin CLASS_ID_OPTIONS#]
-								<option value="[#ID#]"[#if ID="<#CLASS_ID#>"#] selected[#endif#]>[#TITLE#]
-							[#end CLASS_ID_OPTIONS#]
-						</select>
-					</div>
-				</div>
-				
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_DESCRIPTION#>: <#LANG_HCB#>description<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8"><textarea name="description" rows="3" class="form-control" style="width: 100%;min-height: 100px;resize: vertical;max-height: 500px;">[#DESCRIPTION#]</textarea></div>
-				</div>
-				
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_LOCATION#>: <#LANG_HCB#>location<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8">
-						<select name="location_id" class="form-control">
-							<option value="">-
-							[#begin LOCATION_ID_OPTIONS#]
-							<option value="[#ID#]"[#if SELECTED#] selected[#endif#]>[#TITLE#]
-							[#end LOCATION_ID_OPTIONS#]
-						</select>
-					</div>
-				</div>
-				<div class="form-group" style="margin-right: 0px;margin-left: 0px;">
-					<div class="col-lg-12 col-lg-12 col-md-12 col-xs-12 text-center">
-					[#if ID!=""#]
-						<button class="btn btn-default btn-success" type="submit" name="subm"><i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_SUBMIT#></button>
-					[#else ID#]
-						<button class="btn btn-default btn-success" type="submit" name="subm"><i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_ADD#></button>
-					[#endif ID#]
-					<a href="?data_source=<#DATA_SOURCE#>" class="btn btn-danger"><i class="glyphicon glyphicon-floppy-remove"></i> <#LANG_CANCEL#></a>
+        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="objectTitle"><#LANG_TITLE#>: <span class="text-danger">*</span> <#LANG_HCB#>title<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <input type="text" id="objectTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required>
+                </div>
+            </div>
 
-					[#if ID!=""#]
-					<a class="btn btn-info" href="?id=<#ID#>&view_mode=clone" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-folder-open"></i> <#LANG_MAKE_COPY#></a>
-					[#endif#]
-					</div>
-				</div>
-				<input type="hidden" name="id" value="<#ID#>">
-				<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-				<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-				<input type="hidden" name="mode" value="update">
-				<input type="hidden" name="tab" value="<#TAB#>">
-			
-			</form>
-		</div>
-	</div>
-[#if ID#]</div>[#endif#]
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="objectClass"><#LANG_CLASS#>: <span class="text-danger">*</span> <#LANG_HCB#>object_class<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <select name="class_id" id="objectClass" class="form-control form-select [#if ERR_CLASS_ID#]is-invalid[#endif#]" required>
+                        <option value="">select</option>
+                        [#begin CLASS_ID_OPTIONS#]
+                        <option value="[#ID#]"[#if ID="<#CLASS_ID#>"#] selected[#endif#]>[#TITLE#]</option>
+                        [#end CLASS_ID_OPTIONS#]
+                    </select>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="objectDescription"><#LANG_DESCRIPTION#>: <#LANG_HCB#>description<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <textarea name="description" id="objectDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-start mb-4">
+                <label class="col-lg-3 col-form-label" for="objectLocation"><#LANG_LOCATION#>: <#LANG_HCB#>location<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <select name="location_id" id="objectLocation" class="form-control form-select">
+                        <option value="">-</option>
+                        [#begin LOCATION_ID_OPTIONS#]
+                        <option value="[#ID#]"[#if SELECTED#] selected[#endif#]>[#TITLE#]</option>
+                        [#end LOCATION_ID_OPTIONS#]
+                    </select>
+                </div>
+            </div>
+
+            <div class="md-admin-form-actions">
+                [#if ID!=""#]
+                <button class="btn btn-primary" type="submit" name="subm"><#LANG_SUBMIT#></button>
+                [#else ID#]
+                <button class="btn btn-primary" type="submit" name="subm"><#LANG_ADD#></button>
+                [#endif ID#]
+                <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
+                [#if ID!=""#]
+                <a class="btn btn-light" href="?id=<#ID#>&view_mode=clone" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><#LANG_MAKE_COPY#></a>
+                [#endif#]
+            </div>
+
+            <input type="hidden" name="id" value="<#ID#>">
+            <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
+            <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
+            <input type="hidden" name="mode" value="update">
+            <input type="hidden" name="tab" value="<#TAB#>">
+        </form>
+    </div>
+</section>

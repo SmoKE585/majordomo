@@ -18,6 +18,48 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <div class="md-admin-module-page md-classes-page">
+    <section class="md-admin-section-card md-classes-page__hero">
+        <div class="md-admin-section-card__body">
+            <div class="md-classes-page__hero-layout">
+                <div class="md-classes-page__hero-main">
+                    <div class="md-classes-page__eyebrow"><#LANG_CLASSES#></div>
+                    <h1 class="md-classes-page__title">[#TITLE#]</h1>
+                    <div class="md-classes-page__summary">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Класс без описания. Добавьте назначение, ограничения и контракт поведения, чтобы структура была читаемой.[#endif#]</div>
+                    <div class="md-classes-page__meta">
+                        [#if PARENT_ID!="0"#]
+                        <a class="md-classes-page__meta-item" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#PARENT_ID#>&tab=methods">
+                            <span><#LANG_PARENT_CLASS#></span>
+                            <strong>[#PARENT_CLASS_TITLE#]</strong>
+                        </a>
+                        [#endif#]
+                        <div class="md-classes-page__meta-item">
+                            <span><#LANG_METHODS#></span>
+                            <strong>[#METHODS_TOTAL#]</strong>
+                        </div>
+                        <div class="md-classes-page__meta-item">
+                            <span><#LANG_PROPERTIES#></span>
+                            <strong>[#PROPERTIES_TOTAL#]</strong>
+                        </div>
+                        <div class="md-classes-page__meta-item">
+                            <span><#LANG_OBJECTS#></span>
+                            <strong>[#OBJECTS_TOTAL#]</strong>
+                        </div>
+                        <div class="md-classes-page__meta-item">
+                            <span><#LANG_CHILD_ITEMS#></span>
+                            <strong>[#SUB_CLASSES_TOTAL#]</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="md-classes-page__hero-actions">
+                    [#if TAB=""#]
+                    <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=template" class="btn btn-light"><#LANG_CLASS_TEMPLATE#></a>
+                    [#endif#]
+                    <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <nav class="md-admin-module-tabs" aria-label="<#LANG_CLASSES#>">
         <a class="md-admin-module-tabs__link [#if TAB=""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_MAIN#></a>
         <a class="md-admin-module-tabs__link [#if TAB="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>

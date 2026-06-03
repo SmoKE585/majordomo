@@ -237,7 +237,12 @@ if ($this->tab == 'properties') {
         $this->redirect("?view_mode=" . $this->view_mode . "&id=" . $rec['ID'] . "&tab=" . $this->tab);
     }
 
+    $propsCount = is_array($props) ? count($props) : 0;
+    $customPropsCount = is_array($my_props) ? count($my_props) : 0;
     $out['PROPERTIES'] = $props;
+    $out['PROPERTIES_TOTAL'] = $propsCount;
+    $out['CUSTOM_PROPERTIES_TOTAL'] = $customPropsCount;
+    $out['CLASS_PROPERTIES_TOTAL'] = max(0, $propsCount - $customPropsCount);
 }
 // step: methods
 if ($this->tab == 'methods') {
@@ -359,6 +364,7 @@ if ($this->tab == 'methods') {
         }
     }
     $out['METHODS'] = $methods;
+    $out['METHODS_TOTAL'] = is_array($methods) ? count($methods) : 0;
 
 }
 // step: history
@@ -372,6 +378,20 @@ if (is_array($rec)) {
     }
 }
 outHash($rec, $out);
+
+if (!empty($rec['CLASS_ID'])) {
+    $classRec = SQLSelectOne("SELECT ID, TITLE FROM classes WHERE ID=" . (int)$rec['CLASS_ID']);
+    if (!empty($classRec['ID'])) {
+        $out['CLASS_TITLE'] = htmlspecialchars($classRec['TITLE']);
+    }
+}
+
+if (!empty($rec['LOCATION_ID'])) {
+    $locationRec = SQLSelectOne("SELECT ID, TITLE FROM locations WHERE ID=" . (int)$rec['LOCATION_ID']);
+    if (!empty($locationRec['ID'])) {
+        $out['LOCATION_TITLE'] = htmlspecialchars($locationRec['TITLE']);
+    }
+}
 
 if (!isset($rec['ID']) && isset($this->class_id)) {
     $out['CLASS_ID'] = $this->class_id;

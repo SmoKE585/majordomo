@@ -109,5 +109,19 @@ if ($out['TITLE']) {
 	if($subClasses && is_array($subClasses)) {
 		$out['SUB_CLASSES'] = $subClasses;
 	}
-  }
 
+    $propertiesTotal = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM properties WHERE CLASS_ID=".(int)$rec['ID']." AND OBJECT_ID=0");
+    $methodsTotal = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM methods WHERE CLASS_ID=".(int)$rec['ID']." AND OBJECT_ID=0");
+    $objectsTotal = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM objects WHERE CLASS_ID=".(int)$rec['ID']);
+    $out['PROPERTIES_TOTAL'] = (int)$propertiesTotal['TOTAL'];
+    $out['METHODS_TOTAL'] = (int)$methodsTotal['TOTAL'];
+    $out['OBJECTS_TOTAL'] = (int)$objectsTotal['TOTAL'];
+    $out['SUB_CLASSES_TOTAL'] = is_array($subClasses) ? count($subClasses) : 0;
+
+    if ($rec['PARENT_ID']) {
+        $parentRec = SQLSelectOne("SELECT ID, TITLE FROM classes WHERE ID=".(int)$rec['PARENT_ID']);
+        if ($parentRec['ID']) {
+            $out['PARENT_CLASS_TITLE'] = htmlspecialchars($parentRec['TITLE']);
+        }
+    }
+  }
