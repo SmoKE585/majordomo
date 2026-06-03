@@ -804,6 +804,508 @@
         });
     }
 
+    function initAdminConsoleDrawer(root) {
+        var drawer = document.getElementById('console');
+        var backdrop = document.querySelector('.md-admin-console-backdrop');
+        var output = document.getElementById('console_output');
+        var outputHint = document.getElementById('console_output_hintResize');
+        var command = document.getElementById('command');
+        var form = drawer ? drawer.querySelector('form') : null;
+        var moduleSelect = document.getElementById('currModuleName');
+        var moduleField = document.getElementById('module_add');
+        var methodsModule = document.getElementById('methodsModule');
+        var methodsList = methodsModule ? methodsModule.querySelector('ul') : null;
+        var loaderConsole = document.getElementById('loaderConsole');
+        var loaderConsoleModule = document.getElementById('loaderConsoleModule');
+        var dangerAlert = document.getElementById('dangerAlertConsole');
+        var warningAlert = document.getElementById('warningAlertConsole');
+        var historyList = document.getElementById('consoleHistoryList');
+        var toggleModuleButton = document.getElementById('btnConsoleToggleModule');
+        var closeButton = document.getElementById('btnConsoleClose');
+        var clearHistoryButton = document.getElementById('btnConsoleClearHistory');
+        var currentModuleName = '';
+        var consoleHistoryKey = 'md-admin-console-history-v1';
+        var consoleHistory = [];
+        var currentHistoryIndex = -1;
+        var pendingModuleLoad = false;
+
+        if (!drawer || !command || !output) {
+            return;
+        }
+
+        function escapeHtml(value) {
+            return String(value === null || value === undefined ? '' : value).replace(/[&<>"']/g, function (char) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[char];
+            });
+        }
+
+        function openDrawer() {
+            document.body.classList.add('md-admin-console-open');
+            drawer.setAttribute('aria-hidden', 'false');
+            if (window.MDJAdminUI && typeof window.MDJAdminUI.closeSearch === 'function') {
+                window.MDJAdminUI.closeSearch();
+            }
+            window.setTimeout(function () {
+                command.focus();
+            }, 40);
+        }
+
+        function closeDrawer() {
+            document.body.classList.remove('md-admin-console-open');
+            drawer.setAttribute('aria-hidden', 'true');
+        }
+
+        function toggleDrawer() {
+            if (document.body.classList.contains('md-admin-console-open')) {
+                closeDrawer();
+            } else {
+                openDrawer();
+            }
+            return false;
+        }
+
+        function readHistory() {
+            try {
+                var raw = window.localStorage.getItem(consoleHistoryKey);
+                var parsed = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(parsed)) {
+                    return [];
+                }
+                return parsed.filter(function (item) {
+                    return typeof item === 'string' && item.trim() !== '';
+                }).slice(0, 20);
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveHistory(items) {
+            try {
+                window.localStorage.setItem(consoleHistoryKey, JSON.stringify(items.slice(0, 20)));
+            } catch (e) {
+                // Ignore storage errors. Console still works without persistence.
+            }
+        }
+
+        function pushHistory(value) {
+            var normalized = String(value || '').trim();
+            if (!normalized) {
+                return;
+            }
+            consoleHistory = consoleHistory.filter(function (item) {
+                return item !== normalized;
+            });
+            consoleHistory.unshift(normalized);
+            saveHistory(consoleHistory);
+            renderHistory();
+        }
+
+        function renderHistory() {
+            if (!historyList) {
+                return;
+            }
+            historyList.innerHTML = '';
+            if (!consoleHistory.length) {
+                historyList.innerHTML = '<div class="md-admin-console-history__empty">История пуста. После отправки команд она появится здесь и в стрелках textarea.</div>';
+                return;
+            }
+
+            consoleHistory.forEach(function (item) {
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'md-admin-console-history__item';
+                button.setAttribute('data-md-console-history-value', item);
+                button.title = 'Вставить в textarea';
+                button.textContent = item;
+                historyList.appendChild(button);
+            });
+        }
+
+        function setAlerts(kind, message) {
+            if (dangerAlert) {
+                dangerAlert.hidden = kind !== 'danger';
+                dangerAlert.textContent = kind === 'danger' ? message : dangerAlert.textContent;
+            }
+            if (warningAlert) {
+                warningAlert.hidden = kind !== 'warning';
+                warningAlert.textContent = kind === 'warning' ? message : warningAlert.textContent;
+            }
+        }
+
+        function clearAlerts() {
+            if (dangerAlert) {
+                dangerAlert.hidden = true;
+            }
+            if (warningAlert) {
+                warningAlert.hidden = true;
+            }
+        }
+
+        function setLoaderVisible(node, visible) {
+            if (!node) {
+                return;
+            }
+            node.classList.toggle('is-visible', !!visible);
+        }
+
+        function escapeCommandForDisplay(value) {
+            return escapeHtml(value).replace(/\n/g, '<br>');
+        }
+
+        function appendOutputEntry(commandText, resultText, metaText) {
+            var entry = document.createElement('div');
+            entry.className = 'md-admin-console-output__entry';
+
+            var meta = document.createElement('div');
+            meta.className = 'md-admin-console-output__meta';
+            meta.innerHTML = '<strong>' + escapeHtml(metaText || 'console') + '</strong>';
+
+            var commandNode = document.createElement('div');
+            commandNode.className = 'md-admin-console-output__command';
+            commandNode.innerHTML = escapeCommandForDisplay(commandText);
+
+            var resultNode = document.createElement('div');
+            resultNode.className = 'md-admin-console-output__result';
+            resultNode.innerHTML = escapeCommandForDisplay(resultText || '');
+
+            entry.appendChild(meta);
+            entry.appendChild(commandNode);
+            entry.appendChild(resultNode);
+
+            output.prepend(entry);
+        }
+
+        function setOutputMessage(message, kind) {
+            output.innerHTML = '<div class="md-admin-console-output__entry"><div class="md-admin-console-output__meta"><strong>' + escapeHtml(kind || 'console') + '</strong></div><div class="md-admin-console-output__result">' + escapeCommandForDisplay(message) + '</div></div>';
+        }
+
+        function setMethods(methods) {
+            if (!methodsModule || !methodsList) {
+                return;
+            }
+            methodsList.innerHTML = '';
+            if (!Array.isArray(methods) || !methods.length) {
+                methodsModule.hidden = false;
+                methodsList.innerHTML = '<div class="md-admin-console-methods__empty">Для выбранного модуля не найдено доступных методов.</div>';
+                return;
+            }
+
+            methodsModule.hidden = false;
+            methods.forEach(function (methodName) {
+                var method = String(methodName || '').trim();
+                if (!method) {
+                    return;
+                }
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-sm btn-outline-primary md-admin-console-methods__item';
+                button.setAttribute('data-md-console-method', method);
+                button.textContent = '$' + currentModuleName + '->' + method + '();';
+                methodsList.appendChild(button);
+            });
+        }
+
+        function setModuleVisibility(visible) {
+            if (!moduleSelect) {
+                return;
+            }
+            moduleSelect.classList.toggle('is-visible', !!visible);
+        }
+
+        function insertIntoTextarea(value) {
+            var text = String(value || '');
+            if (!text) {
+                return;
+            }
+            command.value = text;
+            command.focus();
+            command.setSelectionRange(command.value.length, command.value.length);
+        }
+
+        function buildModuleBootstrapCommand(moduleName) {
+            return "include(DIR_MODULES.'" + moduleName + "/" + moduleName + ".class.php');PHP_EOL$" + moduleName + " = new " + moduleName + "();";
+        }
+
+        function loadModuleMethods(moduleName) {
+            var module = String(moduleName || '').trim();
+            if (module && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(module)) {
+                setAlerts('danger', 'Invalid module name.');
+                return;
+            }
+            currentModuleName = module;
+            if (!module || module === '0') {
+                moduleField.value = '';
+                methodsModule.hidden = true;
+                methodsList.innerHTML = '';
+                return;
+            }
+
+            moduleField.value = buildModuleBootstrapCommand(module);
+            methodsModule.hidden = false;
+            setLoaderVisible(loaderConsoleModule, true);
+            clearAlerts();
+            pendingModuleLoad = true;
+
+            var body = new URLSearchParams();
+            body.set('ajax_panel', '1');
+            body.set('op', 'console');
+            body.set('command', moduleField.value + "PHP_EOLjson_encode(get_class_methods('" + module + "'));");
+
+            fetch('?ajax_panel=1&op=console', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: body.toString()
+            }).then(function (response) {
+                return response.text();
+            }).then(function (text) {
+                var methods = [];
+                try {
+                    methods = JSON.parse(text);
+                } catch (e) {
+                    methods = [];
+                }
+                setMethods(methods);
+                setOutputMessage('Модуль подключен: ' + module, 'console');
+            }).catch(function () {
+                setMethods([]);
+                setAlerts('warning', 'Не удалось загрузить список методов модуля.');
+            }).finally(function () {
+                pendingModuleLoad = false;
+                setLoaderVisible(loaderConsoleModule, false);
+            });
+        }
+
+        function sendCommand(customCommand) {
+            var rawCommand = typeof customCommand === 'string' ? customCommand : command.value;
+            var trimmedCommand = String(rawCommand || '').trim();
+
+            if (!trimmedCommand) {
+                setAlerts('danger', '<#LANG_NEWDASH_CONSOLE_ERROR_EMPTY#>');
+                return false;
+            }
+
+            if (trimmedCommand === 'clear' || trimmedCommand === 'clear;') {
+                clearAlerts();
+                output.innerHTML = '<div class="md-admin-console-output__entry"><div class="md-admin-console-output__meta"><strong>console</strong></div><div class="md-admin-console-output__result"><em>Console clear!</em></div></div>';
+                command.value = '';
+                setLoaderVisible(loaderConsole, false);
+                return false;
+            }
+
+            clearAlerts();
+            setLoaderVisible(loaderConsole, true);
+
+            var finalCommand = trimmedCommand;
+            if (!customCommand && moduleField && moduleField.value) {
+                finalCommand = moduleField.value + trimmedCommand;
+            }
+
+            var body = new URLSearchParams();
+            body.set('ajax_panel', '1');
+            body.set('op', 'console');
+            body.set('command', finalCommand);
+
+            return fetch('?ajax_panel=1&op=console', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: body.toString()
+            }).then(function (response) {
+                return response.text();
+            }).then(function (text) {
+                var result = text || 'Completed the request';
+                appendOutputEntry(finalCommand, result, 'console');
+                pushHistory(trimmedCommand);
+                command.value = '';
+                if (outputHint) {
+                    outputHint.hidden = false;
+                }
+            }).catch(function () {
+                setAlerts('danger', 'Error sending request.');
+            }).finally(function () {
+                setLoaderVisible(loaderConsole, false);
+                if (!pendingModuleLoad && command) {
+                    command.focus();
+                }
+            });
+        }
+
+        function moveHistory(step) {
+            if (!consoleHistory.length) {
+                return;
+            }
+            if (currentHistoryIndex === -1) {
+                currentHistoryIndex = step > 0 ? 0 : -1;
+            } else if (step > 0) {
+                currentHistoryIndex = Math.min(currentHistoryIndex + 1, consoleHistory.length - 1);
+            } else {
+                currentHistoryIndex = currentHistoryIndex <= 0 ? -1 : currentHistoryIndex - 1;
+            }
+
+            if (currentHistoryIndex === -1) {
+                command.value = '';
+                return;
+            }
+
+            insertIntoTextarea(consoleHistory[currentHistoryIndex] || '');
+        }
+
+        consoleHistory = readHistory();
+        renderHistory();
+
+        if (!output.innerHTML.trim()) {
+            setOutputMessage('Wait command...', 'console');
+        }
+
+        if (drawer.dataset.mdConsoleBound !== '1') {
+            drawer.dataset.mdConsoleBound = '1';
+            drawer.addEventListener('click', function (event) {
+                var historyButton = event.target.closest('[data-md-console-history-value]');
+                if (historyButton) {
+                    event.preventDefault();
+                    insertIntoTextarea(historyButton.getAttribute('data-md-console-history-value'));
+                    return;
+                }
+
+                var methodButton = event.target.closest('[data-md-console-method]');
+                if (methodButton) {
+                    event.preventDefault();
+                    insertIntoTextarea(methodButton.getAttribute('data-md-console-method'));
+                    return;
+                }
+            });
+        }
+
+        if (form && form.dataset.mdConsoleFormBound !== '1') {
+            form.dataset.mdConsoleFormBound = '1';
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                sendCommand();
+            });
+        }
+
+        if (toggleModuleButton && toggleModuleButton.dataset.mdConsoleBound !== '1') {
+            toggleModuleButton.dataset.mdConsoleBound = '1';
+            toggleModuleButton.addEventListener('click', function () {
+                setModuleVisibility(!moduleSelect.classList.contains('is-visible'));
+                if (moduleSelect.classList.contains('is-visible')) {
+                    moduleSelect.focus();
+                }
+            });
+        }
+
+        if (closeButton && closeButton.dataset.mdConsoleBound !== '1') {
+            closeButton.dataset.mdConsoleBound = '1';
+            closeButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                closeDrawer();
+            });
+        }
+
+        if (clearHistoryButton && clearHistoryButton.dataset.mdConsoleBound !== '1') {
+            clearHistoryButton.dataset.mdConsoleBound = '1';
+            clearHistoryButton.addEventListener('click', function () {
+                consoleHistory = [];
+                saveHistory(consoleHistory);
+                renderHistory();
+                command.focus();
+            });
+        }
+
+        if (backdrop && backdrop.dataset.mdConsoleBound !== '1') {
+            backdrop.dataset.mdConsoleBound = '1';
+            backdrop.addEventListener('click', closeDrawer);
+        }
+
+        if (moduleSelect && moduleSelect.dataset.mdConsoleBound !== '1') {
+            moduleSelect.dataset.mdConsoleBound = '1';
+            moduleSelect.addEventListener('change', function () {
+                loadModuleMethods(moduleSelect.value);
+            });
+        }
+
+        if (command.dataset.mdConsoleBound !== '1') {
+            command.dataset.mdConsoleBound = '1';
+            command.addEventListener('keydown', function (event) {
+                if (event.key === 'ArrowUp' && command.selectionStart === 0 && command.selectionEnd === 0) {
+                    event.preventDefault();
+                    moveHistory(1);
+                    return;
+                }
+                if (event.key === 'ArrowDown' && command.selectionStart === command.value.length && command.selectionEnd === command.value.length) {
+                    event.preventDefault();
+                    moveHistory(-1);
+                    return;
+                }
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    sendCommand();
+                }
+            });
+            command.addEventListener('input', function () {
+                currentHistoryIndex = -1;
+            });
+        }
+
+        if (!window.MDJAdminConsoleEscapeBound) {
+            window.MDJAdminConsoleEscapeBound = true;
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && document.body.classList.contains('md-admin-console-open')) {
+                    closeDrawer();
+                }
+            });
+        }
+
+        root.querySelectorAll('[data-md-console-open]').forEach(function (button) {
+            if (button.dataset.mdConsoleOpenBound === '1') {
+                return;
+            }
+            button.dataset.mdConsoleOpenBound = '1';
+            button.addEventListener('click', function (event) {
+                event.preventDefault();
+                openDrawer();
+            });
+        });
+
+        if (!historyList.dataset.mdConsoleBound) {
+            historyList.dataset.mdConsoleBound = '1';
+        }
+
+        window.MDJAdminConsole = {
+            open: openDrawer,
+            close: closeDrawer,
+            toggle: toggleDrawer,
+            send: sendCommand,
+            insertModule: loadModuleMethods,
+            insertCommand: insertIntoTextarea,
+            getHistory: function () {
+                return consoleHistory.slice();
+            },
+            setHistory: function (items) {
+                consoleHistory = Array.isArray(items) ? items.filter(function (item) {
+                    return typeof item === 'string' && item.trim() !== '';
+                }).slice(0, 20) : [];
+                saveHistory(consoleHistory);
+                renderHistory();
+            }
+        };
+
+        if (closeButton) {
+            closeButton.setAttribute('data-md-console-close', '1');
+        }
+    }
+
     function boot(root) {
         copyLegacyBootstrapAttributes(root);
         normalizeLegacyClasses(root);
@@ -816,6 +1318,7 @@
         initClassesTree(root);
         initGlobalSearchDrawer(root);
         initObjectPropertyHistoryDrawer(root);
+        initAdminConsoleDrawer(root);
     }
 
     function initAdminSidebarDrawer() {
@@ -903,6 +1406,16 @@
         openSearch: function (value) {
             if (window.MDJAdminSearch) {
                 window.MDJAdminSearch.open(value);
+            }
+        },
+        closeSearch: function () {
+            if (window.MDJAdminSearch) {
+                window.MDJAdminSearch.close();
+            }
+        },
+        openConsole: function () {
+            if (window.MDJAdminConsole) {
+                window.MDJAdminConsole.open();
             }
         }
     };
@@ -994,12 +1507,6 @@
         $(document).on('click', '#btnFilterCloseSearch', function () {
             $('#filter_modules').val('');
             window.filterSearch();
-        });
-        $(document).on('click', '#btnConsoleToggleModule', function () {
-            $('#currModuleName').toggle();
-        });
-        $(document).on('click', '#btnConsoleClose', function () {
-            return window.consoleToggle();
         });
         $(document).on('click', '#stopLoadBtnPreloader', function () {
             $('#preloader').hide();

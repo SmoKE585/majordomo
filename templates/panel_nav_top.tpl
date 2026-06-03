@@ -48,7 +48,7 @@
                     {/if}</a>
             </li>
             {if $item.NAME=="xray"}
-                <li class="menu-item"><a href="#" onClick='return consoleToggle();'><i
+                <li class="menu-item"><a href="#" data-md-console-open><i
                             class="glyphicon glyphicon-flash"></i> {$smarty.const.LANG_CONSOLE}</a></li>{/if}
         {/if}
     {/if}

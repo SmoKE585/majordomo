@@ -241,18 +241,6 @@
         consoleDebugTimer=setTimeout(updateConsoleDebug, 1000);
     }
 
-    function consoleToggle() {
-        $("#console").toggle();
-
-        if($("#console").is(':visible')) {
-            $('#partLoadContent').css('opacity', '0.3');
-        } else {
-            $('#partLoadContent').css('opacity', '1');
-        }
-
-        return false;
-    }
-
     function consoleDebugToggle() {
         $("#console_debug").toggle();
         if ($('#console_debug').is(':visible')) {
@@ -437,119 +425,6 @@
         return false;
     }
     [#endif#]
-    function insertModuleInConsole(module) {
-        if(module == 0) {
-            $('#module_add').val('');
-            $('#methodsModule').hide();
-
-            $('#console>div:eq(1)').removeClass('col-md-8');
-            $('#console>div:eq(1)').addClass('col-md-12');
-
-            return;
-        }
-
-        moduleStrCommand = "include(DIR_MODULES.'"+module+"/"+module+".class.php');PHP_EOL$"+module+" = new "+module+"();";
-
-        $('#console>div:eq(1)').removeClass('col-md-12');
-        $('#console>div:eq(1)').addClass('col-md-8');
-
-        $('#module_add').val(moduleStrCommand);
-        $('#methodsModule').show();
-
-        sendConsoleCommand(moduleStrCommand + "PHP_EOLjson_encode(get_class_methods('"+module+"'));");
-
-        //Отправляем в консоль
-        //$('#console_output').html('<i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i>: '+moduleStrCommand.replace(/PHP_EOL/g, '<br> &nbsp&nbsp '));
-    }
-
-    function sendConsoleCommand(cmdCustom = '') {
-        if(cmdCustom != '') {
-            var cmd = cmdCustom;
-            $('#loaderConsoleModule').show();
-        } else {
-            var cmd = $('#command').val();
-        }
-
-        if(cmdCustom == '' && $('#module_add').val()) {
-            var parentModule = $('#module_add').val();
-            cmd = parentModule+cmd;
-        }
-
-        if(cmd.toLowerCase() == 'clear' || cmd.toLowerCase() == 'clear;') {
-            data = '<i style="color: gray;">Console clear!</i>';
-            $('#console_output').html(data);
-            return false;
-        }
-
-        if(cmd == '') {
-            $('#dangerAlertConsole').show();
-            return false;
-        }
-        var urlCommand="?";
-
-        $('#loaderConsole').show();
-
-        urlCommand+='ajax_panel=1&op=console&command='+encodeURIComponent(cmd);
-        $.ajax({
-            //url: urlCommand
-            type: "POST",
-            url: "/admin.php",
-            data: urlCommand,
-            success: function(data) {
-                if(cmdCustom) {
-                    $('#loaderConsole').hide();
-                    $('#dangerAlertConsole').hide();
-                    $('#error_console_request').remove();
-                    $('#loaderConsoleModule').hide();
-
-                    data = JSON.parse(data);
-
-                    var currModuleName = $('#currModuleName').val();
-
-                    $('#methodsModule>ul').html('');
-
-                    $('#methodsModule>ul').append('<li class="list-group-item"><a href="javascript://" onclick="$(\'input#command\').val($(\'input#command\').val() + $(this).text());">print_r($'+currModuleName+'->getConfig());</a></li>');
-                    data.forEach(function(item, i) {
-                        $('#methodsModule>ul').append('<li class="list-group-item"><a href="javascript://" onclick="$(\'input#command\').val($(\'input#command\').val() + $(this).text());">$'+currModuleName+'->'+item+'();</a></li>');
-                    });
-                    $('input#command').val('');
-                    data = '<i style="color: gray;">Console clear!</i>';
-                    $('#console_output').html(data);
-                    return;
-                }
-
-                var old_data = $('#console_output').html();
-
-                if(!data) {
-                    data = '<i>Completed the request</i>';
-                }
-
-                $('#console_output').html('<i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i>: <span style="white-space: pre-wrap;">'+data+ '</span><br><i style="font-size: 7pt;" class="glyphicon glyphicon-chevron-right"></i>: '+ cmd.replace(/PHP_EOL/g, '<br> &nbsp&nbsp ') + '<br>' + old_data);
-                $('#console_output_hintResize').show();
-                $('#loaderConsole').hide();
-                $('#dangerAlertConsole').hide();
-                //$('#warningAlertConsole').hide();
-                //$('#console_output').show();
-
-                $('#error_console_request').remove();
-            },
-            error: function(data){
-                if(cmdCustom) {
-                    return data;
-                }
-
-                $('#dangerAlertConsole').hide();
-                //$('#warningAlertConsole').hide();
-                $('#loaderConsole').hide();
-                $('#console_output_hintResize').hide();
-
-                //$('#console_output').show();
-                $('#console_output').html('<div id="error_console_request" style="min-width: 200px;padding: 10px;border: 3px solid #fa0000;border-radius: 10px;text-align: center;color: white;">Error sending request - sendConsoleCommand()</div>');
-            },
-        });
-        return false;
-    }
-
     function dismissNotification(id) {
 
         var url = '?ajax_panel=1&op=dismiss_notification&id='+id;
