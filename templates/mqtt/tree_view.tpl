@@ -2,28 +2,27 @@
     .md-mqtt-tree {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
     }
 
     .md-mqtt-tree__node {
-        padding: 14px;
+        padding: 8px 10px;
         background: rgba(255, 255, 255, .92);
         border: 1px solid rgba(31, 41, 51, .08);
-        border-radius: 18px;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, .05);
-        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+        border-radius: 14px;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, .04);
+        transition: box-shadow .16s ease, border-color .16s ease;
     }
 
     .md-mqtt-tree__node:hover {
-        transform: translateY(-1px);
-        border-color: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .22);
-        box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
+        border-color: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .18);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, .06);
     }
 
     .md-mqtt-tree__row {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto;
-        gap: 12px;
+        gap: 6px;
         align-items: flex-start;
     }
 
@@ -32,21 +31,22 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 34px;
-        height: 34px;
-        flex: 0 0 34px;
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
         color: var(--md-admin-primary, #4792d1);
         background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .11);
         border: 0;
-        border-radius: 12px;
+        border-radius: 10px;
     }
 
     .md-mqtt-tree__toggle i {
         transition: transform .18s ease;
+        transform: rotate(0deg);
     }
 
     .md-mqtt-tree__toggle[aria-expanded="true"] i {
-        transform: rotate(180deg);
+        transform: rotate(90deg);
     }
 
     .md-mqtt-tree__toggle:focus-visible,
@@ -63,31 +63,31 @@
     .md-mqtt-tree__title {
         display: inline-flex;
         align-items: baseline;
-        gap: 8px;
+        gap: 4px;
         color: var(--md-admin-text, #1f2933);
-        font-size: .98rem;
-        font-weight: 800;
+        font-size: .88rem;
+        font-weight: 700;
         word-break: break-word;
     }
 
     .md-mqtt-tree__meta {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 8px;
+        gap: 4px;
+        margin-top: 4px;
     }
 
     .md-mqtt-tree__value,
     .md-mqtt-tree__linked {
         display: inline-flex;
         align-items: center;
-        min-height: 28px;
-        padding: 5px 9px;
+        min-height: 22px;
+        padding: 2px 7px;
         color: var(--md-admin-text, #1f2933);
         background: rgba(248, 251, 254, .95);
         border: 1px solid rgba(31, 41, 51, .06);
         border-radius: 999px;
-        font-size: .84rem;
+        font-size: .8rem;
         overflow-wrap: anywhere;
     }
 
@@ -99,23 +99,23 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 34px;
-        height: 34px;
+        width: 28px;
+        height: 28px;
         color: #c92a2a;
-        border-radius: 12px;
+        border-radius: 10px;
         opacity: .35;
         transition: opacity .15s ease, background .15s ease;
     }
 
     .md-mqtt-tree__children {
-        margin-top: 12px;
-        padding-left: 16px;
+        margin-top: 6px;
+        padding-left: 10px;
         margin-left: 2px;
         border-left: 2px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
     }
 
     .md-mqtt-tree__children .md-mqtt-tree__node {
-        margin-top: 10px;
+        margin-top: 2px;
         background: rgba(248, 251, 254, .9);
     }
 </style>
@@ -123,7 +123,13 @@
 <script type="text/JavaScript">
     function rememberBranchStatus(title, status) {
         var url="?ajax=1&op=branch_status&status="+status+"&branch="+encodeURIComponent(title);
-        $.ajax({url: url});
+        if (window.fetch) {
+            fetch(url, { credentials: 'same-origin' });
+        } else if (window.XMLHttpRequest) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.send();
+        }
     }
 
     function getDirectChildren(node) {
@@ -181,13 +187,13 @@
             <article class="md-mqtt-tree__node {if isset($item.RESULT)}is-branch{else}is-leaf{/if}" title="{$item.TITLE}" data-branch-title="{$item.TITLE}">
                 <div class="md-mqtt-tree__row">
                     {if isset($item.RESULT)}
-                        <button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="{if isset($item.IS_VISIBLE) && $item.IS_VISIBLE==1}true{else}false{/if}" aria-label="Toggle branch">
-                            <i class="glyphicon glyphicon-chevron-down"></i>
-                        </button>
-                    {else}
-                        <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
-                            <i class="glyphicon glyphicon-record"></i>
-                        </span>
+            <button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="{if isset($item.IS_VISIBLE) && $item.IS_VISIBLE==1}true{else}false{/if}" aria-label="Toggle branch">
+                <i class="glyphicon glyphicon-chevron-right"></i>
+            </button>
+        {else}
+            <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
+                <i class="glyphicon glyphicon-record"></i>
+            </span>
                     {/if}
 
                     <div class="md-mqtt-tree__content">

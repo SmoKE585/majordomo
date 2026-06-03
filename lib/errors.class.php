@@ -207,7 +207,7 @@ function majordomoExceptionHandler($e)
 
 function majordomoErrorHandler($errno, $errmsg, $filename, $linenum)
 {
-    if (error_reporting() === 0 || error_reporting() == 4437) return; //whitevast: отключаем ошибки, заглушенные @
+    if (!(error_reporting() & $errno)) return; // suppress warnings hidden by @ or current error_reporting mask
     if (in_array($errno, array(E_NOTICE, E_DEPRECATED))) return;
 
     $errorCode = $errno;

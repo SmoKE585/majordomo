@@ -484,6 +484,15 @@ html[data-bs-theme="dark"] {
 .glyphicon-download-alt::before { content: "\f30a"; }
 .glyphicon-stop::before { content: "\f593"; }
 .glyphicon-chevron-right::before { content: "\f285"; }
+.glyphicon-record::before {
+  content: "";
+  display: inline-block;
+  width: .5em;
+  height: .5em;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
 .glyphicon-log-out::before { content: "\f1c3"; }
 .glyphicon-cloud-download::before { content: "\f29b"; }
 .glyphicon-send::before { content: "\f565"; }
