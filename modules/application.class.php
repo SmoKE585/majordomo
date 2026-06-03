@@ -36,6 +36,10 @@ class application extends module
     {
         $action = gr('action');
         if ($action != '') $this->action = $action;
+        $ajax = gr('ajax');
+        if ($ajax) {
+            $this->ajax = 1;
+        }
     }
 
 // --------------------------------------------------------------------
@@ -120,6 +124,30 @@ class application extends module
             }
 
             exit;
+        }
+
+        if ($this->ajax && $this->action) {
+            global $ajax;
+            $ajax = 1;
+            if (file_exists(DIR_MODULES . $this->action)) {
+                ignore_user_abort(1);
+
+                if (defined('SETTINGS_SITE_LANGUAGE') && file_exists(ROOT . 'languages/' . $this->action . '_' . SETTINGS_SITE_LANGUAGE . '.php')) {
+                    include_once(ROOT . 'languages/' . $this->action . '_' . SETTINGS_SITE_LANGUAGE . '.php');
+                }
+
+                if (file_exists(ROOT . 'languages/' . $this->action . '_default.php')) {
+                    include_once(ROOT . 'languages/' . $this->action . '_default.php');
+                }
+
+                include_once(DIR_MODULES . $this->action . '/' . $this->action . '.class.php');
+                $object = new $this->action;
+                $object->owner = &$this;
+                $object->getParams();
+                $object->ajax = 1;
+                $object->run();
+            }
+            return;
         }
 
         if (!$this->action && (!defined('SETTINGS_SITE_LANGUAGE') || !defined('SETTINGS_SITE_TIMEZONE') || !defined('SETTINGS_HOOK_BEFORE_SAY'))) {
@@ -354,32 +382,6 @@ class application extends module
 
 
         if ($this->ajax && $this->action) {
-            global $ajax;
-            $ajax = 1;
-            if (file_exists(DIR_MODULES . $this->action)) {
-                ignore_user_abort(1);
-
-                if (defined('SETTINGS_SITE_LANGUAGE') && file_exists(ROOT . 'languages/' . $this->action . '_' . SETTINGS_SITE_LANGUAGE . '.php'))
-                    include_once(ROOT . 'languages/' . $this->action . '_' . SETTINGS_SITE_LANGUAGE . '.php');
-
-                if (file_exists(ROOT . 'languages/' . $this->action . '_default.php'))
-                    include_once(ROOT . 'languages/' . $this->action . '_default.php');
-
-                include_once(DIR_MODULES . $this->action . '/' . $this->action . '.class.php');
-                $obj = "\$object$i";
-                $code = "";
-                $code .= "$obj=new " . $this->action . ";\n";
-                $code .= $obj . "->owner=&\$this;\n";
-                $code .= $obj . "->getParams();\n";
-                $code .= $obj . "->ajax=1;\n";
-                $code .= $obj . "->run();\n";
-                startMeasure("module_" . $this->action);
-                setEvalCode($code);
-                eval($code);
-                setEvalCode();
-                endMeasure("module_" . $this->action);
-
-            }
             return;
         } else {
             $this->data = $out;
