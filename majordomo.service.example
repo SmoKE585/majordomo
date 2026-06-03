@@ -1,0 +1,19 @@
+[Unit]
+Description=MajorDoMo
+# Do not use Requires=mysql.service/apache2.service here: systemd will stop
+# MajorDoMo when those services are restarted and will not automatically bring
+# it back after a dependency stop.
+After=network-online.target mysql.service mariadb.service
+Wants=network-online.target mysql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/majordomo
+ExecStart=/usr/bin/php /var/www/majordomo/cycle.php
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

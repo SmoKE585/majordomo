@@ -15,6 +15,36 @@ include_once("./lib/threads.php");
 
 DebMes('Main cycle starting, pid=' . getmypid() . ', root=' . ROOT, 'boot');
 
+$mainCycleStarted = time();
+$mainCycleShutdownExpected = false;
+$threads = null;
+
+register_shutdown_function(function () use (&$threads, &$mainCycleStarted, &$mainCycleShutdownExpected) {
+    $error = error_get_last();
+    $reason = $mainCycleShutdownExpected ? 'expected' : 'unexpected';
+    $details = 'Main cycle shutdown, pid=' . getmypid()
+        . ', reason=' . $reason
+        . ', uptime=' . (time() - (int)$mainCycleStarted) . 's';
+    if (isset($threads) && is_object($threads) && isset($threads->handles)) {
+        $details .= ', active_threads=' . count($threads->handles);
+    }
+    if (is_array($error) && isset($error['type'])) {
+        $details .= ', last_error=' . $error['message'] . ' in ' . $error['file'] . ':' . $error['line'];
+    }
+    DebMes($details, 'boot');
+});
+
+if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
+    pcntl_async_signals(true);
+    foreach (array(SIGTERM, SIGINT, SIGHUP) as $mainCycleSignal) {
+        pcntl_signal($mainCycleSignal, function ($signal) use (&$mainCycleShutdownExpected) {
+            $mainCycleShutdownExpected = true;
+            DebMes('Main cycle got signal ' . (int)$signal . ', pid=' . getmypid(), 'boot');
+            exit;
+        });
+    }
+}
+
 function buildCycleStopReason($cycleTitle, $closedThread, $exitCode = null, $termSig = null, $stopRequested = false, $restartRequested = false, $lastError = '')
 {
     $reasons = array();
@@ -516,10 +546,36 @@ $to_start = array();
 $to_stop = array();
 $started_when = array();
 $is_running = array();
+$last_no_threads_log = 0;
 
 $thisComputerObject = getObject('Computer.ThisComputer');
 
-while (false !== ($result = $threads->iteration())) {
+while (true) {
+    $result = $threads->iteration();
+    if ($result === false) {
+        if ((time() - $last_no_threads_log) >= 30) {
+            DebMes('No active cycle threads left. Scheduling all enabled cycles for restart.', 'boot');
+            addCycleRuntimeLog('cycle_controller', 'No active cycle threads left. Scheduling all enabled cycles for restart.');
+            $last_no_threads_log = time();
+        }
+        $is_running = array();
+        foreach ($cycles as $path) {
+            if (!preg_match('/(cycle_.+?)\.php/is', $path, $m)) {
+                continue;
+            }
+            $title = $m[1];
+            if (getGlobal($title . 'Disabled')) {
+                continue;
+            }
+            if (!isset($to_start[$title])) {
+                $to_start[$title] = time() + 2;
+                setCycleRuntimeStatus($title, 'starting', 'Scheduled after controller detected no active threads');
+                addCycleRuntimeLog($title, 'Scheduled after controller detected no active threads');
+            }
+        }
+        $result = '';
+        sleep(1);
+    }
 
     if ((time() - $last_cycles_control_check) >= 5 || !empty($result)) {
 
@@ -757,4 +813,5 @@ while (false !== ($result = $threads->iteration())) {
     }
 }
 
+$mainCycleShutdownExpected = true;
 resetRebootRequired();
