@@ -1,47 +1,56 @@
-<div class="col-lg-2 col-md-3 col-sm-4 col-xs-12" style="margin-bottom: 10px;" id="left_block">
-    <div class="panel-group">
-        <div id="hint_alert_hide_hint2" style="display:none;">
+<aside class="col-lg-2 col-md-3 col-sm-4 col-xs-12 md-admin-sidebar" id="left_block">
+    <div class="md-admin-sidebar__inner">
+        <div id="hint_alert_hide_hint2" class="md-admin-sidebar__hint-wrap">
             <div class="hidden-xs">
-                <div class="alert" id="hideMenuHint" onClick="return leftPanelToggle();" style="margin-bottom: 0px;cursor:pointer;font-size: 8pt;background: radial-gradient(circle farthest-corner at 450px 10px, #198f22, #86bea4);color: white;padding: 5px;text-align: center;">
-                    <i class="glyphicon glyphicon-exclamation-sign" style="font-weight: normal;margin-right: 5px;"></i>
-                    <#LANG_NEWDASH_HIDE_MENU_HINT#> <i class="glyphicon glyphicon-resize-horizontal"></i>
-                </div>
-                <div onclick="hideHintCookie('alert_hide_hint2');" style="cursor:pointer;text-align: center;font-size: 7pt;margin-top: 5px;color: gray;font-style: italic;margin-bottom:20px"><#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#> <i class="glyphicon glyphicon-arrow-up"></i></div>
+                <button type="button" class="md-admin-hint md-admin-hint--success" id="hideMenuHint" onClick="return leftPanelToggle();">
+                    <i class="glyphicon glyphicon-exclamation-sign"></i>
+                    <span><#LANG_NEWDASH_HIDE_MENU_HINT#></span>
+                    <i class="glyphicon glyphicon-resize-horizontal"></i>
+                </button>
+                <button type="button" class="md-admin-muted-action" onclick="hideHintCookie('alert_hide_hint2');">
+                    <#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#> <i class="glyphicon glyphicon-arrow-up"></i>
+                </button>
             </div>
         </div>
-        [#begin SUB_MODULES#]
-        [#if NEW_CATEGORY#]
-        <div class="panel panel-default">
-            <div class="panel-heading" onClick="return toggleCategory('[#CATEGORY_ID#]');" style="cursor: pointer;">
-                <h4 class="panel-title">
-                    [#CATEGORY#]
-                </h4>
-            </div>
-            <div id="row_[#CATEGORY_ID#]" class="panel-collapse collapse out">
-                <div class="panel-body" style="padding: 5px;">
-                    <ul class="nav nav-list">
-                        [#endif NEW_CATEGORY#]
-                        [#if !DENIED#]
-                        <li class="[#if SELECTED#]active[#endif#] category[#CATEGORY_ID#]" id="module_[#NAME#]_link">
-                            <a class="leftmenutab" href="?action=[#NAME#]"><img src="[#ICON_SM#]" style="width: 20px;height: 20px;">&nbsp;[#TITLE#]
+
+        <nav class="md-admin-sidebar__nav" aria-label="Admin modules">
+            [#begin SUB_MODULES#]
+            [#if NEW_CATEGORY#]
+            <section class="md-admin-sidebar__group">
+                <button type="button" class="md-admin-sidebar__group-title" onClick="return toggleCategory('[#CATEGORY_ID#]');">
+                    <span>[#CATEGORY#]</span>
+                    <i class="glyphicon glyphicon-arrow-down"></i>
+                </button>
+                <div id="row_[#CATEGORY_ID#]" class="panel-collapse collapse out">
+                    <ul class="md-admin-sidebar__list">
+            [#endif NEW_CATEGORY#]
+
+            [#if !DENIED#]
+                        <li class="md-admin-sidebar__item [#if SELECTED#]active[#endif#] category[#CATEGORY_ID#]" id="module_[#NAME#]_link">
+                            <a class="md-admin-sidebar__link leftmenutab" href="?action=[#NAME#]">
+                                <img src="[#ICON_SM#]" alt="" class="md-admin-sidebar__icon">
+                                <span class="md-admin-sidebar__label">[#TITLE#]</span>
                                 [#if NOTIFICATIONS_COUNT != 0#]
-                                <span class="badge pull-right alert-[#NOTIFICATIONS_TYPE#]" style="border: 1px solid;cursor: pointer;"  data-container="body" data-toggle="popover" data-trigger="manual" data-placement="bottom" data-html="true" >[#NOTIFICATIONS_COUNT#]</span>
-                                [#endif NOTIFICATIONS_COUNT#]</a>
+                                <span class="badge md-admin-sidebar__badge alert-[#NOTIFICATIONS_TYPE#]" data-bs-container="body" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-html="true">[#NOTIFICATIONS_COUNT#]</span>
+                                [#endif NOTIFICATIONS_COUNT#]
+                            </a>
                         </li>
-                        [#endif DENIED#]
-                        [#if LAST_IN_CATEGORY#]
+            [#endif DENIED#]
+
+            [#if LAST_IN_CATEGORY#]
                     </ul>
                 </div>
-            </div>
-        </div>
-        [#endif#]
-        [#end SUB_MODULES#]
+            </section>
+            [#endif#]
+            [#end SUB_MODULES#]
+        </nav>
     </div>
+
     [#begin SUB_MODULES#]
     [#if NEW_CATEGORY#]
-    <script language='javascript'>
+    <script language="javascript">
         checkCategory('[#CATEGORY_ID#]');
     </script>
     [#endif NEW_CATEGORY#]
     [#end SUB_MODULES#]
-</div>
+</aside>

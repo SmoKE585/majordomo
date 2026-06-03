@@ -3,12 +3,26 @@
 <script src="<#ROOTHTML#>3rdparty/amcharts/material.js"></script>
 <script src="<#ROOTHTML#>3rdparty/amcharts/animated.js"></script>
 
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-    <div class="col-md-5">
+<div class="md-admin-dashboard">
+	<section class="md-admin-dashboard__hero">
+		<div>
+			<p class="md-admin-eyebrow">MajorDoMo</p>
+			<h1><#LANG_CONTROL_PANEL#></h1>
+			<p class="md-admin-dashboard__lead"><#LANG_NEWDASH_SYSTEM_INFO#> / X-Ray / <#LANG_NEWDASH_LAST_SCRIPTS#></p>
+		</div>
+		<div class="md-admin-dashboard__hero-actions">
+			<a href="?(panel:{action=devices})&md=devices&view_mode=edit_devices" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_DEVICE#></a>
+			<a href="?(panel:{action=scripts})&md=scripts&inst=adm&view_mode=edit_scripts" class="btn btn-outline-primary"><i class="glyphicon glyphicon-plus"></i> <#LANG_SCRIPT#></a>
+			<a href="?action=xray" class="btn btn-light"><i class="glyphicon glyphicon-dashboard"></i> X-Ray</a>
+		</div>
+	</section>
+
+<div class="row md-admin-dashboard__grid">
+    <div class="col-md-5 md-admin-dashboard__column">
 		<!--processSubscription panelBlockLeft-->
 		<div id="hint_blockaddnewdev" style="display:none">
-			<div class="panel panel-default" style="margin-bottom: 0px;">
-				<div class="panel-body">
+			<div class="panel panel-default md-admin-card md-admin-quick-card">
+				<div class="panel-body md-admin-quick-actions">
 					<a href="?(panel:{action=devices})&md=devices&view_mode=edit_devices" class="btn btn-default"><i class="glyphicon glyphicon-plus"></i> <#LANG_DEVICE#></a>
 					<a href="?(panel:{action=scripts})&md=scripts&inst=adm&view_mode=edit_scripts" class="btn btn-default"><i class="glyphicon glyphicon-plus"></i> <#LANG_SCRIPT#></a>
 					<a href="?(panel:{action=objects})&md=objects&view_mode=edit_objects&id=" class="btn btn-default"><i class="glyphicon glyphicon-plus"></i> <#LANG_OBJECT#></a>
@@ -18,7 +32,7 @@
 			<div onclick="hideHintCookie('blockaddnewdev');" style="margin-bottom: 20px;cursor:pointer;text-align: center;font-size: 7pt;margin-top: 5px;color: gray;font-style: italic;"><#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#> <i class="glyphicon glyphicon-arrow-up"></i></div>
 		</div>
 		<!--- Генерация своего блока --->
-		<div class="panel panel-info" id="myBlockOnDash" style="display:none;">
+		<div class="panel panel-info md-admin-card" id="myBlockOnDash" style="display:none;">
 			<div class="panel-heading">
 				<div style="float: left"><h3 class="panel-title" id="myBlockOnDash_title"></h3></div>
 				<div style="float: right"><i id="hideTogglemyBlock" style="cursor:pointer;" onclick="return toggleCategory('myBlockDiv');" class="glyphicon glyphicon-eye-close"></i></div>
@@ -37,16 +51,16 @@
 
 		<div id="hint_addMyBlockHint" style="display:none">
 		<div class="text-center" id="addMyBlockHint" style="display:none;margin-bottom: 20px;">
-			<a style="color: lightgray;text-decoration: none;" href="javascript://" data-toggle="modal" data-target="#modalHowMyBlock"><#LANG_NEWDASH_DMB_TITLE#></a>
+			<a style="color: lightgray;text-decoration: none;" href="javascript://" data-bs-toggle="modal" data-bs-target="#modalHowMyBlock"><#LANG_NEWDASH_DMB_TITLE#></a>
 			<div onclick="hideHintCookie('addMyBlockHint');" style="margin-bottom: 20px;cursor:pointer;text-align: center;font-size: 7pt;margin-top: 5px;color: gray;font-style: italic;"><#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#> <i class="glyphicon glyphicon-arrow-up"></i></div>
 		</div>
 		</div>
 		
-		<div class="modal fade" id="modalHowMyBlock" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		<div class="modal fade" id="modalHowMyBlock" tabindex="-1" aria-labelledby="myModalLabel" aria-hidden="true">
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<#LANG_CLOSE#>"></button>
 						<h4 class="modal-title" id="myModalLabel"><#LANG_NEWDASH_DMB_TITLE_MODAL#></h4>
 					</div>
 					<div class="modal-body">
@@ -77,7 +91,7 @@
 						</ul>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-default" data-dismiss="modal"><#LANG_CLOSE#></button>
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><#LANG_CLOSE#></button>
 					</div>
 				</div>
 			</div>
@@ -85,7 +99,7 @@
 		<!--- Генерация своего блока --->
 		
 		
-		<div class="panel panel-default">
+		<div class="panel panel-default md-admin-card">
 			<div class="panel-heading">
 				<div style="float: left"><h3 class="panel-title"><#LANG_NEWDASH_SYSTEM_INFO#></h3></div>
 				<div style="float: right"><i style="cursor:pointer;" onclick="return toggleCategory('infoBlockDiv');" class="glyphicon glyphicon-eye-close"></i></div>
@@ -134,7 +148,7 @@
 						<li class="list-group-item">
 							<#LANG_THEME#>
 							<span class="badge" style="background:transparent;">
-								<div class="btn-group" data-toggle="buttons">
+								<div class="btn-group md-admin-theme-switch" role="group" aria-label="<#LANG_THEME#>">
 									<label class="btn btn-sm btn-primary" style="padding: 0px 5px;font-size: 1.1rem;background: #474747;border: 0px;">
 										<input type="radio" onChange="if($(this).is(':checked')) document.documentElement.setAttribute('data-bs-theme', 'dark');$.cookie('theme', 'dark', {expires: 180});"> <#LANG_THEME_DARK#>
 									</label>
@@ -149,7 +163,7 @@
 				</div>
 			</div>
 		</div>
-		<div class="panel panel-default">
+		<div class="panel panel-default md-admin-card">
 			<div class="panel-heading">
 				<div style="float: left"><h3 class="panel-title"><#LANG_NEWDASH_CYCLE_CONTROL#> <i class="glyphicon glyphicon-arrow-right" style="color: darkgray;font-size: 10pt;"></i> <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=services">X-Ray</a></h3></div>
 				<div style="float: right"><i style="cursor:pointer;" onclick="return toggleCategory('cycleBlockDiv');" class="glyphicon glyphicon-eye-close"></i></div>
@@ -212,7 +226,7 @@
 				</div>
 			</div>
 		</div>
-		<div class="panel panel-default">
+		<div class="panel panel-default md-admin-card">
 			<div class="panel-heading">
 				<div style="float: left"><h3 class="panel-title"><#LANG_NEWDASH_LAST_SCRIPTS#> <i class="glyphicon glyphicon-arrow-right" style="color: darkgray;font-size: 10pt;"></i> <a href="?pd=pz_&md=panel&inst=&action=scripts"><i><#LANG_NEWDASH_LAST_SCRIPTS_GO#></i></a></h3></div>
 				<div style="float: right"><i style="cursor:pointer;" onclick="return toggleCategory('scriptBlockDiv');" class="glyphicon glyphicon-eye-close"></i></div>
@@ -229,7 +243,7 @@
 		</div>
 		
 	</div>
-	<div class="col-md-7">
+	<div class="col-md-7 md-admin-dashboard__column">
 		<!--processSubscription panelBlockRight-->
 		<script type="text/javascript">
 		am4core.ready(function() {
@@ -296,7 +310,7 @@
 		});
 		</script>
 
-		<div class="panel panel-default">
+		<div class="panel panel-default md-admin-card">
 		<div class="panel-heading">
 			<div style="float: left"><h3 class="panel-title"><#LANG_NEWDASH_HINT_BIG_DATA_DB#>  <i class="glyphicon glyphicon-arrow-right" style="color: darkgray;font-size: 10pt;"></i> <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=database">X-Ray</a></h3></div>
 			<div style="float: right"><i style="cursor:pointer;" onclick="return toggleCategory('tablesBlockDiv');" class="glyphicon glyphicon-eye-close"></i></div>
@@ -310,8 +324,8 @@
 		</div>
 		
 		<div id="hint_blockdidyouknow" style="display:none;">
-			<div id="didyouknow" class="alert alert-dismissable hidden-xs" style="background-color: #f5f5f5;margin-bottom: 0px;">
-				<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+			<div id="didyouknow" class="alert alert-dismissible hidden-xs md-admin-soft-alert">
+				<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<#LANG_CLOSE#>"></button>
 				<div id="didyouknow_body" class="text-center">
 					<img src="<#ROOTHTML#>img/ajax-loader.gif"/> <#LANG_NEWDASH_LOADING#>
 				</div>
@@ -319,7 +333,7 @@
 			<div class="hidden-xs" onclick="hideHintCookie('blockdidyouknow');" style="margin-bottom: 20px;cursor:pointer;text-align: center;font-size: 7pt;margin-top: 5px;color: gray;font-style: italic;"><#LANG_NEWDASH_DONTSHOW_THIS_BLOCK#> <i class="glyphicon glyphicon-arrow-up"></i></div>
 		</div>
 		
-		<div class="panel panel-default">
+		<div class="panel panel-default md-admin-card">
 			<div class="panel-heading">
 				<div style="float: left"><h3 class="panel-title"><#LANG_NEWDASH_NEWS#> <i class="glyphicon glyphicon-arrow-right" style="color: darkgray;font-size: 10pt;"></i> <a href="https://connect.smartliving.ru/blog.html" target="_blank"><i><#LANG_NEWDASH_NEWS_MORE#></i></a></h3></div>
 				<div style="float: right"><i style="cursor:pointer;" onclick="return toggleCategory('newsBlockDiv');" class="glyphicon glyphicon-eye-close"></i></div>
@@ -332,13 +346,14 @@
 			</div>
 		</div>
 
-		<div class="panel panel-default">
+		<div class="panel panel-default md-admin-card">
 			<div class="panel-body text-right">
 				<a href="#" onclick="return resetHintCookies()" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-eye-open"></i> <#LANG_NEWDASH_RESET_VISIBILITY#></a>
 			</div>
 		</div>
 
     </div>
+</div>
 </div>
 
 <script type="text/javascript">
