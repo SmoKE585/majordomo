@@ -35,6 +35,38 @@ function checkCycleFromCache($key)
     }
 }
 
+function ensureCachedValuesTable()
+{
+    static $checked = false;
+    if ($checked) {
+        return true;
+    }
+
+    if (SQLTableExists('cached_values')) {
+        $checked = true;
+        return true;
+    }
+
+    if (defined('CACHE_VALUE_MAX_SIZE')) {
+        $cache_value_max_size = CACHE_VALUE_MAX_SIZE;
+    } else {
+        $cache_value_max_size = 255;
+    }
+
+    $sqlQuery = "CREATE TABLE IF NOT EXISTS `cached_values`
+           (`KEYWORD`   CHAR(100) NOT NULL,
+            `DATAVALUE` VARCHAR($cache_value_max_size) NOT NULL,
+            PRIMARY KEY (`KEYWORD`)
+           ) ENGINE = MEMORY DEFAULT CHARSET=utf8;";
+
+    if (SQLExec($sqlQuery)) {
+        $checked = true;
+        return true;
+    }
+
+    return false;
+}
+
 
 
 /**
@@ -56,6 +88,9 @@ function clearCacheData($prefix = '')
             foreach ($list as $key1)
                 $redisConnection->del($key1);
         }
+        return;
+    }
+    if (!ensureCachedValuesTable()) {
         return;
     }
     if (!$prefix) {
@@ -84,6 +119,9 @@ function getAllCache($prefix = '')
         foreach ($list as $key1)
             $out[$key1] = $redisConnection->get($key1);
     } else {
+        if (!ensureCachedValuesTable()) {
+            return $out;
+        }
         $out = SQLSelect("select * from cached_values where KEYWORD like '" . DBSafe($prefix) . "%'");
     }
     return $out;
@@ -120,6 +158,10 @@ function saveToCache($key, $value)
         return;
     }
 
+    if (!ensureCachedValuesTable()) {
+        return;
+    }
+
     $rec = array('KEYWORD' => $key, 'DATAVALUE' => $value);
     $sqlQuery = "REPLACE INTO cached_values (KEYWORD, DATAVALUE) " .
         " VALUES ('" . DbSafe1($rec['KEYWORD']) . "', " .
@@ -129,7 +171,9 @@ function saveToCache($key, $value)
 
 function deleteFromCache($key) {
     $key = strtolower((string)$key);
-    SQLExec("DELETE FROM cached_values WHERE KEYWORD='" . DBSafe($key) . "'");
+    if (ensureCachedValuesTable()) {
+        SQLExec("DELETE FROM cached_values WHERE KEYWORD='" . DBSafe($key) . "'");
+    }
     if (defined('USE_REDIS')) {
         $redisConnection = mjdGetRedisConnection();
         if (is_object($redisConnection) && $redisConnection->exists($key)) {
@@ -159,6 +203,10 @@ function checkFromCache($key)
         }
     }
 
+
+    if (!ensureCachedValuesTable()) {
+        return false;
+    }
 
     $rec = SQLSelectOne("SELECT * FROM cached_values WHERE KEYWORD = '" . DBSafe($key) . "'");
 

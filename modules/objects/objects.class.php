@@ -1166,7 +1166,6 @@ class objects extends module
             $cache_value_max_size = 255;
         }
 
-        SQLDropTable('cached_values');
         $sqlQuery = "CREATE TABLE IF NOT EXISTS `cached_values`
                (`KEYWORD`   CHAR(100) NOT NULL,
                 `DATAVALUE` VARCHAR($cache_value_max_size) NOT NULL,
