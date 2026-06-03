@@ -3872,8 +3872,8 @@ body.md-admin-search-open {
   }
 
   .md-admin-sidebar__brand img {
-    width: 56px;
-    height: 56px;
+    width: 100px;
+    height: 100px;
   }
 }
 
@@ -4207,6 +4207,98 @@ body.md-admin-search-open {
 
 .md-parent-properties-card__body:not(.is-visible) {
   display: none;
+}
+
+.md-property-edit-card {
+  min-width: 0;
+}
+
+.md-property-edit__group {
+  min-width: 0;
+  padding: 12px;
+  background: rgba(248, 251, 254, .88);
+  border: 1px solid rgba(31, 41, 51, .07);
+  border-radius: 16px;
+}
+
+.md-property-edit__radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.md-property-edit__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, .92);
+  border: 1px solid var(--md-card-border, rgba(31, 41, 51, .1));
+  border-radius: 14px;
+  font-size: .84rem;
+  font-weight: 500;
+}
+
+.md-property-edit__radio input {
+  margin: 0;
+}
+
+.md-method-edit-card {
+  min-width: 0;
+}
+
+.md-method-edit__radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.md-method-edit__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, .92);
+  border: 1px solid var(--md-card-border, rgba(31, 41, 51, .1));
+  border-radius: 14px;
+  font-size: .84rem;
+  font-weight: 500;
+}
+
+.md-method-edit__radio input {
+  margin: 0;
+}
+
+.md-method-edit__script-select,
+.md-method-edit__code-panel {
+  min-width: 0;
+}
+
+.md-method-edit__editor-note {
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  color: #7a5d00;
+  background: rgba(245, 229, 108, .24);
+  border: 1px solid rgba(234, 179, 8, .26);
+  border-radius: 14px;
+  font-size: .84rem;
+  line-height: 1.4;
+}
+
+.md-method-edit__autosave-note {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--md-admin-muted, #6b7a88);
+  font-size: .8rem;
+  font-style: italic;
+}
+
+.md-method-edit-card__xray {
+  min-width: 0;
 }
 
 @media (max-width: 1199.98px) {

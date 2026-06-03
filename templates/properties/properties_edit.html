@@ -1,143 +1,149 @@
-<div style="padding: 10px;border: 1px solid #dddddd;border-top: 0px;">
-	<div class="row" style="margin-right: -15px;margin-left: -15px;">
-		<div class="col-md-12">
-			<form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="form-horizontal">
-				[#if OK#]
-					<div class="alert alert-success"><#LANG_DATA_SAVED#></div>
-				[#endif OK#]
-				[#if ERR#]
-					<div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
-				[#endif ERR#]
-				
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_TITLE#>:<font color="red">*</font><#LANG_HCB#>title<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8"><input type="input" class="form-control [#if ERR_TITLE#]alert-danger[#endif#]" placeholder="<#LANG_TITLE#>" name="title" value="[#TITLE#]" required="true"></div>
-				</div>
+<section class="md-admin-section-card md-admin-form-card md-property-edit-card">
+    <div class="md-admin-section-card__body">
+        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
+            [#if OK#]
+            <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
+            [#endif OK#]
+            [#if ERR#]
+            <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
+            [#endif ERR#]
 
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_DESCRIPTION#>:<#LANG_HCB#>description<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8"><textarea name="description" rows="3" class="form-control" style="width: 100%;min-height: 100px;resize: vertical;max-height: 500px;">[#DESCRIPTION#]</textarea></div>
-				</div>
-				
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_ONCHANGE_METHOD#>:<#LANG_HCB#>onchangemethod<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8">
-						<select name="onchange" class="form-control">
-							<option value="" selected>Выберите связанный метод</option>
-							[#begin METHODS#]
-							<option value="[#TITLE#]"[#if TITLE="<#ONCHANGE#>"#] selected[#endif#]>[#TITLE#]</option>
-							[#end METHODS#]
-						</select>
-						<!--#<input type="text"  class="form-control"  name="onchange" value="[#ONCHANGE#]">#-->
-					</div>
-				</div>
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="propertyTitle"><#LANG_TITLE#>: <span class="text-danger">*</span><#LANG_HCB#>title<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <input type="text" id="propertyTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" placeholder="<#LANG_TITLE#>" name="title" value="[#TITLE#]" required>
+                </div>
+            </div>
 
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_KEEP_HISTORY_DAYS#>:<#LANG_HCB#>keep_history<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8">
-						<input type="number" name="keep_history" value="[#KEEP_HISTORY#]" size="10" placeholder="0 = <#LANG_DO_NOT_KEEP#>" class="form-control"> 
-					</div>
-				</div>
-				
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_DATA_TYPE#>:<#LANG_HCB#>datatype<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8">
-						<select name="data_type" class="form-control">
-							<option value="0"[#if DATA_TYPE="0"#] selected[#endif#]><#LANG_DATA_TYPE_GENERAL#>
-							<option value="5"[#if DATA_TYPE="5"#] selected[#endif#]><#LANG_DATA_TYPE_IMAGE#></option>
-						</select>
-					</div>
-				</div>
-				
-				<script type="text/javascript">
-				function validationTypeUpdated() {
-					var vType=$('#validation_type').val();
-					$('#validation_min_max').hide();
-					$('#validation_dictionary').hide();
-					$('#validation_code').hide();
-					if (vType=='1') {
-						$('#validation_min_max').show();
-					}
-					if (vType=='3') {
-						$('#validation_dictionary').show();
-					}
-					if (vType=='100') {
-						$('#validation_code').show();
-					}
-					//validation_min_max
-					//validation_dictionary
-					//validation_code
-				}
-				</script>
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_VALIDATION_TYPE#>:<#LANG_HCB#>validationtype<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8">
-						<select name="validation_type" id="validation_type" class="form-control" onchange="validationTypeUpdated();">
-							<option value="0"[#if VALIDATION_TYPE="0"#] selected[#endif#]><#LANG_NO#></option>
-							<option value="1"[#if VALIDATION_TYPE="1"#] selected[#endif#]><#LANG_VALIDATION_TYPE_NUMBER#></option>
-							<option value="2"[#if VALIDATION_TYPE="2"#] selected[#endif#]><#LANG_VALIDATION_TYPE_BINARY#></option>
-							<option value="3"[#if VALIDATION_TYPE="3"#] selected[#endif#]><#LANG_VALIDATION_TYPE_DICTIONARY#></option>
-							<option value="100"[#if VALIDATION_TYPE="100"#] selected[#endif#]><#LANG_VALIDATION_TYPE_CUSTOM#></option>
-						</select>
-					</div>
-				</div>
-				
-				<div id="validation_min_max"[#if VALIDATION_TYPE!="1"#] style="display:none"[#endif#]>
-					<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-						<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_MIN_VALUE#>:</label>
-						<div class="col-lg-10 col-md-8">
-							 <input type="input" name="validation_num_min" value="[#VALIDATION_NUM_MIN#]" class="form-control">
-						</div>
-					</div>
-					<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-						<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_MAX_VALUE#>:</label>
-						<div class="col-lg-10 col-md-8">
-							<input type="input" name="validation_num_max" value="[#VALIDATION_NUM_MAX#]" class="form-control">
-						</div>
-					</div>
-				</div>
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="propertyDescription"><#LANG_DESCRIPTION#>:<#LANG_HCB#>description<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <textarea name="description" id="propertyDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea>
+                </div>
+            </div>
 
-				<div class="form-group[#if ERR_VALIDATION_LIST="1"#] has-error[#endif#]" id="validation_dictionary"[#if VALIDATION_TYPE!="3"#] style="display:none;margin-right: 0px;margin-left: 0px;"[#endif#]>
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_VALIDATION_TYPE_DICTIONARY#>:</label>
-					<div class="col-lg-10 col-md-8">
-						<input type="input" name="validation_list" value="[#VALIDATION_LIST#]" class="form-control">
-					</div>
-				</div>
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="propertyOnchange"><#LANG_ONCHANGE_METHOD#>:<#LANG_HCB#>onchangemethod<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <select name="onchange" id="propertyOnchange" class="form-control form-select">
+                        <option value="" selected>Выберите связанный метод</option>
+                        [#begin METHODS#]
+                        <option value="[#TITLE#]"[#if TITLE="<#ONCHANGE#>"#] selected[#endif#]>[#TITLE#]</option>
+                        [#end METHODS#]
+                    </select>
+                </div>
+            </div>
 
-				<div class="form-group[#if ERR_VALIDATION_CODE!=""#] has-error[#endif#]" id="validation_code"[#if VALIDATION_TYPE!="100"#] style="display:none;margin-right: 0px;margin-left: 0px;"[#endif#]>
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_CODE#>:</label>
-					<div class="col-lg-10 col-md-8">
-						[#if ERR_VALIDATION_CODE!=""#]<div>[#ERR_VALIDATION_CODE#]</div>[#endif#]
-						<textarea name="validation_code" rows="4" class="form-control" placeholder="$value" style="width: 100%;min-height: 100px;resize: vertical;max-height: 500px;">[#VALIDATION_CODE#]</textarea>
-					</div>
-				</div>
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="propertyKeepHistory"><#LANG_KEEP_HISTORY_DAYS#>:<#LANG_HCB#>keep_history<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <input type="number" id="propertyKeepHistory" name="keep_history" value="[#KEEP_HISTORY#]" size="10" placeholder="0 = <#LANG_DO_NOT_KEEP#>" class="form-control">
+                </div>
+            </div>
 
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_DATA_KEY#>:<#LANG_HCB#>datakey<#LANG_HCE#></label>
-					<div class="col-lg-10 col-md-8">
-					<input type="radio" name="data_key" value="1"[#if DATA_KEY="1"#] checked[#endif#]> <#LANG_YES#>
-					 <input type="radio" name="data_key" value="0"[#if DATA_KEY!="1"#] checked[#endif#]> <#LANG_NO#>
-					</div>
-				</div>
-				
-				<div class="form-group " style="margin-right: 0px;margin-left: 0px;">
-					 <div class="col-md-12 text-center">
-						[#if ID!=""#]
-						<button class="btn btn-default btn-success" type="submit" name="subm"><i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_SUBMIT#></button>
-						[#else ID#]
-						<button class="btn btn-default btn-success" type="submit" name="subm"><i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_ADD#></button>
-						[#endif ID#]
-						&nbsp;
-						<a href="?data_source=<#DATA_SOURCE#>" class="btn btn-warning"><i class="glyphicon glyphicon-floppy-remove"></i> <#LANG_CANCEL#></a>
-					</div>
-				</div>
-				<input type="hidden" name="id" value="<#ID#>">
-				<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-				<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-				<input type="hidden" name="mode" value="update">
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="propertyDataType"><#LANG_DATA_TYPE#>:<#LANG_HCB#>datatype<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <select name="data_type" id="propertyDataType" class="form-control form-select">
+                        <option value="0"[#if DATA_TYPE="0"#] selected[#endif#]><#LANG_DATA_TYPE_GENERAL#></option>
+                        <option value="5"[#if DATA_TYPE="5"#] selected[#endif#]><#LANG_DATA_TYPE_IMAGE#></option>
+                    </select>
+                </div>
+            </div>
 
-			</form>
-		</div>
-	</div>
-</div>
+            <div class="row g-3 align-items-start mb-3">
+                <label class="col-lg-3 col-form-label" for="validation_type"><#LANG_VALIDATION_TYPE#>:<#LANG_HCB#>validationtype<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <select name="validation_type" id="validation_type" class="form-control form-select" data-md-property-validation>
+                        <option value="0"[#if VALIDATION_TYPE="0"#] selected[#endif#]><#LANG_NO#></option>
+                        <option value="1"[#if VALIDATION_TYPE="1"#] selected[#endif#]><#LANG_VALIDATION_TYPE_NUMBER#></option>
+                        <option value="2"[#if VALIDATION_TYPE="2"#] selected[#endif#]><#LANG_VALIDATION_TYPE_BINARY#></option>
+                        <option value="3"[#if VALIDATION_TYPE="3"#] selected[#endif#]><#LANG_VALIDATION_TYPE_DICTIONARY#></option>
+                        <option value="100"[#if VALIDATION_TYPE="100"#] selected[#endif#]><#LANG_VALIDATION_TYPE_CUSTOM#></option>
+                    </select>
+                </div>
+            </div>
 
+            <div id="validation_min_max" class="md-property-edit__group [#if VALIDATION_TYPE!="1"#]d-none[#endif#]" data-md-property-validation-block="1">
+                <div class="row g-3 align-items-start mb-3">
+                    <label class="col-lg-3 col-form-label" for="validationNumMin"><#LANG_MIN_VALUE#>:</label>
+                    <div class="col-lg-9">
+                        <input type="text" id="validationNumMin" name="validation_num_min" value="[#VALIDATION_NUM_MIN#]" class="form-control">
+                    </div>
+                </div>
+                <div class="row g-3 align-items-start mb-3">
+                    <label class="col-lg-3 col-form-label" for="validationNumMax"><#LANG_MAX_VALUE#>:</label>
+                    <div class="col-lg-9">
+                        <input type="text" id="validationNumMax" name="validation_num_max" value="[#VALIDATION_NUM_MAX#]" class="form-control">
+                    </div>
+                </div>
+            </div>
+
+            <div id="validation_dictionary" class="row g-3 align-items-start mb-3 md-property-edit__group [#if VALIDATION_TYPE!="3"#]d-none[#endif#][#if ERR_VALIDATION_LIST="1"#] has-error[#endif#]" data-md-property-validation-block="3">
+                <label class="col-lg-3 col-form-label" for="validationList"><#LANG_VALIDATION_TYPE_DICTIONARY#>:</label>
+                <div class="col-lg-9">
+                    <input type="text" id="validationList" name="validation_list" value="[#VALIDATION_LIST#]" class="form-control [#if ERR_VALIDATION_LIST="1"#]is-invalid[#endif#]">
+                </div>
+            </div>
+
+            <div id="validation_code" class="row g-3 align-items-start mb-3 md-property-edit__group [#if VALIDATION_TYPE!="100"#]d-none[#endif#][#if ERR_VALIDATION_CODE!=""#] has-error[#endif#]" data-md-property-validation-block="100">
+                <label class="col-lg-3 col-form-label" for="validationCode"><#LANG_CODE#>:</label>
+                <div class="col-lg-9">
+                    [#if ERR_VALIDATION_CODE!=""#]<div class="alert alert-danger py-2 px-3 mb-2">[#ERR_VALIDATION_CODE#]</div>[#endif#]
+                    <textarea name="validation_code" id="validationCode" rows="5" class="form-control md-admin-code-textarea [#if ERR_VALIDATION_CODE!=""#]is-invalid[#endif#]" placeholder="$value">[#VALIDATION_CODE#]</textarea>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-start mb-4">
+                <label class="col-lg-3 col-form-label"><#LANG_DATA_KEY#>:<#LANG_HCB#>datakey<#LANG_HCE#></label>
+                <div class="col-lg-9">
+                    <div class="md-property-edit__radio-group">
+                        <label class="md-property-edit__radio">
+                            <input type="radio" name="data_key" value="1"[#if DATA_KEY="1"#] checked[#endif#]>
+                            <span><#LANG_YES#></span>
+                        </label>
+                        <label class="md-property-edit__radio">
+                            <input type="radio" name="data_key" value="0"[#if DATA_KEY!="1"#] checked[#endif#]>
+                            <span><#LANG_NO#></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md-admin-form-actions">
+                [#if ID!=""#]
+                <button class="btn btn-primary" type="submit" name="subm"><i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_SUBMIT#></button>
+                [#else ID#]
+                <button class="btn btn-primary" type="submit" name="subm"><i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_ADD#></button>
+                [#endif ID#]
+                <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><i class="glyphicon glyphicon-floppy-remove"></i> <#LANG_CANCEL#></a>
+            </div>
+
+            <input type="hidden" name="id" value="<#ID#>">
+            <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
+            <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
+            <input type="hidden" name="mode" value="update">
+        </form>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var select = document.querySelector('[data-md-property-validation]');
+    if (!select || select.dataset.mdPropertyValidationBound === '1') {
+        return;
+    }
+
+    select.dataset.mdPropertyValidationBound = '1';
+
+    function syncValidationBlocks() {
+        var value = select.value;
+        document.querySelectorAll('[data-md-property-validation-block]').forEach(function (block) {
+            block.classList.toggle('d-none', block.getAttribute('data-md-property-validation-block') !== value);
+        });
+    }
+
+    select.addEventListener('change', syncValidationBlocks);
+    syncValidationBlocks();
+});
+</script>
