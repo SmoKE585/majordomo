@@ -257,7 +257,6 @@
 
         editor.getWrapperElement().style.height = height;
         editor.getScrollerElement().style.height = height;
-        editor.refresh();
     }
 
     function updateStatus(wrapper, message, type) {
@@ -751,9 +750,6 @@
             });
             editor.on('inputRead', function (cm, change) {
                 scheduleHints(wrapper, cm, change);
-            });
-            editor.on('update', function () {
-                updateSize(wrapper, editor);
             });
             editor.on('cursorActivity', function () {
                 if (wrapper.dataset.codeEditorHideErrorsOnEdit === '1') {
