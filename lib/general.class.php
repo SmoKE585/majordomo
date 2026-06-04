@@ -121,6 +121,7 @@ function redirect($url, $owner = "", $no_sid = 0)
             }
             $url = str_replace('?', $replaceStr, $url);
         }
+        $url = mdjExtractFlashNotificationsFromUrl($url, 'admin');
         $url = "Location:$url\n\n";
         $session->save();
         header($url);

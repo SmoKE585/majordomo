@@ -157,6 +157,13 @@ class panel extends module
 
         $out["TODAY"] = date('l, F d, Y');
         $out["AUTHORIZED"] = $this->authorized;
+        $flash_notifications = mdjConsumeFlashNotifications('admin');
+        $request_flash_notifications = mdjCollectRequestFlashNotifications('admin');
+        if (!empty($request_flash_notifications)) {
+            $flash_notifications = array_merge($flash_notifications, $request_flash_notifications);
+            $out['FLASH_SANITIZE_URL'] = 1;
+        }
+        $out['FLASH_NOTIFICATIONS_JSON'] = json_encode($flash_notifications, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($this->authorized) {
 

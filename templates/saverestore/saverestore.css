@@ -501,6 +501,7 @@
 }
 
 .md-saverestore-update-modal {
+  --md-saverestore-backdrop-opacity: .52;
   position: fixed;
   inset: 0;
   display: none;
@@ -517,8 +518,9 @@
 .md-saverestore-update-modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(12, 18, 26, .52);
+  background: rgba(12, 18, 26, var(--md-saverestore-backdrop-opacity));
   backdrop-filter: blur(6px);
+  transition: background-color .24s ease;
 }
 
 .md-saverestore-update-modal__dialog {

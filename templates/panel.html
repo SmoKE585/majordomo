@@ -11,6 +11,11 @@
 
 <body>
 	[#if AUTHORIZED#]
+	<script>
+	window.MDJAdminConfig = window.MDJAdminConfig || {};
+	window.MDJAdminConfig.flashNotifications = [#if FLASH_NOTIFICATIONS_JSON!=""#][#FLASH_NOTIFICATIONS_JSON#][#else#][][#endif#];
+	window.MDJAdminConfig.sanitizeFlashQuery = [#if FLASH_SANITIZE_URL="1"#]true[#else#]false[#endif#];
+	</script>
 	[#inc panel_js_scripts.html#]
 	[#if PRINT!="1"#]
 	<div class="md-admin-drawer-backdrop" data-md-drawer-close hidden></div>

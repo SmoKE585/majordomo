@@ -601,6 +601,7 @@ class module
         global $session;
 
         $new_url = $this->makeRealURL($url);
+        $new_url = mdjExtractFlashNotificationsFromUrl($new_url, 'admin');
         if (isset($this->owner) && $this->owner->name == 'panel' && preg_match('/nf\.php/', $new_url)) {
             $new_url = str_replace('nf.php', 'admin.php', $new_url);
         }

@@ -22,6 +22,7 @@ $backup = gr('backup');
 function saverestoreFrameFlush()
 {
     echo '<!-- sr-frame-flush -->';
+    echo '<script>window.srFrameScrollToBottom && window.srFrameScrollToBottom();</script>';
     flush();
     @ob_flush();
 }
@@ -82,8 +83,12 @@ function saverestoreFrameRedirect($message, $is_error = false, $url = '')
 {
     $state = $is_error ? 'error' : 'success';
     if ($url == '') {
-        $arg = $is_error ? 'err_msg' : 'ok_msg';
-        $url = ROOTHTML . 'admin.php?md=panel&action=saverestore&' . $arg . '=' . urlencode($message);
+        $url = ROOTHTML . 'admin.php?md=panel&action=saverestore';
+    }
+    if ($is_error) {
+        mdjFlashError($message);
+    } else {
+        mdjFlashSuccess($message);
     }
     saverestoreFrameLog(LANG_UPDATEBACKUP_GET_REDIRECT, 'muted');
     echo '<script>'
@@ -206,7 +211,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
         .sr-frame-shell {
             display: grid;
-            gap: 12px;
+            gap: 10px;
         }
 
         .sr-frame-hero,
@@ -222,7 +227,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         .sr-frame-hero,
         .sr-frame-section,
         .sr-frame-checks {
-            padding: 16px 18px;
+            padding: 10px 12px;
         }
 
         .sr-frame-hero__eyebrow {
@@ -234,15 +239,15 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         }
 
         .sr-frame-hero__title {
-            margin: 6px 0 0;
-            font-size: 20px;
+            margin: 2px 0 0;
+            font-size: 16px;
             font-weight: 700;
         }
 
         .sr-frame-hero__text,
         .sr-frame-section__description,
         .sr-frame-check__details {
-            margin-top: 6px;
+            margin-top: 4px;
             color: var(--sr-muted);
         }
 
@@ -253,15 +258,16 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
         .sr-frame-checklist {
             display: grid;
-            gap: 10px;
-            margin-top: 12px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 8px;
         }
 
         .sr-frame-check {
             display: flex;
-            gap: 12px;
-            padding: 12px 14px;
-            border-radius: 14px;
+            gap: 8px;
+            padding: 7px 8px;
+            border-radius: 10px;
             background: var(--sr-surface-soft);
             border: 1px solid transparent;
         }
@@ -276,14 +282,26 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         }
 
         .sr-frame-check__icon {
-            width: 22px;
-            flex: 0 0 22px;
+            width: 16px;
+            flex: 0 0 16px;
             font-weight: 700;
             text-align: center;
+            line-height: 1.4;
         }
 
         .sr-frame-check--ok .sr-frame-check__icon { color: var(--sr-success); }
         .sr-frame-check--fail .sr-frame-check__icon { color: var(--sr-danger); }
+
+        .sr-frame-check__title {
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .sr-frame-check__details {
+            font-size: 10px;
+            line-height: 1.25;
+            word-break: break-word;
+        }
 
         .sr-frame-log {
             padding: 10px 14px;
@@ -326,25 +344,53 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
             border-color: rgba(239, 107, 115, .28);
             background: rgba(239, 107, 115, .12);
         }
+
+        @media (max-width: 640px) {
+            .sr-frame-checklist {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sr-frame-checklist {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
     <script>
         (function () {
+            var scrollTimer = null;
+            var forcedScrollTimer = null;
+
             function scrollToBottom() {
-                window.scrollTo({
-                    top: document.documentElement.scrollHeight || document.body.scrollHeight,
-                    behavior: 'auto'
-                });
+                var target = document.getElementById('srFrameBottom');
+                if (target && typeof target.scrollIntoView === 'function') {
+                    target.scrollIntoView({ block: 'end', inline: 'nearest' });
+                }
+                window.scrollTo(0, Math.max(
+                    document.documentElement.scrollHeight || 0,
+                    document.body.scrollHeight || 0
+                ));
             }
+
+            function queueScrollToBottom() {
+                if (scrollTimer) {
+                    window.clearTimeout(scrollTimer);
+                }
+                scrollTimer = window.setTimeout(scrollToBottom, 30);
+            }
+
+            window.srFrameScrollToBottom = queueScrollToBottom;
 
             document.addEventListener('DOMContentLoaded', function () {
                 var stream = document.getElementById('srFrameStream');
                 if (!stream || typeof MutationObserver === 'undefined') {
-                    scrollToBottom();
+                    queueScrollToBottom();
                     return;
                 }
 
                 var observer = new MutationObserver(function () {
-                    scrollToBottom();
+                    queueScrollToBottom();
                 });
 
                 observer.observe(stream, {
@@ -353,7 +399,14 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
                     characterData: true
                 });
 
-                scrollToBottom();
+                forcedScrollTimer = window.setInterval(scrollToBottom, 350);
+                queueScrollToBottom();
+            });
+
+            window.addEventListener('beforeunload', function () {
+                if (forcedScrollTimer) {
+                    window.clearInterval(forcedScrollTimer);
+                }
             });
         })();
     </script>
@@ -397,7 +450,7 @@ if ($backup) {
     } else {
         saverestoreFrameFinishError('Error creating backup');
     }
-    echo '</div>';
+    echo '<div id="srFrameBottom" aria-hidden="true"></div></div>';
 } else {
     $update_checks = saverestoreFrameBuildUpdateChecks($sv);
     $update_ok = saverestoreFrameChecklist('Preflight: обновление системы', $update_checks);
@@ -446,7 +499,7 @@ if ($backup) {
     } else {
         saverestoreFrameFinishError(LANG_UPDATEBACKUP_ERROR_DOWNLOAD);
     }
-    echo '</div>';
+    echo '<div id="srFrameBottom" aria-hidden="true"></div></div>';
 }
 ?>
 </div>

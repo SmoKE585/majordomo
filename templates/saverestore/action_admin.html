@@ -2,8 +2,8 @@
  @version 2.0 (admin ui refresh)
 #-->
 [#if CLEAR_FIRST!="1"#]
-<link rel="stylesheet" href="<#ROOTHTML#>templates/saverestore/saverestore.css?v=2026-06-04-1" type="text/css">
-<script type="text/javascript" src="<#ROOTHTML#>templates/saverestore/saverestore.js?v=2026-06-04-1"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/saverestore/saverestore.css?v=2026-06-04-2" type="text/css">
+<script type="text/javascript" src="<#ROOTHTML#>templates/saverestore/saverestore.js?v=2026-06-04-2"></script>
 
 <div class="md-saverestore-page" data-saverestore-page data-saverestore-open-update="[#if MODE="getlatest_iframe"#]1[#else#]0[#endif#]">
     [#if ERR_MSG!=""#]
@@ -27,7 +27,7 @@
                 <a href="?check_now=1" class="btn btn-outline-secondary">
                     <i class="glyphicon glyphicon-refresh"></i> Проверить обновление
                 </a>
-                <button type="button" class="btn [#if NO_NEED_TO_UPDATE#]btn-outline-primary[#else#]btn-primary[#endif#]" data-saverestore-update-open>
+                <button type="submit" form="mdSaverestoreUpdateStartForm" class="btn [#if NO_NEED_TO_UPDATE#]btn-outline-primary[#else#]btn-primary[#endif#]">
                     <i class="glyphicon glyphicon-cloud-download"></i>
                     <#LANG_NEWSAVERESTORE_UPDATE_BTN#>
                 </button>
@@ -64,17 +64,23 @@
                     <span class="md-saverestore-status-pill [#if NO_NEED_TO_UPDATE#]is-success[#else#]is-warning[#endif#]">[#if NO_NEED_TO_UPDATE#]Система синхронизирована[#else#]Найдена новая версия[#endif#]</span>
                 </div>
                 <p class="md-saverestore-card__text">[#if NO_NEED_TO_UPDATE#]<#LANG_NEWSAVERESTORE_NONE_UPDATE_TEXT#>[#else#]<#LANG_NEWSAVERESTORE_UPDATE_TEXT#>[#endif#]</p>
+                <form action="?" method="post" enctype="multipart/form-data" class="md-saverestore-update-form" id="mdSaverestoreUpdateStartForm">
+                    <label class="md-saverestore-switch-row">
+                        <span>
+                            <strong><#LANG_UPDATE_ALL_EXTENSIONS#></strong>
+                            <small>После системного обновления открыть обновление маркет-модулей.</small>
+                        </span>
+                        <input type="checkbox" name="with_extensions" value="1">
+                    </label>
+                    <input type="hidden" name="with_backup" value="0">
+                    <input type="hidden" name="mode" value="getlatest_iframe">
+                </form>
                 <div class="md-saverestore-update-note">
                     <i class="glyphicon glyphicon-lock"></i>
                     <div>
                         <strong>Откат по истории коммитов отключён.</strong>
                         Обновление выполняется только из текущей ветки, выбранной в настройках ниже. Для возврата используйте ваши резервные копии в блоке восстановления.
                     </div>
-                </div>
-                <div class="md-saverestore-card__actions">
-                    <button type="button" class="btn [#if NO_NEED_TO_UPDATE#]btn-outline-primary[#else#]btn-primary[#endif#]" data-saverestore-update-open>
-                        <i class="glyphicon glyphicon-play-circle"></i> Запустить обновление
-                    </button>
                 </div>
             </section>
 
@@ -211,17 +217,17 @@
 
                 <div class="md-saverestore-restore-selector" role="tablist" aria-label="Сценарии восстановления">
                     <button type="button" class="md-saverestore-restore-selector__item is-active" data-saverestore-panel="uploadBackup">
-                        <i class="glyphicon glyphicon-floppy-open"></i>
+                        <i class="bi bi-upload"></i>
                         <span>Загрузить архив</span>
                         <small>Ручное восстановление из файла</small>
                     </button>
                     <button type="button" class="md-saverestore-restore-selector__item" data-saverestore-panel="restoreInServer">
-                        <i class="glyphicon glyphicon-floppy-disk"></i>
+                        <i class="bi bi-archive"></i>
                         <span>Сохранённые копии</span>
                         <small>Локальные и внешние архивы</small>
                     </button>
                     <button type="button" class="md-saverestore-restore-selector__item" data-saverestore-panel="createBackup">
-                        <i class="glyphicon glyphicon-floppy-saved"></i>
+                        <i class="bi bi-floppy"></i>
                         <span>Создать бэкап</span>
                         <small>Собрать архив из выбранных частей</small>
                     </button>
@@ -369,25 +375,10 @@
                 </div>
                 <iframe id="processUpdateFrame" class="md-saverestore-console" src="<#ROOTHTML#>modules/saverestore/update_iframe.php?with_extensions=[#WITH_EXTENSIONS#]&with_backup=[#WITH_BACKUP#]&backup=<#BACKUP#>&design=<#DESIGN#>&code=<#CODE#>&data=<#DATA#>&save_files=<#SAVE_FILES#>" frameborder="0"></iframe>
                 [#else#]
-                <form action="?" method="post" enctype="multipart/form-data" class="md-saverestore-update-form">
-                    <label class="md-saverestore-switch-row">
-                        <span>
-                            <strong><#LANG_UPDATE_ALL_EXTENSIONS#></strong>
-                            <small>После системного обновления открыть обновление маркет-модулей.</small>
-                        </span>
-                        <input type="checkbox" name="with_extensions" value="1">
-                    </label>
-                    <div class="md-saverestore-inline-alert is-info">
-                        <i class="glyphicon glyphicon-lock"></i>
-                        <span><#LANG_MANDATORY_DB_BACKUP#></span>
-                    </div>
-                    <div class="md-saverestore-card__actions">
-                        <input type="hidden" name="with_backup" value="0">
-                        <input type="hidden" name="mode" value="getlatest_iframe">
-                        <button type="button" class="btn btn-light" data-saverestore-update-close><#LANG_CLOSE#></button>
-                        <button type="submit" class="btn btn-primary"><#LANG_NEWSAVERESTORE_UPDATE_BTN#></button>
-                    </div>
-                </form>
+                <div class="md-saverestore-inline-alert is-info">
+                    <i class="glyphicon glyphicon-lock"></i>
+                    <span><#LANG_MANDATORY_DB_BACKUP#></span>
+                </div>
                 [#endif#]
             </div>
         </div>

@@ -26,6 +26,11 @@
             }
             modal.classList.toggle('is-open', isOpen);
             document.body.classList.toggle('md-saverestore-modal-open', isOpen);
+            if (isOpen) {
+                modal.style.setProperty('--md-saverestore-backdrop-opacity', '.58');
+            } else {
+                modal.style.removeProperty('--md-saverestore-backdrop-opacity');
+            }
         }
 
         function setPanel(panelId) {
@@ -125,6 +130,7 @@
         var label = document.getElementById('systemUpdateStatusText');
         var icon = document.getElementById('systemUpdateStatusIcon');
         var progress = document.querySelector('#systemUpdateProgress .md-saverestore-progress__bar');
+        var modal = document.querySelector('[data-saverestore-update-modal]');
         if (label) {
             label.textContent = text || '';
         }
@@ -146,6 +152,16 @@
                 : state === 'success'
                     ? 'linear-gradient(90deg, #198754, #54b47b)'
                     : 'linear-gradient(90deg, var(--md-admin-primary, #4792d1), #6ab1df)';
+        }
+        if (modal) {
+            var normalizedPercent = Math.max(0, Math.min(100, percent));
+            var opacity = 0.58 + (normalizedPercent / 100) * 0.34;
+            if (state === 'error') {
+                opacity = 0.88;
+            } else if (state === 'success') {
+                opacity = 0.94;
+            }
+            modal.style.setProperty('--md-saverestore-backdrop-opacity', opacity.toFixed(2));
         }
         if (step) {
             var activeNode = document.getElementById('systemUpdateStep_' + step);
