@@ -39,6 +39,25 @@ function parseCodeEditorFileTimestamp($value, $safeKey) {
 	return (int)$matches[1];
 }
 
+function getLatestCodeEditorFile($dir, $safeKey) {
+	if (!is_dir($dir)) {
+		return '';
+	}
+	$latestFile = '';
+	$latestTimestamp = 0;
+	foreach (@scandir($dir) as $value) {
+		$timestamp = parseCodeEditorFileTimestamp($value, $safeKey);
+		if ($timestamp === false) {
+			continue;
+		}
+		if ($timestamp >= $latestTimestamp) {
+			$latestTimestamp = $timestamp;
+			$latestFile = $dir . '/' . $value;
+		}
+	}
+	return $latestFile;
+}
+
 $action = $_POST['action'];
 $id = $_POST['id'];
 $md = $_POST['md'];
@@ -63,6 +82,15 @@ if($action == 'save' && !empty($key)) {
 	}
 
 	cleanupCodeEditorFiles($dir);
+
+	$latestFile = getLatestCodeEditorFile($dir, $safeKey);
+	if ($latestFile != '' && is_file($latestFile)) {
+		$latestCode = LoadFile($latestFile);
+		if ((string)$latestCode === (string)$code) {
+			echo json_encode(array('status' => 'skip', 'msg' => ''));
+			die();
+		}
+	}
 
 	$fileName = 'autosave_' . $safeKey . '_' . time() . '_' . substr(md5(uniqid('', true)), 0, 8) . '.cdm';
 	$filePath = $dir . '/' . $fileName;

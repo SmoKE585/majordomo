@@ -343,6 +343,35 @@
         return params;
     }
 
+    function hashString(value) {
+        var hash = 2166136261;
+        var text = String(value || '');
+        for (var i = 0; i < text.length; i += 1) {
+            hash ^= text.charCodeAt(i);
+            hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+        }
+        return (hash >>> 0).toString(16);
+    }
+
+    function getEditorContentHash(editor) {
+        return hashString(editor ? editor.getValue() : '');
+    }
+
+    function shouldSkipSnapshot(wrapper, editor) {
+        if (!wrapper || !editor) {
+            return false;
+        }
+        return wrapper._codeEditorLastSavedHash === getEditorContentHash(editor);
+    }
+
+    function markSnapshotSaved(wrapper, editor) {
+        if (!wrapper || !editor) {
+            return;
+        }
+        wrapper._codeEditorLastSavedHash = getEditorContentHash(editor);
+        wrapper.classList.remove('is-dirty');
+    }
+
     function restoreFromCode(wrapper, editor, code) {
         editor.setValue(code || '');
         editor.focus();
@@ -403,11 +432,18 @@
         });
     }
 
+    function autosaveSuccessMessage(wrapper, suffix) {
+        return (wrapper.dataset.codeEditorAutosaveSuccessLabel || 'Успешное автосохранение черновика.') + (suffix ? ' ' + suffix : '');
+    }
+
     function saveSnapshot(wrapper, editor) {
         var url = wrapper.dataset.codeEditorAutosaveUrl || '';
         var key = wrapper.dataset.codeEditorKey || '';
         if (!url || !key) {
             return Promise.resolve();
+        }
+        if (shouldSkipSnapshot(wrapper, editor)) {
+            return Promise.resolve({status: 'skip'});
         }
 
         var params = buildQuery({
@@ -420,9 +456,13 @@
 
         return postJSON(url, params).then(function (res) {
             if (!res || res.status !== 'ok') {
+                if (res && res.status === 'skip') {
+                    markSnapshotSaved(wrapper, editor);
+                }
                 return res;
             }
-            var message = (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + (res.msg ? ' ' + res.msg : '');
+            markSnapshotSaved(wrapper, editor);
+            var message = autosaveSuccessMessage(wrapper, res.msg || '');
             updateStatus(wrapper, message, 'ok');
             showAutosaveToast(wrapper, message, 'success');
             return res;
@@ -452,6 +492,10 @@
         if (!interval || !wrapper || !editor || !wrapper.classList.contains('is-dirty')) {
             return;
         }
+        if (shouldSkipSnapshot(wrapper, editor)) {
+            markSnapshotSaved(wrapper, editor);
+            return;
+        }
 
         clearTimeout(wrapper._codeEditorAutosaveTimer);
         stopAutosaveProgress(wrapper);
@@ -466,9 +510,13 @@
 
         postJSON(wrapper.dataset.codeEditorAutosaveUrl, params).then(function (res) {
             if (!res || res.status !== 'ok') {
+                if (res && res.status === 'skip') {
+                    markSnapshotSaved(wrapper, editor);
+                }
                 return;
             }
-            var message = (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + (res.msg ? ' ' + res.msg : '');
+            markSnapshotSaved(wrapper, editor);
+            var message = autosaveSuccessMessage(wrapper, res.msg || '');
             updateStatus(wrapper, message, 'ok');
             showAutosaveToast(wrapper, message, 'success');
         }).catch(function () {
@@ -882,6 +930,11 @@
             stopAutosaveProgress(wrapper);
             return;
         }
+        if (shouldSkipSnapshot(wrapper, editor)) {
+            markSnapshotSaved(wrapper, editor);
+            stopAutosaveProgress(wrapper);
+            return;
+        }
 
         clearTimeout(wrapper._codeEditorAutosaveTimer);
         startAutosaveProgress(wrapper, interval);
@@ -896,9 +949,13 @@
             });
             postJSON(wrapper.dataset.codeEditorAutosaveUrl, params).then(function (res) {
                 if (!res || res.status !== 'ok') {
+                    if (res && res.status === 'skip') {
+                        markSnapshotSaved(wrapper, editor);
+                    }
                     return;
                 }
-                var message = (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + (res.msg ? ' ' + res.msg : '');
+                markSnapshotSaved(wrapper, editor);
+                var message = autosaveSuccessMessage(wrapper, res.msg || '');
                 updateStatus(wrapper, message, 'ok');
                 showAutosaveToast(wrapper, message, 'success');
             }).catch(function () {
@@ -1080,6 +1137,7 @@
             });
 
             wrapper._codeEditor = editor;
+            markSnapshotSaved(wrapper, editor);
             bindToolbar(wrapper, editor);
             bindVersionActions(wrapper, editor);
             updateSize(wrapper, editor);
