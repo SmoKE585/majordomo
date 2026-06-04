@@ -34,12 +34,6 @@
    $rec['NOLOG']=(int)$nolog;
   }
 
-  if ($this->tab=='template') {
-   global $template;
-   $rec['TEMPLATE']=$template.'';
-  }
-
-
   // step: properties
   if ($this->tab=='properties') {
   }

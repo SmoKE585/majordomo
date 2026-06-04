@@ -8,15 +8,15 @@
         [#endif ERR#]
 
         <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
-            <div class="row g-3 align-items-start mb-3">
-                <label class="col-lg-3 col-form-label" for="objectTitle"><#LANG_TITLE#>: <span class="text-danger">*</span> <#LANG_HCB#>title<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="objectTitle"><#LANG_TITLE#> <span class="text-danger">*</span></label>
                 <div class="col-lg-9">
                     <input type="text" id="objectTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required>
                 </div>
             </div>
 
-            <div class="row g-3 align-items-start mb-3">
-                <label class="col-lg-3 col-form-label" for="objectClass"><#LANG_CLASS#>: <span class="text-danger">*</span> <#LANG_HCB#>object_class<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="objectClass"><#LANG_CLASS#> <span class="text-danger">*</span></label>
                 <div class="col-lg-9">
                     <select name="class_id" id="objectClass" class="form-control form-select [#if ERR_CLASS_ID#]is-invalid[#endif#]" required>
                         <option value="">select</option>
@@ -27,15 +27,15 @@
                 </div>
             </div>
 
-            <div class="row g-3 align-items-start mb-3">
-                <label class="col-lg-3 col-form-label" for="objectDescription"><#LANG_DESCRIPTION#>: <#LANG_HCB#>description<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="objectDescription"><#LANG_DESCRIPTION#></label>
                 <div class="col-lg-9">
                     <textarea name="description" id="objectDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea>
                 </div>
             </div>
 
-            <div class="row g-3 align-items-start mb-4">
-                <label class="col-lg-3 col-form-label" for="objectLocation"><#LANG_LOCATION#>: <#LANG_HCB#>location<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="objectLocation"><#LANG_LOCATION#></label>
                 <div class="col-lg-9">
                     <select name="location_id" id="objectLocation" class="form-control form-select">
                         <option value="">-</option>
@@ -54,7 +54,7 @@
                 [#endif ID#]
                 <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
                 [#if ID!=""#]
-                <a class="btn btn-light" href="?id=<#ID#>&view_mode=clone" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><#LANG_MAKE_COPY#></a>
+                <a class="btn btn-light" href="?id=<#ID#>&view_mode=clone" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_MAKE_COPY#></a>
                 [#endif#]
             </div>
 

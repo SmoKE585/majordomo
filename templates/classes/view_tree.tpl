@@ -13,7 +13,7 @@
     <form action="?" method="post" name="frmList_classes" class="md-classes-tree">
         {function name=classes}
         {foreach $items as $item}
-        <article class="md-classes-card {if $item.TITLE == 'Computer' OR $item.TITLE == 'systemStates' OR $item.TITLE == 'OperationalModes' OR $item.TITLE == 'Timer'}md-classes-card--system{/if} {if isset($item.CAN_DELETE)}is-muted{/if}" {if $item.LEVEL_PAD!=0}style="--md-classes-level: {$item.LEVEL_PAD};"{/if}>
+        <article class="md-classes-card {if $item.TITLE == 'Computer' OR $item.TITLE == 'systemStates' OR $item.TITLE == 'OperationalModes' OR $item.TITLE == 'Timer'}md-classes-card--system{/if} {if isset($item.CAN_DELETE)}is-muted{/if}" data-md-class-card data-md-class-id="{$item.ID}" data-md-class-parent-id="{$item.PARENT_ID}" {if $item.LEVEL_PAD!=0}style="--md-classes-level: {$item.LEVEL_PAD};"{/if}>
             <header class="md-classes-card__header">
                 <button type="button" class="md-classes-card__toggle" data-md-class-toggle="{if $item.SUB_LIST!=$item.ID}{$item.ID},{/if}{$item.SUB_LIST}" aria-controls="sub_{$item.ID}" aria-expanded="false">
                     <span class="md-classes-card__chevron" aria-hidden="true"></span>
@@ -23,15 +23,20 @@
                     </span>
                 </button>
                 <div class="md-classes-card__actions">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-md-global-search="{$item.TITLE|escape:'html'}">{$smarty.const.LANG_SEARCH}</button>
                     <a href="?view_mode=edit_classes&id={$item.ID}" class="btn btn-sm btn-primary" title="{$smarty.const.LANG_EDIT}">{$smarty.const.LANG_EDIT}</a>
-                    <a href="?view_mode=edit_classes&id={$item.ID}&tab=properties" class="btn btn-sm btn-light" title="{$smarty.const.LANG_PROPERTIES}">{$smarty.const.LANG_PROPERTIES}</a>
-                    <a href="?view_mode=edit_classes&id={$item.ID}&tab=methods" class="btn btn-sm btn-light d-none d-sm-inline-flex" title="{$smarty.const.LANG_METHODS}">{$smarty.const.LANG_METHODS}</a>
-                    <a href="?view_mode=edit_classes&id={$item.ID}&tab=objects" class="btn btn-sm btn-light d-none d-sm-inline-flex" title="{$smarty.const.LANG_OBJECTS}">{$smarty.const.LANG_OBJECTS}</a>
-                    <a href="?view_mode=edit_classes&parent_id={$item.ID}" class="btn btn-sm btn-light d-none d-md-inline-flex" title="{$smarty.const.LANG_EXPAND}">{$smarty.const.LANG_EXPAND}</a>
-                    {if isset($item.CAN_DELETE)}
-                    <a href="?view_mode=delete_classes&id={$item.ID}" data-md-confirm="{$smarty.const.LANG_ARE_YOU_SURE|escape:'html'}" class="btn btn-sm btn-outline-danger" title="{$smarty.const.LANG_DELETE}">{$smarty.const.LANG_DELETE}</a>
-                    {/if}
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">{$smarty.const.LANG_ACTIONS}</button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="?view_mode=edit_classes&id={$item.ID}&tab=properties">{$smarty.const.LANG_PROPERTIES}</a></li>
+                            <li><a class="dropdown-item" href="?view_mode=edit_classes&id={$item.ID}&tab=methods">{$smarty.const.LANG_METHODS}</a></li>
+                            <li><a class="dropdown-item" href="?view_mode=edit_classes&id={$item.ID}&tab=objects">{$smarty.const.LANG_OBJECTS}</a></li>
+                            <li><a class="dropdown-item" href="?view_mode=edit_classes&parent_id={$item.ID}">{$smarty.const.LANG_EXPAND}</a></li>
+                            {if isset($item.CAN_DELETE)}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="?view_mode=delete_classes&id={$item.ID}" data-md-confirm="{$smarty.const.LANG_ARE_YOU_SURE|escape:'html'}">{$smarty.const.LANG_DELETE}</a></li>
+                            {/if}
+                        </ul>
+                    </div>
                 </div>
             </header>
 

@@ -55,7 +55,7 @@
   if (!$sortby) $sortby="TITLE";
   $out['SORTBY']=$sortby;
   // SEARCH RESULTS
-  $res=SQLSelect("SELECT * FROM methods WHERE $qry ORDER BY $sortby");
+  $res=SQLSelect("SELECT methods.*, classes.TITLE AS CLASS_TITLE, objects.TITLE AS OBJECT_TITLE FROM methods LEFT JOIN classes ON classes.ID=methods.CLASS_ID LEFT JOIN objects ON objects.ID=methods.OBJECT_ID WHERE $qry ORDER BY $sortby");
   if ($res[0]['ID']) {
    colorizeArray($res);
    $total=count($res);

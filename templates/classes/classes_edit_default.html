@@ -1,3 +1,6 @@
+<link href="<#ROOTHTML#>3rdparty/tom-select/css/tom-select.css" rel="stylesheet">
+<script src="<#ROOTHTML#>3rdparty/tom-select/js/tom-select.complete.min.js"></script>
+
 <section class="md-admin-section-card md-admin-form-card md-classes-edit-card">
     <div class="md-admin-section-card__body">
         [#if OK#]
@@ -8,10 +11,10 @@
         [#endif ERR#]
 
         <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
-            <div class="row g-3 align-items-start mb-3">
-                <label class="col-lg-3 col-form-label" for="classesParent"><#LANG_PARENT_CLASS#>:<#LANG_HCB#>parent_class<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="classesParent"><#LANG_PARENT_CLASS#></label>
                 <div class="col-lg-9">
-                    <select name="parent_id" id="classesParent" class="form-control form-select">
+                    <select name="parent_id" id="classesParent" class="form-control form-select" data-md-classes-parent-select>
                         <option value="0">- no -</option>
                         [#begin PARENTS#]
                         <option value="[#ID#]"[#if ID="<#PARENT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
@@ -19,12 +22,12 @@
                     </select>
                 </div>
             </div>
-            <div class="row g-3 align-items-start mb-3">
-                <label class="col-lg-3 col-form-label" for="classesTitle"><#LANG_TITLE#>: <span class="text-danger">*</span><#LANG_HCB#>title<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="classesTitle"><#LANG_TITLE#> <span class="text-danger">*</span></label>
                 <div class="col-lg-9"><input type="text" id="classesTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required></div>
             </div>
-            <div class="row g-3 align-items-start mb-4">
-                <label class="col-lg-3 col-form-label" for="classesDescription"><#LANG_DESCRIPTION#>:<#LANG_HCB#>description<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="classesDescription"><#LANG_DESCRIPTION#></label>
                 <div class="col-lg-9"><textarea name="description" id="classesDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea></div>
             </div>
             <div class="md-admin-form-actions">
@@ -35,8 +38,13 @@
                 [#endif ID#]
                 <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
                 [#if ID!=""#]
-                <a href="?view_mode=export_classes&id=[#ID#]" class="btn btn-light" title="<#LANG_EXPORT#>"><#LANG_EXPORT_CLASS_FULL#></a>
-                <a href="?view_mode=export_classes&id=[#ID#]&skip_objects=1" class="btn btn-light" title="<#LANG_EXPORT#>"><#LANG_EXPORT_CLASS_NO_OBJECTS#></a>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_EXPORT#></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="?view_mode=export_classes&id=[#ID#]"><#LANG_EXPORT_CLASS_FULL#></a></li>
+                        <li><a class="dropdown-item" href="?view_mode=export_classes&id=[#ID#]&skip_objects=1"><#LANG_EXPORT_CLASS_NO_OBJECTS#></a></li>
+                    </ul>
+                </div>
                 [#endif ID#]
             </div>
 
@@ -48,6 +56,25 @@
         </form>
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var select = document.querySelector('[data-md-classes-parent-select]');
+    if (!select || typeof window.TomSelect !== 'function') {
+        return;
+    }
+    if (select.tomselect) {
+        select.tomselect.destroy();
+    }
+    new window.TomSelect(select, {
+        create: false,
+        allowEmptyOption: true,
+        placeholder: '<#LANG_PARENT_CLASS#>',
+        searchField: ['text'],
+        dropdownParent: 'body'
+    });
+});
+</script>
 
 [#if SUB_CLASSES#]
 <section class="md-admin-section-card md-classes-subclasses">

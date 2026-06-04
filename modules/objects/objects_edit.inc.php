@@ -210,7 +210,7 @@ if ($this->tab == 'properties') {
         if (is_array($value['LINKED_MODULES'])) {
             foreach ($value['LINKED_MODULES'] as $prop_link) {
                 if (!$prop_link) break;
-                $props[$i]['LINKED_MODULES'] .= '<span class="label label-success" style="margin-right: 3px;"><a style="color: white;text-decoration: none;" href="?(panel:{action=' . $prop_link . '})&md=' . $prop_link . '&go_linked_object=' . urlencode($rec['TITLE']) . '&go_linked_property=' . urlencode($props[$i]['TITLE']) . '">' . $prop_link . '</a></span>';
+                $props[$i]['LINKED_MODULES'] .= '<a class="md-object-property-card__linked-module" href="?(panel:{action=' . $prop_link . '})&md=' . $prop_link . '&go_linked_object=' . urlencode($rec['TITLE']) . '&go_linked_property=' . urlencode($props[$i]['TITLE']) . '">' . $prop_link . '</a>';
             }
         }
 		
@@ -235,6 +235,17 @@ if ($this->tab == 'properties') {
     $propsCount = is_array($props) ? count($props) : 0;
     $customPropsCount = is_array($my_props) ? count($my_props) : 0;
     $out['PROPERTIES'] = $props;
+    $out['CLASS_PROPERTIES'] = array();
+    $out['OBJECT_PROPERTIES'] = array();
+    if (is_array($props)) {
+        foreach ($props as $propertyItem) {
+            if ((int)$propertyItem['CLASS_ID'] > 0) {
+                $out['CLASS_PROPERTIES'][] = $propertyItem;
+            } else {
+                $out['OBJECT_PROPERTIES'][] = $propertyItem;
+            }
+        }
+    }
     $out['PROPERTIES_TOTAL'] = $propsCount;
     $out['CUSTOM_PROPERTIES_TOTAL'] = $customPropsCount;
     $out['CLASS_PROPERTIES_TOTAL'] = max(0, $propsCount - $customPropsCount);

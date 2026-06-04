@@ -48,14 +48,18 @@
   if (!$sortby) $sortby="TITLE";
   $out['SORTBY']=$sortby;
   // SEARCH RESULTS
-  $res=SQLSelect("SELECT * FROM properties WHERE $qry ORDER BY $sortby");
+  $res=SQLSelect("SELECT properties.*, classes.TITLE AS CLASS_TITLE FROM properties LEFT JOIN classes ON classes.ID=properties.CLASS_ID WHERE $qry ORDER BY $sortby");
   if ($res[0]['ID']) {
    colorizeArray($res);
    $total=count($res);
+   $out['RESULT_TOTAL']=$total;
    for($i=0;$i<$total;$i++) {
     // some action for every record if required
    }
    $out['RESULT']=$res;
+  }
+  if (isset($out['PARENT_PROPERTIES'][0]['ID'])) {
+   $out['PARENT_PROPERTIES_TOTAL']=count($out['PARENT_PROPERTIES']);
   }
 
 

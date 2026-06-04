@@ -155,21 +155,20 @@ CREATE TABLE `classes` (
   `SUB_LIST` text DEFAULT NULL,
   `PARENT_LIST` text DEFAULT NULL,
   `NOLOG` int(3) NOT NULL DEFAULT 0,
-  `DESCRIPTION` text DEFAULT NULL,
-  `TEMPLATE` text DEFAULT NULL
+  `DESCRIPTION` text DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
 -- Дамп данных таблицы `classes`
 --
 
-INSERT INTO `classes` (`ID`, `TITLE`, `PARENT_ID`, `SUB_LIST`, `PARENT_LIST`, `NOLOG`, `DESCRIPTION`, `TEMPLATE`) VALUES
-(7, 'Timer', 0, '7', '0', 1, '', NULL),
-(10, 'Computer', 0, '10', '0', 0, '', NULL),
-(21, 'systemStates', 0, '21', '0', 0, '', NULL),
-(24, 'OperationalModes', 0, '24', '0', 0, '', NULL),
-(25, 'Rooms', 0, '25', '0', 0, 'Rooms/Locations', NULL),
-(32, 'Users', 0, '32', '0', 0, '', NULL);
+INSERT INTO `classes` (`ID`, `TITLE`, `PARENT_ID`, `SUB_LIST`, `PARENT_LIST`, `NOLOG`, `DESCRIPTION`) VALUES
+(7, 'Timer', 0, '7', '0', 1, ''),
+(10, 'Computer', 0, '10', '0', 0, ''),
+(21, 'systemStates', 0, '21', '0', 0, ''),
+(24, 'OperationalModes', 0, '24', '0', 0, ''),
+(25, 'Rooms', 0, '25', '0', 0, 'Rooms/Locations'),
+(32, 'Users', 0, '32', '0', 0, '');
 
 -- --------------------------------------------------------
 

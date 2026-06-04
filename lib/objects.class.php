@@ -53,7 +53,7 @@ function getClassTemplate($class_id, $view = '')
         return $class_templates_cached[$class_id . '_' . $view];
     }
 
-    $class = SQLSelectOne("SELECT ID, TITLE, PARENT_ID, TEMPLATE FROM classes WHERE ID=" . $class_id);
+    $class = SQLSelectOne("SELECT ID, TITLE, PARENT_ID FROM classes WHERE ID=" . $class_id);
     if (!$class['ID']) {
         return '';
     }
@@ -65,9 +65,7 @@ function getClassTemplate($class_id, $view = '')
         $class_file_path = DIR_TEMPLATES . 'classes/views/' . $class['TITLE'] . '.html';
         $alt_class_file_path = ROOT . 'templates_alt/classes/views/' . $class['TITLE'] . '.html';
     }
-    if ($class['TEMPLATE'] != '') {
-        $data = $class['TEMPLATE'];
-    } elseif (file_exists($alt_class_file_path)) {
+    if (file_exists($alt_class_file_path)) {
         $data = LoadFile($alt_class_file_path);
     } elseif (file_exists($class_file_path)) {
         $data = LoadFile($class_file_path);

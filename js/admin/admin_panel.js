@@ -436,6 +436,41 @@
     }
 
     function initClassesTree(root) {
+        var cardsById = {};
+        root.querySelectorAll('[data-md-class-card]').forEach(function (card) {
+            cardsById[card.getAttribute('data-md-class-id')] = card;
+        });
+
+        function setHoverGroup(card, state) {
+            if (!card) {
+                return;
+            }
+            card.classList.toggle('is-hover-group', state);
+
+            var parentId = card.getAttribute('data-md-class-parent-id');
+            if (parentId && parentId !== '0' && cardsById[parentId]) {
+                cardsById[parentId].classList.toggle('is-hover-group', state);
+            }
+
+            var ownId = card.getAttribute('data-md-class-id');
+            root.querySelectorAll('[data-md-class-parent-id="' + ownId + '"]').forEach(function (child) {
+                child.classList.toggle('is-hover-group', state);
+            });
+        }
+
+        root.querySelectorAll('[data-md-class-card]').forEach(function (card) {
+            if (card.dataset.mdClassHoverBound === '1') {
+                return;
+            }
+            card.dataset.mdClassHoverBound = '1';
+            card.addEventListener('mouseenter', function () {
+                setHoverGroup(card, true);
+            });
+            card.addEventListener('mouseleave', function () {
+                setHoverGroup(card, false);
+            });
+        });
+
         root.querySelectorAll('[data-md-class-collapse]').forEach(function (target) {
             var classId = target.getAttribute('data-md-class-collapse');
             if (getCookie('sub_classes_' + classId) === '1') {

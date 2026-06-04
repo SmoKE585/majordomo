@@ -51,9 +51,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </div>
                 <div class="md-classes-page__hero-actions">
-                    [#if TAB=""#]
-                    <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=template" class="btn btn-light"><#LANG_CLASS_TEMPLATE#></a>
-                    [#endif#]
                     <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
                 </div>
             </div>
@@ -65,16 +62,11 @@ document.addEventListener('DOMContentLoaded', function () {
         <a class="md-admin-module-tabs__link [#if TAB="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>
         <a class="md-admin-module-tabs__link [#if TAB="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>
         <a class="md-admin-module-tabs__link [#if TAB="objects"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=objects"><#LANG_OBJECTS#></a>
-        <a class="md-admin-module-tabs__link [#if TAB="template"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=template"><#LANG_CLASS_TEMPLATE#></a>
     </nav>
 [#endif ID#]
 
    [#if TAB=""#]
     [#inc classes_edit_default.html#]
-   [#endif TAB#]
-
-   [#if TAB="template"#]
-    [#inc classes_edit_template.html#]
    [#endif TAB#]
 
    [#if TAB="properties"#]

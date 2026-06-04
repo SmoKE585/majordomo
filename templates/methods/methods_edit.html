@@ -9,23 +9,23 @@
             <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
             [#endif ERR#]
 
-            <div class="row g-3 align-items-start mb-3">
-                <label class="col-lg-3 col-form-label" for="methodTitle"><#LANG_TITLE#>: <span class="text-danger">*</span><#LANG_HCB#>title<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="methodTitle"><#LANG_TITLE#> <span class="text-danger">*</span></label>
                 <div class="col-lg-9">
                     <input type="text" id="methodTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required>
                 </div>
             </div>
 
-            <div class="row g-3 align-items-start mb-3">
-                <label class="col-lg-3 col-form-label" for="methodDescription"><#LANG_DESCRIPTION#><#LANG_HCB#>description<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label" for="methodDescription"><#LANG_DESCRIPTION#></label>
                 <div class="col-lg-9">
                     <textarea name="description" id="methodDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea>
                 </div>
             </div>
 
             [#if ID!=""#]
-            <div class="row g-3 align-items-start mb-3">
-                <label class="col-lg-3 col-form-label"><#LANG_CODE#><#LANG_HCB#>code<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label"><#LANG_CODE#></label>
                 <div class="col-lg-9">
                     <div class="md-method-edit__radio-group mb-3">
                         <label class="md-method-edit__radio">
@@ -80,9 +80,6 @@
                                     </select>
                                 </label>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
-                                [#if CODE_EDITOR_VALIDATE="1"#]
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
-                                [#endif CODE_EDITOR_VALIDATE#]
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
                                 <span class="md-code-editor__status" data-code-editor-status></span>
@@ -117,8 +114,8 @@
                 </div>
             </div>
 
-            <div class="row g-3 align-items-start mb-4">
-                <label class="col-lg-3 col-form-label"><#LANG_CALL_PARENT_METHOD#>: <#LANG_HCB#>parent_method<#LANG_HCE#></label>
+            <div class="row g-3 align-items-start">
+                <label class="col-lg-3 col-form-label"><#LANG_CALL_PARENT_METHOD#></label>
                 <div class="col-lg-9">
                     <div class="md-method-edit__radio-group">
                         <label class="md-method-edit__radio">
@@ -140,14 +137,13 @@
 
             <div class="md-admin-form-actions">
                 [#if ID!=""#]
-                <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_SUBMIT#>"><i class="glyphicon glyphicon-ok-sign" aria-hidden="true"></i> <#LANG_SUBMIT#></button>
+                <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_SUBMIT#>"><#LANG_SUBMIT#></button>
                 [#else ID#]
-                <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_ADD#>"><i class="glyphicon glyphicon-ok-sign" aria-hidden="true"></i> <#LANG_ADD#></button>
+                <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_ADD#>"><#LANG_ADD#></button>
                 [#endif ID#]
                 [#if ID!=""#]
-                <a href="javascript://" onclick="ajaxAutosave('checkcode');" id="checkCodeBtn" class="btn btn-light"><i class="glyphicon glyphicon-refresh" aria-hidden="true"></i> <#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></a>
                 [#endif#]
-                <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><i class="glyphicon glyphicon-remove" aria-hidden="true"></i> <#LANG_CANCEL#></a>
+                <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
             </div>
 
             <input type="hidden" name="id" value="<#ID#>">

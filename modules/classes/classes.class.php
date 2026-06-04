@@ -23,6 +23,19 @@ function __construct() {
   $this->title="<#LANG_MODULE_OBJECTS#>";
   $this->module_category="<#LANG_SECTION_OBJECTS#>";
   $this->checkInstalled();
+  $this->cleanupLegacyTemplateColumn();
+}
+
+function cleanupLegacyTemplateColumn() {
+ static $done=false;
+ if ($done) {
+  return;
+ }
+ $done=true;
+ $column=SQLSelectOne("SHOW COLUMNS FROM `classes` LIKE 'TEMPLATE'");
+ if (isset($column['Field']) && $column['Field']=='TEMPLATE') {
+  SQLExec("ALTER TABLE `classes` DROP COLUMN `TEMPLATE`");
+ }
 }
 /**
 * saveParams
@@ -653,7 +666,6 @@ classes - Classes
  classes: SUB_LIST text
  classes: PARENT_LIST text
  classes: DESCRIPTION text
- classes: TEMPLATE text
  classes: INDEX (PARENT_ID)
 
 EOD;

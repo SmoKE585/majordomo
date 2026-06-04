@@ -1,178 +1,244 @@
 [#if OVERWRITE=""#]
-	<style>
-	.hoverMethods:hover {
-		    background: #f5f5f5;
-	}
-	</style>
-	<div style="padding: 10px;border: 1px solid #dddddd;border-top: 0px;">
-		<table border="0" class="table table-bordered">
-			[#begin METHODS#]
-				<tr class="hoverMethods">
-					<td style="vertical-align: middle;">[#CLASS_TITLE#] &rarr; <b>[#OBJECT_TITLE#].[#TITLE#]</b>
-					[#if CUSTOMIZED="1"#]<font color="red">*</font>[#endif#]
-					</td>
-					<td style="vertical-align: middle;text-align: center;">
-						<a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&overwrite=1&method_id=[#ID#]" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-pencil"></i> <#LANG_SETUP#></a>
-						<a href="<#ROOTHTML#>objects/?object=[#OBJECT_TITLE#]&op=m&m=[#TITLE#]" target="blank" class="btn btn-success btn-sm" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-play-circle"></i> <#LANG_RUN_SCRIPT_BTN#></a>
-					</td>
-				</tr>
-			[#end METHODS#]
-		</table>
-	</div>
+<section class="md-admin-module-list md-object-methods-page">
+    <div class="md-admin-module-list__toolbar md-admin-module-list__toolbar--embedded">
+        <div class="md-related-module-toolbar__stats">
+            <div class="md-related-module-toolbar__stat"><span><#LANG_METHODS#></span><strong>[#if METHODS_TOTAL!=""#][#METHODS_TOTAL#][#else#]0[#endif#]</strong></div>
+        </div>
+        <div class="md-object-methods-page__hint">Переопределяйте только нужные методы объекта и оставляйте остальное поведение в классе.</div>
+    </div>
+
+    <div class="md-admin-record-list">
+        [#begin METHODS#]
+        <article class="md-admin-record-card md-object-method-card">
+            <div class="md-admin-record-card__main">
+                <button type="button" class="md-admin-record-card__search" data-md-global-search="[#OBJECT_TITLE#].[#TITLE#]" aria-label="<#LANG_SEARCH#>">?</button>
+                <div class="md-admin-record-card__content">
+                    <div class="md-admin-record-card__title">
+                        <span class="md-admin-record-card__class">[#CLASS_TITLE#]</span>
+                        <span class="md-admin-record-card__separator">/</span>
+                        <strong>[#OBJECT_TITLE#].[#TITLE#]</strong>
+                    </div>
+                    <div class="md-admin-record-card__badges">
+                        [#if CUSTOMIZED="1"#]<span class="badge md-admin-status-badge md-admin-status-badge--danger"><#LANG_OVERWRITE#></span>[#endif#]
+                        [#if CUSTOMIZED!="1"#]<span class="badge md-admin-status-badge"><#LANG_CLASS#></span>[#endif#]
+                    </div>
+                </div>
+            </div>
+            <div class="md-admin-record-card__meta">
+                <div class="md-admin-record-card__field">Локальная настройка вызова и кода для метода объекта.</div>
+            </div>
+            <div class="md-admin-record-card__actions">
+                <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&overwrite=1&method_id=[#ID#]" class="btn btn-light btn-sm"><span><#LANG_SETUP#></span></a>
+                <a href="<#ROOTHTML#>objects/?object=[#OBJECT_TITLE#]&op=m&m=[#TITLE#]" target="_blank" data-md-confirm="<#LANG_ARE_YOU_SURE#>" class="btn btn-primary btn-sm"><span><#LANG_RUN_SCRIPT_BTN#></span></a>
+            </div>
+        </article>
+        [#end METHODS#]
+    </div>
+</section>
 [#else OVERWRITE#]
+<div class="md-object-method-editor">
+    <section class="md-admin-section-card md-object-method-editor__hero">
+        <div class="md-admin-section-card__body">
+            <div class="md-object-method-editor__hero-layout">
+                <div class="md-object-method-editor__hero-main">
+                    <div class="md-object-method-editor__eyebrow"><#LANG_METHODS#></div>
+                    <h2 class="md-object-method-editor__title"><#OBJECT_TITLE#>.<#METHOD_TITLE#></h2>
+                    <div class="md-object-method-editor__summary">Локальная настройка выполнения метода для выбранного объекта.</div>
+                </div>
+                <div class="md-object-method-editor__hero-actions">
+                    <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
+                </div>
+            </div>
+        </div>
+    </section>
 
-<style>
-.CodeMirror {
-	border-radius: 5px;
-	border: 2px solid #f7f7f7;
-}
-</style>
+    <div class="row g-3">
+        <div class="col-xl-8">
+            <section class="md-admin-section-card md-admin-form-card">
+                <div class="md-admin-section-card__body">
+                    [#if OK !=0#]
+                    <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
+                    [#endif OK#]
+                    [#if ERR_CODE#]
+                    <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
+                    [#endif ERR_CODE#]
 
-<div class="row">
-	<div class="col-lg-12">
-		<h4 style="border-bottom: 1px solid #dddddd;padding-bottom: 10px;"><#OBJECT_TITLE#> <i class="glyphicon glyphicon-arrow-right" style="color: #c3c3c3;font-size: 1.3rem;vertical-align: top;"></i> <b>[#METHOD_TITLE#]</b></h4>
-		[#if OK !=0#]
-			<div class="alert alert-success"><#LANG_DATA_SAVED#></div>
-		[#endif OK#]
-		[#if ERR_CODE#]
-		  <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div> 
-		  <script>
-			$(window).load(function() {
-				[#if SETTINGS_CODEEDITOR_SHOWERROR == '1' AND SETTINGS_CODEEDITOR_TURNONSETTINGS == '1'#]
-					find = $('div pre.CodeMirror-line:eq([#ERR_LINE#])');
-					find.attr('id', 'errorline_[#ERR_LINE#]');
-				
-					var newElems = $("<div class='hintError' style='border-top: 1px solid red;font-weight: bold;font-style: italic;'><#LANG_STRING_ERROR#> -> [#ERRORS#]</div>");
-					$('div pre.CodeMirror-line:eq([#ERR_LINE#])').append(newElems);
-				[#endif#]
-				
-				[#if SETTINGS_CODEEDITOR_UPTOLINE == '1' AND SETTINGS_CODEEDITOR_TURNONSETTINGS == '1'#]
-					location.href='#errorline_[#ERR_LINE#]';
-				[#endif#]				
-			});
-			</script>
-		[#endif ERR#]
-		<form action="?" method="post" name="frmEdit" id="frmEdit">
-			<div style="margin-bottom: 10px;">
-				<input type="radio" name="run_type" [#if SCRIPT_ID=="0"#]checked[#endif#] value="code" onClick="$('#code_option').show();$('#script_id').hide();"> <#LANG_CODE#>
-				
-				<input type="radio" name="run_type" [#if SCRIPT_ID!="0"#]checked[#endif#] value="script" onClick="$('#code_option').hide();$('#script_id').show();"> <#LANG_SCRIPT#>:
-				<select name="script_id" id="script_id" style="[#if SCRIPT_ID=="0"#]display:none;[#endif#]">
-					<option value="0">
-					[#begin SCRIPTS#]
-						<option value="[#ID#]"[#if ID="<#SCRIPT_ID#>"#] selected[#endif#]>[#TITLE#]
-					[#end SCRIPTS#]
-				</select>
-			</div>
-			<div class="visible-xs visible-sm" id="mobileIndicator"></div>
-		    <div id="code_option" style="margin-top: 10px; margin-bottom: 10px;[#if SCRIPT_ID!="0"#]display:none;[#endif#]">
-				<div class="md-code-editor"
-				     data-code-editor
-				     data-code-editor-key="object[#ID#]_method[#METHOD_ID#]"
-				     data-code-editor-mode="[#CODE_EDITOR_MODE#]"
-				     data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
-				     data-code-editor-autosave="[#SETTINGS_CODEEDITOR_AUTOSAVE#]"
-				     data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
-				     data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
-				     data-code-editor-min-lines="[#SETTINGS_CODEEDITOR_MIXLINE#]"
-				     data-code-editor-max-lines="[#SETTINGS_CODEEDITOR_SHOWLINE#]"
-				     data-code-editor-autofocus="1"
-				     data-code-editor-validate-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
-				     data-code-editor-autosave-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
-				     data-code-editor-id="[#METHOD_ID#]"
-				     data-code-editor-md="object[#ID#]_method[#METHOD_ID#]"
-				     data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
-					<div class="md-code-editor__toolbar" data-code-editor-toolbar>
-						<label class="md-code-editor__mode-switch">
-							<span>Mode</span>
-							<select class="form-control form-control-sm" name="code_editor_mode" data-code-editor-mode-select>
-								<option value="php"[#if CODE_EDITOR_MODE="php"#] selected[#endif#]>PHP</option>
-								<option value="python"[#if CODE_EDITOR_MODE="python"#] selected[#endif#]>Python</option>
-							</select>
-						</label>
-						<button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
-						[#if CODE_EDITOR_VALIDATE="1"#]
-						<button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
-						[#endif CODE_EDITOR_VALIDATE#]
-						<button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
-						<button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
-						<span class="md-code-editor__status" data-code-editor-status></span>
-					</div>
+                    <form action="?" method="post" name="frmEdit" id="frmEdit" class="md-admin-form-grid">
+                        <div class="row g-3 align-items-start">
+                            <label class="col-lg-3 col-form-label"><#LANG_CODE#></label>
+                            <div class="col-lg-9">
+                                <div class="md-method-edit__radio-group mb-3">
+                                    <label class="md-method-edit__radio">
+                                        <input type="radio" name="run_type" value="code"[#if SCRIPT_ID=="0"#] checked[#endif#] data-md-object-method-run-type="code">
+                                        <span><#LANG_CODE#></span>
+                                    </label>
+                                    <label class="md-method-edit__radio">
+                                        <input type="radio" name="run_type" value="script"[#if SCRIPT_ID!="0"#] checked[#endif#] data-md-object-method-run-type="script">
+                                        <span><#LANG_SCRIPT#></span>
+                                    </label>
+                                </div>
 
-					[#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS!=""#]
-					<div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
-						<b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
-						<div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
-						<div class="md-code-editor__error-actions">
-							<button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
-						</div>
-					</div>
-					[#endif#]
+                                <div class="md-object-method-editor__script-select [#if SCRIPT_ID=="0"#]d-none[#endif#]" data-md-object-method-script-select>
+                                    <label class="form-label" for="objectMethodScript"><#LANG_SCRIPT#></label>
+                                    <select name="script_id" id="objectMethodScript" class="form-control form-select">
+                                        <option value="0"></option>
+                                        [#begin SCRIPTS#]
+                                        <option value="[#ID#]"[#if ID="<#SCRIPT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
+                                        [#end SCRIPTS#]
+                                    </select>
+                                </div>
 
-					<textarea name="code" id="code" rows="20" cols="100" class="field span10">[#CODE#]</textarea>
+                                <div class="md-object-method-editor__code-panel [#if SCRIPT_ID!="0"#]d-none[#endif#]" data-md-object-method-code-panel>
+                                    <div class="md-code-editor"
+                                         data-code-editor
+                                         data-code-editor-key="object[#ID#]_method[#METHOD_ID#]"
+                                         data-code-editor-mode="[#CODE_EDITOR_MODE#]"
+                                         data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
+                                         data-code-editor-autosave="[#SETTINGS_CODEEDITOR_AUTOSAVE#]"
+                                         data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
+                                         data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
+                                         data-code-editor-min-lines="[#SETTINGS_CODEEDITOR_MIXLINE#]"
+                                         data-code-editor-max-lines="[#SETTINGS_CODEEDITOR_SHOWLINE#]"
+                                         data-code-editor-autofocus="1"
+                                         data-code-editor-validate-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+                                         data-code-editor-autosave-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+                                         data-code-editor-id="[#METHOD_ID#]"
+                                         data-code-editor-md="object[#ID#]_method[#METHOD_ID#]"
+                                         data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
+                                        <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+                                            <label class="md-code-editor__mode-switch">
+                                                <span>Mode</span>
+                                                <select class="form-control form-control-sm" name="code_editor_mode" data-code-editor-mode-select>
+                                                    <option value="php"[#if CODE_EDITOR_MODE="php"#] selected[#endif#]>PHP</option>
+                                                    <option value="python"[#if CODE_EDITOR_MODE="python"#] selected[#endif#]>Python</option>
+                                                </select>
+                                            </label>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
+                                            <span class="md-code-editor__status" data-code-editor-status></span>
+                                        </div>
 
-					<div class="md-code-editor__drawer-content" data-code-editor-drawer-content hidden data-md-drawer-title="<#LANG_HISTORY#>" data-md-drawer-subtitle="Autosave backups and saved versions">
-						<div class="md-code-editor__drawer-body">
-							<div class="md-code-editor__section">
-								<h4><#LANG_CODEEDITOR_AUTOSAVE#></h4>
-								<p><#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></p>
-								<div class="md-code-editor__restore-list" data-code-editor-autosave-list>
-									<div class="md-code-editor__empty">No autosave backups loaded yet.</div>
-								</div>
-								<pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-			<#LANG_CALL_PARENT_METHOD#>:
-			<#LANG_HCB#>parent_method<#LANG_HCE#>
-			<br>
-			<label><input type="radio" name="call_parent" value="1"[#if CALL_PARENT="1"#] checked[#endif#]> <#LANG_BEFORE_CODE_EXECUTION#></label>
-			<label><input type="radio" name="call_parent" value="2"[#if CALL_PARENT="2"#] checked[#endif#]> <#LANG_AFTER_CODE_EXECUTION#></label>
-			<label><input type="radio" name="call_parent" value="0"[#if CALL_PARENT="0"#] checked[#endif#]> <#LANG_NEVER#></label>
-			<br><br>
-			<button type="submit" name="subm" value="<#LANG_UPDATE#>" class="btn btn-success"><i class="glyphicon glyphicon-ok" aria-hidden="true"></i> <#LANG_SUBMIT#></button>
-			<a href="javascript://" onclick="ajaxAutosave('checkcode');" id="checkCodeBtn" class="btn btn-info"><i class="glyphicon glyphicon-share" aria-hidden="true"></i> <#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></a>
-			<a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>" class="btn btn-default"><i class="glyphicon glyphicon-remove" aria-hidden="true"></i> <#LANG_CANCEL#></a>
-			<a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_meth=<#METHOD_ID#>" class="btn btn-danger" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-trash" aria-hidden="true"></i> <#LANG_DELETE#></a>
-			<a href="<#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" target="_blank" class="btn btn-primary" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-play-circle" aria-hidden="true"></i> <#LANG_RUN_SCRIPT_BTN#></a>
-			
-			<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-			<input type="hidden" name="id" value="<#ID#>">
-			<input type="hidden" name="tab" value="<#TAB#>">
-			<input type="hidden" name="overwrite" value="1">
-			<input type="hidden" name="method_id" value="<#METHOD_ID#>">
-			<input type="hidden" name="mode" value="update">
-			
-		</form>
-		
-		<hr>
-	</div>
-	
-	<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
-		<h4><#LANG_SCRIPT_HOW_TO_RUN#></h4>
-		<table class="table">
-			<tr>
-				<td valign="top"><#LANG_RUN_BY_URL#>:</td>
-				<td valign="top"><code><a href="<#SERVER_URL#><#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')" target="_blank"><#SERVER_URL#><#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#></a></code></td>
-			</tr>
-			<tr>
-				<td valign="top"><#LANG_COMMAND_LINE#>:</td>
-				<td valign="top"><code><#DOC_ROOT#>\obj.bat <#OBJECT_TITLE#>.<#METHOD_TITLE#></code></td>
-			</tr>
-			<tr>
-				<td valign="top"><#LANG_SCRIPT_RUN_IN_METHOD#>:</td>
-				<td valign="top"><code>callMethod('<#OBJECT_TITLE#>.<#METHOD_TITLE#>');</code></td>
-			</tr>
-		</table>
-	</div>
-	<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
-		[#if ID!=""#]
-		 [#module name="xray" action="context" type="method" keyword="<#OBJECT_TITLE#>.<#METHOD_TITLE#>" code_id="mCode"#]
-		[#endif ID#]
-	</div>
+                                        [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS!=""#]
+                                        <div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
+                                            <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
+                                            <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
+                                            <div class="md-code-editor__error-actions">
+                                                <button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
+                                            </div>
+                                        </div>
+                                        [#endif#]
+
+                                        <textarea name="code" id="code" rows="20" cols="100" class="form-control">[#CODE#]</textarea>
+
+                                        <div class="md-code-editor__drawer-content" data-code-editor-drawer-content hidden data-md-drawer-title="<#LANG_HISTORY#>" data-md-drawer-subtitle="Autosave backups and saved versions">
+                                            <div class="md-code-editor__drawer-body">
+                                                <div class="md-code-editor__section">
+                                                    <h4><#LANG_CODEEDITOR_AUTOSAVE#></h4>
+                                                    <p><#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></p>
+                                                    <div class="md-code-editor__restore-list" data-code-editor-autosave-list>
+                                                        <div class="md-code-editor__empty">No autosave backups loaded yet.</div>
+                                                    </div>
+                                                    <pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 align-items-start">
+                            <label class="col-lg-3 col-form-label"><#LANG_CALL_PARENT_METHOD#></label>
+                            <div class="col-lg-9">
+                                <div class="md-method-edit__radio-group">
+                                    <label class="md-method-edit__radio">
+                                        <input type="radio" name="call_parent" value="1"[#if CALL_PARENT="1"#] checked[#endif#]>
+                                        <span><#LANG_BEFORE_CODE_EXECUTION#></span>
+                                    </label>
+                                    <label class="md-method-edit__radio">
+                                        <input type="radio" name="call_parent" value="2"[#if CALL_PARENT="2"#] checked[#endif#]>
+                                        <span><#LANG_AFTER_CODE_EXECUTION#></span>
+                                    </label>
+                                    <label class="md-method-edit__radio">
+                                        <input type="radio" name="call_parent" value="0"[#if CALL_PARENT="0"#] checked[#endif#]>
+                                        <span><#LANG_NEVER#></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="md-admin-form-actions">
+                            <button type="submit" name="subm" value="<#LANG_UPDATE#>" class="btn btn-primary"><#LANG_SUBMIT#></button>
+                            <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
+                            <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_meth=<#METHOD_ID#>" class="btn btn-outline-danger" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a>
+                            <a href="<#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" target="_blank" class="btn btn-primary" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a>
+                        </div>
+
+                        <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
+                        <input type="hidden" name="id" value="<#ID#>">
+                        <input type="hidden" name="tab" value="<#TAB#>">
+                        <input type="hidden" name="overwrite" value="1">
+                        <input type="hidden" name="method_id" value="<#METHOD_ID#>">
+                        <input type="hidden" name="mode" value="update">
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-xl-4">
+            <section class="md-admin-section-card md-object-method-editor__howto">
+                <div class="md-admin-section-card__body">
+                    <h3 class="md-object-method-editor__section-title"><#LANG_SCRIPT_HOW_TO_RUN#></h3>
+                    <div class="md-object-method-editor__snippet">
+                        <span><#LANG_RUN_BY_URL#></span>
+                        <code><a href="<#SERVER_URL#><#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" data-md-confirm="<#LANG_ARE_YOU_SURE#>" target="_blank"><#SERVER_URL#><#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#></a></code>
+                    </div>
+                    <div class="md-object-method-editor__snippet">
+                        <span><#LANG_COMMAND_LINE#></span>
+                        <code><#DOC_ROOT#>\obj.bat <#OBJECT_TITLE#>.<#METHOD_TITLE#></code>
+                    </div>
+                    <div class="md-object-method-editor__snippet">
+                        <span><#LANG_SCRIPT_RUN_IN_METHOD#></span>
+                        <code>callMethod('<#OBJECT_TITLE#>.<#METHOD_TITLE#>');</code>
+                    </div>
+                </div>
+            </section>
+
+            [#if ID!=""#]
+            <section class="md-admin-section-card md-object-method-editor__xray">
+                <div class="md-admin-section-card__body">
+                    [#module name="xray" action="context" type="method" keyword="<#OBJECT_TITLE#>.<#METHOD_TITLE#>" code_id="mCode"#]
+                </div>
+            </section>
+            [#endif ID#]
+        </div>
+    </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var runTypeInputs = document.querySelectorAll('[data-md-object-method-run-type]');
+    var codePanel = document.querySelector('[data-md-object-method-code-panel]');
+    var scriptSelect = document.querySelector('[data-md-object-method-script-select]');
+    if (!runTypeInputs.length || !codePanel || !scriptSelect) {
+        return;
+    }
 
+    function syncRunType() {
+        var selected = Array.prototype.find.call(runTypeInputs, function (input) {
+            return input.checked;
+        });
+        var isCode = selected && selected.value === 'code';
+        codePanel.classList.toggle('d-none', !isCode);
+        scriptSelect.classList.toggle('d-none', isCode);
+    }
+
+    runTypeInputs.forEach(function (input) {
+        input.addEventListener('change', syncRunType);
+    });
+
+    syncRunType();
+});
+</script>
 [#endif OVERWRITE#]

@@ -363,9 +363,6 @@
                 </div>
 
                 [#if MODE="getlatest_iframe"#]
-                <div class="md-saverestore-inline-alert is-warning">
-                    Не закрывайте окно до окончания процесса. После завершения система сама вернётся на страницу модуля.
-                </div>
                 <iframe id="processUpdateFrame" class="md-saverestore-console" src="<#ROOTHTML#>modules/saverestore/update_iframe.php?with_extensions=[#WITH_EXTENSIONS#]&with_backup=[#WITH_BACKUP#]&backup=<#BACKUP#>&design=<#DESIGN#>&code=<#CODE#>&data=<#DATA#>&save_files=<#SAVE_FILES#>" frameborder="0"></iframe>
                 [#else#]
                 <div class="md-saverestore-inline-alert is-info">

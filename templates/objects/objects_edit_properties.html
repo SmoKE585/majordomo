@@ -10,18 +10,18 @@
         <div class="md-object-properties-hero__search">
             <input type="text" class="form-control" id="filterProp" placeholder="<#LANG_NEWMARKET_SEARCH_INPUT_PLACEHOLDER#>">
         </div>
-        <button type="button" class="btn btn-primary" data-md-toggle-target="#objectPropertyCreate"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_PROPERTY#></button>
+        <button type="button" class="btn btn-primary" data-md-toggle-target="#objectPropertyCreate"><#LANG_ADD_NEW_PROPERTY#></button>
     </div>
 
     <section id="objectPropertyCreate" class="md-admin-section-card md-object-properties-create" hidden>
         <div class="md-admin-section-card__body">
             <form action="?" method="post" class="md-admin-form-grid">
-                <div class="row g-3 align-items-start mb-3">
+                <div class="row g-3 align-items-start">
                     <div class="col-lg-4"><input type="text" name="new_property" placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_NAME#> (*)" class="form-control" required></div>
                     <div class="col-lg-4"><input type="text" name="new_description" placeholder="<#LANG_DESCRIPTION#>" class="form-control"></div>
                     <div class="col-lg-4"><input type="text" name="new_history" placeholder="<#LANG_KEEP_HISTORY_DAYS#>" class="form-control"></div>
                 </div>
-                <div class="row g-3 align-items-start mb-3">
+                <div class="row g-3 align-items-start">
                     <div class="col-lg-4">
                         <select name="onchange" class="form-control form-select">
                             <option value="" selected><#LANG_ONCHANGE_METHOD#></option>
@@ -50,7 +50,7 @@
             <article class="md-admin-record-card md-object-property-card [#if CLASS_ID!="0"#]md-object-property-card--class[#endif#]">
                 <div class="md-admin-record-card__main">
                     <button type="button" class="md-admin-record-card__search" data-md-global-search="<#TITLE#>.[#TITLE#]" aria-label="<#LANG_SEARCH#>">
-                        <i class="glyphicon glyphicon-search"></i>
+                        ?
                     </button>
                     <div class="md-admin-record-card__content">
                         <div class="md-admin-record-card__title">
@@ -75,11 +75,11 @@
                             [#endif#]
                         </div>
                         <div class="md-admin-record-card__badges">
-                            [#if CLASS_ID!="0"#]<span class="label label-default">Class</span>[#endif#]
-                            [#if CLASS_ID="0"#]<span class="label label-primary">Object</span>[#endif#]
-                            [#if KEEP_HISTORY != 0#]<span class="label label-warning">История: [#KEEP_HISTORY#] дней</span>[#endif#]
-                            [#if VALIDATION_TYPE != 0#]<span class="label label-info">Валидация</span>[#endif#]
-                            [#if ONCHANGE != ''#]<span class="label label-primary">Запуск метода: [#ONCHANGE#]</span>[#endif#]
+                            [#if CLASS_ID!="0"#]<span class="badge md-admin-status-badge">Class</span>[#endif#]
+                            [#if CLASS_ID="0"#]<span class="badge md-admin-status-badge">Object</span>[#endif#]
+                            [#if KEEP_HISTORY != 0#]<span class="badge md-admin-status-badge">История: [#KEEP_HISTORY#] дней</span>[#endif#]
+                            [#if VALIDATION_TYPE != 0#]<span class="badge md-admin-status-badge">Валидация</span>[#endif#]
+                            [#if ONCHANGE != ''#]<span class="badge md-admin-status-badge">Метод: [#ONCHANGE#]</span>[#endif#]
                         </div>
                         [#if DESCRIPTION!=""#]<div class="md-object-property-card__description">[#DESCRIPTION#]</div>[#endif#]
                         [#if LINKED_MODULES!=""#]<div class="md-object-property-card__links">[#LINKED_MODULES#]</div>[#endif#]
@@ -113,8 +113,8 @@
                 </div>
                 <div class="md-admin-record-card__actions">
                     [#if CLASS_ID="0"#]
-                    <button type="button" class="btn btn-light btn-sm" data-md-prop-config-toggle="[#ID#]"><i class="glyphicon glyphicon-cog"></i><span><#LANG_EDIT#></span></button>
-                    <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_prop=[#ID#]" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')" title="<#LANG_DELETE#>" class="btn btn-outline-danger btn-sm"><i class="glyphicon glyphicon-remove"></i><span><#LANG_DELETE#></span></a>
+                    <button type="button" class="btn btn-light btn-sm" data-md-prop-config-toggle="[#ID#]"><span><#LANG_EDIT#></span></button>
+                    <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_prop=[#ID#]" data-md-confirm="<#LANG_ARE_YOU_SURE#>" title="<#LANG_DELETE#>" class="btn btn-outline-danger btn-sm"><span><#LANG_DELETE#></span></a>
                     [#endif#]
                 </div>
             </article>
@@ -123,7 +123,7 @@
             <section class="md-admin-section-card md-object-property-config" data-md-prop-config="[#ID#]" hidden>
                 <div class="md-admin-section-card__body">
                     <form action="?" method="post" class="md-admin-form-grid">
-                        <div class="row g-3 align-items-start mb-3">
+                        <div class="row g-3 align-items-start">
                             <div class="col-lg-4">
                                 <label class="form-label"><#LANG_PROPERTY#></label>
                                 <input type="text" name="new_property" value="[#TITLE#]" class="form-control">
@@ -137,7 +137,7 @@
                                 <input type="text" name="new_history" value="[#KEEP_HISTORY#]" class="form-control">
                             </div>
                         </div>
-                        <div class="row g-3 align-items-start mb-3">
+                        <div class="row g-3 align-items-start">
                             <div class="col-lg-4">
                                 <label class="form-label"><#LANG_ONCHANGE_METHOD#></label>
                                 <select name="onchange" class="form-control form-select">
@@ -241,6 +241,40 @@ document.addEventListener('DOMContentLoaded', function () {
     var filterInput = document.getElementById('filterProp');
     var propertyCards = Array.prototype.slice.call(document.querySelectorAll('[data-md-object-property]'));
     var createPanel = document.getElementById('objectPropertyCreate');
+    var propertyList = document.getElementById('proplist');
+
+    function buildPropertySection(title, modifier, items) {
+        var section = document.createElement('section');
+        var titleNode = document.createElement('h3');
+        var list = document.createElement('div');
+        section.className = 'md-object-properties-group ' + modifier;
+        titleNode.className = 'md-object-properties-group__title';
+        titleNode.textContent = title;
+        list.className = 'md-object-properties-group__list';
+        section.appendChild(titleNode);
+        section.appendChild(list);
+        items.forEach(function (item) {
+            list.appendChild(item);
+        });
+        return section;
+    }
+
+    if (propertyList && propertyCards.length) {
+        var classCards = propertyCards.filter(function (item) {
+            return !!item.querySelector('.md-object-property-card--class');
+        });
+        var objectCards = propertyCards.filter(function (item) {
+            return !item.querySelector('.md-object-property-card--class');
+        });
+
+        propertyList.innerHTML = '';
+        if (classCards.length) {
+            propertyList.appendChild(buildPropertySection('Свойства класса', 'md-object-properties-group--class', classCards));
+        }
+        if (objectCards.length) {
+            propertyList.appendChild(buildPropertySection('Свойства объекта', 'md-object-properties-group--object', objectCards));
+        }
+    }
 
     document.querySelectorAll('[data-md-toggle-target="#objectPropertyCreate"]').forEach(function (button) {
         button.addEventListener('click', function () {
