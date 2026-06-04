@@ -1641,6 +1641,44 @@
         };
     }
 
+    var headerClockTimer = 0;
+
+    function updateHeaderDateTime() {
+        var clockNodes = document.querySelectorAll('[data-md-header-clock]');
+        var dateNodes = document.querySelectorAll('[data-md-header-date]');
+        if (!clockNodes.length && !dateNodes.length) {
+            return;
+        }
+
+        var now = new Date();
+        var timeText = new Intl.DateTimeFormat('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        }).format(now);
+        var dateText = new Intl.DateTimeFormat('ru-RU', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }).format(now);
+
+        clockNodes.forEach(function (node) {
+            node.textContent = timeText;
+        });
+        dateNodes.forEach(function (node) {
+            node.textContent = dateText;
+        });
+    }
+
+    function initHeaderDateTime() {
+        updateHeaderDateTime();
+        if (headerClockTimer) {
+            return;
+        }
+        headerClockTimer = window.setInterval(updateHeaderDateTime, 1000);
+    }
+
     function boot(root) {
         window.MDJAdminLastBootRoot = root;
         copyLegacyBootstrapAttributes(root);
@@ -1825,6 +1863,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         applyThemeFromCookie();
         boot(document);
+        initHeaderDateTime();
         installJqueryBridge();
         initAdminSidebarDrawer();
         scrollSidebarToActiveItem();
