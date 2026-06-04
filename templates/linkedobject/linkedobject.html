@@ -1,5 +1,7 @@
 [#if FIRST_RUN="1"#]
+<link href="<#ROOTHTML#>3rdparty/tom-select/css/tom-select.css" rel="stylesheet" />
 <link href="<#ROOTHTML#>templates/linkedobject/linkedobject.css?reload=1" rel="stylesheet" />
+<script src="<#ROOTHTML#>3rdparty/tom-select/js/tom-select.complete.min.js"></script>
 <script src="<#ROOTHTML#>templates/linkedobject/linkedobject.js?reload=1"></script>
 [#endif#]
 
@@ -10,7 +12,6 @@
           data-md-linkedobject-role="object"
           data-md-linkedobject-field-id="[#OBJECT_FIELD#]"
           data-md-linkedobject-base-url="<#ROOTHTML#>panel/linkedobject.html"
-          data-md-linkedobject-add-url="<#ROOTHTML#>admin.php?md=panel&action=classes&print=1"
           data-md-linkedobject-label="<#LANG_LINKED_OBJECT#>"
           data-md-linkedobject-placeholder="<#LANG_LINKED_OBJECT#>"
           data-md-linkedobject-empty="Ничего не найдено"
@@ -20,41 +21,29 @@
         <span class="md-linkedobject-field__hidden" data-md-linkedobject-hidden-slot="object"></span>
         <input type="hidden" name="[#OBJECT_FIELD#]" id="[#OBJECT_FIELD#]" value="[#OBJECT_VALUE#]" data-md-linkedobject-native="object">
         <div class="md-linkedobject-field__surface">
-            <div class="md-linkedobject-field__toolbar">
-                <button type="button" class="md-linkedobject-object-trigger" data-md-linkedobject-object-trigger aria-expanded="false">
-                    <span class="md-linkedobject-object-trigger__eyebrow"><#LANG_LINKED_OBJECT#></span>
-                    <span class="md-linkedobject-object-trigger__value" data-md-linkedobject-object-value><#LANG_LINKED_OBJECT#></span>
-                    <span class="md-linkedobject-object-trigger__meta" data-md-linkedobject-object-meta>Выберите объект и загрузите привязки</span>
-                </button>
+            <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
+                <div class="md-linkedobject-field__label"><#LANG_LINKED_OBJECT#></div>
                 <div class="md-linkedobject-field__actions">
                     <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-object" title="Очистить выбор" aria-label="Очистить выбор">
                         <i class="glyphicon glyphicon-remove"></i>
                     </button>
-                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-object" title="Открыть объект" aria-label="Открыть объект" hidden>
+                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-object" title="Открыть объект" aria-label="Открыть объект" target="_blank" rel="noopener noreferrer" hidden>
                         <i class="glyphicon glyphicon-export"></i>
                     </a>
-                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-device" title="Открыть устройство" aria-label="Открыть устройство" hidden>
+                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-device" title="Открыть устройство" aria-label="Открыть устройство" target="_blank" rel="noopener noreferrer" hidden>
                         <i class="glyphicon glyphicon-hdd"></i>
                     </a>
                     <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="refresh-objects" title="Обновить список" aria-label="Обновить список">
                         <i class="glyphicon glyphicon-refresh"></i>
                     </button>
-                    <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="add-object" title="Добавить объект" aria-label="Добавить объект">
-                        <i class="glyphicon glyphicon-plus"></i>
-                    </button>
                 </div>
             </div>
-            <div class="md-linkedobject-object-panel" data-md-linkedobject-object-panel hidden>
-                <div class="md-linkedobject-object-panel__search">
-                    <input type="search" class="form-control" data-md-linkedobject-object-search placeholder="Поиск объекта" autocomplete="off">
-                </div>
-                <div class="md-linkedobject-object-panel__results" data-md-linkedobject-object-results></div>
-            </div>
+            <select class="form-select md-linkedobject-field__select md-linkedobject-field__select--object" data-md-linkedobject-object-select autocomplete="off">
+                <option value=""></option>
+                [#OBJECTS_LIST_RESULT#]
+            </select>
+            <div class="md-linkedobject-field__hint" data-md-linkedobject-hint="object">Выберите объект и загрузите привязки</div>
         </div>
-        <select class="md-linkedobject-source" data-md-linkedobject-source="objects" hidden>
-            <option value=""></option>
-            [#OBJECTS_LIST_RESULT#]
-        </select>
     </span>
 </span>
 [#endif#]
@@ -67,20 +56,19 @@
           data-md-linkedobject-field-id="[#PROPERTY_FIELD#]"
           data-md-linkedobject-base-url="<#ROOTHTML#>panel/linkedobject.html"
           data-md-linkedobject-label="<#LANG_LINKED_PROPERTY#>"
-          data-md-linkedobject-filter-placeholder="Фильтр свойств"
           data-md-linkedobject-empty="Свойства станут доступны после выбора объекта"
           data-md-linkedobject-width="<#WIDTH#>"
           style="--md-linkedobject-width:<#WIDTH#>;">
         <span class="md-linkedobject-field__hidden" data-md-linkedobject-hidden-slot="property"></span>
         <input type="hidden" name="[#PROPERTY_FIELD#]" id="[#PROPERTY_FIELD#]" value="[#PROPERTY_VALUE#]" data-md-linkedobject-native="property">
         <div class="md-linkedobject-field__surface">
-            <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--stacked">
-                <input type="search" class="form-control form-control-sm md-linkedobject-field__filter" data-md-linkedobject-filter="property" placeholder="Фильтр свойств" autocomplete="off" disabled>
+            <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
+                <div class="md-linkedobject-field__label"><#LANG_LINKED_PROPERTY#></div>
                 <div class="md-linkedobject-field__actions">
                     <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-property" title="Очистить свойство" aria-label="Очистить свойство">
                         <i class="glyphicon glyphicon-remove"></i>
                     </button>
-                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-property" title="Открыть свойства объекта" aria-label="Открыть свойства объекта" hidden>
+                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-property" title="Открыть свойства объекта" aria-label="Открыть свойства объекта" target="_blank" rel="noopener noreferrer" hidden>
                         <i class="glyphicon glyphicon-export"></i>
                     </a>
                 </div>
@@ -102,20 +90,19 @@
           data-md-linkedobject-field-id="[#METHOD_FIELD#]"
           data-md-linkedobject-base-url="<#ROOTHTML#>panel/linkedobject.html"
           data-md-linkedobject-label="<#LANG_LINKED_METHOD#>"
-          data-md-linkedobject-filter-placeholder="Фильтр методов"
           data-md-linkedobject-empty="Методы станут доступны после выбора объекта"
           data-md-linkedobject-width="<#WIDTH#>"
           style="--md-linkedobject-width:<#WIDTH#>;">
         <span class="md-linkedobject-field__hidden" data-md-linkedobject-hidden-slot="method"></span>
         <input type="hidden" name="[#METHOD_FIELD#]" id="[#METHOD_FIELD#]" value="[#METHOD_VALUE#]" data-md-linkedobject-native="method">
         <div class="md-linkedobject-field__surface">
-            <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--stacked">
-                <input type="search" class="form-control form-control-sm md-linkedobject-field__filter" data-md-linkedobject-filter="method" placeholder="Фильтр методов" autocomplete="off" disabled>
+            <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
+                <div class="md-linkedobject-field__label"><#LANG_LINKED_METHOD#></div>
                 <div class="md-linkedobject-field__actions">
                     <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-method" title="Очистить метод" aria-label="Очистить метод">
                         <i class="glyphicon glyphicon-remove"></i>
                     </button>
-                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-method" title="Открыть методы объекта" aria-label="Открыть методы объекта" hidden>
+                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-method" title="Открыть методы объекта" aria-label="Открыть методы объекта" target="_blank" rel="noopener noreferrer" hidden>
                         <i class="glyphicon glyphicon-export"></i>
                     </a>
                 </div>

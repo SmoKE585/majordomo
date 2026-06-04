@@ -816,7 +816,7 @@ class mqtt extends module
 
 
         if ($this->data_source == 'mqtt' || $this->data_source == '') {
-            if ($this->view_mode == '' || $this->view_mode == 'search_mqtt') {
+            if ($this->view_mode == '' || $this->view_mode == 'search_mqtt' || $this->view_mode == 'edit_mqtt') {
                 $this->search_mqtt($out);
             }
             if ($this->view_mode == 'edit_mqtt') {

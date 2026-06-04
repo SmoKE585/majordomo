@@ -34,9 +34,9 @@
 </script>
 
 
-<!-- action usual -->
+ <!-- action usual -->
  <!-- table mqtt search -->
- [#if VIEW_MODE="search_mqtt" || VIEW_MODE=""#]
+ [#if VIEW_MODE="search_mqtt" || VIEW_MODE="" || VIEW_MODE="edit_mqtt"#]
   [#inc mqtt_search_admin.html#]
  [#endif VIEW_MODE#]
  <!-- / table mqtt search -->

@@ -1,18 +1,6 @@
 (function (window, document) {
     'use strict';
 
-    function escapeHtml(value) {
-        return String(value || '').replace(/[&<>"']/g, function (char) {
-            return {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            }[char];
-        });
-    }
-
     function fetchJson(url) {
         return fetch(url, {
             credentials: 'same-origin',
@@ -27,74 +15,16 @@
         });
     }
 
-    function parseObjectOptions(select) {
-        var groups = [];
-        if (!select) {
-            return groups;
-        }
-
-        Array.prototype.slice.call(select.children).forEach(function (node) {
-            if (node.tagName === 'OPTGROUP') {
-                var group = {
-                    title: node.label || '',
-                    options: []
-                };
-                Array.prototype.slice.call(node.children).forEach(function (option) {
-                    if (!option.value) {
-                        return;
-                    }
-                    group.options.push({
-                        value: option.value,
-                        title: option.value,
-                        label: option.textContent.trim(),
-                        description: option.getAttribute('data-md-description') || '',
-                        group: group.title,
-                        search: [option.value, option.textContent, group.title, option.getAttribute('data-md-description') || ''].join(' ').toLowerCase()
-                    });
-                });
-                if (group.options.length) {
-                    groups.push(group);
-                }
-            }
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (char) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char];
         });
-
-        return groups;
-    }
-
-    function rebuildObjectSource(select, objects) {
-        if (!select) {
-            return [];
-        }
-
-        var map = {};
-        select.innerHTML = '<option value=""></option>';
-
-        (objects || []).forEach(function (item) {
-            var groupTitle = item.CLASS_NAME || 'Objects';
-            if (!map[groupTitle]) {
-                var group = document.createElement('optgroup');
-                group.label = groupTitle;
-                map[groupTitle] = group;
-                select.appendChild(group);
-            }
-            var option = document.createElement('option');
-            option.value = item.TITLE || '';
-            option.textContent = item.DESCRIPTION ? (item.TITLE + ' - ' + item.DESCRIPTION) : (item.TITLE || '');
-            option.setAttribute('data-md-description', item.DESCRIPTION || '');
-            map[groupTitle].appendChild(option);
-        });
-
-        return parseObjectOptions(select);
-    }
-
-    function setActionVisible(element, visible, href) {
-        if (!element) {
-            return;
-        }
-        if (href) {
-            element.setAttribute('href', href);
-        }
-        element.hidden = !visible;
     }
 
     function moveInputIntoField(fieldNode) {
@@ -137,96 +67,32 @@
         return sourceInput;
     }
 
-    function createOptionMarkup(item) {
-        var meta = item.group || '';
-        if (item.description) {
-            meta += (meta ? ' · ' : '') + item.description;
-        }
-        return '<button type="button" class="md-linkedobject-object-option" data-md-linkedobject-object-option="' + escapeHtml(item.value) + '">' +
-            '<span class="md-linkedobject-object-option__title">' + escapeHtml(item.title) + '</span>' +
-            '<span class="md-linkedobject-object-option__meta">' + escapeHtml(meta) + '</span>' +
-        '</button>';
-    }
-
-    function renderObjectResults(state) {
-        var results = state.objectResults;
-        if (!results) {
+    function setActionVisible(element, visible, href) {
+        if (!element) {
             return;
         }
+        if (href) {
+            element.setAttribute('href', href);
+        }
+        element.hidden = !visible;
+    }
 
-        var term = String(state.objectSearch ? state.objectSearch.value : '').trim().toLowerCase();
-        var html = '';
-        var total = 0;
-
-        state.objectGroups.forEach(function (group) {
-            var items = group.options.filter(function (item) {
-                return !term || item.search.indexOf(term) !== -1;
-            });
-            if (!items.length) {
-                return;
-            }
-            total += items.length;
-            html += '<section class="md-linkedobject-object-group">' +
-                '<div class="md-linkedobject-object-group__title">' + escapeHtml(group.title) + '</div>' +
-                items.map(createOptionMarkup).join('') +
-            '</section>';
+    function normalizeCollection(items) {
+        return (items || []).map(function (item) {
+            var title = item.TITLE || '';
+            var description = item.DESCRIPTION || '';
+            return {
+                value: title,
+                label: description ? (title + ' - ' + description) : title
+            };
         });
-
-        if (!total) {
-            html = '<div class="md-linkedobject-state">' + escapeHtml(state.objectField.getAttribute('data-md-linkedobject-empty') || 'Ничего не найдено') + '</div>';
-        }
-
-        results.innerHTML = html;
-        state.filteredObjectCount = total;
     }
 
-    function findObjectByValue(state, value) {
-        var match = null;
-        state.objectGroups.some(function (group) {
-            return group.options.some(function (item) {
-                if (item.value === value) {
-                    match = item;
-                    return true;
-                }
-                return false;
-            });
-        });
-        return match;
-    }
-
-    function updateObjectSummary(state) {
-        var current = findObjectByValue(state, state.objectInput ? state.objectInput.value : '');
-        var valueNode = state.objectField.querySelector('[data-md-linkedobject-object-value]');
-        var metaNode = state.objectField.querySelector('[data-md-linkedobject-object-meta]');
-        var baseUrl = state.baseUrl;
-        var objectValue = state.objectInput ? state.objectInput.value : '';
-
-        if (valueNode) {
-            valueNode.textContent = current ? current.title : (state.objectField.getAttribute('data-md-linkedobject-placeholder') || 'Выберите объект');
-        }
-
-        if (metaNode) {
-            if (current) {
-                var meta = current.group || '';
-                if (state.propertyItems.length || state.methodItems.length) {
-                    meta += (meta ? ' · ' : '') + 'Свойства: ' + state.propertyItems.length + ' · Методы: ' + state.methodItems.length;
-                }
-                metaNode.textContent = meta || current.label;
-            } else {
-                metaNode.textContent = 'Выберите объект и загрузите привязки';
-            }
-        }
-
-        setActionVisible(state.openObjectAction, !!objectValue, baseUrl + '?op=redirect&object=' + encodeURIComponent(objectValue));
-        setActionVisible(state.openPropertyAction, !!objectValue, baseUrl + '?op=redirect&object=' + encodeURIComponent(objectValue) + '&sub=properties');
-        setActionVisible(state.openMethodAction, !!objectValue, baseUrl + '?op=redirect&object=' + encodeURIComponent(objectValue) + '&sub=methods');
-        setActionVisible(state.openDeviceAction, !!state.deviceId, baseUrl + '?op=redirect&device_id=' + encodeURIComponent(state.deviceId));
-    }
-
-    function buildSelectOptions(select, items, selectedValue) {
+    function buildPlainSelect(select, items, selectedValue) {
         if (!select) {
             return;
         }
+
         select.innerHTML = '<option value=""></option>';
         items.forEach(function (item) {
             var option = document.createElement('option');
@@ -239,152 +105,239 @@
         });
     }
 
-    function applySelectFilter(state, role) {
-        var items = role === 'property' ? state.propertyItems : state.methodItems;
-        var field = role === 'property' ? state.propertyField : state.methodField;
-        var input = role === 'property' ? state.propertyInput : state.methodInput;
-        var select = role === 'property' ? state.propertySelect : state.methodSelect;
-        var filter = role === 'property' ? state.propertyFilter : state.methodFilter;
-        var hint = role === 'property' ? state.propertyHint : state.methodHint;
-        var currentValue = input ? input.value : '';
-        var term = String(filter ? filter.value : '').trim().toLowerCase();
-        var filtered = items.filter(function (item) {
-            return !term || item.search.indexOf(term) !== -1;
-        });
-
-        if (!field || !select) {
+    function buildObjectSelect(select, objects, selectedValue) {
+        if (!select) {
             return;
         }
 
-        buildSelectOptions(select, filtered, currentValue);
-        select.disabled = !filtered.length;
-        if (filter) {
-            filter.disabled = !items.length;
-        }
-        if (field) {
-            field.classList.toggle('is-empty', !items.length);
-        }
-        if (hint) {
-            hint.textContent = items.length ? ('Показано ' + filtered.length + ' из ' + items.length) : (field.getAttribute('data-md-linkedobject-empty') || 'Нет данных');
+        var groups = {};
+        select.innerHTML = '<option value=""></option>';
+
+        (objects || []).forEach(function (item) {
+            var groupTitle = item.CLASS_NAME || 'Objects';
+            if (!groups[groupTitle]) {
+                var optgroup = document.createElement('optgroup');
+                optgroup.label = groupTitle;
+                groups[groupTitle] = optgroup;
+                select.appendChild(optgroup);
+            }
+
+            var option = document.createElement('option');
+            option.value = item.TITLE || '';
+            option.textContent = item.DESCRIPTION ? (item.TITLE + ' - ' + item.DESCRIPTION) : (item.TITLE || '');
+            option.setAttribute('data-md-description', item.DESCRIPTION || '');
+            if (selectedValue && selectedValue === option.value) {
+                option.selected = true;
+            }
+            groups[groupTitle].appendChild(option);
+        });
+    }
+
+    function renderObjectHint(state) {
+        if (!state.objectHint) {
+            return;
         }
 
-        if (!filtered.some(function (item) { return item.value === currentValue; }) && input) {
-            input.value = '';
+        if (!state.objectInput || !state.objectInput.value) {
+            state.objectHint.textContent = 'Выберите объект и загрузите привязки';
+            return;
+        }
+
+        var parts = [];
+        if (state.currentObjectGroup) {
+            parts.push(state.currentObjectGroup);
+        }
+        if (state.propertyItems.length || state.methodItems.length) {
+            parts.push('Свойства: ' + state.propertyItems.length + ' · Методы: ' + state.methodItems.length);
+        }
+        state.objectHint.textContent = parts.join(' · ') || state.objectInput.value;
+    }
+
+    function syncObjectActions(state) {
+        var objectValue = state.objectInput ? state.objectInput.value : '';
+        var baseUrl = state.baseUrl;
+
+        setActionVisible(state.openObjectAction, !!objectValue, baseUrl + '?op=redirect&object=' + encodeURIComponent(objectValue));
+        setActionVisible(state.openPropertyAction, !!objectValue, baseUrl + '?op=redirect&object=' + encodeURIComponent(objectValue) + '&sub=properties');
+        setActionVisible(state.openMethodAction, !!objectValue, baseUrl + '?op=redirect&object=' + encodeURIComponent(objectValue) + '&sub=methods');
+        setActionVisible(state.openDeviceAction, !!state.deviceId, baseUrl + '?op=redirect&device_id=' + encodeURIComponent(state.deviceId));
+    }
+
+    function syncObjectMeta(state) {
+        var selectedOption = state.objectSelect ? state.objectSelect.options[state.objectSelect.selectedIndex] : null;
+        var parentGroup = selectedOption && selectedOption.parentElement && selectedOption.parentElement.tagName === 'OPTGROUP'
+            ? selectedOption.parentElement.label
+            : '';
+
+        state.currentObjectGroup = parentGroup || '';
+        renderObjectHint(state);
+        syncObjectActions(state);
+    }
+
+    function syncPropertyField(state) {
+        if (!state.propertyField || !state.propertySelect) {
+            return;
+        }
+
+        buildPlainSelect(state.propertySelect, state.propertyItems, state.propertyInput ? state.propertyInput.value : '');
+        state.propertySelect.disabled = !state.propertyItems.length;
+        state.propertyField.classList.toggle('is-empty', !state.propertyItems.length);
+        if (state.propertyHint) {
+            state.propertyHint.textContent = state.propertyItems.length
+                ? ('Доступно свойств: ' + state.propertyItems.length)
+                : (state.propertyField.getAttribute('data-md-linkedobject-empty') || 'Нет данных');
+        }
+
+        if (state.propertyInput && !state.propertyItems.some(function (item) { return item.value === state.propertyInput.value; })) {
+            state.propertyInput.value = '';
         }
     }
 
-    function normalizeCollection(items) {
-        return (items || []).map(function (item) {
-            var title = item.TITLE || '';
-            var description = item.DESCRIPTION || '';
-            return {
-                value: title,
-                label: description ? (title + ' - ' + description) : title,
-                search: (title + ' ' + description).toLowerCase()
-            };
-        });
+    function syncMethodField(state) {
+        if (!state.methodField || !state.methodSelect) {
+            return;
+        }
+
+        buildPlainSelect(state.methodSelect, state.methodItems, state.methodInput ? state.methodInput.value : '');
+        state.methodSelect.disabled = !state.methodItems.length;
+        state.methodField.classList.toggle('is-empty', !state.methodItems.length);
+        if (state.methodHint) {
+            state.methodHint.textContent = state.methodItems.length
+                ? ('Доступно методов: ' + state.methodItems.length)
+                : (state.methodField.getAttribute('data-md-linkedobject-empty') || 'Нет данных');
+        }
+
+        if (state.methodInput && !state.methodItems.some(function (item) { return item.value === state.methodInput.value; })) {
+            state.methodInput.value = '';
+        }
+    }
+
+    function updateAllSummaries(state) {
+        syncPropertyField(state);
+        syncMethodField(state);
+        syncObjectMeta(state);
     }
 
     function loadProperties(state) {
         if (!state.propertyField || !state.objectInput || !state.objectInput.value) {
             state.propertyItems = [];
             state.deviceId = '';
-            applySelectFilter(state, 'property');
-            updateObjectSummary(state);
+            syncPropertyField(state);
+            syncObjectMeta(state);
             return Promise.resolve();
         }
 
         return fetchJson(state.baseUrl + '?ajax=1&op=properties&object=' + encodeURIComponent(state.objectInput.value)).then(function (data) {
             state.deviceId = data.DEVICE_ID || '';
             state.propertyItems = normalizeCollection(data.PROPERTIES);
-            applySelectFilter(state, 'property');
-            updateObjectSummary(state);
+            syncPropertyField(state);
+            syncObjectMeta(state);
         }).catch(function () {
-            state.propertyItems = [];
             state.deviceId = '';
-            applySelectFilter(state, 'property');
-            updateObjectSummary(state);
+            state.propertyItems = [];
+            syncPropertyField(state);
+            syncObjectMeta(state);
         });
     }
 
     function loadMethods(state) {
         if (!state.methodField || !state.objectInput || !state.objectInput.value) {
             state.methodItems = [];
-            applySelectFilter(state, 'method');
-            updateObjectSummary(state);
+            syncMethodField(state);
+            syncObjectMeta(state);
             return Promise.resolve();
         }
 
         return fetchJson(state.baseUrl + '?ajax=1&op=methods&object=' + encodeURIComponent(state.objectInput.value)).then(function (data) {
             state.methodItems = normalizeCollection(data.METHODS);
-            applySelectFilter(state, 'method');
-            updateObjectSummary(state);
+            syncMethodField(state);
+            syncObjectMeta(state);
         }).catch(function () {
             state.methodItems = [];
-            applySelectFilter(state, 'method');
-            updateObjectSummary(state);
+            syncMethodField(state);
+            syncObjectMeta(state);
         });
     }
 
-    function closeObjectPanel(state) {
-        if (!state.objectPanel) {
-            return;
-        }
-        state.objectPanel.hidden = true;
-        if (state.objectTrigger) {
-            state.objectTrigger.setAttribute('aria-expanded', 'false');
-        }
-    }
-
-    function openObjectPanel(state) {
-        if (!state.objectPanel) {
-            return;
-        }
-        state.objectPanel.hidden = false;
-        if (state.objectTrigger) {
-            state.objectTrigger.setAttribute('aria-expanded', 'true');
-        }
-        renderObjectResults(state);
-        if (state.objectSearch) {
-            state.objectSearch.focus();
-            state.objectSearch.select();
-        }
-    }
-
-    function selectObject(state, value) {
+    function handleObjectChange(state, value) {
         if (!state.objectInput) {
             return;
         }
+
         state.objectInput.value = value || '';
         state.deviceId = '';
-        closeObjectPanel(state);
-        updateObjectSummary(state);
+        if (!value && state.propertyInput) {
+            state.propertyInput.value = '';
+        }
+        if (!value && state.methodInput) {
+            state.methodInput.value = '';
+        }
+
         Promise.all([loadProperties(state), loadMethods(state)]).then(function () {
-            updateObjectSummary(state);
+            syncObjectMeta(state);
+        });
+    }
+
+    function renderTomOption(data, escape) {
+        var option = data.$option;
+        var description = option ? (option.getAttribute('data-md-description') || '') : '';
+        var group = data.optgroup || '';
+        var meta = '';
+
+        if (group) {
+            meta = group;
+        }
+        if (description) {
+            meta += (meta ? ' · ' : '') + description;
+        }
+
+        return '<div class="md-linkedobject-option">' +
+            '<span class="md-linkedobject-option__title">' + escape(data.value || data.text || '') + '</span>' +
+            (meta ? '<span class="md-linkedobject-option__meta">' + escape(meta) + '</span>' : '') +
+        '</div>';
+    }
+
+    function initTomSelect(state) {
+        if (!state.objectSelect || typeof window.TomSelect !== 'function') {
+            return;
+        }
+
+        if (state.objectSelect.tomselect) {
+            state.objectSelect.tomselect.destroy();
+        }
+
+        state.objectTomSelect = new window.TomSelect(state.objectSelect, {
+            valueField: 'value',
+            labelField: 'text',
+            searchField: ['text', 'value'],
+            maxItems: 1,
+            allowEmptyOption: true,
+            closeAfterSelect: true,
+            plugins: ['clear_button'],
+            placeholder: state.objectField.getAttribute('data-md-linkedobject-placeholder') || 'Выберите объект',
+            render: {
+                option: renderTomOption
+            },
+            onChange: function (value) {
+                handleObjectChange(state, value);
+            }
         });
     }
 
     function refreshObjects(state) {
+        var currentValue = state.objectInput ? state.objectInput.value : '';
+
         return fetchJson(state.baseUrl + '?ajax=1&op=objects').then(function (data) {
-            state.objectGroups = rebuildObjectSource(state.objectSource, data.OBJECTS || []);
-            renderObjectResults(state);
-            updateObjectSummary(state);
-            if (state.objectInput && state.objectInput.value) {
-                selectObject(state, state.objectInput.value);
+            buildObjectSelect(state.objectSelect, data.OBJECTS || [], currentValue);
+            initTomSelect(state);
+            if (state.objectTomSelect) {
+                state.objectTomSelect.setValue(currentValue || '', true);
+            }
+            syncObjectMeta(state);
+            if (currentValue) {
+                handleObjectChange(state, currentValue);
             }
         });
-    }
-
-    function watchPopupAndRefresh(state, popup) {
-        if (!popup) {
-            return;
-        }
-        var timer = window.setInterval(function () {
-            if (popup.closed) {
-                window.clearInterval(timer);
-                refreshObjects(state);
-            }
-        }, 600);
     }
 
     function initGroup(objectField) {
@@ -400,10 +353,10 @@
             objectField: nodes.find(function (node) { return node.getAttribute('data-md-linkedobject-role') === 'object'; }) || null,
             propertyField: nodes.find(function (node) { return node.getAttribute('data-md-linkedobject-role') === 'property'; }) || null,
             methodField: nodes.find(function (node) { return node.getAttribute('data-md-linkedobject-role') === 'method'; }) || null,
-            objectGroups: [],
             propertyItems: [],
             methodItems: [],
-            deviceId: ''
+            deviceId: '',
+            currentObjectGroup: ''
         };
 
         if (!state.objectField || state.objectField.dataset.mdLinkedobjectBound === '1') {
@@ -422,6 +375,7 @@
                 state.propertyField = null;
             }
         }
+
         if (state.methodField) {
             state.methodInput = moveInputIntoField(state.methodField);
             if (!state.methodInput) {
@@ -429,20 +383,15 @@
             }
         }
 
-        state.objectSource = state.objectField.querySelector('[data-md-linkedobject-source="objects"]');
-        state.objectTrigger = state.objectField.querySelector('[data-md-linkedobject-object-trigger]');
-        state.objectPanel = state.objectField.querySelector('[data-md-linkedobject-object-panel]');
-        state.objectSearch = state.objectField.querySelector('[data-md-linkedobject-object-search]');
-        state.objectResults = state.objectField.querySelector('[data-md-linkedobject-object-results]');
+        state.objectSelect = state.objectField.querySelector('[data-md-linkedobject-object-select]');
+        state.objectHint = state.objectField.querySelector('[data-md-linkedobject-hint="object"]');
         state.openObjectAction = state.objectField.querySelector('[data-md-linkedobject-action="open-object"]');
         state.openDeviceAction = state.objectField.querySelector('[data-md-linkedobject-action="open-device"]');
         state.clearObjectAction = state.objectField.querySelector('[data-md-linkedobject-action="clear-object"]');
         state.refreshObjectsAction = state.objectField.querySelector('[data-md-linkedobject-action="refresh-objects"]');
-        state.addObjectAction = state.objectField.querySelector('[data-md-linkedobject-action="add-object"]');
 
         if (state.propertyField && state.propertyInput) {
             state.propertySelect = state.propertyField.querySelector('[data-md-linkedobject-select="property"]');
-            state.propertyFilter = state.propertyField.querySelector('[data-md-linkedobject-filter="property"]');
             state.propertyHint = state.propertyField.querySelector('[data-md-linkedobject-hint="property"]');
             state.openPropertyAction = state.propertyField.querySelector('[data-md-linkedobject-action="open-property"]');
             state.clearPropertyAction = state.propertyField.querySelector('[data-md-linkedobject-action="clear-property"]');
@@ -450,52 +399,31 @@
 
         if (state.methodField && state.methodInput) {
             state.methodSelect = state.methodField.querySelector('[data-md-linkedobject-select="method"]');
-            state.methodFilter = state.methodField.querySelector('[data-md-linkedobject-filter="method"]');
             state.methodHint = state.methodField.querySelector('[data-md-linkedobject-hint="method"]');
             state.openMethodAction = state.methodField.querySelector('[data-md-linkedobject-action="open-method"]');
             state.clearMethodAction = state.methodField.querySelector('[data-md-linkedobject-action="clear-method"]');
         }
 
-        state.objectGroups = parseObjectOptions(state.objectSource);
-        renderObjectResults(state);
-        updateObjectSummary(state);
+        initTomSelect(state);
 
-        if (state.objectTrigger && state.objectTrigger.dataset.mdBound !== '1') {
-            state.objectTrigger.dataset.mdBound = '1';
-            state.objectTrigger.addEventListener('click', function () {
-                if (state.objectPanel.hidden) {
-                    openObjectPanel(state);
-                } else {
-                    closeObjectPanel(state);
-                }
-            });
-        }
-
-        if (state.objectSearch && state.objectSearch.dataset.mdBound !== '1') {
-            state.objectSearch.dataset.mdBound = '1';
-            state.objectSearch.addEventListener('input', function () {
-                renderObjectResults(state);
-            });
-        }
-
-        if (state.objectResults && state.objectResults.dataset.mdBound !== '1') {
-            state.objectResults.dataset.mdBound = '1';
-            state.objectResults.addEventListener('click', function (event) {
-                var option = event.target.closest('[data-md-linkedobject-object-option]');
-                if (!option) {
-                    return;
-                }
-                selectObject(state, option.getAttribute('data-md-linkedobject-object-option') || '');
+        if (state.objectTomSelect) {
+            state.objectTomSelect.setValue(state.objectInput.value || '', true);
+        } else if (state.objectSelect) {
+            state.objectSelect.value = state.objectInput.value || '';
+            state.objectSelect.addEventListener('change', function () {
+                handleObjectChange(state, state.objectSelect.value || '');
             });
         }
 
         if (state.clearObjectAction && state.clearObjectAction.dataset.mdBound !== '1') {
             state.clearObjectAction.dataset.mdBound = '1';
             state.clearObjectAction.addEventListener('click', function () {
-                if (state.objectSearch) {
-                    state.objectSearch.value = '';
+                if (state.objectTomSelect) {
+                    state.objectTomSelect.clear(true);
+                } else if (state.objectSelect) {
+                    state.objectSelect.value = '';
                 }
-                selectObject(state, '');
+                handleObjectChange(state, '');
             });
         }
 
@@ -506,28 +434,13 @@
             });
         }
 
-        if (state.addObjectAction && state.addObjectAction.dataset.mdBound !== '1') {
-            state.addObjectAction.dataset.mdBound = '1';
-            state.addObjectAction.addEventListener('click', function () {
-                var popup = window.open(state.objectField.getAttribute('data-md-linkedobject-add-url') || '', 'mdLinkedObjectAdd', 'width=1200,height=800,resizable=yes,scrollbars=yes');
-                watchPopupAndRefresh(state, popup);
-            });
-        }
-
         if (state.propertySelect && state.propertySelect.dataset.mdBound !== '1') {
             state.propertySelect.dataset.mdBound = '1';
             state.propertySelect.addEventListener('change', function () {
                 if (state.propertyInput) {
                     state.propertyInput.value = state.propertySelect.value || '';
                 }
-                updateObjectSummary(state);
-            });
-        }
-
-        if (state.propertyFilter && state.propertyFilter.dataset.mdBound !== '1') {
-            state.propertyFilter.dataset.mdBound = '1';
-            state.propertyFilter.addEventListener('input', function () {
-                applySelectFilter(state, 'property');
+                syncObjectMeta(state);
             });
         }
 
@@ -537,10 +450,7 @@
                 if (state.propertyInput) {
                     state.propertyInput.value = '';
                 }
-                if (state.propertyFilter) {
-                    state.propertyFilter.value = '';
-                }
-                applySelectFilter(state, 'property');
+                syncPropertyField(state);
             });
         }
 
@@ -550,14 +460,7 @@
                 if (state.methodInput) {
                     state.methodInput.value = state.methodSelect.value || '';
                 }
-                updateObjectSummary(state);
-            });
-        }
-
-        if (state.methodFilter && state.methodFilter.dataset.mdBound !== '1') {
-            state.methodFilter.dataset.mdBound = '1';
-            state.methodFilter.addEventListener('input', function () {
-                applySelectFilter(state, 'method');
+                syncObjectMeta(state);
             });
         }
 
@@ -567,37 +470,19 @@
                 if (state.methodInput) {
                     state.methodInput.value = '';
                 }
-                if (state.methodFilter) {
-                    state.methodFilter.value = '';
-                }
-                applySelectFilter(state, 'method');
+                syncMethodField(state);
             });
         }
 
-        if (state.objectField.dataset.mdOutsideBound !== '1') {
-            state.objectField.dataset.mdOutsideBound = '1';
-            document.addEventListener('click', function (event) {
-                if (!state.objectField.contains(event.target)) {
-                    closeObjectPanel(state);
-                }
-            });
-            document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape') {
-                    closeObjectPanel(state);
-                }
-            });
-        }
+        updateAllSummaries(state);
 
         if (state.objectInput.value) {
-            selectObject(state, state.objectInput.value);
-        } else {
-            applySelectFilter(state, 'property');
-            applySelectFilter(state, 'method');
+            handleObjectChange(state, state.objectInput.value);
         }
     }
 
     function init(root) {
-        (root || document).querySelectorAll('[data-md-linkedobject-role="object"]').forEach(initGroup);
+        Array.prototype.slice.call((root || document).querySelectorAll('[data-md-linkedobject-role="object"]')).forEach(initGroup);
     }
 
     window.MDLinkedObjectUI = {

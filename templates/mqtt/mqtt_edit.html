@@ -45,7 +45,7 @@
                         <div class="md-mqtt-topic-hero__main">
                             <div class="md-mqtt-topic-hero__eyebrow">Сводка</div>
                             <div class="md-mqtt-topic-hero__summary">
-                                [#if ID!=""#]Путь, привязки, правила записи и история изменений собраны на одном экране.[#else#]Создайте топик и сразу задайте способ записи и привязку к объекту.[#endif#]
+                                [#if ID!=""#]Путь, привязки и правила записи собраны на одном экране.[#else#]Создайте топик и сразу задайте способ записи и привязку к объекту.[#endif#]
                             </div>
                             <div class="md-mqtt-topic-hero__chips">
                                 [#if PATH_WRITE!=""#]<span class="md-mqtt-chip">Запись: <strong>[#PATH_WRITE#]</strong></span>[#endif#]
@@ -60,7 +60,7 @@
             </section>
 
             <div class="row g-3 md-mqtt-topic-page__layout">
-                <div class="col-xl-8">
+                <div class="col-12">
                     <section class="md-admin-section-card md-admin-form-card">
                         <div class="md-admin-section-card__body">
                             <div class="md-mqtt-topic-section">
@@ -244,17 +244,6 @@
                         </div>
                     </section>
                     [#endif#]
-                </div>
-
-                <div class="col-xl-4">
-                    <section class="md-admin-section-card md-admin-form-card md-mqtt-history-card">
-                        <div class="md-admin-section-card__body">
-                            <div class="md-mqtt-topic-section">
-                                <div class="md-mqtt-topic-section__title">История изменений</div>
-                                <div id="history" class="md-mqtt-history-feed">[#HISTORY#]</div>
-                            </div>
-                        </div>
-                    </section>
                 </div>
             </div>
         </div>
