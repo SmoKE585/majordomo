@@ -360,11 +360,6 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 </head>
 <body>
 <div class="sr-frame-shell">
-    <section class="sr-frame-hero">
-        <div class="sr-frame-hero__eyebrow"><?php echo $backup ? 'Резервная копия' : 'Обновление системы'; ?></div>
-        <h1 class="sr-frame-hero__title"><?php echo $backup ? 'Создание резервной копии' : 'Обновление системы'; ?></h1>
-        <div class="sr-frame-hero__text"><?php echo $backup ? 'Перед упаковкой проверяем рабочие каталоги и возможность собрать архив.' : 'Перед скачиванием и применением обновления проверяем окружение, права записи и служебные каталоги.'; ?></div>
-    </section>
 <?php
 saverestoreFrameParentStatus('Операция запущена. Проверяю параметры...', 'active', 20, 'prepare');
 

@@ -149,39 +149,34 @@
 
 		<div class="md-admin-sidebar-backdrop" data-md-admin-sidebar-close></div>
 		<div class="row md-admin-layout" id="content">
+			[#if PRINT!="1"#]
+			<section class="md-admin-topbar" aria-label="Быстрые функции панели">
+				<button type="button" class="btn md-admin-topbar__menu-toggle" data-md-admin-sidebar-toggle aria-label="Open menu">
+					<i class="glyphicon glyphicon-th-list"></i>
+				</button>
+				<div class="md-admin-topbar__time">
+					<div class="md-admin-topbar__clock" data-md-header-clock>--:--</div>
+					<div class="md-admin-topbar__date" data-md-header-date>--</div>
+				</div>
+				<div class="md-admin-topbar__actions">
+					<div class="dropdown">
+						<button type="button" class="btn md-admin-topbar__dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Открыть действия">
+							<i class="glyphicon glyphicon-th-list"></i>
+							<span>Действия</span>
+						</button>
+						<ul class="dropdown-menu dropdown-menu-end md-admin-topbar__dropdown-menu">
+							<li><a class="dropdown-item" href="#" data-md-search-open><i class="glyphicon glyphicon-search"></i><span><#LANG_SEARCH#></span></a></li>
+							<li><a class="dropdown-item" href="?action=xray"><i class="glyphicon glyphicon-dashboard"></i><span>X-Ray</span></a></li>
+							<li><a class="dropdown-item" href="#" data-md-console-open><i class="glyphicon glyphicon-flash"></i><span><#LANG_CONSOLE#></span></a></li>
+						</ul>
+					</div>
+				</div>
+			</section>
+			[#endif PRINT#]
 			[#if PRINT!="1" && HIDE_LEFT_PANEL!="1"#]
 			[#inc panel_nav_left.html#]
 			[#endif PRINT#]
 			<div class="col-lg-[#if HIDE_LEFT_PANEL="1"#]12[#else#]10[#endif#] col-md-[#if HIDE_LEFT_PANEL="1"#]12[#else#]9[#endif#] col-sm-[#if HIDE_LEFT_PANEL="1"#]12[#else#]8[#endif#] col-xs-12 md-admin-main" id="main-content">
-		[#if PRINT!="1"#]
-		<button type="button" class="btn md-admin-sidebar-toggle md-admin-sidebar-toggle--mobile" data-md-admin-sidebar-toggle aria-label="Open menu">
-			<i class="glyphicon glyphicon-th-list"></i>
-			<span>Меню</span>
-		</button>
-		<section class="md-admin-topbar" aria-label="Быстрые функции панели">
-			<div class="md-admin-topbar__time">
-				<div class="md-admin-topbar__eyebrow">Сейчас</div>
-				<div class="md-admin-topbar__clock" data-md-header-clock>--:--</div>
-				<div class="md-admin-topbar__date" data-md-header-date>--</div>
-			</div>
-			<div class="md-admin-topbar__actions">
-				<div class="md-admin-topbar__actions-grid">
-					<a class="md-admin-page-link md-admin-page-link--primary" href="#" data-md-search-open>
-						<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-search"></i></span>
-						<span class="md-admin-page-link__content"><strong><#LANG_SEARCH#></strong><small><#LANG_SECTION_SYSTEM#></small></span>
-					</a>
-					<a class="md-admin-page-link" href="?action=xray">
-						<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-dashboard"></i></span>
-						<span class="md-admin-page-link__content"><strong>X-Ray</strong><small><#LANG_SECTION_SYSTEM#></small></span>
-					</a>
-					<a class="md-admin-page-link" href="#" data-md-console-open>
-						<span class="md-admin-page-link__icon"><i class="glyphicon glyphicon-flash"></i></span>
-						<span class="md-admin-page-link__content"><strong><#LANG_CONSOLE#></strong><small><#LANG_SECTION_SYSTEM#></small></span>
-					</a>
-				</div>
-			</div>
-		</section>
-		[#endif PRINT#]
 				[#if PRINT!="1"#]
 				<div class="row md-admin-contextbar">
 					[#if ACTION!="" AND ACTION!='xray'#]
