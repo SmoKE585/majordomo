@@ -223,6 +223,48 @@
         }
     }
 
+    function syncTomSelectOptions(instance, items, selectedValue, enabled) {
+        if (!instance) {
+            return;
+        }
+
+        instance.clear(true);
+        instance.clearOptions();
+        instance.addOptions((items || []).map(function (item) {
+            return {
+                value: item.value,
+                text: item.label
+            };
+        }));
+        instance.refreshOptions(false);
+
+        if (enabled) {
+            instance.enable();
+        } else {
+            instance.disable();
+        }
+
+        if (selectedValue && (items || []).some(function (item) { return item.value === selectedValue; })) {
+            instance.setValue(selectedValue, true);
+        } else {
+            instance.clear(true);
+        }
+    }
+
+    function setFieldLoading(field, hint, loading, text) {
+        if (!field) {
+            return;
+        }
+
+        field.classList.toggle('is-loading', !!loading);
+        if (hint && text) {
+            hint.textContent = text;
+        }
+        if (hint) {
+            hint.classList.toggle('is-loading', !!loading);
+        }
+    }
+
     function renderObjectHint(state) {
         if (!state.objectHint) {
             return;
@@ -286,16 +328,12 @@
 
         initPropertyTomSelect(state);
         if (state.propertyTomSelect) {
-            if (!state.propertyItems.length) {
-                state.propertyTomSelect.clear(true);
-                state.propertyTomSelect.disable();
-            } else {
-                state.propertyTomSelect.enable();
-            }
-            state.propertyTomSelect.sync();
-            state.propertyTomSelect.refreshOptions(false);
-            syncSelectSelectedValue(state.propertySelect, state.propertyInput ? (state.propertyInput.value || '') : currentValue);
-            state.propertyTomSelect.setValue(state.propertyInput ? (state.propertyInput.value || '') : currentValue, true);
+            syncTomSelectOptions(
+                state.propertyTomSelect,
+                state.propertyItems,
+                state.propertyInput ? (state.propertyInput.value || '') : currentValue,
+                !!state.propertyItems.length
+            );
         }
     }
 
@@ -321,16 +359,12 @@
 
         initMethodTomSelect(state);
         if (state.methodTomSelect) {
-            if (!state.methodItems.length) {
-                state.methodTomSelect.clear(true);
-                state.methodTomSelect.disable();
-            } else {
-                state.methodTomSelect.enable();
-            }
-            state.methodTomSelect.sync();
-            state.methodTomSelect.refreshOptions(false);
-            syncSelectSelectedValue(state.methodSelect, state.methodInput ? (state.methodInput.value || '') : currentValue);
-            state.methodTomSelect.setValue(state.methodInput ? (state.methodInput.value || '') : currentValue, true);
+            syncTomSelectOptions(
+                state.methodTomSelect,
+                state.methodItems,
+                state.methodInput ? (state.methodInput.value || '') : currentValue,
+                !!state.methodItems.length
+            );
         }
     }
 
@@ -349,16 +383,19 @@
             return Promise.resolve();
         }
 
+        setFieldLoading(state.propertyField, state.propertyHint, true, 'Загрузка свойств...');
         return fetchJson(state.baseUrl + '?ajax=1&op=properties&object=' + encodeURIComponent(state.objectInput.value)).then(function (data) {
             var payload = extractPropertiesPayload(data);
             state.deviceId = payload.deviceId || '';
             state.propertyItems = normalizeCollection(payload.items);
             syncPropertyField(state);
+            setFieldLoading(state.propertyField, state.propertyHint, false);
             syncObjectMeta(state);
         }).catch(function () {
             state.deviceId = '';
             state.propertyItems = [];
             syncPropertyField(state);
+            setFieldLoading(state.propertyField, state.propertyHint, false);
             syncObjectMeta(state);
         });
     }
@@ -371,13 +408,16 @@
             return Promise.resolve();
         }
 
+        setFieldLoading(state.methodField, state.methodHint, true, 'Загрузка методов...');
         return fetchJson(state.baseUrl + '?ajax=1&op=methods&object=' + encodeURIComponent(state.objectInput.value)).then(function (data) {
             state.methodItems = normalizeCollection(extractMethodsPayload(data));
             syncMethodField(state);
+            setFieldLoading(state.methodField, state.methodHint, false);
             syncObjectMeta(state);
         }).catch(function () {
             state.methodItems = [];
             syncMethodField(state);
+            setFieldLoading(state.methodField, state.methodHint, false);
             syncObjectMeta(state);
         });
     }
@@ -472,7 +512,7 @@
         syncSelectSelectedValue(state.propertySelect, state.propertyInput ? state.propertyInput.value : '');
         state.propertyTomSelect = initLinkedTomSelect(state.propertySelect, {
             searchField: ['text', 'value'],
-            placeholder: state.propertyField.getAttribute('data-md-linkedobject-label') || 'Свойство',
+            placeholder: state.propertyField.getAttribute('data-md-linkedobject-placeholder') || state.propertyField.getAttribute('data-md-linkedobject-label') || 'Свойство',
             render: {
                 option: renderSimpleTomOption
             },
@@ -493,7 +533,7 @@
         syncSelectSelectedValue(state.methodSelect, state.methodInput ? state.methodInput.value : '');
         state.methodTomSelect = initLinkedTomSelect(state.methodSelect, {
             searchField: ['text', 'value'],
-            placeholder: state.methodField.getAttribute('data-md-linkedobject-label') || 'Метод',
+            placeholder: state.methodField.getAttribute('data-md-linkedobject-placeholder') || state.methodField.getAttribute('data-md-linkedobject-label') || 'Метод',
             render: {
                 option: renderSimpleTomOption
             },

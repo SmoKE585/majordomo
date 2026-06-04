@@ -10,6 +10,10 @@
   min-width: 0;
 }
 
+.md-linkedobject-field.is-loading {
+  opacity: .92;
+}
+
 .md-linkedobject-field__hidden {
   display: none;
 }
@@ -75,6 +79,19 @@
   line-height: 1.35;
 }
 
+.md-linkedobject-field__hint.is-loading::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border: 1.5px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .2);
+  border-top-color: var(--md-admin-primary, #4792d1);
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: md-linkedobject-spin .8s linear infinite;
+}
+
 .md-linkedobject-field__filter,
 .md-linkedobject-field__select {
   min-width: 0;
@@ -90,6 +107,7 @@
 
 .md-linkedobject-field .ts-wrapper {
   min-width: 0;
+  margin: 0;
 }
 
 .md-linkedobject-field .ts-control,
@@ -100,9 +118,15 @@
 }
 
 .md-linkedobject-field .ts-control {
-  min-height: 34px;
-  padding: 3px 8px;
+  min-height: 30px;
+  padding: 2px 28px 2px 8px;
   background: rgba(255, 255, 255, .94);
+  gap: 0;
+  align-items: center;
+}
+
+.md-linkedobject-field.is-loading .ts-control {
+  background: rgba(248, 251, 254, .98);
 }
 
 .md-linkedobject-field .ts-control.focus,
@@ -113,18 +137,25 @@
 }
 
 .md-linkedobject-field .ts-control > input {
+  min-width: 1.5rem;
   font-size: .82rem;
+  line-height: 1.2;
 }
 
 .md-linkedobject-field .ts-dropdown {
   margin-top: 4px;
-  padding: 3px;
+  padding: 2px;
   background: rgba(255, 255, 255, .98);
   box-shadow: 0 18px 42px rgba(15, 23, 42, .12);
 }
 
+.md-linkedobject-field .ts-dropdown-content {
+  max-height: 180px;
+  padding: 0;
+}
+
 .md-linkedobject-field .ts-dropdown .optgroup-header {
-  padding: 6px 8px 3px;
+  padding: 5px 8px 2px;
   color: var(--md-admin-muted, #6b7a88);
   font-size: .66rem;
   font-weight: 700;
@@ -134,8 +165,8 @@
 
 .md-linkedobject-field .option,
 .md-linkedobject-field .create {
-  padding: 6px 8px;
-  border-radius: 8px;
+  padding: 5px 7px;
+  border-radius: 7px;
   font-size: .8rem;
 }
 
@@ -159,9 +190,41 @@
   line-height: 1.35;
 }
 
+.md-linkedobject-field .ts-wrapper.single .ts-control > .item {
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
+}
+
+.md-linkedobject-field .ts-wrapper.single .ts-control > .item[data-value=""] {
+  display: none;
+}
+
 .md-linkedobject-field .item {
   font-size: .82rem;
   font-weight: 700;
+}
+
+.md-linkedobject-field .plugin-clear_button {
+  --ts-pr-clear-button: .9rem;
+}
+
+.md-linkedobject-field .plugin-clear_button .clear-button {
+  right: 22px;
+  font-size: .9rem;
+  line-height: 1;
+}
+
+.md-linkedobject-field .ts-wrapper.single .ts-control::after {
+  border-width: 4px 4px 0 4px;
+  right: 10px;
+  margin-top: -1px;
+}
+
+@keyframes md-linkedobject-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 575.98px) {
