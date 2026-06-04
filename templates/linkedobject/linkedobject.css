@@ -194,10 +194,19 @@
   margin: 0;
   padding: 0;
   line-height: 1.2;
+  max-width: 100%;
 }
 
 .md-linkedobject-field .ts-wrapper.single .ts-control > .item[data-value=""] {
   display: none;
+}
+
+.md-linkedobject-field .ts-wrapper.single.has-items .ts-control > input {
+  width: 0 !important;
+  min-width: 0 !important;
+  flex: 0 0 0 !important;
+  opacity: 0 !important;
+  pointer-events: none;
 }
 
 .md-linkedobject-field .item {

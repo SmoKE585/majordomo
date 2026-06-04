@@ -311,9 +311,9 @@
             return;
         }
 
-        var currentValue = state.propertyInput ? state.propertyInput.value : '';
-        buildPlainSelect(state.propertySelect, state.propertyItems, state.propertyInput ? state.propertyInput.value : '');
-        syncSelectSelectedValue(state.propertySelect, state.propertyInput ? state.propertyInput.value : currentValue);
+        var currentValue = state.propertyInput ? (state.propertyInput.value || state.pendingPropertyValue || '') : (state.pendingPropertyValue || '');
+        buildPlainSelect(state.propertySelect, state.propertyItems, currentValue);
+        syncSelectSelectedValue(state.propertySelect, currentValue);
         state.propertySelect.disabled = !state.propertyItems.length;
         state.propertyField.classList.toggle('is-empty', !state.propertyItems.length);
         if (state.propertyHint) {
@@ -322,8 +322,12 @@
                 : (state.propertyField.getAttribute('data-md-linkedobject-empty') || 'Нет данных');
         }
 
-        if (state.propertyInput && !state.propertyItems.some(function (item) { return item.value === state.propertyInput.value; })) {
+        if (state.propertyInput && state.propertyItems.length && !state.propertyItems.some(function (item) { return item.value === currentValue; })) {
             state.propertyInput.value = '';
+            state.pendingPropertyValue = '';
+        } else if (state.propertyInput && currentValue) {
+            state.propertyInput.value = currentValue;
+            state.pendingPropertyValue = currentValue;
         }
 
         initPropertyTomSelect(state);
@@ -331,7 +335,7 @@
             syncTomSelectOptions(
                 state.propertyTomSelect,
                 state.propertyItems,
-                state.propertyInput ? (state.propertyInput.value || '') : currentValue,
+                currentValue,
                 !!state.propertyItems.length
             );
         }
@@ -342,9 +346,9 @@
             return;
         }
 
-        var currentValue = state.methodInput ? state.methodInput.value : '';
-        buildPlainSelect(state.methodSelect, state.methodItems, state.methodInput ? state.methodInput.value : '');
-        syncSelectSelectedValue(state.methodSelect, state.methodInput ? state.methodInput.value : currentValue);
+        var currentValue = state.methodInput ? (state.methodInput.value || state.pendingMethodValue || '') : (state.pendingMethodValue || '');
+        buildPlainSelect(state.methodSelect, state.methodItems, currentValue);
+        syncSelectSelectedValue(state.methodSelect, currentValue);
         state.methodSelect.disabled = !state.methodItems.length;
         state.methodField.classList.toggle('is-empty', !state.methodItems.length);
         if (state.methodHint) {
@@ -353,8 +357,12 @@
                 : (state.methodField.getAttribute('data-md-linkedobject-empty') || 'Нет данных');
         }
 
-        if (state.methodInput && !state.methodItems.some(function (item) { return item.value === state.methodInput.value; })) {
+        if (state.methodInput && state.methodItems.length && !state.methodItems.some(function (item) { return item.value === currentValue; })) {
             state.methodInput.value = '';
+            state.pendingMethodValue = '';
+        } else if (state.methodInput && currentValue) {
+            state.methodInput.value = currentValue;
+            state.pendingMethodValue = currentValue;
         }
 
         initMethodTomSelect(state);
@@ -362,7 +370,7 @@
             syncTomSelectOptions(
                 state.methodTomSelect,
                 state.methodItems,
-                state.methodInput ? (state.methodInput.value || '') : currentValue,
+                currentValue,
                 !!state.methodItems.length
             );
         }
@@ -437,9 +445,11 @@
         state.deviceId = '';
         if (!value && state.propertyInput) {
             state.propertyInput.value = '';
+            state.pendingPropertyValue = '';
         }
         if (!value && state.methodInput) {
             state.methodInput.value = '';
+            state.pendingMethodValue = '';
         }
 
         Promise.all([loadProperties(state), loadMethods(state)]).then(function () {
@@ -520,6 +530,7 @@
                 if (state.propertyInput) {
                     state.propertyInput.value = value || '';
                 }
+                state.pendingPropertyValue = value || '';
                 syncObjectMeta(state);
             }
         });
@@ -541,6 +552,7 @@
                 if (state.methodInput) {
                     state.methodInput.value = value || '';
                 }
+                state.pendingMethodValue = value || '';
                 syncObjectMeta(state);
             }
         });
@@ -578,7 +590,9 @@
             propertyItems: [],
             methodItems: [],
             deviceId: '',
-            currentObjectGroup: ''
+            currentObjectGroup: '',
+            pendingPropertyValue: '',
+            pendingMethodValue: ''
         };
 
         if (!state.objectField || state.objectField.dataset.mdLinkedobjectBound === '1') {
@@ -595,6 +609,8 @@
             state.propertyInput = moveInputIntoField(state.propertyField);
             if (!state.propertyInput) {
                 state.propertyField = null;
+            } else {
+                state.pendingPropertyValue = state.propertyInput.value || '';
             }
         }
 
@@ -602,6 +618,8 @@
             state.methodInput = moveInputIntoField(state.methodField);
             if (!state.methodInput) {
                 state.methodField = null;
+            } else {
+                state.pendingMethodValue = state.methodInput.value || '';
             }
         }
 
@@ -678,6 +696,7 @@
                 if (state.propertyInput) {
                     state.propertyInput.value = '';
                 }
+                state.pendingPropertyValue = '';
                 syncPropertyField(state);
             });
         }
@@ -698,6 +717,7 @@
                 if (state.methodInput) {
                     state.methodInput.value = '';
                 }
+                state.pendingMethodValue = '';
                 syncMethodField(state);
             });
         }
