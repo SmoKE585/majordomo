@@ -21,7 +21,7 @@ $backup = gr('backup');
 
 function saverestoreFrameFlush()
 {
-    echo str_repeat(' ', 4 * 1024);
+    echo '<!-- sr-frame-flush -->';
     flush();
     @ob_flush();
 }
@@ -295,14 +295,68 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         .sr-frame-log--warning { border-color: rgba(243, 201, 107, .24); background: rgba(243, 201, 107, .10); }
         .sr-frame-log--muted { color: var(--sr-muted); }
 
-        body > div {
-            margin-top: 8px;
-            padding: 8px 12px;
+        .sr-frame-stream {
+            display: grid;
+            gap: 8px;
+            padding-bottom: 12px;
+        }
+
+        .sr-frame-stream > div,
+        .sr-frame-stream > font {
+            display: block;
+            margin: 0;
+        }
+
+        .sr-frame-stream > div,
+        .sr-frame-stream > font > div {
+            padding: 10px 14px;
             border-radius: 12px;
             border: 1px solid rgba(148, 163, 184, .12);
             background: rgba(255, 255, 255, .04);
         }
+
+        .sr-frame-stream > font[color="green"] > div {
+            color: #b9f5d0;
+            border-color: rgba(78, 192, 138, .22);
+            background: rgba(78, 192, 138, .10);
+        }
+
+        .sr-frame-stream > font[color="red"] > div {
+            color: #ffc4c8;
+            border-color: rgba(239, 107, 115, .28);
+            background: rgba(239, 107, 115, .12);
+        }
     </style>
+    <script>
+        (function () {
+            function scrollToBottom() {
+                window.scrollTo({
+                    top: document.documentElement.scrollHeight || document.body.scrollHeight,
+                    behavior: 'auto'
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                var stream = document.getElementById('srFrameStream');
+                if (!stream || typeof MutationObserver === 'undefined') {
+                    scrollToBottom();
+                    return;
+                }
+
+                var observer = new MutationObserver(function () {
+                    scrollToBottom();
+                });
+
+                observer.observe(stream, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                });
+
+                scrollToBottom();
+            });
+        })();
+    </script>
 </head>
 <body>
 <div class="sr-frame-shell">
@@ -325,6 +379,8 @@ if ($backup) {
         return;
     }
 
+    echo '<div id="srFrameStream" class="sr-frame-stream">';
+    saverestoreFrameFlush();
     logAction('system_backup');
     saverestoreFrameSection('Запуск', 'Проверки пройдены, начинаю формирование архива.');
     saverestoreFrameParentStatus('Создание резервной копии...', 'active', 30, 'backup');
@@ -341,6 +397,7 @@ if ($backup) {
     } else {
         saverestoreFrameFinishError('Error creating backup');
     }
+    echo '</div>';
 } else {
     $update_checks = saverestoreFrameBuildUpdateChecks($sv);
     $update_ok = saverestoreFrameChecklist('Preflight: обновление системы', $update_checks);
@@ -350,6 +407,8 @@ if ($backup) {
         return;
     }
 
+    echo '<div id="srFrameStream" class="sr-frame-stream">';
+    saverestoreFrameFlush();
     saverestoreFrameSection('Подготовка', 'Базовые проверки пройдены. Дальше будет обязательный бэкап базы, скачивание архива и точная проверка прав на файлы после распаковки.');
     $res = $sv->admin($out);
     saverestoreFrameParentStatus('Скачивание архива обновления...', 'active', 35, 'download');
@@ -387,6 +446,7 @@ if ($backup) {
     } else {
         saverestoreFrameFinishError(LANG_UPDATEBACKUP_ERROR_DOWNLOAD);
     }
+    echo '</div>';
 }
 ?>
 </div>
