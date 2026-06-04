@@ -39,7 +39,7 @@
         }
 
         var nativeInput = fieldNode.querySelector('[data-md-linkedobject-native]');
-        var sourceInput = document.getElementById(fieldId);
+        var sourceInput = findSourceInput(fieldNode, fieldId);
         var slot = fieldNode.querySelector('[data-md-linkedobject-hidden-slot]');
 
         if (nativeInput) {
@@ -73,6 +73,32 @@
             slot.appendChild(sourceInput);
         }
         return sourceInput;
+    }
+
+    function cssEscape(value) {
+        if (window.CSS && typeof window.CSS.escape === 'function') {
+            return window.CSS.escape(value);
+        }
+        return String(value).replace(/["\\]/g, '\\$&');
+    }
+
+    function findSourceInput(fieldNode, fieldId) {
+        var selector = '[id="' + cssEscape(fieldId) + '"], [name="' + cssEscape(fieldId) + '"]';
+        var candidates = Array.prototype.slice.call(document.querySelectorAll(selector));
+
+        var external = candidates.find(function (node) {
+            return !fieldNode.contains(node);
+        });
+
+        if (external) {
+            return external;
+        }
+
+        return document.getElementById(fieldId);
+    }
+
+    function isFieldStillInStash(fieldNode) {
+        return !!(fieldNode && fieldNode.parentElement && fieldNode.parentElement.classList && fieldNode.parentElement.classList.contains('md-linkedobject-stash'));
     }
 
     function setActionVisible(element, visible, href) {
@@ -174,6 +200,29 @@
         });
     }
 
+    function syncSelectSelectedValue(select, value) {
+        if (!select) {
+            return;
+        }
+
+        var normalizedValue = value || '';
+        var hasMatch = false;
+
+        Array.prototype.slice.call(select.options).forEach(function (option) {
+            var selected = option.value === normalizedValue;
+            option.selected = selected;
+            if (selected) {
+                hasMatch = true;
+            }
+        });
+
+        if (!hasMatch) {
+            select.value = '';
+        } else {
+            select.value = normalizedValue;
+        }
+    }
+
     function renderObjectHint(state) {
         if (!state.objectHint) {
             return;
@@ -222,6 +271,7 @@
 
         var currentValue = state.propertyInput ? state.propertyInput.value : '';
         buildPlainSelect(state.propertySelect, state.propertyItems, state.propertyInput ? state.propertyInput.value : '');
+        syncSelectSelectedValue(state.propertySelect, state.propertyInput ? state.propertyInput.value : currentValue);
         state.propertySelect.disabled = !state.propertyItems.length;
         state.propertyField.classList.toggle('is-empty', !state.propertyItems.length);
         if (state.propertyHint) {
@@ -236,15 +286,16 @@
 
         initPropertyTomSelect(state);
         if (state.propertyTomSelect) {
-            state.propertyTomSelect.setValue(state.propertyInput ? (state.propertyInput.value || '') : currentValue, true);
-            state.propertyTomSelect.control_input.disabled = !state.propertyItems.length;
             if (!state.propertyItems.length) {
                 state.propertyTomSelect.clear(true);
+                state.propertyTomSelect.disable();
+            } else {
+                state.propertyTomSelect.enable();
             }
-            state.propertyTomSelect.lock();
-            if (state.propertyItems.length) {
-                state.propertyTomSelect.unlock();
-            }
+            state.propertyTomSelect.sync();
+            state.propertyTomSelect.refreshOptions(false);
+            syncSelectSelectedValue(state.propertySelect, state.propertyInput ? (state.propertyInput.value || '') : currentValue);
+            state.propertyTomSelect.setValue(state.propertyInput ? (state.propertyInput.value || '') : currentValue, true);
         }
     }
 
@@ -255,6 +306,7 @@
 
         var currentValue = state.methodInput ? state.methodInput.value : '';
         buildPlainSelect(state.methodSelect, state.methodItems, state.methodInput ? state.methodInput.value : '');
+        syncSelectSelectedValue(state.methodSelect, state.methodInput ? state.methodInput.value : currentValue);
         state.methodSelect.disabled = !state.methodItems.length;
         state.methodField.classList.toggle('is-empty', !state.methodItems.length);
         if (state.methodHint) {
@@ -269,15 +321,16 @@
 
         initMethodTomSelect(state);
         if (state.methodTomSelect) {
-            state.methodTomSelect.setValue(state.methodInput ? (state.methodInput.value || '') : currentValue, true);
-            state.methodTomSelect.control_input.disabled = !state.methodItems.length;
             if (!state.methodItems.length) {
                 state.methodTomSelect.clear(true);
+                state.methodTomSelect.disable();
+            } else {
+                state.methodTomSelect.enable();
             }
-            state.methodTomSelect.lock();
-            if (state.methodItems.length) {
-                state.methodTomSelect.unlock();
-            }
+            state.methodTomSelect.sync();
+            state.methodTomSelect.refreshOptions(false);
+            syncSelectSelectedValue(state.methodSelect, state.methodInput ? (state.methodInput.value || '') : currentValue);
+            state.methodTomSelect.setValue(state.methodInput ? (state.methodInput.value || '') : currentValue, true);
         }
     }
 
@@ -398,6 +451,7 @@
     }
 
     function initObjectTomSelect(state) {
+        syncSelectSelectedValue(state.objectSelect, state.objectInput ? state.objectInput.value : '');
         state.objectTomSelect = initLinkedTomSelect(state.objectSelect, {
             searchField: ['text', 'value'],
             placeholder: state.objectField.getAttribute('data-md-linkedobject-placeholder') || 'Выберите объект',
@@ -415,6 +469,7 @@
             return;
         }
 
+        syncSelectSelectedValue(state.propertySelect, state.propertyInput ? state.propertyInput.value : '');
         state.propertyTomSelect = initLinkedTomSelect(state.propertySelect, {
             searchField: ['text', 'value'],
             placeholder: state.propertyField.getAttribute('data-md-linkedobject-label') || 'Свойство',
@@ -435,6 +490,7 @@
             return;
         }
 
+        syncSelectSelectedValue(state.methodSelect, state.methodInput ? state.methodInput.value : '');
         state.methodTomSelect = initLinkedTomSelect(state.methodSelect, {
             searchField: ['text', 'value'],
             placeholder: state.methodField.getAttribute('data-md-linkedobject-label') || 'Метод',
@@ -610,6 +666,37 @@
 
         if (state.objectInput.value) {
             handleObjectChange(state, state.objectInput.value);
+        }
+
+        ensureMounted(state, 12);
+    }
+
+    function ensureMounted(state, attemptsLeft) {
+        if (!state || attemptsLeft <= 0) {
+            return;
+        }
+
+        var needsRetry = false;
+
+        if (isFieldStillInStash(state.objectField)) {
+            state.objectInput = moveInputIntoField(state.objectField) || state.objectInput;
+            needsRetry = true;
+        }
+
+        if (state.propertyField && isFieldStillInStash(state.propertyField)) {
+            state.propertyInput = moveInputIntoField(state.propertyField) || state.propertyInput;
+            needsRetry = true;
+        }
+
+        if (state.methodField && isFieldStillInStash(state.methodField)) {
+            state.methodInput = moveInputIntoField(state.methodField) || state.methodInput;
+            needsRetry = true;
+        }
+
+        if (needsRetry) {
+            window.setTimeout(function () {
+                ensureMounted(state, attemptsLeft - 1);
+            }, 120);
         }
     }
 
