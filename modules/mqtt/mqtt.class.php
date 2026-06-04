@@ -674,7 +674,13 @@ class mqtt extends module
                     if ($rec['LOGGING']) {
                         DebMes("Calling method " . $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], 'mqtt_topic_' . $rec['ID']);
                     }
-                    callMethod($rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], array('VALUE' => $rec['VALUE'], 'NEW_VALUE' => $rec['VALUE'], 'OLD_VALUE' => $old_value, 'SOURCE' => $path));
+                    callMethod($rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], array(
+                        'VALUE' => $rec['VALUE'],
+                        'NEW_VALUE' => $rec['VALUE'],
+                        'OLD_VALUE' => $old_value,
+                        'SOURCE' => $path,
+                        'TITLE' => $rec['TITLE'] ?: $path,
+                    ));
                 }
 
             } else {

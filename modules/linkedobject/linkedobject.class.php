@@ -16,6 +16,73 @@ class linkedobject extends module
     var $property_field;
     var $method_field;
 
+    function getAvailableObjects()
+    {
+        $objects = SQLSelect("SELECT objects.CLASS_ID, objects.TITLE, objects.DESCRIPTION, classes.TITLE AS CLASS_NAME FROM objects JOIN classes ON CLASS_ID=classes.ID ORDER BY CLASS_ID, TITLE");
+        $objects[] = array(
+            'ID' => 'scripts',
+            'CLASS_ID' => 0,
+            'TITLE' => 'AllScripts',
+            'DESCRIPTION' => LANG_SCRIPTS,
+            'CLASS_NAME' => LANG_SCRIPTS
+        );
+
+        return $objects;
+    }
+
+    function getFieldValue($field_name)
+    {
+        if (!$field_name) {
+            return '';
+        }
+
+        // Simple field names can be resolved directly from globals during template render.
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $field_name)) {
+            if (isset($GLOBALS[$field_name])) {
+                return $GLOBALS[$field_name];
+            }
+            return '';
+        }
+
+        return '';
+    }
+
+    function buildObjectsListMarkup($objects)
+    {
+        $total = count($objects);
+        $old_class_id = 0;
+        $list_result = '';
+
+        if (!$total) {
+            return $list_result;
+        }
+
+        for ($i = 0; $i < $total; $i++) {
+            $class_id = isset($objects[$i]['CLASS_ID']) ? (int)$objects[$i]['CLASS_ID'] : 0;
+            $class_name = isset($objects[$i]['CLASS_NAME']) ? $objects[$i]['CLASS_NAME'] : '';
+            if ($class_id != $old_class_id || $i == 0) {
+                if ($i > 0) {
+                    $list_result .= '</optgroup>';
+                }
+                $list_result .= '<optgroup label="' . htmlspecialchars($class_name, ENT_QUOTES) . '">';
+                $old_class_id = $class_id;
+            }
+
+            $value = isset($objects[$i]['TITLE']) ? $objects[$i]['TITLE'] : '';
+            $title = $value;
+            if (!empty($objects[$i]['DESCRIPTION'])) {
+                $title .= ' - ' . $objects[$i]['DESCRIPTION'];
+            }
+
+            $list_result .= '<option value="' . htmlspecialchars($value, ENT_QUOTES) . '" data-md-description="' . htmlspecialchars((string)($objects[$i]['DESCRIPTION'] ?? ''), ENT_QUOTES) . '">';
+            $list_result .= htmlspecialchars($title, ENT_QUOTES);
+            $list_result .= '</option>';
+        }
+
+        $list_result .= '</optgroup>';
+        return $list_result;
+    }
+
     /**
      * linkedobject
      *
@@ -165,18 +232,11 @@ class linkedobject extends module
         if ($ajax == 1) {
 
             if ($op == 'objects') {
-                $res = array();
-                $tmp = SQLSelect("SELECT ID, TITLE, DESCRIPTION FROM objects ORDER BY CLASS_ID, TITLE");
-                $total = count($tmp);
-                for ($i = 0; $i < $total; $i++) {
-                    $res[] = $tmp[$i];
-                }
-                $res[] = array('ID' => 'scripts', 'TITLE' => 'AllScripts', 'DESCRIPTION' => LANG_SCRIPTS);
-                $res['OBJECTS'] = $res;
-
-                //$tmp=SQLSelectOne("SELECT TITLE FROM objects ORDER BY ID DESC LIMIT 1");
-                //$res['LATEST_OBJECT']=$tmp['TITLE'];
-                $res['LATEST_OBJECT'] = '';
+                $objects = $this->getAvailableObjects();
+                $res = array(
+                    'OBJECTS' => $objects,
+                    'LATEST_OBJECT' => ''
+                );
                 header('Content-type:application/json');
                 echo json_encode($res);
             }
@@ -250,71 +310,22 @@ class linkedobject extends module
         }
 
         if ($this->object_field) {
-            $objects = SQLSelect("SELECT objects.CLASS_ID, objects.TITLE, objects.DESCRIPTION, classes.TITLE AS CLASS_NAME FROM objects JOIN classes ON CLASS_ID=classes.ID ORDER BY CLASS_ID, TITLE");
-
-            $objects[] = array('ID' => 'scripts', 'TITLE' => 'AllScripts', 'DESCRIPTION' => LANG_SCRIPTS);
-
-            $total = count($objects);
-            $old_class_id = 0;
-
-            $list_result = '';
-
-            if ($total) {
-                $objects[0]['FIRST'] = 1;
-                $objects[$total - 1]['LAST'] = 1;
-                for ($i = 0; $i < $total; $i++) {
-                    if (isset($objects[$i]['CLASS_ID']) && $objects[$i]['CLASS_ID'] != $old_class_id) {
-                        $objects[$i]['NEW_GROUP'] = 1;
-                        $old_class_id = $objects[$i]['CLASS_ID'];
-                        if ($i > 0) {
-                            $list_result .= '</optgroup>';
-                        }
-                        $list_result .= '<optgroup label="' . $objects[$i]['CLASS_NAME'] . '">';
-                    }
-
-                    $value = $objects[$i]['TITLE'];
-                    $list_result .= '<option value="' . $value . '">';
-                    $list_result .= $objects[$i]['TITLE'];
-                    if ($objects[$i]['DESCRIPTION'] != '') {
-                        $list_result .= ' - ' . $objects[$i]['DESCRIPTION'];
-                    }
-                    $list_result .= '</option>';
-                }
-                $list_result .= '</optgroup>';
-            }
+            $objects = $this->getAvailableObjects();
+            $list_result = $this->buildObjectsListMarkup($objects);
             $out['OBJECTS_LIST_RESULT'] = $list_result;
-
-            /*
-			foreach($objects as $key => $object) {
-				if($object['CLASS_ID'] != $objects[$key-1]['CLASS_ID']) {
-					$objects[$key]['NEW_GROUP_START'] = 1; 
-				} else {
-					$objects[$key]['NEW_GROUP_START'] = 0; 
-				}
-				if($object['CLASS_ID'] != $objects[$key+1]['CLASS_ID']) {
-					$objects[$key]['NEW_GROUP_END'] = 1; 
-				} else {
-					$objects[$key]['NEW_GROUP_END'] = 0; 
-				}
-			}
-            */
-
-
-            //echo '<pre>';
-            //var_dump($objects);
-            //die();
-
-
             $out['OBJECTS'] = $objects;
             $out['OBJECT_FIELD'] = $this->object_field;
+            $out['OBJECT_VALUE'] = $this->getFieldValue($this->object_field);
         }
 
         if ($this->property_field) {
             $out['PROPERTY_FIELD'] = $this->property_field;
+            $out['PROPERTY_VALUE'] = $this->getFieldValue($this->property_field);
         }
 
         if ($this->method_field) {
             $out['METHOD_FIELD'] = $this->method_field;
+            $out['METHOD_VALUE'] = $this->getFieldValue($this->method_field);
         }
 
 

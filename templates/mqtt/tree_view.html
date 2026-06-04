@@ -2,16 +2,27 @@
     .md-mqtt-tree {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
+    }
+
+    .md-mqtt-tree__branch {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
     }
 
     .md-mqtt-tree__node {
-        padding: 10px 12px;
+        padding: 8px 10px 8px 8px;
         background: rgba(255, 255, 255, .92);
         border: 1px solid rgba(31, 41, 51, .08);
         border-radius: 14px;
         box-shadow: 0 6px 14px rgba(15, 23, 42, .04);
         transition: box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .md-mqtt-tree__branch > .md-mqtt-tree__row {
+        min-height: 30px;
+        padding-left: 2px;
     }
 
     .md-mqtt-tree__node:hover {
@@ -79,6 +90,14 @@
         color: var(--md-admin-primary, #4792d1);
     }
 
+    .md-mqtt-tree__branch-title {
+        color: var(--md-admin-text, #1f2933);
+        font-size: .84rem;
+        font-weight: 700;
+        letter-spacing: .01em;
+        word-break: break-word;
+    }
+
     .md-mqtt-tree__meta {
         display: flex;
         flex-wrap: wrap;
@@ -123,20 +142,42 @@
     }
 
     .md-mqtt-tree__children {
-        margin-top: 8px;
-        padding-left: 12px;
-        margin-left: 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-left: 14px;
+        margin-left: 8px;
         border-left: 2px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
     }
 
     .md-mqtt-tree__children .md-mqtt-tree__node {
-        margin-top: 4px;
         background: rgba(248, 251, 254, .9);
     }
 
     .md-mqtt-tree__node.is-leaf .md-mqtt-tree__toggle--leaf {
         color: rgba(148, 163, 184, .95);
         background: rgba(148, 163, 184, .12);
+    }
+
+    @media (max-width: 575.98px) {
+        .md-mqtt-tree__row {
+            grid-template-columns: 26px minmax(0, 1fr) 26px;
+            gap: 4px;
+        }
+
+        .md-mqtt-tree__node {
+            padding-right: 8px;
+        }
+
+        .md-mqtt-tree__children {
+            padding-left: 10px;
+            margin-left: 4px;
+        }
+
+        .md-mqtt-tree__value,
+        .md-mqtt-tree__linked {
+            width: 100%;
+        }
     }
 </style>
 
@@ -179,7 +220,7 @@
         document.querySelectorAll('[data-md-mqtt-tree-toggle]').forEach(function (button) {
             button.title = button.getAttribute('aria-expanded') === 'true' ? 'Свернуть ветку' : 'Развернуть ветку';
             button.addEventListener('click', function () {
-                var node = button.closest('.md-mqtt-tree__node');
+                var node = button.closest('[data-md-mqtt-tree-branch]');
                 var children = getDirectChildren(node);
                 if (!children) {
                     return;
@@ -203,17 +244,12 @@
 
 <div class="md-mqtt-tree">
     [#begin RESULT#]
-    <article class="md-mqtt-tree__node [#if RESULT#]is-branch[#else#]is-leaf[#endif#]" title="[#TITLE#]" data-branch-title="[#TITLE#]">
+    [#if RESULT#]
+    <section class="md-mqtt-tree__branch" title="[#TITLE#]" data-md-mqtt-tree-branch data-branch-title="[#TITLE#]">
         <div class="md-mqtt-tree__row">
-            [#if RESULT#]
             <button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="[#if IS_VISIBLE="1"#]true[#else#]false[#endif#]" aria-label="Toggle branch">
                 <i class="glyphicon glyphicon-chevron-right"></i>
             </button>
-        [#else#]
-            <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
-                <i class="glyphicon glyphicon-record"></i>
-            </span>
-            [#endif#]
 
             <div class="md-mqtt-tree__content">
                 [#if ID!=""#]
@@ -229,7 +265,7 @@
                     [#endif LINKED_OBJECT#]
                 </div>
                 [#else#]
-                <div class="md-mqtt-tree__title">[#TITLE#]</div>
+                <div class="md-mqtt-tree__branch-title">[#TITLE#]</div>
                 [#endif#]
             </div>
 
@@ -240,11 +276,36 @@
             [#endif#]
         </div>
 
-        [#if RESULT#]
         <div class="md-mqtt-tree__children" [#if IS_VISIBLE!="1" #]hidden[#endif#]>
             [#tree RESULT#]
         </div>
-        [#endif RESULT#]
+    </section>
+    [#else#]
+    <article class="md-mqtt-tree__node is-leaf" title="[#TITLE#]">
+        <div class="md-mqtt-tree__row">
+            <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
+                <i class="glyphicon glyphicon-record"></i>
+            </span>
+
+            <div class="md-mqtt-tree__content">
+                <a href="?view_mode=edit_mqtt&id=[#ID#]" data-md-mqtt-tree-edit="[#ID#]" class="md-mqtt-tree__title" title="[#PATH#]">
+                    [#if TITLE!=""#][#TITLE#][#else#][..][#endif#]
+                </a>
+                <div class="md-mqtt-tree__meta">
+                    <span id="mqtt[#ID#]" class="mqtt_value md-mqtt-tree__value">[#VALUE#]</span>
+                    [#if LINKED_OBJECT!=""#]
+                    <span class="md-mqtt-tree__linked">
+                        [#if LINKED_PROPERTY=""#]M: [#else#]P: [#endif LINKED_PROPERTY#][#LINKED_OBJECT#].[#if LINKED_PROPERTY!=""#][#LINKED_PROPERTY#][#else#][#LINKED_METHOD#][#endif LINKED_PROPERTY#]
+                    </span>
+                    [#endif LINKED_OBJECT#]
+                </div>
+            </div>
+
+            <a href="#" class="md-mqtt-tree__delete" onclick="return deletePath('[#PATH_URL#]');" aria-label="<#LANG_DELETE#>">
+                <i class="glyphicon glyphicon-remove"></i>
+            </a>
+        </div>
     </article>
+    [#endif RESULT#]
     [#end RESULT#]
 </div>

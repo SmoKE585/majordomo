@@ -2,16 +2,27 @@
     .md-mqtt-tree {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
+    }
+
+    .md-mqtt-tree__branch {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
     }
 
     .md-mqtt-tree__node {
-        padding: 8px 10px;
+        padding: 8px 10px 8px 8px;
         background: rgba(255, 255, 255, .92);
         border: 1px solid rgba(31, 41, 51, .08);
         border-radius: 14px;
         box-shadow: 0 6px 14px rgba(15, 23, 42, .04);
         transition: box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .md-mqtt-tree__branch > .md-mqtt-tree__row {
+        min-height: 30px;
+        padding-left: 2px;
     }
 
     .md-mqtt-tree__node:hover {
@@ -70,6 +81,14 @@
         word-break: break-word;
     }
 
+    .md-mqtt-tree__branch-title {
+        color: var(--md-admin-text, #1f2933);
+        font-size: .84rem;
+        font-weight: 700;
+        letter-spacing: .01em;
+        word-break: break-word;
+    }
+
     .md-mqtt-tree__meta {
         display: flex;
         flex-wrap: wrap;
@@ -108,15 +127,37 @@
     }
 
     .md-mqtt-tree__children {
-        margin-top: 6px;
-        padding-left: 10px;
-        margin-left: 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-left: 14px;
+        margin-left: 8px;
         border-left: 2px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
     }
 
     .md-mqtt-tree__children .md-mqtt-tree__node {
-        margin-top: 2px;
         background: rgba(248, 251, 254, .9);
+    }
+
+    @media (max-width: 575.98px) {
+        .md-mqtt-tree__row {
+            grid-template-columns: 26px minmax(0, 1fr) 26px;
+            gap: 4px;
+        }
+
+        .md-mqtt-tree__node {
+            padding-right: 8px;
+        }
+
+        .md-mqtt-tree__children {
+            padding-left: 10px;
+            margin-left: 4px;
+        }
+
+        .md-mqtt-tree__value,
+        .md-mqtt-tree__linked {
+            width: 100%;
+        }
     }
 </style>
 
@@ -159,7 +200,7 @@
         document.querySelectorAll('[data-md-mqtt-tree-toggle]').forEach(function (button) {
             button.title = button.getAttribute('aria-expanded') === 'true' ? 'Свернуть ветку' : 'Развернуть ветку';
             button.addEventListener('click', function () {
-                var node = button.closest('.md-mqtt-tree__node');
+                var node = button.closest('[data-md-mqtt-tree-branch]');
                 var children = getDirectChildren(node);
                 if (!children) {
                     return;
@@ -184,17 +225,12 @@
 <div class="md-mqtt-tree">
     {function name=menu}
         {foreach $items as $item}
-            <article class="md-mqtt-tree__node {if isset($item.RESULT)}is-branch{else}is-leaf{/if}" title="{$item.TITLE}" data-branch-title="{$item.TITLE}">
+            {if isset($item.RESULT)}
+            <section class="md-mqtt-tree__branch" title="{$item.TITLE}" data-md-mqtt-tree-branch data-branch-title="{$item.TITLE}">
                 <div class="md-mqtt-tree__row">
-                    {if isset($item.RESULT)}
-            <button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="{if isset($item.IS_VISIBLE) && $item.IS_VISIBLE==1}true{else}false{/if}" aria-label="Toggle branch">
-                <i class="glyphicon glyphicon-chevron-right"></i>
-            </button>
-        {else}
-            <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
-                <i class="glyphicon glyphicon-record"></i>
-            </span>
-                    {/if}
+                    <button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="{if isset($item.IS_VISIBLE) && $item.IS_VISIBLE==1}true{else}false{/if}" aria-label="Toggle branch">
+                        <i class="glyphicon glyphicon-chevron-right"></i>
+                    </button>
 
                     <div class="md-mqtt-tree__content">
                         {if isset($item.ID)}
@@ -210,7 +246,7 @@
                                 {/if}
                             </div>
                         {else}
-                            <div class="md-mqtt-tree__title">{$item.TITLE}</div>
+                            <div class="md-mqtt-tree__branch-title">{$item.TITLE}</div>
                         {/if}
                     </div>
 
@@ -221,12 +257,37 @@
                     {/if}
                 </div>
 
-                {if isset($item.RESULT)}
-                    <div class="md-mqtt-tree__children" {if !isset($item.IS_VISIBLE) || $item.IS_VISIBLE!=1}hidden{/if}>
-                        {menu items=$item.RESULT}
+                <div class="md-mqtt-tree__children" {if !isset($item.IS_VISIBLE) || $item.IS_VISIBLE!=1}hidden{/if}>
+                    {menu items=$item.RESULT}
+                </div>
+            </section>
+            {else}
+            <article class="md-mqtt-tree__node is-leaf" title="{$item.TITLE}">
+                <div class="md-mqtt-tree__row">
+                    <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
+                        <i class="glyphicon glyphicon-record"></i>
+                    </span>
+
+                    <div class="md-mqtt-tree__content">
+                        <a href="#" onclick="return editItem({$item.ID});" data-md-mqtt-tree-edit="{$item.ID}" title="{$item.PATH}" class="md-mqtt-tree__title">
+                            {if $item.TITLE!=""}{$item.TITLE}{else}[..]{/if}
+                        </a>
+                        <div class="md-mqtt-tree__meta">
+                            <span id="mqtt{$item.ID}" class="mqtt_value md-mqtt-tree__value">{$item.VALUE}</span>
+                            {if $item.LINKED_OBJECT!=""}
+                                <span class="md-mqtt-tree__linked">
+                                    {if $item.LINKED_PROPERTY==""}M: {else}P: {/if}{$item.LINKED_OBJECT}.{if $item.LINKED_PROPERTY!=""}{$item.LINKED_PROPERTY}{else}{$item.LINKED_METHOD}{/if}
+                                </span>
+                            {/if}
+                        </div>
                     </div>
-                {/if}
+
+                    <a href="#" class="md-mqtt-tree__delete" onclick="return deletePath('{$item.PATH_URL}');" aria-label="{$smarty.const.LANG_DELETE}">
+                        <i class="glyphicon glyphicon-remove"></i>
+                    </a>
+                </div>
             </article>
+            {/if}
         {/foreach}
     {/function}
     {menu items=$RESULT}

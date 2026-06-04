@@ -1,48 +1,49 @@
-<section class="md-admin-section-card md-admin-form-card md-mqtt-hero">
-    <div class="md-admin-section-card__body">
-        <div class="md-mqtt-hero__layout">
-            <div class="md-mqtt-hero__copy">
-                <div class="md-mqtt-hero__eyebrow">MQTT</div>
-                <h1 class="md-mqtt-hero__title"><#LANG_MODULE_MQTT#></h1>
-                <p class="md-mqtt-hero__lead">
-                    Настройки брокера, фильтр топиков и список записей теперь разделены по зонам. Так проще редактировать MQTT без визуальной кучи и без потери контекста.
-                </p>
+<div class="md-mqtt-page">
+    <section class="md-admin-section-card md-admin-form-card md-mqtt-hero">
+        <div class="md-admin-section-card__body">
+            <div class="md-mqtt-hero__layout">
+                <div class="md-mqtt-hero__copy">
+                    <div class="md-mqtt-hero__eyebrow">MQTT</div>
+                    <h1 class="md-mqtt-hero__title"><#LANG_MODULE_MQTT#></h1>
+                    <p class="md-mqtt-hero__lead">
+                        Настройки брокера, фильтр топиков и список записей разделены по независимым зонам. Страница остается компактной даже при большом количестве топиков.
+                    </p>
 
-                <div class="md-mqtt-hero__chips">
-                    <span class="md-mqtt-chip">Брокер: <strong><#MQTT_HOST#></strong>:<#MQTT_PORT#></span>
-                    <span class="md-mqtt-chip">Запрос: <strong><#MQTT_QUERY#></strong></span>
-                    <span class="md-mqtt-chip">Авторизация: <strong>[#if MQTT_AUTH="1"#]да[#else#]нет[#endif#]</strong></span>
-                    <span class="md-mqtt-chip">TLS: <strong>[#if MQTT_TLS_ENABLE="1"#]включён[#else#]выключен[#endif#]</strong></span>
+                    <div class="md-mqtt-hero__chips">
+                        <span class="md-mqtt-chip">Брокер: <strong><#MQTT_HOST#></strong>:<#MQTT_PORT#></span>
+                        <span class="md-mqtt-chip">Запрос: <strong><#MQTT_QUERY#></strong></span>
+                        <span class="md-mqtt-chip">Авторизация: <strong>[#if MQTT_AUTH="1"#]да[#else#]нет[#endif#]</strong></span>
+                        <span class="md-mqtt-chip">TLS: <strong>[#if MQTT_TLS_ENABLE="1"#]включён[#else#]выключен[#endif#]</strong></span>
+                    </div>
+                </div>
+
+                <div class="md-mqtt-hero__actions">
+                    <a href="?view_mode=edit_mqtt" class="btn btn-primary">
+                        <i class="glyphicon glyphicon-plus"></i> <#LANG_ADD#> топик
+                    </a>
+                    <a href="?view_mode=clear_trash" class="btn btn-outline-danger" data-md-confirm="<#LANG_ARE_YOU_SURE#>" title="Удалить неиспользуемые топики">
+                        <i class="glyphicon glyphicon-trash"></i> Очистить мусор
+                    </a>
+                    [#if TREE="1"#]
+                    <a href="?tree=0" class="btn btn-light"><#LANG_LIST_VIEW#></a>
+                    [#else#]
+                    <a href="?tree=1" class="btn btn-light"><#LANG_TREE_VIEW#></a>
+                    [#endif#]
+                    <button type="button" class="btn btn-light" data-md-mqtt-drawer-open="filter">
+                        <i class="glyphicon glyphicon-search"></i> Фильтр
+                    </button>
+                    <button type="button" class="btn btn-light" data-md-mqtt-drawer-open="settings">
+                        <i class="glyphicon glyphicon-cog"></i> Настройки
+                    </button>
                 </div>
             </div>
 
-            <div class="md-mqtt-hero__actions">
-                <a href="?view_mode=edit_mqtt" class="btn btn-primary">
-                    <i class="glyphicon glyphicon-plus"></i> <#LANG_ADD#> топик
-                </a>
-                <a href="?view_mode=clear_trash" class="btn btn-outline-danger" data-md-confirm="<#LANG_ARE_YOU_SURE#>" title="Удалить неиспользуемые топики">
-                    <i class="glyphicon glyphicon-trash"></i> Очистить мусор
-                </a>
-                [#if TREE="1"#]
-                <a href="?tree=0" class="btn btn-light"><#LANG_LIST_VIEW#></a>
-                [#else#]
-                <a href="?tree=1" class="btn btn-light"><#LANG_TREE_VIEW#></a>
-                [#endif#]
-                <button type="button" class="btn btn-light" data-md-mqtt-drawer-open="filter">
-                    <i class="glyphicon glyphicon-search"></i> Фильтр
-                </button>
-                <button type="button" class="btn btn-light" data-md-mqtt-drawer-open="settings">
-                    <i class="glyphicon glyphicon-cog"></i> Настройки
-                </button>
+            <div class="md-mqtt-hero__monitor">
+                <div class="md-mqtt-hero__monitor-label">Состояние цикла</div>
+                [#module name="xray" action="service" cycle="mqtt"#]
             </div>
         </div>
-
-        <div class="md-mqtt-hero__monitor">
-            <div class="md-mqtt-hero__monitor-label">Состояние цикла</div>
-            [#module name="xray" action="service" cycle="mqtt"#]
-        </div>
-    </div>
-</section>
+    </section>
 
 <div class="md-mqtt-drawer-backdrop" hidden data-md-mqtt-drawer-close></div>
 <aside class="md-mqtt-drawer" id="mqttDrawer" hidden aria-hidden="true">
@@ -231,33 +232,34 @@
     </div>
 </aside>
 
-[#if MQTT_ROOT!=""#]
-<section class="md-admin-section-card md-admin-section-card--compact md-mqtt-breadcrumbs-card">
-    <div class="md-admin-section-card__body">
-        <h3 class="md-mqtt-breadcrumbs-card__title">
-            <a href="<#ROOTHTML#>panel/mqtt.html"><#LANG_ALL#></a>
-            <span>/</span>
-            [#BREADCRUMBS#]
-        </h3>
-    </div>
-</section>
-[#endif#]
-
-<section class="md-admin-section-card">
-    <div class="md-admin-section-card__body">
-        [#if RESULT#]
-        [#if TREE="1"#]
-        [#inc tree_view.tpl#]
-        [#else TREE#]
-        [#inc list_view.html#]
-        [#endif TREE#]
-        [#else RESULT#]
-        <div class="md-admin-empty-state">
-            <#LANG_NO_RECORDS_FOUND#>
+    [#if MQTT_ROOT!=""#]
+    <section class="md-admin-section-card md-admin-section-card--compact md-mqtt-breadcrumbs-card">
+        <div class="md-admin-section-card__body">
+            <h3 class="md-mqtt-breadcrumbs-card__title">
+                <a href="<#ROOTHTML#>panel/mqtt.html"><#LANG_ALL#></a>
+                <span>/</span>
+                [#BREADCRUMBS#]
+            </h3>
         </div>
-        [#endif RESULT#]
-    </div>
-</section>
+    </section>
+    [#endif#]
+
+    <section class="md-admin-section-card">
+        <div class="md-admin-section-card__body">
+            [#if RESULT#]
+            [#if TREE="1"#]
+            [#inc tree_view.tpl#]
+            [#else TREE#]
+            [#inc list_view.html#]
+            [#endif TREE#]
+            [#else RESULT#]
+            <div class="md-admin-empty-state">
+                <#LANG_NO_RECORDS_FOUND#>
+            </div>
+            [#endif RESULT#]
+        </div>
+    </section>
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
