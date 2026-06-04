@@ -3,10 +3,20 @@
 * @version 0.1 (auto-set)
 */
 //Code editor settings
-	if(defined('SETTINGS_CODEEDITOR_TURNONSETTINGS')) {
-		$out['SETTINGS_CODEEDITOR_TURNONSETTINGS'] = SETTINGS_CODEEDITOR_TURNONSETTINGS;
-		$out['SETTINGS_CODEEDITOR_UPTOLINE'] = SETTINGS_CODEEDITOR_UPTOLINE;
-		$out['SETTINGS_CODEEDITOR_SHOWERROR'] = SETTINGS_CODEEDITOR_SHOWERROR;
+	$codeEditorSettings = array(
+		'AUTOCLOSEQUOTES' => 1,
+		'WRAPLINES' => 0,
+		'SHOWERROR' => 0,
+		'UPTOLINE' => 0,
+		'THEME' => 'codemirror',
+		'MIXLINE' => 20,
+		'SHOWLINE' => 20,
+		'TURNONSETTINGS' => 0,
+		'AUTOSAVE' => 0
+	);
+	foreach ($codeEditorSettings as $setting => $default) {
+		$constantName = 'SETTINGS_CODEEDITOR_' . $setting;
+		$out[$constantName] = defined($constantName) ? constant($constantName) : $default;
 	}
 	
   if ($this->owner->name=='panel') {

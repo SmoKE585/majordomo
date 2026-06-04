@@ -100,6 +100,46 @@
         return mode;
     }
 
+    function getCodeEditorDefaults() {
+        var config = window.MDJAdminConfig || {};
+        return config.codeEditorDefaults || {};
+    }
+
+    function getCodeEditorDefault(name, fallback) {
+        var defaults = getCodeEditorDefaults();
+        return typeof defaults[name] === 'undefined' || defaults[name] === null || defaults[name] === ''
+            ? fallback
+            : defaults[name];
+    }
+
+    function applyWrapperDefaults(wrapper) {
+        if (!wrapper || wrapper.dataset.codeEditorDefaultsApplied === '1') {
+            return;
+        }
+        if (!wrapper.dataset.codeEditorTheme) {
+            wrapper.dataset.codeEditorTheme = String(getCodeEditorDefault('theme', 'codemirror'));
+        }
+        if (!wrapper.dataset.codeEditorAutosave) {
+            wrapper.dataset.codeEditorAutosave = String(getCodeEditorDefault('autosave', 0));
+        }
+        if (!wrapper.dataset.codeEditorAutoclose) {
+            wrapper.dataset.codeEditorAutoclose = String(getCodeEditorDefault('autoclose', 1));
+        }
+        if (!wrapper.dataset.codeEditorWraplines) {
+            wrapper.dataset.codeEditorWraplines = String(getCodeEditorDefault('wraplines', 0));
+        }
+        if (!wrapper.dataset.codeEditorMinLines) {
+            wrapper.dataset.codeEditorMinLines = String(getCodeEditorDefault('minLines', 20));
+        }
+        if (!wrapper.dataset.codeEditorMaxLines) {
+            wrapper.dataset.codeEditorMaxLines = String(getCodeEditorDefault('maxLines', 20));
+        }
+        if (!wrapper.dataset.codeEditorHideErrorsOnEdit) {
+            wrapper.dataset.codeEditorHideErrorsOnEdit = String(getCodeEditorDefault('showError', 0)) === '1' ? '1' : '0';
+        }
+        wrapper.dataset.codeEditorDefaultsApplied = '1';
+    }
+
     function editorModeConfig(mode) {
         if (mode === 'php') {
             return {name: 'text/x-php', startOpen: true};
@@ -404,6 +444,35 @@
                     form.submit();
                 }
             }
+        });
+    }
+
+    function flushAutosave(wrapper, editor) {
+        var interval = parseInt(wrapper.dataset.codeEditorAutosave || '0', 10) || 0;
+        if (!interval || !wrapper || !editor || !wrapper.classList.contains('is-dirty')) {
+            return;
+        }
+
+        clearTimeout(wrapper._codeEditorAutosaveTimer);
+        stopAutosaveProgress(wrapper);
+
+        var params = buildQuery({
+            action: 'save',
+            key: wrapper.dataset.codeEditorKey || '',
+            id: wrapper.dataset.codeEditorId || '',
+            md: wrapper.dataset.codeEditorMd || '',
+            code: editor.getValue()
+        });
+
+        postJSON(wrapper.dataset.codeEditorAutosaveUrl, params).then(function (res) {
+            if (!res || res.status !== 'ok') {
+                return;
+            }
+            var message = (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + (res.msg ? ' ' + res.msg : '');
+            updateStatus(wrapper, message, 'ok');
+            showAutosaveToast(wrapper, message, 'success');
+        }).catch(function () {
+            updateStatus(wrapper, wrapper.dataset.codeEditorAutosaveFailedLabel || 'Автосохранение не удалось', 'error');
         });
     }
 
@@ -953,6 +1022,8 @@
             return;
         }
 
+        applyWrapperDefaults(wrapper);
+
         var mode = getStoredMode(wrapper) || normalizeMode(wrapper.dataset.codeEditorMode || 'php');
         var theme = wrapper.dataset.codeEditorTheme || 'codemirror';
         wrapper.dataset.codeEditorReady = '1';
@@ -1003,6 +1074,9 @@
                         error.hidden = true;
                     }
                 }
+            });
+            editor.on('blur', function () {
+                flushAutosave(wrapper, editor);
             });
 
             wrapper._codeEditor = editor;

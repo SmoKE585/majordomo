@@ -15,6 +15,17 @@
 <script type="text/javascript" src="<#ROOTHTML#>3rdparty/bootstrap5/js/bootstrap.bundle.min.js"></script>
 <script type="text/javascript">
 window.MDJAdminDefaultTheme = '[#if "<#SETTINGS_THEME#>"!="dark" || PANEL_THEME=="light"#]light[#else#]dark[#endif#]';
+window.MDJAdminConfig = window.MDJAdminConfig || {};
+window.MDJAdminConfig.codeEditorDefaults = {
+    theme: '[#if "<#SETTINGS_CODEEDITOR_THEME#>"!=""#]<#SETTINGS_CODEEDITOR_THEME#>[#else#]codemirror[#endif#]',
+    autosave: [#if "<#SETTINGS_CODEEDITOR_AUTOSAVE#>"!=""#]<#SETTINGS_CODEEDITOR_AUTOSAVE#>[#else#]0[#endif#],
+    autoclose: [#if "<#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#>"!=""#]<#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#>[#else#]1[#endif#],
+    wraplines: [#if "<#SETTINGS_CODEEDITOR_WRAPLINES#>"!=""#]<#SETTINGS_CODEEDITOR_WRAPLINES#>[#else#]0[#endif#],
+    minLines: [#if "<#SETTINGS_CODEEDITOR_MIXLINE#>"!=""#]<#SETTINGS_CODEEDITOR_MIXLINE#>[#else#]20[#endif#],
+    maxLines: [#if "<#SETTINGS_CODEEDITOR_SHOWLINE#>"!=""#]<#SETTINGS_CODEEDITOR_SHOWLINE#>[#else#]20[#endif#],
+    showError: [#if "<#SETTINGS_CODEEDITOR_SHOWERROR#>"!=""#]<#SETTINGS_CODEEDITOR_SHOWERROR#>[#else#]0[#endif#],
+    turnOnSettings: [#if "<#SETTINGS_CODEEDITOR_TURNONSETTINGS#>"!=""#]<#SETTINGS_CODEEDITOR_TURNONSETTINGS#>[#else#]0[#endif#]
+};
  (function () {
     var match = document.cookie.match(/(?:^|;\s*)theme=([^;]+)/);
     var theme = match ? decodeURIComponent(match[1]) : window.MDJAdminDefaultTheme;
