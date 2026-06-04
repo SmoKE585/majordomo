@@ -2,8 +2,8 @@
  @version 2.0 (admin ui refresh)
 #-->
 [#if CLEAR_FIRST!="1"#]
-<link rel="stylesheet" href="<#ROOTHTML#>templates/saverestore/saverestore.css?v=2026-06-04-2" type="text/css">
-<script type="text/javascript" src="<#ROOTHTML#>templates/saverestore/saverestore.js?v=2026-06-04-2"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/saverestore/saverestore.css?v=2026-06-04-3" type="text/css">
+<script type="text/javascript" src="<#ROOTHTML#>templates/saverestore/saverestore.js?v=2026-06-04-3"></script>
 
 <div class="md-saverestore-page" data-saverestore-page data-saverestore-open-update="[#if MODE="getlatest_iframe"#]1[#else#]0[#endif#]">
     [#if ERR_MSG!=""#]
@@ -15,7 +15,7 @@
 
     <section class="md-saverestore-hero">
         <div class="md-saverestore-hero__main">
-            <div class="md-saverestore-hero__eyebrow">Saverestore</div>
+            <div class="md-saverestore-hero__eyebrow">Модуль saverestore</div>
             <h1 class="md-saverestore-hero__title">Обновления и резервные копии</h1>
             <p class="md-saverestore-hero__lead">
                 Модуль разделён на два независимых сценария: обновление системы и работа с архивами восстановления. Откат на старые коммиты из ленты обновлений отключён, история изменений теперь используется только для контроля версии.
@@ -238,7 +238,7 @@
                                 <span class="md-saverestore-upload__icon"><i class="glyphicon glyphicon-download-alt"></i></span>
                                 <span class="md-saverestore-upload__text">
                                     <strong>Выберите файл архива</strong>
-                                    <small data-saverestore-file-label><#LANG_NEWSAVERESTORE_CHOUSE_FILE#> ([#MAX_SIZE#] max)</small>
+                                    <small data-saverestore-file-label><#LANG_NEWSAVERESTORE_CHOUSE_FILE#> (максимум [#MAX_SIZE#])</small>
                                 </span>
                             </label>
                             <div class="md-saverestore-card__actions">
@@ -263,7 +263,7 @@
                                         <div class="md-saverestore-backup-item__details">
                                             <span>[#SOURCE_TITLE#]</span>
                                             <span>[#UPDATED#]</span>
-                                            [#if FILESIZE!=""#]<span>[#FILESIZE#] MB</span>[#endif#]
+                                            [#if FILESIZE!=""#]<span>[#FILESIZE#] МБ</span>[#endif#]
                                         </div>
                                     </div>
                                 </div>
@@ -272,7 +272,7 @@
                                     <a href="?mode=upload&restore=[#FILENAME_URL#]" class="btn btn-primary btn-sm" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RESTORE#></a>
                                     [#endif#]
                                     [#if DOWNLOAD_URL!=""#]
-                                    <a href="[#DOWNLOAD_URL#]" class="btn btn-light btn-sm">Download</a>
+                                    <a href="[#DOWNLOAD_URL#]" class="btn btn-light btn-sm">Скачать</a>
                                     [#endif#]
                                     <a href="?mode=delete&file=[#FILENAME_URL#]" class="btn btn-outline-danger btn-sm" data-md-confirm="<#LANG_ARE_YOU_SURE#>" aria-label="Удалить архив">
                                         <i class="glyphicon glyphicon-trash"></i>
@@ -295,17 +295,17 @@
                             <label class="md-saverestore-check-card" data-saverestore-check-card>
                                 <input type="checkbox" name="design" value="1">
                                 <span class="md-saverestore-check-card__title"><#LANG_DESIGN#></span>
-                                <span class="md-saverestore-check-card__text">templates, css, images</span>
+                                <span class="md-saverestore-check-card__text">шаблоны, стили и изображения</span>
                             </label>
                             <label class="md-saverestore-check-card" data-saverestore-check-card>
                                 <input type="checkbox" name="code" value="1">
                                 <span class="md-saverestore-check-card__title"><#LANG_CODE#></span>
-                                <span class="md-saverestore-check-card__text">modules, scripts, languages, php</span>
+                                <span class="md-saverestore-check-card__text">модули, скрипты, языковые файлы и PHP-код</span>
                             </label>
                             <label class="md-saverestore-check-card" data-saverestore-check-card>
                                 <input type="checkbox" name="data" value="1">
                                 <span class="md-saverestore-check-card__title"><#LANG_DATA#></span>
-                                <span class="md-saverestore-check-card__text">database dump</span>
+                                <span class="md-saverestore-check-card__text">дамп базы данных</span>
                             </label>
                             <label class="md-saverestore-check-card" data-saverestore-check-card>
                                 <input type="checkbox" name="save_files" value="1">

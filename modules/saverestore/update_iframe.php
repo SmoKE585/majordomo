@@ -21,8 +21,6 @@ $backup = gr('backup');
 
 function saverestoreFrameFlush()
 {
-    echo '<!-- sr-frame-flush -->';
-    echo '<script>window.srFrameScrollToBottom && window.srFrameScrollToBottom();</script>';
     flush();
     @ob_flush();
 }
@@ -120,7 +118,7 @@ function saverestoreFrameBuildUpdateChecks($sv)
         ),
         array(
             'title' => 'Выполнение системных команд',
-            'details' => function_exists('exec') ? 'exec() доступна' : 'exec() отключена',
+            'details' => function_exists('exec') ? 'Функция exec() доступна' : 'Функция exec() отключена',
             'ok' => function_exists('exec')
         ),
         array(
@@ -156,7 +154,7 @@ function saverestoreFrameBuildBackupChecks($sv)
     return array(
         array(
             'title' => 'Выполнение системных команд',
-            'details' => 'Нужно для упаковки архива',
+            'details' => 'Нужно для сборки архива',
             'ok' => function_exists('exec')
         ),
         array(
@@ -314,13 +312,15 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         .sr-frame-log--muted { color: var(--sr-muted); }
 
         .sr-frame-stream {
-            display: grid;
+            display: flex;
+            flex-direction: column-reverse;
             gap: 8px;
             padding-bottom: 12px;
         }
 
         .sr-frame-stream > div,
-        .sr-frame-stream > font {
+        .sr-frame-stream > font,
+        .sr-frame-stream > section {
             display: block;
             margin: 0;
         }
@@ -357,83 +357,29 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
             }
         }
     </style>
-    <script>
-        (function () {
-            var scrollTimer = null;
-            var forcedScrollTimer = null;
-
-            function scrollToBottom() {
-                var target = document.getElementById('srFrameBottom');
-                if (target && typeof target.scrollIntoView === 'function') {
-                    target.scrollIntoView({ block: 'end', inline: 'nearest' });
-                }
-                window.scrollTo(0, Math.max(
-                    document.documentElement.scrollHeight || 0,
-                    document.body.scrollHeight || 0
-                ));
-            }
-
-            function queueScrollToBottom() {
-                if (scrollTimer) {
-                    window.clearTimeout(scrollTimer);
-                }
-                scrollTimer = window.setTimeout(scrollToBottom, 30);
-            }
-
-            window.srFrameScrollToBottom = queueScrollToBottom;
-
-            document.addEventListener('DOMContentLoaded', function () {
-                var stream = document.getElementById('srFrameStream');
-                if (!stream || typeof MutationObserver === 'undefined') {
-                    queueScrollToBottom();
-                    return;
-                }
-
-                var observer = new MutationObserver(function () {
-                    queueScrollToBottom();
-                });
-
-                observer.observe(stream, {
-                    childList: true,
-                    subtree: true,
-                    characterData: true
-                });
-
-                forcedScrollTimer = window.setInterval(scrollToBottom, 350);
-                queueScrollToBottom();
-            });
-
-            window.addEventListener('beforeunload', function () {
-                if (forcedScrollTimer) {
-                    window.clearInterval(forcedScrollTimer);
-                }
-            });
-        })();
-    </script>
 </head>
 <body>
 <div class="sr-frame-shell">
     <section class="sr-frame-hero">
-        <div class="sr-frame-hero__eyebrow"><?php echo $backup ? 'Backup job' : 'System update job'; ?></div>
+        <div class="sr-frame-hero__eyebrow"><?php echo $backup ? 'Резервная копия' : 'Обновление системы'; ?></div>
         <h1 class="sr-frame-hero__title"><?php echo $backup ? 'Создание резервной копии' : 'Обновление системы'; ?></h1>
-        <div class="sr-frame-hero__text"><?php echo $backup ? 'Перед упаковкой проверяем рабочие каталоги и возможность собрать архив.' : 'Перед скачиванием и применением обновления выполняется preflight-проверка окружения, прав записи и служебных каталогов.'; ?></div>
+        <div class="sr-frame-hero__text"><?php echo $backup ? 'Перед упаковкой проверяем рабочие каталоги и возможность собрать архив.' : 'Перед скачиванием и применением обновления проверяем окружение, права записи и служебные каталоги.'; ?></div>
     </section>
 <?php
 saverestoreFrameParentStatus('Операция запущена. Проверяю параметры...', 'active', 20, 'prepare');
 
 $out = array();
+echo '<div id="srFrameStream" class="sr-frame-stream">';
+saverestoreFrameFlush();
 
 if ($backup) {
     $backup_checks = saverestoreFrameBuildBackupChecks($sv);
-    $backup_ok = saverestoreFrameChecklist('Preflight: создание резервной копии', $backup_checks);
+    $backup_ok = saverestoreFrameChecklist('Проверка перед созданием резервной копии', $backup_checks);
     if (!$backup_ok) {
         saverestoreFrameFinishError('Не пройдена предварительная проверка перед созданием резервной копии');
-        echo '</div></body></html>';
+        echo '</div></div></body></html>';
         return;
     }
-
-    echo '<div id="srFrameStream" class="sr-frame-stream">';
-    saverestoreFrameFlush();
     logAction('system_backup');
     saverestoreFrameSection('Запуск', 'Проверки пройдены, начинаю формирование архива.');
     saverestoreFrameParentStatus('Создание резервной копии...', 'active', 30, 'backup');
@@ -448,20 +394,16 @@ if ($backup) {
         sleep(2);
         saverestoreFrameRedirect(LANG_UPDATEBACKUP_BACKUP_DONE);
     } else {
-        saverestoreFrameFinishError('Error creating backup');
+        saverestoreFrameFinishError('Не удалось создать резервную копию');
     }
-    echo '<div id="srFrameBottom" aria-hidden="true"></div></div>';
 } else {
     $update_checks = saverestoreFrameBuildUpdateChecks($sv);
-    $update_ok = saverestoreFrameChecklist('Preflight: обновление системы', $update_checks);
+    $update_ok = saverestoreFrameChecklist('Проверка перед обновлением системы', $update_checks);
     if (!$update_ok) {
         saverestoreFrameFinishError('Не пройдена предварительная проверка перед обновлением');
-        echo '</div></body></html>';
+        echo '</div></div></body></html>';
         return;
     }
-
-    echo '<div id="srFrameStream" class="sr-frame-stream">';
-    saverestoreFrameFlush();
     saverestoreFrameSection('Подготовка', 'Базовые проверки пройдены. Дальше будет обязательный бэкап базы, скачивание архива и точная проверка прав на файлы после распаковки.');
     $res = $sv->admin($out);
     saverestoreFrameParentStatus('Скачивание архива обновления...', 'active', 35, 'download');
@@ -494,14 +436,14 @@ if ($backup) {
                 saverestoreFrameRedirect(LANG_UPDATEBACKUP_UPDATE_GET_DONE);
             }
         } else {
-            saverestoreFrameFinishError('Error applying system update');
+            saverestoreFrameFinishError('Не удалось применить системное обновление');
         }
     } else {
         saverestoreFrameFinishError(LANG_UPDATEBACKUP_ERROR_DOWNLOAD);
     }
-    echo '<div id="srFrameBottom" aria-hidden="true"></div></div>';
 }
 ?>
+</div>
 </div>
 </body>
 </html>
