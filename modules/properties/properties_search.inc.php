@@ -11,7 +11,7 @@
   // search filters
   if (IsSet($this->class_id)) {
    $class_id=$this->class_id;
-   $qry.=" AND CLASS_ID='".$this->class_id."'";
+   $qry.=" AND properties.CLASS_ID='".$this->class_id."'";
 
    include_once(DIR_MODULES.'classes/classes.class.php');
    $cl=new classes();
@@ -45,7 +45,12 @@
    }
    $session->data['properties_sort']=$sortby;
   }
-  if (!$sortby) $sortby="TITLE";
+  if (!$sortby) $sortby="properties.TITLE";
+  if ($sortby=='TITLE') {
+   $sortby='properties.TITLE';
+  } elseif ($sortby=='TITLE DESC') {
+   $sortby='properties.TITLE DESC';
+  }
   $out['SORTBY']=$sortby;
   // SEARCH RESULTS
   $res=SQLSelect("SELECT properties.*, classes.TITLE AS CLASS_TITLE FROM properties LEFT JOIN classes ON classes.ID=properties.CLASS_ID WHERE $qry ORDER BY $sortby");

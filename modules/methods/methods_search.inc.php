@@ -11,13 +11,13 @@
   // search filters
   if (IsSet($this->object_id)) {
    $object_id=$this->object_id;
-   $qry.=" AND OBJECT_ID='".$this->object_id."'";
+   $qry.=" AND methods.OBJECT_ID='".$this->object_id."'";
   } else {
    global $object_id;
   }
   if (IsSet($this->class_id)) {
    $class_id=$this->class_id;
-   $qry.=" AND CLASS_ID='".$this->class_id."'";
+   $qry.=" AND methods.CLASS_ID='".$this->class_id."'";
 
    include_once(DIR_MODULES.'classes/classes.class.php');
    $cl=new classes();
@@ -52,7 +52,12 @@
    }
    $session->data['methods_sort']=$sortby;
   }
-  if (!$sortby) $sortby="TITLE";
+  if (!$sortby) $sortby="methods.TITLE";
+  if ($sortby=='TITLE') {
+   $sortby='methods.TITLE';
+  } elseif ($sortby=='TITLE DESC') {
+   $sortby='methods.TITLE DESC';
+  }
   $out['SORTBY']=$sortby;
   // SEARCH RESULTS
   $res=SQLSelect("SELECT methods.*, classes.TITLE AS CLASS_TITLE, objects.TITLE AS OBJECT_TITLE FROM methods LEFT JOIN classes ON classes.ID=methods.CLASS_ID LEFT JOIN objects ON objects.ID=methods.OBJECT_ID WHERE $qry ORDER BY $sortby");

@@ -31,7 +31,12 @@
                 </div>
                 <div class="md-admin-record-card__actions">
                     <a href="?view_mode=edit_properties&id=[#ID#]" title="<#LANG_EDIT#>" class="btn btn-light btn-sm"><span><#LANG_EDIT#></span></a>
-                    <a href="?view_mode=delete_properties&id=[#ID#]" data-md-confirm="<#ARE_YOU_SURE#>" title="<#LANG_DELETE#>" class="btn btn-outline-danger btn-sm"><span><#LANG_DELETE#></span></a>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item text-danger" href="?view_mode=delete_properties&id=[#ID#]" data-md-confirm="<#ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
+                        </ul>
+                    </div>
                     <input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
                     <input type="hidden" name="view_mode" value="multiple_properties">
                 </div>

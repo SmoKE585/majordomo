@@ -29,7 +29,12 @@
             </div>
             <div class="md-admin-record-card__actions">
                 <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&overwrite=1&method_id=[#ID#]" class="btn btn-light btn-sm"><span><#LANG_SETUP#></span></a>
-                <a href="<#ROOTHTML#>objects/?object=[#OBJECT_TITLE#]&op=m&m=[#TITLE#]" target="_blank" data-md-confirm="<#LANG_ARE_YOU_SURE#>" class="btn btn-primary btn-sm"><span><#LANG_RUN_SCRIPT_BTN#></span></a>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="<#ROOTHTML#>objects/?object=[#OBJECT_TITLE#]&op=m&m=[#TITLE#]" target="_blank" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a></li>
+                    </ul>
+                </div>
             </div>
         </article>
         [#end METHODS#]
@@ -170,9 +175,15 @@
 
                         <div class="md-admin-form-actions">
                             <button type="submit" name="subm" value="<#LANG_UPDATE#>" class="btn btn-primary"><#LANG_SUBMIT#></button>
-                            <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
-                            <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_meth=<#METHOD_ID#>" class="btn btn-outline-danger" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a>
-                            <a href="<#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" target="_blank" class="btn btn-primary" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>"><#LANG_CANCEL#></a></li>
+                                    <li><a class="dropdown-item" href="<#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" target="_blank" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_meth=<#METHOD_ID#>" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
+                                </ul>
+                            </div>
                         </div>
 
                         <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">

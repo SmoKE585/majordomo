@@ -55,9 +55,15 @@
                 </div>
                 <div class="md-admin-record-card__actions">
                     <a href="?view_mode=edit_objects&id=[#ID#]" class="btn btn-light btn-sm" title="<#LANG_EDIT#>"><span><#LANG_EDIT#></span></a>
-                    <a href="?view_mode=edit_objects&id=[#ID#]&tab=properties" class="btn btn-light btn-sm" title="<#LANG_PROPERTIES#>"><span><#LANG_PROPERTIES#></span></a>
-                    <a href="?view_mode=edit_objects&id=[#ID#]&tab=methods" class="btn btn-light btn-sm" title="<#LANG_METHODS#>"><span><#LANG_METHODS#></span></a>
-                    <a href="?view_mode=delete_objects&id=[#ID#]" data-md-confirm="Delete record?" class="btn btn-outline-danger btn-sm" title="<#LANG_DELETE#>"><span><#LANG_DELETE#></span></a>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="?view_mode=edit_objects&id=[#ID#]&tab=properties"><#LANG_PROPERTIES#></a></li>
+                            <li><a class="dropdown-item" href="?view_mode=edit_objects&id=[#ID#]&tab=methods"><#LANG_METHODS#></a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="?view_mode=delete_objects&id=[#ID#]" data-md-confirm="Delete record?"><#LANG_DELETE#></a></li>
+                        </ul>
+                    </div>
                     <input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
                     <input type="hidden" name="view_mode" value="multiple_objects">
                 </div>

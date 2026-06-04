@@ -141,9 +141,12 @@
                 [#else ID#]
                 <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_ADD#>"><#LANG_ADD#></button>
                 [#endif ID#]
-                [#if ID!=""#]
-                [#endif#]
-                <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="?data_source=<#DATA_SOURCE#>"><#LANG_CANCEL#></a></li>
+                    </ul>
+                </div>
             </div>
 
             <input type="hidden" name="id" value="<#ID#>">

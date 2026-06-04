@@ -3146,7 +3146,7 @@ body,
 .md-classes-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .md-admin-module-tabs {
@@ -3462,11 +3462,11 @@ body,
 .md-object-properties-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .md-object-properties-group + .md-object-properties-group {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .md-object-properties-group__title {
@@ -3495,7 +3495,7 @@ body,
 .md-object-properties-group__list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 @media (max-width: 991.98px) {
@@ -4761,13 +4761,13 @@ body.md-admin-search-open {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .md-admin-module-list__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
 }
@@ -4784,16 +4784,16 @@ body.md-admin-search-open {
 .md-admin-record-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .md-admin-record-card {
   display: grid;
   grid-template-columns: minmax(240px, 1.1fr) minmax(220px, 1.2fr) auto;
-  gap: 12px;
-  align-items: stretch;
+  gap: 10px;
+  align-items: start;
   min-width: 0;
-  padding: 12px;
+  padding: 9px 10px;
   background: rgba(255, 255, 255, .88);
   border: 1px solid var(--md-card-border, rgba(31, 41, 51, .1));
   border-radius: var(--md-card-radius, 18px);
@@ -4803,7 +4803,7 @@ body.md-admin-search-open {
 .md-admin-record-card__main {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -4828,7 +4828,7 @@ body.md-admin-search-open {
 .md-admin-record-card__content {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
 }
 
 .md-admin-record-card__title {
@@ -4860,17 +4860,17 @@ body.md-admin-search-open {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
 }
 
 .md-admin-record-card__meta {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .md-admin-record-card__field {
   min-width: 0;
-  padding: 9px 10px;
+  padding: 7px 10px;
   color: var(--md-admin-text, #1f2933);
   background: rgba(248, 251, 254, .9);
   border: 1px solid rgba(31, 41, 51, .06);
@@ -4889,8 +4889,8 @@ body.md-admin-search-open {
 .md-admin-record-card__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
-  align-items: center;
+  gap: 6px;
+  align-items: flex-start;
   justify-content: flex-end;
 }
 
@@ -4899,7 +4899,7 @@ body.md-admin-search-open {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: 30px;
   padding: 6px 9px;
   border-radius: 11px;
   font-size: .78rem;

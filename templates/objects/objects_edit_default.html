@@ -52,10 +52,15 @@
                 [#else ID#]
                 <button class="btn btn-primary" type="submit" name="subm"><#LANG_ADD#></button>
                 [#endif ID#]
-                <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
-                [#if ID!=""#]
-                <a class="btn btn-light" href="?id=<#ID#>&view_mode=clone" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_MAKE_COPY#></a>
-                [#endif#]
+                <div class="btn-group">
+                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="?data_source=<#DATA_SOURCE#>"><#LANG_CANCEL#></a></li>
+                        [#if ID!=""#]
+                        <li><a class="dropdown-item" href="?id=<#ID#>&view_mode=clone" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_MAKE_COPY#></a></li>
+                        [#endif#]
+                    </ul>
+                </div>
             </div>
 
             <input type="hidden" name="id" value="<#ID#>">
