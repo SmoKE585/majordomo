@@ -8,6 +8,32 @@ global $filter_name;
 include_once DIR_MODULES . 'settings/settings_structure.inc.php';
 
 if (!function_exists('settingsBuildLanguageOptions')) {
+    function settingsPrepareRecordForSave($record)
+    {
+        $allowedFields = array(
+            'ID',
+            'PRIORITY',
+            'HR',
+            'TITLE',
+            'NAME',
+            'TYPE',
+            'NOTES',
+            'VALUE',
+            'DEFAULTVALUE',
+            'URL',
+            'URL_TITLE',
+            'DATA'
+        );
+
+        $result = array();
+        foreach ($allowedFields as $field) {
+            if (array_key_exists($field, $record)) {
+                $result[$field] = $record[$field];
+            }
+        }
+        return $result;
+    }
+
     function settingsBuildLanguageOptions()
     {
         return array(
@@ -226,19 +252,25 @@ if ($res) {
             }
 
             $res[$i]['VALUE'] = ${'value_' . $res[$i]['ID']};
-            SQLUpdate('settings', $res[$i]);
+            SQLUpdate('settings', settingsPrepareRecordForSave($res[$i]));
         }
 
         if ($this->mode == 'reset') {
             $res[$i]['VALUE'] = isset($meta['default']) ? $meta['default'] : $res[$i]['DEFAULTVALUE'];
-            SQLUpdate('settings', $res[$i]);
+            SQLUpdate('settings', settingsPrepareRecordForSave($res[$i]));
         }
 
+        $currentValue = isset($res[$i]['VALUE']) ? (string)$res[$i]['VALUE'] : '';
         if ($res[$i]['TYPE'] == 'select') {
             if (isset($specialOptions[$res[$i]['NAME']])) {
                 $res[$i]['OPTIONS'] = $specialOptions[$res[$i]['NAME']];
             } else {
                 $res[$i]['OPTIONS'] = settingsBuildOptionsFromString($res[$i]['DATA']);
+            }
+            if (isset($res[$i]['OPTIONS']) && is_array($res[$i]['OPTIONS'])) {
+                foreach ($res[$i]['OPTIONS'] as $optionIndex => $optionData) {
+                    $res[$i]['OPTIONS'][$optionIndex]['SELECTED'] = ((string)$optionData['OPTION_VALUE'] === $currentValue) ? 1 : 0;
+                }
             }
             $res[$i]['CONTROL_VIEW'] = count($res[$i]['OPTIONS']) > 6 || in_array($res[$i]['NAME'], array('SITE_LANGUAGE', 'VOICE_LANGUAGE', 'SITE_TIMEZONE', 'CODEEDITOR_THEME', 'CODEEDITOR_AUTOSAVE', 'CODEEDITOR_SHOWLINE', 'CODEEDITOR_MIXLINE', 'MAIL_TYPE', 'MAIL_SECURE')) ? 'select' : 'choices';
             $res[$i]['IS_SELECT_DROPDOWN'] = $res[$i]['CONTROL_VIEW'] == 'select' ? 1 : 0;
@@ -267,7 +299,6 @@ if ($res) {
             }
         }
 
-        $currentValue = isset($res[$i]['VALUE']) ? (string)$res[$i]['VALUE'] : '';
         $defaultValue = isset($res[$i]['DEFAULTVALUE']) ? (string)$res[$i]['DEFAULTVALUE'] : '';
         if ($currentValue === $defaultValue) {
             $res[$i]['ISDEFAULT'] = '1';

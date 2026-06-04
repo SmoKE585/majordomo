@@ -64,7 +64,7 @@
             </div>
 
             [#if RESULT#]
-            <form action="?" method="post" name="frmList_settings">
+            <form action="?" method="post" name="frmList_settings" autocomplete="off">
                 <div class="md-settings-grid">
                     [#begin RESULT#]
                     <article class="md-settings-card [#if IS_WIDE="1"#]is-wide[#endif#]" data-settings-card data-settings-search="[#SEARCH_TEXT#]">
@@ -85,23 +85,23 @@
 
                         <div class="md-settings-control">
                             [#if TYPE="text"#]
-                            <input type="text" class="form-control" name="value_[#ID#]" value="[#VALUE#]">
+                            <input type="text" class="form-control" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false">
                             [#endif TYPE#]
 
                             [#if TYPE="password"#]
                             <div class="md-settings-secret">
-                                <input type="password" class="form-control" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]">
+                                <input type="password" class="form-control" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="new-password" spellcheck="false">
                                 <button type="button" class="btn btn-light" data-settings-toggle-secret="value_[#ID#]">Показать</button>
                             </div>
                             [#endif TYPE#]
 
                             [#if TYPE="textarea"#]
-                            <textarea class="form-control" name="value_[#ID#]" rows="[#ROWS#]">[#VALUE#]</textarea>
+                            <textarea class="form-control" name="value_[#ID#]" rows="[#ROWS#]" autocomplete="off" spellcheck="false">[#VALUE#]</textarea>
                             [#endif TYPE#]
 
                             [#if TYPE="path"#]
                             <div class="md-settings-path">
-                                <input type="text" class="form-control" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]">
+                                <input type="text" class="form-control" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false">
                                 <button type="button" class="btn btn-light" data-settings-browse="value_[#ID#]">Выбрать</button>
                             </div>
                             [#endif TYPE#]
@@ -146,9 +146,9 @@
                             [#endif TYPE#]
 
                             [#if TYPE="select"#][#if IS_SELECT_DROPDOWN="1"#]
-                            <select class="form-control form-select" name="value_[#ID#]">
+                            <select class="form-control form-select" name="value_[#ID#]" autocomplete="off">
                                 [#begin OPTIONS#]
-                                <option value="[#OPTION_VALUE#]"[#if OPTION_VALUE="<#RESULT.VALUE_RAW#>"#] selected[#endif#]>[#OPTION_TITLE#]</option>
+                                <option value="[#OPTION_VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#OPTION_TITLE#]</option>
                                 [#end OPTIONS#]
                             </select>
                             [#endif#][#endif TYPE#]
@@ -157,7 +157,7 @@
                             <div class="md-settings-choice-group">
                                 [#begin OPTIONS#]
                                 <label class="md-settings-choice">
-                                    <input type="radio" name="value_<#RESULT.ID#>" value="[#OPTION_VALUE#]"[#if OPTION_VALUE="<#RESULT.VALUE_RAW#>"#] checked[#endif#]>
+                                    <input type="radio" name="value_<#RESULT.ID#>" value="[#OPTION_VALUE#]"[#if SELECTED="1"#] checked[#endif#]>
                                     <span>[#OPTION_TITLE#]</span>
                                 </label>
                                 [#end OPTIONS#]
@@ -178,8 +178,8 @@
                                 [#begin OPTIONS#]
                                 <tr>
                                     <td>[#OPTION_TITLE#]</td>
-                                    <td><input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_priority" value="[#PRIORITY#]"></td>
-                                    <td><input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_filter" value="[#FILTER#]"></td>
+                                    <td><input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_priority" value="[#PRIORITY#]" autocomplete="off" spellcheck="false"></td>
+                                    <td><input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_filter" value="[#FILTER#]" autocomplete="off" spellcheck="false"></td>
                                 </tr>
                                 [#end OPTIONS#]
                                 </tbody>
