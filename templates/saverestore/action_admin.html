@@ -20,22 +20,16 @@
             <p class="md-saverestore-hero__lead">
                 Модуль разделён на два независимых сценария: обновление системы и работа с архивами восстановления. Откат на старые коммиты из ленты обновлений отключён, история изменений теперь используется только для контроля версии.
             </p>
-            [#if FORCE_CHECK="1"#]
-            <div class="md-saverestore-inline-alert is-info">
-                <i class="glyphicon glyphicon-refresh"></i>
-                <span>Лента обновлений перечитана принудительно, без использования кэша.</span>
-            </div>
-            [#endif#]
             <div class="md-saverestore-hero__actions">
                 <a href="[#UPDATE_URL#]" class="btn btn-light" target="_blank" rel="noopener">
-                    <i class="glyphicon glyphicon-download-alt"></i> Скачать актуальный архив
+                    <i class="glyphicon glyphicon-download-alt"></i> Скачать архив
                 </a>
                 <a href="?check_now=1" class="btn btn-outline-secondary">
-                    <i class="glyphicon glyphicon-refresh"></i> Проверить без кэша
+                    <i class="glyphicon glyphicon-refresh"></i> Проверить обновление
                 </a>
                 <button type="button" class="btn [#if NO_NEED_TO_UPDATE#]btn-outline-primary[#else#]btn-primary[#endif#]" data-saverestore-update-open>
                     <i class="glyphicon glyphicon-cloud-download"></i>
-                    [#if NO_NEED_TO_UPDATE#]Проверить ещё раз[#else#]<#LANG_NEWSAVERESTORE_UPDATE_BTN#>[#endif#]
+                    <#LANG_NEWSAVERESTORE_UPDATE_BTN#>
                 </button>
             </div>
         </div>
@@ -78,13 +72,9 @@
                     </div>
                 </div>
                 <div class="md-saverestore-card__actions">
-                    <a href="?check_now=1" class="btn btn-outline-secondary">
-                        <i class="glyphicon glyphicon-refresh"></i> Проверить без кэша
-                    </a>
                     <button type="button" class="btn [#if NO_NEED_TO_UPDATE#]btn-outline-primary[#else#]btn-primary[#endif#]" data-saverestore-update-open>
                         <i class="glyphicon glyphicon-play-circle"></i> Запустить обновление
                     </button>
-                    <a href="[#UPDATE_URL#]" class="btn btn-light" target="_blank" rel="noopener"><#LANG_NEWSAVERESTORE_DOWNLOAD_GIT_ARHIVE#></a>
                 </div>
             </section>
 
@@ -95,7 +85,7 @@
                         <div class="md-saverestore-card__eyebrow">Журнал изменений</div>
                         <h2 class="md-saverestore-card__title"><#LANG_LATEST_UPDATES#></h2>
                     </div>
-                    <span class="md-saverestore-inline-hint">Только просмотр</span>
+                    <span class="md-saverestore-inline-hint">5 последних</span>
                 </div>
                 [#if PROJECT_COMMIT_URL!=""#]
                 [#if LATEST_UPDATED_ID_SLICE!=""#]
@@ -221,12 +211,12 @@
 
                 <div class="md-saverestore-restore-selector" role="tablist" aria-label="Сценарии восстановления">
                     <button type="button" class="md-saverestore-restore-selector__item is-active" data-saverestore-panel="uploadBackup">
-                        <i class="glyphicon glyphicon-upload"></i>
+                        <i class="glyphicon glyphicon-floppy-open"></i>
                         <span>Загрузить архив</span>
                         <small>Ручное восстановление из файла</small>
                     </button>
                     <button type="button" class="md-saverestore-restore-selector__item" data-saverestore-panel="restoreInServer">
-                        <i class="glyphicon glyphicon-hdd"></i>
+                        <i class="glyphicon glyphicon-floppy-disk"></i>
                         <span>Сохранённые копии</span>
                         <small>Локальные и внешние архивы</small>
                     </button>

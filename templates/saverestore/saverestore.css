@@ -428,9 +428,9 @@
 }
 
 .md-saverestore-backup-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 14px;
   padding: 16px;
   border: 1px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
@@ -438,11 +438,17 @@
   background: rgba(255, 255, 255, .7);
 }
 
+.md-saverestore-backup-item__meta {
+  min-width: 0;
+}
+
 .md-saverestore-backup-item__title {
   margin: 0;
   color: var(--md-admin-text, #1f2933);
   font-size: .98rem;
   font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .md-saverestore-backup-item__actions {
@@ -450,6 +456,7 @@
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+  align-items: center;
 }
 
 .md-saverestore-check-card {

@@ -1003,7 +1003,7 @@ class saverestore extends module
                         $out['UPDATES'][] = $itm;
                         $iteration++;
 
-                        if ($iteration >= 10) {
+                        if ($iteration >= 5) {
                             break;
                         }
                     }
