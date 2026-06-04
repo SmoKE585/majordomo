@@ -6050,6 +6050,26 @@ body.md-mqtt-drawer-open {
   overflow-wrap: anywhere;
 }
 
+.md-object-property-card__copy-trigger {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: copy;
+}
+
+.md-object-property-card__copy-trigger:hover,
+.md-object-property-card__copy-trigger:focus-visible {
+  color: var(--md-admin-primary, #4792d1);
+  text-decoration: underline;
+}
+
+.md-object-property-card__property-name {
+  font-weight: 600;
+}
+
 .md-object-method-editor__summary {
   margin-top: 8px;
   color: var(--md-admin-muted, #6b7a88);
@@ -6151,6 +6171,17 @@ body.md-mqtt-drawer-open {
 
 .md-object-property-card__value .md-admin-code-sample.is-empty {
   color: #9aa6b2;
+}
+
+.md-object-property-card [data-md-prop-edit] {
+  cursor: pointer;
+  transition: border-color .16s ease, background-color .16s ease;
+}
+
+.md-object-property-card [data-md-prop-edit]:hover,
+.md-object-property-card [data-md-prop-edit]:focus-visible {
+  background: rgba(248, 251, 255, .96);
+  border-color: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .22);
 }
 
 .md-object-property-card__value-form,
