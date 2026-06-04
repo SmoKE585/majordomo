@@ -36,6 +36,31 @@ SQLExec("DELETE FROM properties WHERE OBJECT_ID=(SELECT ID FROM objects WHERE TI
 SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, '\"connect\":{\"filter\":\"\"},', '') WHERE NAME IN ('HOOK_EVENT_SAY','HOOK_EVENT_HOURLY')");
 SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, ',\"connect\":{\"filter\":\"\"}', '') WHERE NAME IN ('HOOK_EVENT_SAY','HOOK_EVENT_HOURLY')");
 
+// Remove legacy hook subscribers for deleted user systems.
+DebMes("Removing legacy hook subscribers for deleted user systems.", 'maintenance');
+$legacy_hook_subscribers = array('patterns', 'terminals');
+$hook_settings = SQLSelect("SELECT * FROM settings WHERE NAME LIKE 'HOOK_EVENT_%' AND TYPE='json'");
+$hook_total = count($hook_settings);
+for ($i = 0; $i < $hook_total; $i++) {
+    $hook_data = json_decode($hook_settings[$i]['VALUE'], true);
+    if (!is_array($hook_data)) {
+        continue;
+    }
+
+    $hook_changed = false;
+    foreach ($legacy_hook_subscribers as $subscriber_name) {
+        if (isset($hook_data[$subscriber_name])) {
+            unset($hook_data[$subscriber_name]);
+            $hook_changed = true;
+        }
+    }
+
+    if ($hook_changed) {
+        $hook_settings[$i]['VALUE'] = json_encode($hook_data, JSON_UNESCAPED_UNICODE);
+        SQLUpdate('settings', $hook_settings[$i]);
+    }
+}
+
 $config_file = ROOT . 'config.php';
 if (file_exists($config_file)) {
     $config_content = LoadFile($config_file);

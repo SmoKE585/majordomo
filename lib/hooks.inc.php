@@ -32,7 +32,7 @@ function subscribeToEvent($module_name, $event_name, $filter_details = '', $prio
     if ($priority) {
         $data[$module_name]['priority'] = $priority;
     }
-    $rec['VALUE'] = json_encode($data);
+    $rec['VALUE'] = json_encode($data, JSON_UNESCAPED_UNICODE);
     SQLUpdate('settings', $rec);
 }
 
@@ -56,7 +56,7 @@ function unsubscribeFromEvent($module_name, $event_name = '')
 
         if (isset($data[$module_name])) {
             unset($data[$module_name]);
-            $rec['VALUE'] = json_encode($data);
+            $rec['VALUE'] = json_encode($data, JSON_UNESCAPED_UNICODE);
             SQLUpdate('settings', $rec);
         }
     }
@@ -186,7 +186,7 @@ function removeMissingSubscribers()
             }
 
             if ($changed) {
-                $settings[$i]['VALUE'] = json_encode($data);
+                $settings[$i]['VALUE'] = json_encode($data, JSON_UNESCAPED_UNICODE);
                 SQLUpdate('settings', $settings[$i]);
             }
         }

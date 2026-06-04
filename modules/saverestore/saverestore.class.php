@@ -228,6 +228,279 @@ class saverestore extends module
         return DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/system_update_manifest.json';
     }
 
+    function getSaveRestoreDirectory()
+    {
+        return DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore';
+    }
+
+    function getBackupStorageDirectory()
+    {
+        if (defined('SETTINGS_BACKUP_PATH') && SETTINGS_BACKUP_PATH != '' && is_dir(SETTINGS_BACKUP_PATH)) {
+            return rtrim(SETTINGS_BACKUP_PATH, DIRECTORY_SEPARATOR . '/');
+        }
+
+        return DOC_ROOT . DIRECTORY_SEPARATOR . 'backup';
+    }
+
+    function isPathWithinRoot($path, $root)
+    {
+        $real_path = realpath($path);
+        $real_root = realpath($root);
+        if ($real_path === false || $real_root === false) {
+            return false;
+        }
+
+        return $real_path === $real_root || strpos($real_path, $real_root . DIRECTORY_SEPARATOR) === 0;
+    }
+
+    function canWritePath($path)
+    {
+        if ($path == '') {
+            return false;
+        }
+
+        if (file_exists($path)) {
+            return is_writable($path);
+        }
+
+        $parent = dirname($path);
+        while ($parent && $parent !== dirname($parent)) {
+            if (file_exists($parent)) {
+                return is_dir($parent) && is_writable($parent);
+            }
+            $parent = dirname($parent);
+        }
+
+        return false;
+    }
+
+    function getRelativeDocRootPath($path)
+    {
+        $normalized_path = str_replace('\\', '/', (string)$path);
+        $normalized_root = rtrim(str_replace('\\', '/', DOC_ROOT), '/');
+        if (strpos($normalized_path, $normalized_root . '/') === 0) {
+            return substr($normalized_path, strlen($normalized_root) + 1);
+        }
+        if ($normalized_path === $normalized_root) {
+            return '.';
+        }
+        return $normalized_path;
+    }
+
+    function isTarAvailable()
+    {
+        static $result = null;
+        if ($result !== null) {
+            return $result;
+        }
+
+        $output = array();
+        $exit_code = 1;
+        @exec('tar --version 2>&1', $output, $exit_code);
+        $result = ($exit_code === 0);
+        return $result;
+    }
+
+    function runShellCommand($command, &$output = array(), &$exit_code = 0)
+    {
+        $output = array();
+        $exit_code = 0;
+        $result = @exec($command . ' 2>&1', $output, $exit_code);
+        return $result;
+    }
+
+    function extractTarArchive($archive_path, $target_dir, &$error_message = '')
+    {
+        $archive_path = (string)$archive_path;
+        $target_dir = (string)$target_dir;
+        if (!$this->isTarAvailable()) {
+            $error_message = 'tar command is not available';
+            return false;
+        }
+
+        $lower_archive = mb_strtolower($archive_path);
+        if (preg_match('/\.(tgz|tar\.gz)$/', $lower_archive)) {
+            $command = 'tar -xzf ' . escapeshellarg($archive_path) . ' -C ' . escapeshellarg($target_dir);
+        } elseif (preg_match('/\.tar$/', $lower_archive)) {
+            $command = 'tar -xf ' . escapeshellarg($archive_path) . ' -C ' . escapeshellarg($target_dir);
+        } else {
+            $error_message = 'unsupported archive format';
+            return false;
+        }
+
+        $output = array();
+        $exit_code = 1;
+        $this->runShellCommand($command, $output, $exit_code);
+        if ($exit_code !== 0) {
+            $error_message = trim(implode("\n", $output));
+            return false;
+        }
+
+        return true;
+    }
+
+    function createTarArchiveFromDirectory($source_dir, $archive_path, &$error_message = '')
+    {
+        $source_dir = rtrim((string)$source_dir, DIRECTORY_SEPARATOR . '/');
+        $archive_path = (string)$archive_path;
+        if (!$this->isTarAvailable()) {
+            $error_message = 'tar command is not available';
+            return false;
+        }
+
+        $command = 'tar -czf ' . escapeshellarg($archive_path) . ' -C ' . escapeshellarg($source_dir) . ' .';
+        $output = array();
+        $exit_code = 1;
+        $this->runShellCommand($command, $output, $exit_code);
+        if ($exit_code !== 0) {
+            $error_message = trim(implode("\n", $output));
+            return false;
+        }
+
+        return true;
+    }
+
+    function collectSystemUpdatePreparationIssues()
+    {
+        $issues = array();
+
+        if ($this->getUpdateURL() == '') {
+            $issues[] = 'Не задан URL архива обновления.';
+        }
+        if (!function_exists('curl_init')) {
+            $issues[] = 'Расширение cURL недоступно.';
+        }
+        if (!function_exists('exec')) {
+            $issues[] = 'Функция exec() недоступна, распаковка архива не сможет выполниться.';
+        }
+        if (!$this->isTarAvailable()) {
+            $issues[] = 'Команда tar недоступна, распаковка и упаковка архивов не смогут выполниться.';
+        }
+
+        $paths = array(
+            DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore' => 'Каталог cms/saverestore недоступен для записи.',
+            DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' => 'Временный каталог cms/saverestore/temp недоступен для создания или записи.',
+            DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/modules_installed' => 'Каталог cms/modules_installed недоступен для записи.',
+            DOC_ROOT . DIRECTORY_SEPARATOR . 'database_backup' => 'Каталог database_backup недоступен для записи.',
+        );
+
+        foreach ($paths as $path => $message) {
+            if (!$this->canWritePath($path)) {
+                $issues[] = $message . ' [' . $this->getRelativeDocRootPath($path) . ']';
+            }
+        }
+
+        return $issues;
+    }
+
+    function collectSystemUpdateTargetIssues($update_root, $limit = 50)
+    {
+        $issues = array();
+        $update_root = rtrim((string)$update_root, DIRECTORY_SEPARATOR . '/');
+        if ($update_root == '' || !is_dir($update_root)) {
+            $issues[] = 'Не найдена распакованная директория обновления.';
+            return $issues;
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($update_root, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            if (count($issues) >= $limit) {
+                break;
+            }
+
+            if (!$item->isFile()) {
+                continue;
+            }
+
+            $source_path = $item->getPathname();
+            $relative_path = substr($source_path, strlen($update_root) + 1);
+            $relative_path = str_replace('\\', '/', $relative_path);
+            if ($this->isProtectedSystemUpdatePath($relative_path)) {
+                continue;
+            }
+
+            $target_path = DOC_ROOT . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_path);
+            if (file_exists($target_path)) {
+                if (!is_writable($target_path)) {
+                    $issues[] = 'Нет прав на перезапись файла [' . $relative_path . ']';
+                }
+            } else {
+                $target_dir = dirname($target_path);
+                if (!$this->canWritePath($target_dir)) {
+                    $issues[] = 'Нет прав на создание файла [' . $relative_path . ']';
+                }
+            }
+        }
+
+        return $issues;
+    }
+
+    function resolveRestoreSourcePath($restore)
+    {
+        $restore = trim((string)$restore);
+        if ($restore == '') {
+            return '';
+        }
+
+        $normalized_restore = ltrim(str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $restore), DIRECTORY_SEPARATOR);
+        $roots = array($this->getSaveRestoreDirectory(), $this->getBackupStorageDirectory());
+        $candidates = array($restore);
+
+        foreach ($roots as $root) {
+            if ($root != '') {
+                $candidates[] = rtrim($root, DIRECTORY_SEPARATOR . '/') . DIRECTORY_SEPARATOR . $normalized_restore;
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $real_candidate = realpath($candidate);
+            if ($real_candidate === false) {
+                continue;
+            }
+
+            foreach ($roots as $root) {
+                if ($root != '' && $this->isPathWithinRoot($real_candidate, $root)) {
+                    return $real_candidate;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    function storeUploadedRestoreFile()
+    {
+        if (!isset($_FILES['file']) || !is_array($_FILES['file'])) {
+            return array('path' => '', 'name' => '', 'error' => '');
+        }
+
+        $upload = $_FILES['file'];
+        if (!isset($upload['error']) || $upload['error'] == UPLOAD_ERR_NO_FILE) {
+            return array('path' => '', 'name' => '', 'error' => '');
+        }
+
+        if ($upload['error'] != UPLOAD_ERR_OK || !isset($upload['tmp_name']) || !is_uploaded_file($upload['tmp_name'])) {
+            return array('path' => '', 'name' => '', 'error' => 'UPLOAD_ERROR');
+        }
+
+        $original_name = isset($upload['name']) ? basename((string)$upload['name']) : '';
+        $safe_name = preg_replace('/[^A-Za-z0-9._-]+/', '_', $original_name);
+        if ($safe_name == '' || $safe_name == '.' || $safe_name == '..') {
+            $safe_name = 'restore_' . date('Ymd_His') . '.tgz';
+        }
+
+        $destination = $this->getSaveRestoreDirectory() . DIRECTORY_SEPARATOR . $safe_name;
+        if (!move_uploaded_file($upload['tmp_name'], $destination)) {
+            return array('path' => '', 'name' => '', 'error' => 'MOVE_ERROR');
+        }
+
+        return array('path' => $destination, 'name' => $safe_name, 'error' => '');
+    }
+
     function normalizeManifestPath($path)
     {
         return str_replace('\\', '/', $path);
@@ -604,6 +877,7 @@ class saverestore extends module
         }
 
 
+        $max_size = 0;
         $post_max_size = $this->parse_size(ini_get('post_max_size'));
         if ($post_max_size > 0) {
             $max_size = $post_max_size;
@@ -638,6 +912,8 @@ class saverestore extends module
         }
 
         $this->getConfig();
+        $force_check = (int)gr('check_now') === 1;
+        $out['FORCE_CHECK'] = $force_check ? 1 : 0;
 
         if (is_dir(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp')) {
             $out['CLEAR_FIRST'] = 1;
@@ -645,8 +921,7 @@ class saverestore extends module
             $out['CLEAR_FIRST'] = 0;
         }
 
-        $link = gr('link');
-        $update_url = $this->getUpdateURL($link);
+        $update_url = $this->getUpdateURL();
         $out['UPDATE_URL'] = $update_url;
         $out['PROJECT_COMMIT_URL'] = defined('PROJECT_COMMIT_URL') ? PROJECT_COMMIT_URL : '';
         $out['GIT_URL_CONFIGURED'] = defined('GIT_URL') && GIT_URL != '' ? 1 : 0;
@@ -673,7 +948,9 @@ class saverestore extends module
         $github_feed_url = $this->getUpdateFeedURL($update_url);
 
         $op = isset($_GET['op']) ? $_GET['op'] : '';
-        if ($op == 'check_updates') {
+        if ($force_check) {
+            $cache_timeout = 0;
+        } elseif ($op == 'check_updates') {
             $cache_timeout = 3 * 24 * 60 * 60;
         } else {
             $cache_timeout = 30 * 60;
@@ -886,10 +1163,15 @@ class saverestore extends module
         if ($this->mode == 'delete') {
             $file = gr('file');
             if ($file != '') {
-                if (is_dir($file)) { //s
-                    removeTree($file);
-                } elseif (is_file(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/' . $file)) {
-                    @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/' . $file);
+                $delete_target = $this->resolveRestoreSourcePath($file);
+                if ($delete_target == '') {
+                    $this->redirect("?err_msg=" . urlencode('Invalid backup path'));
+                }
+
+                if (is_dir($delete_target)) {
+                    removeTree($delete_target);
+                } elseif (is_file($delete_target)) {
+                    @unlink($delete_target);
                 }
             }
 
@@ -904,12 +1186,9 @@ class saverestore extends module
 
             $with_extensions = gr('with_extensions');
             $with_backup = gr('with_backup');
-            $link = gr('link');
 
             $out['WITH_EXTENSIONS'] = $with_extensions;
             $out['WITH_BACKUP'] = $with_backup;
-            $out['LINK'] = $link;
-            $out['LINK_URL'] = urlencode($link);
 
 
             global $backup;
@@ -924,39 +1203,70 @@ class saverestore extends module
             $out['DESIGN'] = $design;
         }
 
+        $source = $this->getSaveRestoreDirectory();
+        $backups_dir = $this->getBackupStorageDirectory();
+        $items = array();
 
-        $source = DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore';
-        $currentdir = getcwd();
-        chdir($source);
-        array_multisort(array_map('filemtime', ($files = glob("*.*"))), SORT_DESC, $files);
-        if (defined('SETTINGS_BACKUP_PATH') && SETTINGS_BACKUP_PATH != '' && is_dir(SETTINGS_BACKUP_PATH)) {
-            $backups_dir = SETTINGS_BACKUP_PATH;
-        } else {
-            $backups_dir = DOC_ROOT . DIRECTORY_SEPARATOR . 'backup';
-        }
-        chdir($backups_dir);
-        $backups = glob("*");
-        if (is_array($backups)) {
-            foreach ($backups as $backup_folder) {
-                $files[] = $backups_dir . '/' . $backup_folder;
+        if (is_dir($source)) {
+            $local_files = glob($source . DIRECTORY_SEPARATOR . '*');
+            if (is_array($local_files)) {
+                foreach ($local_files as $file) {
+                    $items[] = array(
+                        'path' => $file,
+                        'is_local' => 1
+                    );
+                }
             }
         }
-        chdir($currentdir);
+
+        if (is_dir($backups_dir)) {
+            $backup_files = glob(rtrim($backups_dir, DIRECTORY_SEPARATOR . '/') . DIRECTORY_SEPARATOR . '*');
+            if (is_array($backup_files)) {
+                foreach ($backup_files as $file) {
+                    $items[] = array(
+                        'path' => $file,
+                        'is_local' => 0
+                    );
+                }
+            }
+        }
+
+        usort($items, function ($a, $b) {
+            $left_time = file_exists($a['path']) ? (int)filemtime($a['path']) : 0;
+            $right_time = file_exists($b['path']) ? (int)filemtime($b['path']) : 0;
+            if ($left_time == $right_time) {
+                return strcmp(basename((string)$a['path']), basename((string)$b['path']));
+            }
+            return $right_time <=> $left_time;
+        });
+
         $out['FILES'] = array();
-        $i = 0;
-        foreach ($files as $file) {
-            $tmp = array();
-            $tmp['FILENAME'] = $file;
-            if (is_file($source . "/" . $file)) {
-                $tmp['FILESIZE'] = number_format((filesize($source . "/" . $file) / 1024 / 1024), 2);
-                $tmp['UPDATED'] = date('Y-m-d H:i:s', filemtime($source . "/" . $file));
-                $tmp['TITLE'] = basename($file);
-            } else {
-                $tmp['TITLE'] = 'Backup ' . basename($file);
+        foreach ($items as $index => $item) {
+            $file = $item['path'];
+            if (!file_exists($file)) {
+                continue;
             }
-            $tmp['ID'] = $i;
+
+            $tmp = array();
+            $tmp['ID'] = $index;
+            $tmp['FILENAME'] = $item['is_local'] ? basename($file) : $file;
+            $tmp['FILENAME_URL'] = urlencode($tmp['FILENAME']);
+            $tmp['TITLE'] = basename($file);
+            $tmp['IS_LOCAL'] = $item['is_local'];
+            $tmp['SOURCE_TITLE'] = $item['is_local'] ? 'Локальный архив модуля' : 'Внешнее хранилище';
+            $tmp['UPDATED'] = date('Y-m-d H:i:s', filemtime($file));
+            $tmp['DOWNLOAD_URL'] = '';
+
+            if (is_file($file)) {
+                $tmp['FILESIZE'] = number_format((filesize($file) / 1024 / 1024), 2);
+                if ($item['is_local']) {
+                    $tmp['DOWNLOAD_URL'] = ROOTHTML . 'cms/saverestore/' . rawurlencode(basename($file));
+                }
+            } else {
+                $tmp['FILESIZE'] = '';
+            }
+
             $out['FILES'][] = $tmp;
-            $i++;
         }
 
 
@@ -975,12 +1285,6 @@ class saverestore extends module
             $update_url = rtrim(GIT_URL, '/') . '/archive/master.tar.gz';
         } else {
             $update_url = '';
-        }
-        if ($link != '') {
-            if (preg_match('/\/commit\/(.+?)$/', $link, $m)) {
-                $commit = $m[1];
-                $update_url = $this->getArchiveURLForCommit($update_url, $commit);
-            }
         }
         return $update_url;
     }
@@ -1046,10 +1350,23 @@ class saverestore extends module
      */
     function getLatest(&$out, $iframe = 0, $with_backup = 1, $link = '')
     {
-        $url = $this->getUpdateURL($link);
+        $url = $this->getUpdateURL();
         $this->url = $url;
 
         set_time_limit(0);
+
+        $preflight_issues = $this->collectSystemUpdatePreparationIssues();
+        if (count($preflight_issues) > 0) {
+            $message = 'System update preflight failed: ' . implode(' | ', $preflight_issues);
+            DebMes($message, 'restore');
+            if ($iframe) {
+                foreach ($preflight_issues as $issue) {
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($issue) . '</div>', 'red');
+                }
+                return 0;
+            }
+            $this->redirect("?err_msg=" . urlencode($preflight_issues[0]));
+        }
 
         if (!is_dir(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore')) {
             @umask(0);
@@ -1818,6 +2135,7 @@ class saverestore extends module
         global $file;
         global $file_name;
         global $folder;
+        $restore_path = '';
 
         $with_extensions = gr('with_extensions');
         $with_backup = gr('with_backup');
@@ -1827,12 +2145,43 @@ class saverestore extends module
         else
             $folder = '/' . $folder;
 
+        $uploaded_restore = $this->storeUploadedRestoreFile();
         if ($restore != '') {
-            //$file=ROOT.'cms/saverestore/'.$restore;
-            $file = $restore;
-            $file_name = basename($file);
-        } elseif ($file != '') {
-            move_uploaded_file($file, DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/' . $file_name);
+            $resolved_restore = $this->resolveRestoreSourcePath($restore);
+            if ($resolved_restore == '') {
+                if ($iframe) {
+                    echonow('Invalid restore source', 'red');
+                    return false;
+                }
+                $this->redirect("?err_msg=" . urlencode('Invalid restore source'));
+            }
+            if (is_dir($resolved_restore)) {
+                $file = $resolved_restore;
+                $file_name = basename($resolved_restore);
+                $restore_path = $resolved_restore;
+            } else {
+                $local_restore_path = $resolved_restore;
+                if (!$this->isPathWithinRoot($resolved_restore, $this->getSaveRestoreDirectory())) {
+                    $local_restore_path = $this->getSaveRestoreDirectory() . DIRECTORY_SEPARATOR . basename($resolved_restore);
+                    @copy($resolved_restore, $local_restore_path);
+                }
+                $file = basename($local_restore_path);
+                $file_name = basename($local_restore_path);
+                $restore_path = $local_restore_path;
+            }
+        } elseif ($uploaded_restore['path'] != '') {
+            $file = basename($uploaded_restore['path']);
+            $file_name = $uploaded_restore['name'];
+            $restore_path = $uploaded_restore['path'];
+        } elseif ($uploaded_restore['error'] != '') {
+            if ($iframe) {
+                echonow('Upload failed', 'red');
+                return false;
+            }
+            $this->redirect("?err_msg=" . urlencode('Upload failed'));
+        } elseif ($file != '' && $file_name != '') {
+            $restore_path = $this->getSaveRestoreDirectory() . DIRECTORY_SEPARATOR . $file_name;
+            move_uploaded_file($file, $restore_path);
             $file = $file_name;
         }
 
@@ -1840,12 +2189,16 @@ class saverestore extends module
             echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_APPLY_UPDATE . '</div>');
         }
 
-        if ($file != '' && preg_match('/\.sql$/', $file_name) && file_exists(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/' . $file)) {
+        if ($restore_path == '' && $file != '' && !is_dir($file)) {
+            $restore_path = $this->getSaveRestoreDirectory() . DIRECTORY_SEPARATOR . $file;
+        }
+
+        if ($file != '' && preg_match('/\.sql$/', $file_name) && $restore_path != '' && file_exists($restore_path)) {
             // restore database only
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_RESTORE_DB_FOR . ' ' . $file . '</div>');
             }
-            $this->restoredatabase(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/' . $file);
+            $this->restoredatabase($restore_path);
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
             }
@@ -1854,15 +2207,15 @@ class saverestore extends module
             } else {
                 $this->redirect("?mode=clear&ok_msg=" . urlencode(LANG_UPDATEBACKUP_RESTORE_DB_DONE));
             }
-        } elseif ($file != '' && is_dir($file)) {
+        } elseif ($restore_path != '' && is_dir($restore_path)) {
             if ($iframe) {
-                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_UNPACKEGE_FROM_TO . ' ' . $file . ' - ' . ROOT . '</div>');
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_UNPACKEGE_FROM_TO . ' ' . $restore_path . ' - ' . ROOT . '</div>');
             }
-            copyTree($file, ROOT, 1); // restore all files
+            copyTree($restore_path, ROOT, 1); // restore all files
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
             }
-            $db_filename = $file . '/' . DB_NAME . ".sql";
+            $db_filename = $restore_path . '/' . DB_NAME . ".sql";
             if (file_exists($db_filename)) {
                 if ($iframe) {
                     echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_RESTORE_DB_FOR . ' ' . $db_filename . '</div>');
@@ -1890,16 +2243,18 @@ class saverestore extends module
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_UNPACKEGE . ' ' . $file . '</div>');
             }
-            if (IsWindowsOS()) {
-                $result = exec(DOC_ROOT . DIRECTORY_SEPARATOR . 'gunzip ..' . DIRECTORY_SEPARATOR . $file, $output, $res);
-                $result = exec(DOC_ROOT . DIRECTORY_SEPARATOR . 'tar -xvf ..' . DIRECTORY_SEPARATOR . str_replace('.tgz', '.tar', $file), $output, $res);
-            } else {
-                $result = exec('tar xzvf ../' . $file, $output, $res);
-            }
+            $archive_path = $restore_path != '' && is_file($restore_path)
+                ? $restore_path
+                : $this->getSaveRestoreDirectory() . DIRECTORY_SEPARATOR . $file;
+            $error_message = '';
+            $result = $this->extractTarArchive($archive_path, DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', $error_message);
 
             if (!$result) {
                 echonow("Unpack failed", 'red');
-                DebMes("Unpack failed: " . 'tar xzvf ../' . $file, "restore");
+                if ($error_message != '') {
+                    echonow(htmlspecialchars($error_message), 'red');
+                }
+                DebMes("Unpack failed for " . $archive_path . ': ' . $error_message, "restore");
                 return false;
             }
 
@@ -1928,6 +2283,16 @@ class saverestore extends module
             if ($is_system_update) {
                 $old_manifest = $this->loadSystemUpdateManifest();
                 $new_manifest = $this->buildSystemUpdateManifest($update_root);
+                $apply_issues = $this->collectSystemUpdateTargetIssues($update_root);
+                if (count($apply_issues) > 0) {
+                    foreach ($apply_issues as $issue) {
+                        if ($iframe) {
+                            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($issue) . '</div>', 'red');
+                        }
+                    }
+                    DebMes('System update apply preflight failed: ' . implode(' | ', $apply_issues), 'restore');
+                    return false;
+                }
             }
 
             if (file_exists(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/config.php')) {
@@ -2169,7 +2534,7 @@ class saverestore extends module
 
             // packing into tar.gz
             $tar_name .= date('Y-m-d__H-i-s');
-            $tar_name .= IsWindowsOS() ? '.tar' : '.tgz';
+            $tar_name .= '.tgz';
 
             if (isset($out['BACKUP']))
                 $tar_name = 'backup_' . $tar_name;
@@ -2178,18 +2543,15 @@ class saverestore extends module
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_BACKUP_PACKEGE_TO . ' <b>' . $tar_name . '</b></div>');
             }
 
-
-            if (IsWindowsOS()) {
-                $result = exec('tar.exe --strip-components=2 -C ./cms/saverestore/temp/ -cvf ./cms/saverestore/' . $tar_name . ' ./');
-                $new_name = str_replace('.tar', '.tar.gz', $tar_name);
-                $result = exec('gzip.exe ./cms/saverestore/' . $tar_name);
-                if (file_exists('./cms/saverestore/' . $new_name)) {
-                    $tar_name = $new_name;
+            $archive_path = DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore' . DIRECTORY_SEPARATOR . $tar_name;
+            $error_message = '';
+            $result = $this->createTarArchiveFromDirectory(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', $archive_path, $error_message);
+            if (!$result) {
+                DebMes('Backup archive creation failed: ' . $error_message, 'restore');
+                if ($iframe) {
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($error_message) . '</div>', 'red');
                 }
-            } else {
-                chdir(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp');
-                exec('tar cvzf ../' . $tar_name . ' .');
-                chdir('../../../');
+                return false;
             }
 
             if ($iframe) {

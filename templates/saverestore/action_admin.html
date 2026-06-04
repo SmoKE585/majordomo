@@ -1,555 +1,417 @@
+<!--#
+ @version 2.0 (admin ui refresh)
+#-->
 [#if CLEAR_FIRST!="1"#]
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-	[#if ERR_MSG!=""#]
-		<div class="col-md-12"><div class="alert alert-danger">[#ERR_MSG#]</div></div>
-	[#endif ERR_MSG#]
-	[#if OK_MSG!=""#]
-		<div class="col-md-12"><div class="alert alert-success">[#OK_MSG#]</div></div>
-	[#endif OK_MSG#] 
+<link rel="stylesheet" href="<#ROOTHTML#>templates/saverestore/saverestore.css?v=2026-06-04-1" type="text/css">
+<script type="text/javascript" src="<#ROOTHTML#>templates/saverestore/saverestore.js?v=2026-06-04-1"></script>
 
-	<div class="col-md-6">
-		[#if NO_NEED_TO_UPDATE#]
-		<div class="jumbotron" style="margin-bottom: 10px;padding-top: 20px;padding-bottom: 10px;border-radius: 5px;background-image: radial-gradient(circle farthest-corner at 100px 50px, #9efac3, #4792d1);">
-			<h2><#LANG_NEWSAVERESTORE_NONE_UPDATE_HEADER#></h2>
-			<p style="font-size: 11pt;"><#LANG_NEWSAVERESTORE_NONE_UPDATE_TEXT#></p>
-			<p class="text-right">
-				<a class="link" href="[#UPDATE_URL#]" style="text-decoration: none;color: white;font-size: 10pt;margin-right: 20px;" role="button"><#LANG_NEWSAVERESTORE_DOWNLOAD_GIT_ARHIVE#></a>
-				<a style="border-color: #ffffff;" data-toggle="modal" onclick="$('#myModal').modal('show');" data-target="#myModal" class="btn btn-default btn-md" role="button"><#LANG_NEWSAVERESTORE_NONE_UPDATE_BTN#></a>
-			</p>
-		</div>
-		[#else#]
-		<div class="jumbotron" style="margin-bottom: 10px;padding-top: 20px;padding-bottom: 10px;border-radius: 5px;    background-image: radial-gradient(circle farthest-corner at 100px 50px, #fae29e, #d53972);">
-			<h2><#LANG_NEWSAVERESTORE_UPDATE_HEADER#></h2>
-			<p style="font-size: 11pt;"><#LANG_NEWSAVERESTORE_UPDATE_TEXT#></p>
-			<p class="text-right">
-				<a class="link" href="[#UPDATE_URL#]" style="text-decoration: none;color: white;font-size: 10pt;margin-right: 20px;" role="button"><#LANG_NEWSAVERESTORE_DOWNLOAD_GIT_ARHIVE#></a>
-				<a style="border-color: #ffffff;" class="btn btn-success btn-md" data-toggle="modal" onclick="$('#myModal').modal('show');" data-target="#myModal" role="button"><#LANG_NEWSAVERESTORE_UPDATE_BTN#></a>
-			</p>
-		</div>
-		[#endif#]
-		
-		[#if MODE="getlatest_iframe"#]
-			<script>
-				$(document).ready(function() {
-					$('#myModal').modal('show');
-				});
-			</script>
-		[#endif#]
-		<style>
-			.system-update-modal .modal-dialog {
-				width: 820px;
-				max-width: calc(100% - 20px);
-			}
-			.system-update-modal .modal-content {
-				border: 0;
-				border-radius: 9px;
-				overflow: hidden;
-				box-shadow: 0 18px 60px rgba(0,0,0,.35);
-			}
-			.system-update-modal .modal-header {
-				background: linear-gradient(135deg, #263b73, #0d7d7a);
-				color: #fff;
-				border-bottom: 0;
-			}
-			.system-update-modal .modal-title {
-				font-weight: 600;
-			}
-			.system-update-status {
-				border: 1px solid #d9edf7;
-				background: #f5fbff;
-				border-radius: 7px;
-				padding: 13px 15px;
-				margin-bottom: 12px;
-			}
-			.system-update-status .progress {
-				height: 9px;
-				margin: 11px 0 0;
-			}
-			.system-update-steps {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 8px;
-				margin-bottom: 12px;
-			}
-			.system-update-step {
-				border: 1px solid #ddd;
-				border-radius: 20px;
-				padding: 6px 10px;
-				background: #fff;
-				color: #777;
-				font-size: 12px;
-			}
-			.system-update-step.active {
-				border-color: #31b0d5;
-				color: #1f6f78;
-				background: #eefaff;
-			}
-			.system-update-step.done {
-				border-color: #5cb85c;
-				color: #3c763d;
-				background: #f0fff0;
-			}
-			.system-update-console {
-				width: 100%;
-				height: 430px;
-				border: 0;
-				border-radius: 6px;
-				background: #000080;
-			}
-			@media (max-width: 767px) {
-				.system-update-modal .modal-dialog {
-					margin: 10px;
-					max-width: none;
-					width: auto;
-				}
-				.system-update-steps {
-					display: block;
-				}
-				.system-update-step {
-					display: block;
-					margin-bottom: 6px;
-				}
-				.system-update-console {
-					height: 360px;
-				}
-			}
-		</style>
-		<script>
-			function systemUpdateSetStatus(text, state, percent, step) {
-				var label = $('#systemUpdateStatusText');
-				var icon = $('#systemUpdateStatusIcon');
-				var progress = $('#systemUpdateProgress .progress-bar');
-				label.text(text);
-				if (typeof percent == 'undefined' || percent === null) {
-					percent = state == 'success' || state == 'error' ? 100 : 35;
-				}
-				if (state == 'success') {
-					icon.removeClass().addClass('glyphicon glyphicon-ok-sign text-success');
-					progress.removeClass('progress-bar-info active progress-bar-striped progress-bar-danger').addClass('progress-bar-success');
-				} else if (state == 'error') {
-					icon.removeClass().addClass('glyphicon glyphicon-exclamation-sign text-danger');
-					progress.removeClass('progress-bar-info active progress-bar-striped progress-bar-success').addClass('progress-bar-danger');
-				} else {
-					icon.removeClass().addClass('glyphicon glyphicon-refresh text-info');
-					progress.removeClass('progress-bar-success progress-bar-danger').addClass('progress-bar-info active progress-bar-striped');
-				}
-				progress.css('width', percent + '%');
-				if (step) {
-					$('.system-update-step').each(function() {
-						var item = $(this);
-						var order = parseInt(item.data('order'), 10);
-						var activeOrder = parseInt($('#systemUpdateStep_' + step).data('order'), 10);
-						item.toggleClass('active', item.attr('id') == 'systemUpdateStep_' + step);
-						item.toggleClass('done', !isNaN(order) && !isNaN(activeOrder) && order < activeOrder);
-					});
-				}
-			}
-			function systemUpdateFinish(text, state) {
-				window.onbeforeunload = null;
-				systemUpdateSetStatus(text || 'Операция завершена, выполняется переход...', state || 'success', 100, 'finish');
-			}
-			$(document).ready(function() {
-				[#if MODE="getlatest_iframe"#]
-				systemUpdateSetStatus('Подготовка обновления. Журнал выполнения появится ниже.', 'active', 20, 'prepare');
-				[#else#]
-				systemUpdateSetStatus('Выберите параметры обновления и запустите процесс.', 'active', 10, 'prepare');
-				[#endif#]
-			});
-		</script>
-		<div class="modal fade system-update-modal" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="static">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<form action="?" method="post" enctype="multipart/form-data" class="form-horizontal">
-						<div class="modal-header">
-							<h4 class="modal-title" id="myModalLabel"><i class="glyphicon glyphicon-cloud-download"></i> Обновление системы</h4>
-						</div>
-						<div class="modal-body">
-							<div class="system-update-status">
-								<div><i id="systemUpdateStatusIcon" class="glyphicon glyphicon-refresh text-info"></i> <span id="systemUpdateStatusText">Подготовка операции...</span></div>
-								<div id="systemUpdateProgress" class="progress">
-									<div class="progress-bar progress-bar-info progress-bar-striped active" style="width: 10%"></div>
-								</div>
-							</div>
-							<div class="system-update-steps">
-								<span id="systemUpdateStep_prepare" data-order="1" class="system-update-step active">1. Подготовка</span>
-								<span id="systemUpdateStep_backup" data-order="2" class="system-update-step">2. Резервная копия</span>
-								<span id="systemUpdateStep_download" data-order="3" class="system-update-step">3. Скачивание</span>
-								<span id="systemUpdateStep_apply" data-order="4" class="system-update-step">4. Применение</span>
-								<span id="systemUpdateStep_cleanup" data-order="5" class="system-update-step">5. Очистка</span>
-								<span id="systemUpdateStep_finish" data-order="6" class="system-update-step">6. Завершение</span>
-							</div>
-							[#if MODE="getlatest_iframe"#]
-								<div class="alert alert-warning" style="margin-bottom: 12px;">
-									<i class="glyphicon glyphicon-info-sign"></i>
-									Не закрывайте окно до окончания обновления. После завершения страница обновится автоматически.
-								</div>
-								<iframe id="processUpdateFrame" class="system-update-console" src="<#ROOTHTML#>modules/saverestore/update_iframe.php?with_extensions=[#WITH_EXTENSIONS#]&with_backup=[#WITH_BACKUP#]&backup=<#BACKUP#>&design=<#DESIGN#>&code=<#CODE#>&data=<#DATA#>&save_files=<#SAVE_FILES#>&link=<#LINK_URL#>" frameborder="0"></iframe>
-							[#else#]
-								<div id="updateParams">
-									<label><input type="checkbox" name="with_extensions" value="1"> <#LANG_UPDATE_ALL_EXTENSIONS#></label><br/>
-									<div class="alert alert-info" style="margin-top: 10px;margin-bottom: 0;">
-										<i class="glyphicon glyphicon-lock"></i> <#LANG_MANDATORY_DB_BACKUP#>
-									</div>
-									<input type="hidden" name="with_backup" value="0">
-									<input type="hidden" name="link" id="update_link" value="">
-									<div id="update_link_text" style="display:none"></div>
-								</div>
-							[#endif#]
-						</div>
-						[#if MODE!="getlatest_iframe"#]
-						<div class="modal-footer">
-							<input type="hidden" name="mode" value="getlatest_iframe">
-							
-							<button type="button" class="btn btn-default" data-dismiss="modal"><#LANG_CLOSE#></button>
-							<input style="border-color: #ffffff;" type="submit" name="submit" value="<#LANG_NEWSAVERESTORE_UPDATE_BTN#>" onClick="" class="btn btn-danger btn-md">
-						</div>
-						[#endif#]
-					</form>
-				</div>
-			</div>
-		</div>
-		[#if UPDATES#]
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h3 class="panel-title"><#LANG_LATEST_UPDATES#></h3>
-			</div>
-			<div class="panel-body" id="changelogUpdate">
-				<ul class="list-group">
-					[#begin UPDATES#]
-					<li class="list-group-item [#if MYVERSION == 1#]panel-success[#endif#]" [#if MYVERSION == 1#]style="background: #d6e9c6;"[#endif#]>
-						<span class="badge">
-							[#UPDATE_TEXT#]
-						</span>
-						<div>
-							[#if MYVERSION == 1#]<span class="label label-success" id="mysystemversion"><#LANG_MARKET_CATEGORY_INSTALLED#></span> [#endif#]
-							<a href="[#LINK#]" target="_blank">[#TITLE#]</a>
-							<div>↳ <span class="label label-default">[#DESC_UPDATE#]</span>
-								[#if MYVERSION!="1"#]<a class="btn btn-default btn-xs" data-toggle="modal" onclick="$('#update_link').val('[#LINK#]');$('#update_link_text').show();$('#update_link_text').html('Version: [#LINK#]');$('#myModal').modal('show');" data-target="#myModal" role="button"><#LANG_RESTORE#></a>[#endif#]
-							</div>
-							
-						</div>
-					</li>
-					[#end UPDATES#]
-				</ul>
-				<script>
-				$(document).ready(function() {
-					if($('#mysystemversion').length == 0) {
-						[#if PROJECT_COMMIT_URL!=""#]
-						$('#changelogUpdate').prepend('<div class="alert alert-danger"><b><#LANG_VERSION_TOO_OLD#></b> ([#LATEST_UPDATED_TIME#]);<br/><#LANG_LATEST_UPDATES#>: <a href="[#PROJECT_COMMIT_URL#][#LATEST_UPDATED_ID#]" target="_blank">[#LATEST_CURR_BRANCH#]_[#LATEST_UPDATED_ID_SLICE#]</a>.</div>');
-						[#else#]
-						$('#changelogUpdate').prepend('<div class="alert alert-danger"><b><#LANG_VERSION_TOO_OLD#></b> ([#LATEST_UPDATED_TIME#]);<br/><#LANG_LATEST_UPDATES#>: [#LATEST_CURR_BRANCH#]_[#LATEST_UPDATED_ID_SLICE#].</div>');
-						[#endif#]
-					}
-				});
-				</script>
-			</div>
-		</div>
-		[#endif UPDATES#]
-		
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h3 class="panel-title"><#LANG_SECTION_SETTINGS#></h3>
-			</div>
-			<div class="panel-body">
-				<form action="?" method="post" enctype="multipart/form-data" class="form">
-				<ul class="list-group" id="">
-					<li class="list-group-item">
-						<span style="float: right;">
-							<select name="set_update_url" id="set_update_url" style="border: 0px;" onchange="this.form.submit();">
-								[#if GIT_URL_CONFIGURED="1"#]
-								<option value="<#GIT_MASTER_UPDATE_URL#>"[#if UPDATE_URL="<#GIT_MASTER_UPDATE_URL#>"#] selected[#endif#]><#LANG_UPDATES_SOURCE_MASTER#></option>
-								<option value="<#GIT_ALPHA_UPDATE_URL#>"[#if UPDATE_URL="<#GIT_ALPHA_UPDATE_URL#>"#] selected[#endif#]><#LANG_UPDATES_SOURCE_ALPHA#></option>
-								[#endif#]
-								[#if ADITIONAL_GIT_URLS#]
-								[#begin ADITIONAL_GIT_URLS#]
-								<option value="[#URL#]" [#SELECTED#]>[#TITLE#]</option>
-								[#end ADITIONAL_GIT_URLS#]
-								[#endif#]
-							</select>
-						</span>
-						<#LANG_NEWDASH_SYSTEM_INFO_BRABCH#>
-					</li>
-					<li class="list-group-item">
-						<span style="float: right;">
-							<select name="update_auto" style="border: 0px;" [#if UPDATE_AUTO!="1"#]onchange="if($(this).val() == 1) { $('#hideAutoUpdate').show('slow'); } else { $('#hideAutoUpdate').hide('slow'); }"[#endif#]>
-								<option value="1"[#if UPDATE_AUTO="1"#] selected[#endif#]><#LANG_YES#></option>
-								<option value="0"[#if UPDATE_AUTO!="1"#] selected[#endif#]><#LANG_NO#></option>
-							</select>
-						</span>
-						<#LANG_ENABLE_AUTO_UPDATE#><#LANG_HCB#>system_auto_update<#LANG_HCE#>
-					</li>
-					<div id="hideAutoUpdate" [#if UPDATE_AUTO!="1"#]style="display:none;"[#endif#]>
-						<li class="list-group-item">
-							<span style="float: right;">
-								<select name="update_auto_delay" style="border: 0px;">
-									<option value="14"[#if UPDATE_AUTO_DELAY="14"#] selected[#endif#]>14 ... OK</option>
-									<option value="7"[#if UPDATE_AUTO_DELAY="7"#] selected[#endif#]>7 ... pretty risky</option>
-									<option value="3"[#if UPDATE_AUTO_DELAY="3"#] selected[#endif#]>3 ... dangerous!</option>
-								</select>
-							</span>
-							<#LANG_AUTO_UPDATE_DELAY#>
-						</li>
-						<li class="list-group-item">
-							<span style="float: right;">
-								<select name="update_auto_time" style="border: 0px;">
-									<option value="0">00:00</option>
-									<option value="1"[#if UPDATE_AUTO_TIME="1"#] selected[#endif#]>01:00</option>
-									<option value="2"[#if UPDATE_AUTO_TIME="2"#] selected[#endif#]>02:00</option>
-									<option value="3"[#if UPDATE_AUTO_TIME="3"#] selected[#endif#]>03:00</option>
-									<option value="4"[#if UPDATE_AUTO_TIME="4"#] selected[#endif#]>04:00</option>
-									<option value="5"[#if UPDATE_AUTO_TIME="5"#] selected[#endif#]>05:00</option>
-									<option value="6"[#if UPDATE_AUTO_TIME="6"#] selected[#endif#]>06:00</option>
-									<option value="7"[#if UPDATE_AUTO_TIME="7"#] selected[#endif#]>07:00</option>
-									<option value="8"[#if UPDATE_AUTO_TIME="8"#] selected[#endif#]>08:00</option>
-									<option value="9"[#if UPDATE_AUTO_TIME="9"#] selected[#endif#]>09:00</option>
-									<option value="10"[#if UPDATE_AUTO_TIME="10"#] selected[#endif#]>10:00</option>
-									<option value="11"[#if UPDATE_AUTO_TIME="11"#] selected[#endif#]>11:00</option>
-									<option value="12"[#if UPDATE_AUTO_TIME="12"#] selected[#endif#]>12:00</option>
-									<option value="13"[#if UPDATE_AUTO_TIME="13"#] selected[#endif#]>13:00</option>
-									<option value="14"[#if UPDATE_AUTO_TIME="14"#] selected[#endif#]>14:00</option>
-									<option value="15"[#if UPDATE_AUTO_TIME="15"#] selected[#endif#]>15:00</option>
-									<option value="16"[#if UPDATE_AUTO_TIME="16"#] selected[#endif#]>16:00</option>
-									<option value="17"[#if UPDATE_AUTO_TIME="17"#] selected[#endif#]>17:00</option>
-									<option value="18"[#if UPDATE_AUTO_TIME="18"#] selected[#endif#]>18:00</option>
-									<option value="19"[#if UPDATE_AUTO_TIME="19"#] selected[#endif#]>19:00</option>
-									<option value="20"[#if UPDATE_AUTO_TIME="20"#] selected[#endif#]>20:00</option>
-									<option value="21"[#if UPDATE_AUTO_TIME="21"#] selected[#endif#]>21:00</option>
-									<option value="22"[#if UPDATE_AUTO_TIME="22"#] selected[#endif#]>22:00</option>
-									<option value="23"[#if UPDATE_AUTO_TIME="23"#] selected[#endif#]>23:00</option>
-								</select>
-							</span>
-							<#LANG_AUTO_UPDATE_TIME#>
-						</li>
-						<li class="list-group-item">
-							<span style="float: right;">
-								<select name="update_auto_plugins" style="border: 0px;">
-									<option value="1"[#if UPDATE_AUTO_PLUGINS="1"#] selected[#endif#]><#LANG_YES#></option>
-									<option value="0"[#if UPDATE_AUTO_PLUGINS!="1"#] selected[#endif#]><#LANG_NO#></option>
-								</select>
-							</span>
-							<#LANG_UPDATE_ALL_EXTENSIONS#>
-						</li>
-					</div>
-				</ul>
-				<center><input type="submit" name="submit" value="<#LANG_SUBMIT#>" class="btn btn-default btn-primary"></center>
-				<input type="hidden" name="mode" value="auto_update_settings">
-				</form>
-			</div>
-		</div>
-	</div>
-	<div class="col-md-6">
-		<div class="panel panel-success">
-			<div class="panel-heading">
-				<h3 class="panel-title"><#LANG_NEWSAVERESTORE_RESTORE_ARHIVE#></h3>
-			</div>
-			<div class="panel-body">
-				<div class="row" style="margin-right: -15px;margin-left: -15px;">
-					<div class="col-md-4" onclick="$('.restoreMainBlock').show();$('.restoreBlock').hide();$('#uploadBackup').show('slow');">
-						<div class="thumbnail text-center" style="margin-bottom: 10px;">
-							<i style="font-size: 5rem;" class="glyphicon glyphicon-floppy-open"></i>
-							<div class="caption" style="padding: 0px;">
-								<h5><#LANG_NEWSAVERESTORE_RESTORE_DOWNANDRESTORE#></h5>
-							</div>
-						</div>
-					</div>
-					<div class="col-md-4" onclick="$('.restoreMainBlock').show();$('.restoreBlock').hide();$('#restoreInServer').show('slow');">
-						<div class="thumbnail text-center" style="margin-bottom: 10px;">
-							<i style="font-size: 5rem;" class="glyphicon glyphicon-floppy-disk"></i>
-							<div class="caption" style="padding: 0px;">
-								<h5><#LANG_NEWSAVERESTORE_RESTORE_RESTOREINARHIVE#></h5>
-							</div>
-						</div>
-					</div>
-					<div class="col-md-4" onclick="$('.restoreMainBlock').show();$('.restoreBlock').hide();$('#createBackup').show('slow');">
-						<div class="thumbnail text-center" style="margin-bottom: 10px;">
-							<i style="font-size: 5rem;" class="glyphicon glyphicon-floppy-saved"></i>
-							<div class="caption" style="padding: 0px;">
-								<h5><#LANG_NEWSAVERESTORE_RESTORE_CREATE_RESTORE#></h5>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		
-		<div class="panel panel-default restoreMainBlock" style="">
-			<div class="panel-body">
-				<div id="createBackup" class="restoreBlock" style="display: none;">
-					<script>
-					function checkboxStyle(name, status) {
-						if(status == true) {
-							$('#input_'+name).attr('style', 'background-color: #dff0d8;height: 36px;');
-							$('#checkbox_'+name).attr('style', 'background-color: #dff0d8;');
-						} else {
-							$('#input_'+name).attr('style', 'height: 36px;');
-							$('#checkbox_'+name).attr('style', '');
-						}
-					}
-					</script>
-					<div class="alert" style="background: radial-gradient(circle farthest-corner at 450px 10px, #198f22, #86bea4);color: white;text-align: center;border: 0px;">
-						<#LANG_NEWSAVERESTORE_BACKUP_HINT#>
-					</div>
-					<form action="?" method="post" enctype="multipart/form-data">
-						<div class="input-group" style="margin-bottom: 5px;">
-							<span class="input-group-addon" id="checkbox_design">
-								<input type="checkbox" name="design" value="1" onChange="checkboxStyle('design', $(this).prop('checked'));">
-							</span>
-							<input type="text" id="input_design" class="form-control" value="<#LANG_DESIGN#> (templates, css, images)" style="height: 36px;" disabled>
-						</div>
-						
-						<div class="input-group" style="margin-bottom: 5px;">
-							<span class="input-group-addon" id="checkbox_code">
-								<input type="checkbox" name="code" value="1" onChange="checkboxStyle('code', $(this).prop('checked'));">
-							</span>
-							<input type="text" id="input_code" class="form-control" value="<#LANG_CODE#> (modules)" style="height: 36px;" disabled>
-						</div>
-						
-						<div class="input-group" style="margin-bottom: 5px;">
-							<span class="input-group-addon" id="checkbox_data">
-								<input type="checkbox" name="data" value="1" onChange="checkboxStyle('data', $(this).prop('checked'));">
-							</span>
-							<input type="text" id="input_data" class="form-control" value="<#LANG_DATA#> (database)" style="height: 36px;" disabled>
-						</div>
-						
-						<div class="input-group" style="margin-bottom: 5px;">
-							<span class="input-group-addon" id="checkbox_save_files">
-								<input type="checkbox" name="save_files" onChange="checkboxStyle('save_files', $(this).prop('checked'));" value="1">
-							</span>
-							<input type="text" id="input_save_files" class="form-control" value="<#LANG_FILES_UPLOADED#>" style="height: 36px;" disabled>
-						</div>
-						
-						<input type="hidden" name="backup" value="1">
-						<input type="hidden" name="mode" value="getlatest_iframe">
-						
-						<div class="text-center" style="margin-top: 15px">
-							<input type="submit" name="submit" value="<#LANG_CREATE_BACKUP#>" class="btn btn-success">
-						</div>
-					</form>
-				</div>
-				<div id="uploadBackup" class="restoreBlock" style="display:none;">
-					<style>
-						.input__wrapper {
-						  width: 100%;
-						  position: relative;
-						  margin: 15px 0;
-						  text-align: center;
-						}
-						 
-						.input__file {
-						  opacity: 0;
-						  visibility: hidden;
-						  position: absolute;
-						}
-						 
-						.input__file-icon-wrapper {
-						  height: 60px;
-						  width: 60px;
-						  margin-right: 15px;
-						  display: -webkit-box;
-						  display: -ms-flexbox;
-						  margin-left: 5px;
-						  -webkit-box-align: center;
-							  -ms-flex-align: center;
-								  align-items: center;
-						  -webkit-box-pack: center;
-							  -ms-flex-pack: center;
-								  justify-content: center;
-						  border-right: 1px solid #fff;
-						}
-						 
-						.input__file-button-text {
-						  line-height: 1;
-						  margin-top: 1px;
-						}
-						 
-						.input__file-button {
-						  width: 100%;
-						  max-width: 390px;
-						  height: 40px;
-						  background: #4792d1;
-						  color: #fff;
-						  font-size: 2rem;
-						  font-weight: 700;
-						  display: -webkit-box;
-						  display: -ms-flexbox;
-						  display: flex;
-						  -webkit-box-align: center;
-							  -ms-flex-align: center;
-								  align-items: center;
-						  -webkit-box-pack: start;
-							  -ms-flex-pack: start;
-								  justify-content: flex-start;
-						  border-radius: 3px;
-						  cursor: pointer;
-						  margin: 0 auto;
-						}
-					</style>
-					<form action="?" method="post" enctype="multipart/form-data">
-						<div class="input__wrapper">
-						   <input name="file" type="file" name="file" id="input__file" class="input input__file" multiple>
-						   <label for="input__file" class="input__file-button">
-							  <span class="input__file-icon-wrapper"><i style="font-size: 22pt;" class="glyphicon glyphicon-download-alt"></i></span>
-							  <span class="input__file-button-text"><#LANG_NEWSAVERESTORE_CHOUSE_FILE#> ([#MAX_SIZE#] max)</span>
-						   </label>
-						</div>
-						
-						<div class="text-center" style="margin-top: 15px">
-							<input type="submit" name="submit" value="<#LANG_CONTINUE#>" class="btn btn-success">
-						</div>
-						<input type="hidden" name="mode" value="upload">
-					</form>
-					<script>
-						let inputs = document.querySelectorAll('.input__file');
-						Array.prototype.forEach.call(inputs, function (input) {
-						  let label = input.nextElementSibling,
-							labelVal = label.querySelector('.input__file-button-text').innerText;
-					  
-						  input.addEventListener('change', function (e) {
-							let countFiles = '';
-							if (this.files && this.files.length >= 1)
-								countFiles = this.files.length;
-							if (countFiles)
-							  label.querySelector('.input__file-button-text').innerText = '<#LANG_NEWSAVERESTORE_CHOUSES_FILES#> ' + countFiles;
-							else
-							  label.querySelector('.input__file-button-text').innerText = labelVal;
-						  });
-						});
-					</script>
-				</div>
-				[#if FILES#]
-				<div id="restoreInServer" class="restoreBlock" style="">
-					<ul class="list-group">
-						[#begin FILES#]
-						<li class="list-group-item">
-							<span class="badge">[#UPDATED#]</span>
-							<div style="cursor:pointer;" onclick="$('.fullTextNewsClass').hide('slow');$('#backup_[#ID#]').toggle('slow');">
-								[#TITLE#] [#if FILESIZE!=""#]([#FILESIZE#]MB.)[#else#]&nbsp;[#endif#]
-							</div>
-							<div class="fullTextNewsClass text-right" id="backup_[#ID#]" style="display:none;margin-top: 10px;border-top: 1px solid lightgray;padding-top: 10px;">
-								[#if "<#CLEAR_FIRST#>"!="1"#]
-									<a href="?mode=upload&restore=[#FILENAME#]" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')" class="btn btn-danger">
-										<#LANG_RESTORE#>
-									</a>
-								[#endif#]
-								[#if FILESIZE!=""#]
-									<a href="<#ROOTHTML#>cms/saverestore/[#FILENAME#]" class="btn btn-success">Download</a>
-								[#endif#]
-								<a href="?mode=delete&file=[#FILENAME#]" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')" class="btn btn-warning"><i class="glyphicon glyphicon-remove"></i></a>
-							</div>
-						</li>
-						[#end FILES#]
-					</ul>
-				</div>
-				[#endif FILES#]
-			</div>
-		</div>
-	</div>
+<div class="md-saverestore-page" data-saverestore-page data-saverestore-open-update="[#if MODE="getlatest_iframe"#]1[#else#]0[#endif#]">
+    [#if ERR_MSG!=""#]
+    <div class="alert alert-danger md-saverestore-alert">[#ERR_MSG#]</div>
+    [#endif ERR_MSG#]
+    [#if OK_MSG!=""#]
+    <div class="alert alert-success md-saverestore-alert">[#OK_MSG#]</div>
+    [#endif OK_MSG#]
+
+    <section class="md-saverestore-hero">
+        <div class="md-saverestore-hero__main">
+            <div class="md-saverestore-hero__eyebrow">Saverestore</div>
+            <h1 class="md-saverestore-hero__title">Обновления и резервные копии</h1>
+            <p class="md-saverestore-hero__lead">
+                Модуль разделён на два независимых сценария: обновление системы и работа с архивами восстановления. Откат на старые коммиты из ленты обновлений отключён, история изменений теперь используется только для контроля версии.
+            </p>
+            [#if FORCE_CHECK="1"#]
+            <div class="md-saverestore-inline-alert is-info">
+                <i class="glyphicon glyphicon-refresh"></i>
+                <span>Лента обновлений перечитана принудительно, без использования кэша.</span>
+            </div>
+            [#endif#]
+            <div class="md-saverestore-hero__actions">
+                <a href="[#UPDATE_URL#]" class="btn btn-light" target="_blank" rel="noopener">
+                    <i class="glyphicon glyphicon-download-alt"></i> Скачать актуальный архив
+                </a>
+                <a href="?check_now=1" class="btn btn-outline-secondary">
+                    <i class="glyphicon glyphicon-refresh"></i> Проверить без кэша
+                </a>
+                <button type="button" class="btn [#if NO_NEED_TO_UPDATE#]btn-outline-primary[#else#]btn-primary[#endif#]" data-saverestore-update-open>
+                    <i class="glyphicon glyphicon-cloud-download"></i>
+                    [#if NO_NEED_TO_UPDATE#]Проверить ещё раз[#else#]<#LANG_NEWSAVERESTORE_UPDATE_BTN#>[#endif#]
+                </button>
+            </div>
+        </div>
+        <div class="md-saverestore-hero__stats">
+            <div class="md-saverestore-stat">
+                <span class="md-saverestore-stat__label">Источник</span>
+                <strong class="md-saverestore-stat__value">[#UPDATE_CURR_BRANCH#]</strong>
+            </div>
+            <div class="md-saverestore-stat">
+                <span class="md-saverestore-stat__label">Текущий коммит</span>
+                <strong class="md-saverestore-stat__value">[#if LATEST_UPDATED_ID_SLICE!=""#][#LATEST_CURR_BRANCH#]_[#LATEST_UPDATED_ID_SLICE#][#else#]не определён[#endif#]</strong>
+            </div>
+            <div class="md-saverestore-stat">
+                <span class="md-saverestore-stat__label">Последняя фиксация</span>
+                <strong class="md-saverestore-stat__value">[#if LATEST_UPDATED_TIME!=""#][#LATEST_UPDATED_TIME#][#else#]нет данных[#endif#]</strong>
+            </div>
+            <div class="md-saverestore-stat">
+                <span class="md-saverestore-stat__label">Состояние</span>
+                <strong class="md-saverestore-stat__value">[#if NO_NEED_TO_UPDATE#]Актуально[#else#]Есть обновление[#endif#]</strong>
+            </div>
+        </div>
+    </section>
+
+    <div class="md-saverestore-grid">
+        <div class="md-saverestore-column">
+            <section class="md-saverestore-card md-saverestore-card--update [#if NO_NEED_TO_UPDATE#]is-current[#else#]is-attention[#endif#]">
+                <div class="md-saverestore-card__header">
+                    <div>
+                        <div class="md-saverestore-card__eyebrow">Системное обновление</div>
+                        <h2 class="md-saverestore-card__title">[#if NO_NEED_TO_UPDATE#]<#LANG_NEWSAVERESTORE_NONE_UPDATE_HEADER#>[#else#]<#LANG_NEWSAVERESTORE_UPDATE_HEADER#>[#endif#]</h2>
+                    </div>
+                    <span class="md-saverestore-status-pill [#if NO_NEED_TO_UPDATE#]is-success[#else#]is-warning[#endif#]">[#if NO_NEED_TO_UPDATE#]Система синхронизирована[#else#]Найдена новая версия[#endif#]</span>
+                </div>
+                <p class="md-saverestore-card__text">[#if NO_NEED_TO_UPDATE#]<#LANG_NEWSAVERESTORE_NONE_UPDATE_TEXT#>[#else#]<#LANG_NEWSAVERESTORE_UPDATE_TEXT#>[#endif#]</p>
+                <div class="md-saverestore-update-note">
+                    <i class="glyphicon glyphicon-lock"></i>
+                    <div>
+                        <strong>Откат по истории коммитов отключён.</strong>
+                        Обновление выполняется только из текущей ветки, выбранной в настройках ниже. Для возврата используйте ваши резервные копии в блоке восстановления.
+                    </div>
+                </div>
+                <div class="md-saverestore-card__actions">
+                    <a href="?check_now=1" class="btn btn-outline-secondary">
+                        <i class="glyphicon glyphicon-refresh"></i> Проверить без кэша
+                    </a>
+                    <button type="button" class="btn [#if NO_NEED_TO_UPDATE#]btn-outline-primary[#else#]btn-primary[#endif#]" data-saverestore-update-open>
+                        <i class="glyphicon glyphicon-play-circle"></i> Запустить обновление
+                    </button>
+                    <a href="[#UPDATE_URL#]" class="btn btn-light" target="_blank" rel="noopener"><#LANG_NEWSAVERESTORE_DOWNLOAD_GIT_ARHIVE#></a>
+                </div>
+            </section>
+
+            [#if UPDATES#]
+            <section class="md-saverestore-card">
+                <div class="md-saverestore-card__header">
+                    <div>
+                        <div class="md-saverestore-card__eyebrow">Журнал изменений</div>
+                        <h2 class="md-saverestore-card__title"><#LANG_LATEST_UPDATES#></h2>
+                    </div>
+                    <span class="md-saverestore-inline-hint">Только просмотр</span>
+                </div>
+                [#if PROJECT_COMMIT_URL!=""#]
+                [#if LATEST_UPDATED_ID_SLICE!=""#]
+                <p class="md-saverestore-card__text">
+                    Текущая зафиксированная версия:
+                    <a href="[#PROJECT_COMMIT_URL#][#LATEST_UPDATED_ID#]" target="_blank" rel="noopener">[#LATEST_CURR_BRANCH#]_[#LATEST_UPDATED_ID_SLICE#]</a>
+                </p>
+                [#endif#]
+                [#endif#]
+                <div class="md-saverestore-timeline">
+                    [#begin UPDATES#]
+                    <article class="md-saverestore-timeline__item [#if MYVERSION == 1#]is-current[#endif#]">
+                        <div class="md-saverestore-timeline__meta">
+                            <span class="md-saverestore-timeline__date">[#UPDATE_TEXT#]</span>
+                            [#if MYVERSION == 1#]<span class="md-saverestore-status-pill is-success"><#LANG_MARKET_CATEGORY_INSTALLED#></span>[#endif#]
+                        </div>
+                        <a href="[#LINK#]" class="md-saverestore-timeline__title" target="_blank" rel="noopener">[#TITLE#]</a>
+                        [#if DESC_UPDATE!=""#]<div class="md-saverestore-timeline__desc">[#DESC_UPDATE#]</div>[#endif#]
+                    </article>
+                    [#end UPDATES#]
+                </div>
+            </section>
+            [#endif UPDATES#]
+
+            <section class="md-saverestore-card">
+                <div class="md-saverestore-card__header">
+                    <div>
+                        <div class="md-saverestore-card__eyebrow">Автоматизация</div>
+                        <h2 class="md-saverestore-card__title"><#LANG_SECTION_SETTINGS#></h2>
+                    </div>
+                </div>
+                <form action="?" method="post" enctype="multipart/form-data" class="md-saverestore-settings">
+                    <label class="md-saverestore-field">
+                        <span class="md-saverestore-field__label"><#LANG_NEWDASH_SYSTEM_INFO_BRABCH#></span>
+                        <select name="set_update_url" class="form-control">
+                            [#if GIT_URL_CONFIGURED="1"#]
+                            <option value="<#GIT_MASTER_UPDATE_URL#>"[#if UPDATE_URL="<#GIT_MASTER_UPDATE_URL#>"#] selected[#endif#]><#LANG_UPDATES_SOURCE_MASTER#></option>
+                            <option value="<#GIT_ALPHA_UPDATE_URL#>"[#if UPDATE_URL="<#GIT_ALPHA_UPDATE_URL#>"#] selected[#endif#]><#LANG_UPDATES_SOURCE_ALPHA#></option>
+                            [#endif#]
+                            [#if ADITIONAL_GIT_URLS#]
+                            [#begin ADITIONAL_GIT_URLS#]
+                            <option value="[#URL#]" [#SELECTED#]>[#TITLE#]</option>
+                            [#end ADITIONAL_GIT_URLS#]
+                            [#endif#]
+                        </select>
+                    </label>
+
+                    <label class="md-saverestore-field">
+                        <span class="md-saverestore-field__label"><#LANG_ENABLE_AUTO_UPDATE#></span>
+                        <select name="update_auto" class="form-control" data-saverestore-auto-toggle>
+                            <option value="1"[#if UPDATE_AUTO="1"#] selected[#endif#]><#LANG_YES#></option>
+                            <option value="0"[#if UPDATE_AUTO!="1"#] selected[#endif#]><#LANG_NO#></option>
+                        </select>
+                        <span class="md-saverestore-field__hint"><#LANG_HCB#>system_auto_update<#LANG_HCE#></span>
+                    </label>
+
+                    <div class="md-saverestore-auto-grid [#if UPDATE_AUTO!="1"#]is-hidden[#endif#]" data-saverestore-auto-settings>
+                        <label class="md-saverestore-field">
+                            <span class="md-saverestore-field__label"><#LANG_AUTO_UPDATE_DELAY#></span>
+                            <select name="update_auto_delay" class="form-control">
+                                <option value="14"[#if UPDATE_AUTO_DELAY="14"#] selected[#endif#]>14 ... OK</option>
+                                <option value="7"[#if UPDATE_AUTO_DELAY="7"#] selected[#endif#]>7 ... pretty risky</option>
+                                <option value="3"[#if UPDATE_AUTO_DELAY="3"#] selected[#endif#]>3 ... dangerous!</option>
+                            </select>
+                        </label>
+                        <label class="md-saverestore-field">
+                            <span class="md-saverestore-field__label"><#LANG_AUTO_UPDATE_TIME#></span>
+                            <select name="update_auto_time" class="form-control">
+                                <option value="0">00:00</option>
+                                <option value="1"[#if UPDATE_AUTO_TIME="1"#] selected[#endif#]>01:00</option>
+                                <option value="2"[#if UPDATE_AUTO_TIME="2"#] selected[#endif#]>02:00</option>
+                                <option value="3"[#if UPDATE_AUTO_TIME="3"#] selected[#endif#]>03:00</option>
+                                <option value="4"[#if UPDATE_AUTO_TIME="4"#] selected[#endif#]>04:00</option>
+                                <option value="5"[#if UPDATE_AUTO_TIME="5"#] selected[#endif#]>05:00</option>
+                                <option value="6"[#if UPDATE_AUTO_TIME="6"#] selected[#endif#]>06:00</option>
+                                <option value="7"[#if UPDATE_AUTO_TIME="7"#] selected[#endif#]>07:00</option>
+                                <option value="8"[#if UPDATE_AUTO_TIME="8"#] selected[#endif#]>08:00</option>
+                                <option value="9"[#if UPDATE_AUTO_TIME="9"#] selected[#endif#]>09:00</option>
+                                <option value="10"[#if UPDATE_AUTO_TIME="10"#] selected[#endif#]>10:00</option>
+                                <option value="11"[#if UPDATE_AUTO_TIME="11"#] selected[#endif#]>11:00</option>
+                                <option value="12"[#if UPDATE_AUTO_TIME="12"#] selected[#endif#]>12:00</option>
+                                <option value="13"[#if UPDATE_AUTO_TIME="13"#] selected[#endif#]>13:00</option>
+                                <option value="14"[#if UPDATE_AUTO_TIME="14"#] selected[#endif#]>14:00</option>
+                                <option value="15"[#if UPDATE_AUTO_TIME="15"#] selected[#endif#]>15:00</option>
+                                <option value="16"[#if UPDATE_AUTO_TIME="16"#] selected[#endif#]>16:00</option>
+                                <option value="17"[#if UPDATE_AUTO_TIME="17"#] selected[#endif#]>17:00</option>
+                                <option value="18"[#if UPDATE_AUTO_TIME="18"#] selected[#endif#]>18:00</option>
+                                <option value="19"[#if UPDATE_AUTO_TIME="19"#] selected[#endif#]>19:00</option>
+                                <option value="20"[#if UPDATE_AUTO_TIME="20"#] selected[#endif#]>20:00</option>
+                                <option value="21"[#if UPDATE_AUTO_TIME="21"#] selected[#endif#]>21:00</option>
+                                <option value="22"[#if UPDATE_AUTO_TIME="22"#] selected[#endif#]>22:00</option>
+                                <option value="23"[#if UPDATE_AUTO_TIME="23"#] selected[#endif#]>23:00</option>
+                            </select>
+                        </label>
+                        <label class="md-saverestore-field md-saverestore-field--full">
+                            <span class="md-saverestore-field__label"><#LANG_UPDATE_ALL_EXTENSIONS#></span>
+                            <select name="update_auto_plugins" class="form-control">
+                                <option value="1"[#if UPDATE_AUTO_PLUGINS="1"#] selected[#endif#]><#LANG_YES#></option>
+                                <option value="0"[#if UPDATE_AUTO_PLUGINS!="1"#] selected[#endif#]><#LANG_NO#></option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="md-saverestore-card__actions">
+                        <input type="hidden" name="mode" value="auto_update_settings">
+                        <button type="submit" class="btn btn-primary"><#LANG_SUBMIT#></button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <div class="md-saverestore-column">
+            <section class="md-saverestore-card md-saverestore-card--restore">
+                <div class="md-saverestore-card__header">
+                    <div>
+                        <div class="md-saverestore-card__eyebrow">Восстановление</div>
+                        <h2 class="md-saverestore-card__title"><#LANG_NEWSAVERESTORE_RESTORE_ARHIVE#></h2>
+                    </div>
+                </div>
+                <p class="md-saverestore-card__text">
+                    Основной сценарий восстановления вынесен в отдельный рабочий блок. Сначала выбирается источник, затем доступны только релевантные действия: загрузка архива, запуск сохранённой копии или создание нового бэкапа.
+                </p>
+
+                <div class="md-saverestore-restore-selector" role="tablist" aria-label="Сценарии восстановления">
+                    <button type="button" class="md-saverestore-restore-selector__item is-active" data-saverestore-panel="uploadBackup">
+                        <i class="glyphicon glyphicon-upload"></i>
+                        <span>Загрузить архив</span>
+                        <small>Ручное восстановление из файла</small>
+                    </button>
+                    <button type="button" class="md-saverestore-restore-selector__item" data-saverestore-panel="restoreInServer">
+                        <i class="glyphicon glyphicon-hdd"></i>
+                        <span>Сохранённые копии</span>
+                        <small>Локальные и внешние архивы</small>
+                    </button>
+                    <button type="button" class="md-saverestore-restore-selector__item" data-saverestore-panel="createBackup">
+                        <i class="glyphicon glyphicon-floppy-saved"></i>
+                        <span>Создать бэкап</span>
+                        <small>Собрать архив из выбранных частей</small>
+                    </button>
+                </div>
+
+                <div class="md-saverestore-restore-panels">
+                    <section id="uploadBackup" class="md-saverestore-restore-panel is-active" data-saverestore-panel-body>
+                        <div class="md-saverestore-focus-note">
+                            <strong>Ручная загрузка</strong>
+                            <span>Подходит для подготовленного архива `.tgz`, `.tar.gz`, `.tar` или дампа базы `.sql`.</span>
+                        </div>
+                        <form action="?" method="post" enctype="multipart/form-data" class="md-saverestore-upload-form">
+                            <label class="md-saverestore-upload" for="saverestoreFileInput">
+                                <input name="file" type="file" id="saverestoreFileInput" class="md-saverestore-upload__input" data-saverestore-file-input>
+                                <span class="md-saverestore-upload__icon"><i class="glyphicon glyphicon-download-alt"></i></span>
+                                <span class="md-saverestore-upload__text">
+                                    <strong>Выберите файл архива</strong>
+                                    <small data-saverestore-file-label><#LANG_NEWSAVERESTORE_CHOUSE_FILE#> ([#MAX_SIZE#] max)</small>
+                                </span>
+                            </label>
+                            <div class="md-saverestore-card__actions">
+                                <input type="hidden" name="mode" value="upload">
+                                <button type="submit" class="btn btn-primary"><#LANG_CONTINUE#></button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section id="restoreInServer" class="md-saverestore-restore-panel" data-saverestore-panel-body hidden>
+                        <div class="md-saverestore-focus-note">
+                            <strong>Архивы на сервере</strong>
+                            <span>Восстановление выполняется только из ваших сохранённых архивов. История коммитов обновлений сюда больше не смешивается.</span>
+                        </div>
+                        [#if FILES#]
+                        <div class="md-saverestore-backup-list">
+                            [#begin FILES#]
+                            <article class="md-saverestore-backup-item">
+                                <div class="md-saverestore-backup-item__meta">
+                                    <div>
+                                        <h3 class="md-saverestore-backup-item__title">[#TITLE#]</h3>
+                                        <div class="md-saverestore-backup-item__details">
+                                            <span>[#SOURCE_TITLE#]</span>
+                                            <span>[#UPDATED#]</span>
+                                            [#if FILESIZE!=""#]<span>[#FILESIZE#] MB</span>[#endif#]
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="md-saverestore-backup-item__actions">
+                                    [#if "<#CLEAR_FIRST#>"!="1"#]
+                                    <a href="?mode=upload&restore=[#FILENAME_URL#]" class="btn btn-primary btn-sm" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RESTORE#></a>
+                                    [#endif#]
+                                    [#if DOWNLOAD_URL!=""#]
+                                    <a href="[#DOWNLOAD_URL#]" class="btn btn-light btn-sm">Download</a>
+                                    [#endif#]
+                                    <a href="?mode=delete&file=[#FILENAME_URL#]" class="btn btn-outline-danger btn-sm" data-md-confirm="<#LANG_ARE_YOU_SURE#>" aria-label="Удалить архив">
+                                        <i class="glyphicon glyphicon-trash"></i>
+                                    </a>
+                                </div>
+                            </article>
+                            [#end FILES#]
+                        </div>
+                        [#else#]
+                        <div class="md-saverestore-empty-state">Архивы пока не найдены.</div>
+                        [#endif FILES#]
+                    </section>
+
+                    <section id="createBackup" class="md-saverestore-restore-panel" data-saverestore-panel-body hidden>
+                        <div class="md-saverestore-focus-note is-success">
+                            <strong>Новый резервный пакет</strong>
+                            <span><#LANG_NEWSAVERESTORE_BACKUP_HINT#></span>
+                        </div>
+                        <form action="?" method="post" enctype="multipart/form-data" class="md-saverestore-backup-builder">
+                            <label class="md-saverestore-check-card" data-saverestore-check-card>
+                                <input type="checkbox" name="design" value="1">
+                                <span class="md-saverestore-check-card__title"><#LANG_DESIGN#></span>
+                                <span class="md-saverestore-check-card__text">templates, css, images</span>
+                            </label>
+                            <label class="md-saverestore-check-card" data-saverestore-check-card>
+                                <input type="checkbox" name="code" value="1">
+                                <span class="md-saverestore-check-card__title"><#LANG_CODE#></span>
+                                <span class="md-saverestore-check-card__text">modules, scripts, languages, php</span>
+                            </label>
+                            <label class="md-saverestore-check-card" data-saverestore-check-card>
+                                <input type="checkbox" name="data" value="1">
+                                <span class="md-saverestore-check-card__title"><#LANG_DATA#></span>
+                                <span class="md-saverestore-check-card__text">database dump</span>
+                            </label>
+                            <label class="md-saverestore-check-card" data-saverestore-check-card>
+                                <input type="checkbox" name="save_files" value="1">
+                                <span class="md-saverestore-check-card__title"><#LANG_FILES_UPLOADED#></span>
+                                <span class="md-saverestore-check-card__text">дополнительные файлы из `cms/`</span>
+                            </label>
+
+                            <div class="md-saverestore-card__actions">
+                                <input type="hidden" name="backup" value="1">
+                                <input type="hidden" name="mode" value="getlatest_iframe">
+                                <button type="submit" class="btn btn-success"><#LANG_CREATE_BACKUP#></button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="md-saverestore-update-modal [#if MODE="getlatest_iframe"#]is-open[#endif#]" data-saverestore-update-modal>
+        <div class="md-saverestore-update-modal__backdrop" data-saverestore-update-close></div>
+        <div class="md-saverestore-update-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="saverestoreUpdateTitle">
+            <div class="md-saverestore-update-modal__header">
+                <div>
+                    <div class="md-saverestore-card__eyebrow">Системное обновление</div>
+                    <h2 class="md-saverestore-update-modal__title" id="saverestoreUpdateTitle">Обновление системы</h2>
+                </div>
+                [#if MODE!="getlatest_iframe"#]
+                <button type="button" class="md-saverestore-close" data-saverestore-update-close aria-label="Закрыть">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                [#endif#]
+            </div>
+            <div class="md-saverestore-update-modal__body">
+                <div class="md-saverestore-update-status">
+                    <div class="md-saverestore-update-status__main">
+                        <span id="systemUpdateStatusIcon" class="md-saverestore-update-status__icon is-active"></span>
+                        <div>
+                            <div class="md-saverestore-update-status__label">Статус</div>
+                            <div id="systemUpdateStatusText" class="md-saverestore-update-status__text">Подготовка операции...</div>
+                        </div>
+                    </div>
+                    <div class="md-saverestore-progress" id="systemUpdateProgress">
+                        <span class="md-saverestore-progress__bar" style="width: 10%"></span>
+                    </div>
+                </div>
+
+                <div class="md-saverestore-steps">
+                    <span id="systemUpdateStep_prepare" class="md-saverestore-step is-active" data-order="1">1. Подготовка</span>
+                    <span id="systemUpdateStep_backup" class="md-saverestore-step" data-order="2">2. Бэкап</span>
+                    <span id="systemUpdateStep_download" class="md-saverestore-step" data-order="3">3. Загрузка</span>
+                    <span id="systemUpdateStep_apply" class="md-saverestore-step" data-order="4">4. Применение</span>
+                    <span id="systemUpdateStep_cleanup" class="md-saverestore-step" data-order="5">5. Очистка</span>
+                    <span id="systemUpdateStep_finish" class="md-saverestore-step" data-order="6">6. Завершение</span>
+                </div>
+
+                [#if MODE="getlatest_iframe"#]
+                <div class="md-saverestore-inline-alert is-warning">
+                    Не закрывайте окно до окончания процесса. После завершения система сама вернётся на страницу модуля.
+                </div>
+                <iframe id="processUpdateFrame" class="md-saverestore-console" src="<#ROOTHTML#>modules/saverestore/update_iframe.php?with_extensions=[#WITH_EXTENSIONS#]&with_backup=[#WITH_BACKUP#]&backup=<#BACKUP#>&design=<#DESIGN#>&code=<#CODE#>&data=<#DATA#>&save_files=<#SAVE_FILES#>" frameborder="0"></iframe>
+                [#else#]
+                <form action="?" method="post" enctype="multipart/form-data" class="md-saverestore-update-form">
+                    <label class="md-saverestore-switch-row">
+                        <span>
+                            <strong><#LANG_UPDATE_ALL_EXTENSIONS#></strong>
+                            <small>После системного обновления открыть обновление маркет-модулей.</small>
+                        </span>
+                        <input type="checkbox" name="with_extensions" value="1">
+                    </label>
+                    <div class="md-saverestore-inline-alert is-info">
+                        <i class="glyphicon glyphicon-lock"></i>
+                        <span><#LANG_MANDATORY_DB_BACKUP#></span>
+                    </div>
+                    <div class="md-saverestore-card__actions">
+                        <input type="hidden" name="with_backup" value="0">
+                        <input type="hidden" name="mode" value="getlatest_iframe">
+                        <button type="button" class="btn btn-light" data-saverestore-update-close><#LANG_CLOSE#></button>
+                        <button type="submit" class="btn btn-primary"><#LANG_NEWSAVERESTORE_UPDATE_BTN#></button>
+                    </div>
+                </form>
+                [#endif#]
+            </div>
+        </div>
+    </div>
 </div>
-
-	[#else CLEAR_FIRST#]
-    <br>&nbsp;
-    <form action="?" method="post" enctype="multipart/form-data">
-        <input type="submit" name="submit" value="<#LANG_CLEAR_TEMPORARY_FOLDER#>" class="btn btn-default">
-        <input type="hidden" name="mode" value="clear">
-    </form>
-    [#endif CLEAR_FIRST#]
+[#else CLEAR_FIRST#]
+<div class="md-saverestore-clear-state">
+    <div class="md-saverestore-clear-state__body">
+        <h2>Требуется очистка временной папки</h2>
+        <p>После предыдущей операции остались временные файлы. Сначала очистите рабочую директорию, затем вернитесь к обновлению или восстановлению.</p>
+        <form action="?" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="mode" value="clear">
+            <button type="submit" class="btn btn-primary"><#LANG_CLEAR_TEMPORARY_FOLDER#></button>
+        </form>
+    </div>
+</div>
+[#endif CLEAR_FIRST#]

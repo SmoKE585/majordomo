@@ -96,7 +96,33 @@
                             [#endif TYPE#]
 
                             [#if TYPE="textarea"#]
+                            [#if USE_CODE_EDITOR="1"#]
+                            <div class="md-code-editor md-settings-code-editor"
+                                 data-code-editor
+                                 data-code-editor-key="[#CODE_EDITOR_KEY#]"
+                                 data-code-editor-mode="[#CODE_EDITOR_MODE#]"
+                                 data-code-editor-theme="[#CODE_EDITOR_THEME#]"
+                                 data-code-editor-autosave="0"
+                                 data-code-editor-autoclose="[#CODE_EDITOR_AUTOCLOSEQUOTES#]"
+                                 data-code-editor-wraplines="[#CODE_EDITOR_WRAPLINES#]"
+                                 data-code-editor-min-lines="[#CODE_EDITOR_MIXLINE#]"
+                                 data-code-editor-max-lines="[#CODE_EDITOR_SHOWLINE#]"
+                                 data-code-editor-autofocus="0"
+                                 data-code-editor-validate-url=""
+                                 data-code-editor-autosave-url=""
+                                 data-code-editor-id="[#ID#]"
+                                 data-code-editor-md="settings_[#NAME#]"
+                                 data-code-editor-hide-errors-on-edit="1">
+                                <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+                                    <span class="md-settings-code-editor__label">PHP</span>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
+                                    <span class="md-code-editor__status" data-code-editor-status></span>
+                                </div>
+                                <textarea class="form-control" name="value_[#ID#]" rows="[#ROWS#]" autocomplete="off" spellcheck="false">[#VALUE#]</textarea>
+                            </div>
+                            [#else#]
                             <textarea class="form-control" name="value_[#ID#]" rows="[#ROWS#]" autocomplete="off" spellcheck="false">[#VALUE#]</textarea>
+                            [#endif#]
                             [#endif TYPE#]
 
                             [#if TYPE="path"#]
@@ -166,24 +192,26 @@
 
                             [#if TYPE="json"#]
                             [#if OPTIONS#]
-                            <table class="md-settings-json-table">
-                                <thead>
-                                <tr>
-                                    <th>Получатель</th>
-                                    <th>Приоритет</th>
-                                    <th>Фильтр</th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                            <div class="md-settings-hook-list">
                                 [#begin OPTIONS#]
-                                <tr>
-                                    <td>[#OPTION_TITLE#]</td>
-                                    <td><input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_priority" value="[#PRIORITY#]" autocomplete="off" spellcheck="false"></td>
-                                    <td><input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_filter" value="[#FILTER#]" autocomplete="off" spellcheck="false"></td>
-                                </tr>
+                                <div class="md-settings-hook-card">
+                                    <div class="md-settings-hook-card__header">
+                                        <div class="md-settings-hook-card__title">[#OPTION_LABEL#]</div>
+                                        <div class="md-settings-hook-card__system">[#OPTION_TITLE#]</div>
+                                    </div>
+                                    <div class="md-settings-hook-card__grid">
+                                        <label class="md-settings-hook-card__field">
+                                            <span>Приоритет</span>
+                                            <input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_priority" value="[#PRIORITY#]" autocomplete="off" spellcheck="false">
+                                        </label>
+                                        <label class="md-settings-hook-card__field">
+                                            <span>Фильтр</span>
+                                            <input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_filter" value="[#FILTER#]" autocomplete="off" spellcheck="false">
+                                        </label>
+                                    </div>
+                                </div>
                                 [#end OPTIONS#]
-                                </tbody>
-                            </table>
+                            </div>
                             [#else#]
                             <div class="md-admin-empty-state">Для этой настройки пока нет маршрутов.</div>
                             [#endif#]

@@ -34,6 +34,25 @@ if (!function_exists('settingsBuildLanguageOptions')) {
         return $result;
     }
 
+    function settingsHookSubscriberTitle($subscriber)
+    {
+        $map = array(
+            'scripts' => 'Скрипты',
+            'yadevices' => 'Яндекс Устройства',
+            'connect' => 'Connect',
+            'devices' => 'Устройства',
+            'telegram' => 'Telegram',
+            'mqtt' => 'MQTT',
+            'alice' => 'Алиса',
+        );
+
+        if (isset($map[$subscriber])) {
+            return $map[$subscriber];
+        }
+
+        return ucfirst($subscriber);
+    }
+
     function settingsBuildLanguageOptions()
     {
         return array(
@@ -225,6 +244,14 @@ if ($res) {
             $res[$i]['PRIORITY'] = (int)$meta['priority'];
         }
         $res[$i]['ROWS'] = isset($meta['rows']) ? (int)$meta['rows'] : 4;
+        $res[$i]['USE_CODE_EDITOR'] = !empty($meta['use_code_editor']) ? 1 : 0;
+        $res[$i]['CODE_EDITOR_KEY'] = 'settings_' . $res[$i]['NAME'];
+        $res[$i]['CODE_EDITOR_MODE'] = 'php';
+        $res[$i]['CODE_EDITOR_THEME'] = defined('SETTINGS_CODEEDITOR_THEME') ? SETTINGS_CODEEDITOR_THEME : 'codemirror';
+        $res[$i]['CODE_EDITOR_AUTOCLOSEQUOTES'] = defined('SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES') ? SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES : 1;
+        $res[$i]['CODE_EDITOR_WRAPLINES'] = defined('SETTINGS_CODEEDITOR_WRAPLINES') ? SETTINGS_CODEEDITOR_WRAPLINES : 0;
+        $res[$i]['CODE_EDITOR_MIXLINE'] = defined('SETTINGS_CODEEDITOR_MIXLINE') ? SETTINGS_CODEEDITOR_MIXLINE : 8;
+        $res[$i]['CODE_EDITOR_SHOWLINE'] = defined('SETTINGS_CODEEDITOR_SHOWLINE') ? SETTINGS_CODEEDITOR_SHOWLINE : 0;
 
         if ($this->mode == 'update') {
             ${'value_' . $res[$i]['ID']} = gr('value_' . $res[$i]['ID']);
@@ -280,10 +307,14 @@ if ($res) {
             if (!is_array($data)) {
                 $data = json_decode($res[$i]['DEFAULTVALUE'], true);
             }
+            if (!is_array($data)) {
+                $data = array();
+            }
             if (is_array($data)) {
                 foreach ($data as $key => $value) {
                     $res[$i]['OPTIONS'][] = array(
                         'OPTION_TITLE' => $key,
+                        'OPTION_LABEL' => settingsHookSubscriberTitle($key),
                         'FILTER' => isset($value['filter']) ? htmlspecialchars($value['filter']) : '',
                         'PRIORITY' => isset($value['priority']) ? (int)$value['priority'] : 0
                     );

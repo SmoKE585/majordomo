@@ -343,6 +343,90 @@
   border-radius: 10px;
 }
 
+.md-settings-hook-list {
+  display: grid;
+  gap: 10px;
+}
+
+.md-settings-hook-card {
+  padding: 12px;
+  background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .05);
+  border: 1px solid rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
+  border-radius: 14px;
+}
+
+.md-settings-hook-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.md-settings-hook-card__title {
+  color: var(--md-admin-text, #1f2933);
+  font-size: .92rem;
+  font-weight: 700;
+}
+
+.md-settings-hook-card__system {
+  color: var(--md-admin-muted, #6b7a88);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.md-settings-hook-card__grid {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.md-settings-hook-card__field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.md-settings-hook-card__field > span {
+  color: var(--md-admin-muted, #6b7a88);
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+.md-settings-code-editor {
+  border: 1px solid rgba(31, 41, 51, .08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.md-settings-code-editor .md-code-editor__toolbar {
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .06);
+  border-bottom: 1px solid rgba(31, 41, 51, .08);
+}
+
+.md-settings-code-editor__label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--md-admin-primary, #4792d1);
+  background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.md-settings-code-editor textarea.form-control {
+  border: 0;
+  border-radius: 0;
+}
+
 .md-settings-card__footer {
   display: flex;
   flex-wrap: wrap;
@@ -410,6 +494,10 @@
   }
 
   .md-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .md-settings-hook-card__grid {
     grid-template-columns: 1fr;
   }
 }
