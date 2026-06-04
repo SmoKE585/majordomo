@@ -68,6 +68,7 @@ class objects extends module
         global $view_mode;
         global $edit_mode;
         global $tab;
+        global $ajax;
         if (isset($id)) {
             $this->id = $id;
         }
@@ -82,6 +83,9 @@ class objects extends module
         }
         if (isset($tab)) {
             $this->tab = $tab;
+        }
+        if (isset($ajax) && $ajax) {
+            $this->ajax = 1;
         }
     }
 
