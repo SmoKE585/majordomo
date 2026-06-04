@@ -20,30 +20,28 @@
           style="--md-linkedobject-width:<#WIDTH#>;">
         <span class="md-linkedobject-field__hidden" data-md-linkedobject-hidden-slot="object"></span>
         <input type="hidden" name="[#OBJECT_FIELD#]" id="[#OBJECT_FIELD#]" value="[#OBJECT_VALUE#]" data-md-linkedobject-native="object">
-        <div class="md-linkedobject-field__surface">
-            <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
-                <div class="md-linkedobject-field__label"><#LANG_LINKED_OBJECT#></div>
-                <div class="md-linkedobject-field__actions">
-                    <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-object" title="Очистить выбор" aria-label="Очистить выбор">
-                        <i class="glyphicon glyphicon-remove"></i>
-                    </button>
-                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-object" title="Открыть объект" aria-label="Открыть объект" target="_blank" rel="noopener noreferrer" hidden>
-                        <i class="glyphicon glyphicon-export"></i>
-                    </a>
-                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-device" title="Открыть устройство" aria-label="Открыть устройство" target="_blank" rel="noopener noreferrer" hidden>
-                        <i class="glyphicon glyphicon-hdd"></i>
-                    </a>
-                    <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="refresh-objects" title="Обновить список" aria-label="Обновить список">
-                        <i class="glyphicon glyphicon-refresh"></i>
-                    </button>
-                </div>
+        <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
+            <div class="md-linkedobject-field__label"><#LANG_LINKED_OBJECT#></div>
+            <div class="md-linkedobject-field__actions">
+                <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-object" title="Очистить выбор" aria-label="Очистить выбор">
+                    <i class="glyphicon glyphicon-remove"></i>
+                </button>
+                <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-object" title="Открыть объект" aria-label="Открыть объект" target="_blank" rel="noopener noreferrer" hidden>
+                    <i class="glyphicon glyphicon-export"></i>
+                </a>
+                <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-device" title="Открыть устройство" aria-label="Открыть устройство" target="_blank" rel="noopener noreferrer" hidden>
+                    <i class="glyphicon glyphicon-hdd"></i>
+                </a>
+                <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="refresh-objects" title="Обновить список" aria-label="Обновить список">
+                    <i class="glyphicon glyphicon-refresh"></i>
+                </button>
             </div>
-            <select class="form-select md-linkedobject-field__select md-linkedobject-field__select--object" data-md-linkedobject-object-select autocomplete="off">
-                <option value=""></option>
-                [#OBJECTS_LIST_RESULT#]
-            </select>
-            <div class="md-linkedobject-field__hint" data-md-linkedobject-hint="object">Выберите объект и загрузите привязки</div>
         </div>
+        <select class="form-select md-linkedobject-field__select md-linkedobject-field__select--object" data-md-linkedobject-object-select autocomplete="off">
+            <option value=""></option>
+            [#OBJECTS_LIST_RESULT#]
+        </select>
+        <div class="md-linkedobject-field__hint" data-md-linkedobject-hint="object">Выберите объект и загрузите привязки</div>
     </span>
 </span>
 [#endif#]
@@ -61,23 +59,21 @@
           style="--md-linkedobject-width:<#WIDTH#>;">
         <span class="md-linkedobject-field__hidden" data-md-linkedobject-hidden-slot="property"></span>
         <input type="hidden" name="[#PROPERTY_FIELD#]" id="[#PROPERTY_FIELD#]" value="[#PROPERTY_VALUE#]" data-md-linkedobject-native="property">
-        <div class="md-linkedobject-field__surface">
-            <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
-                <div class="md-linkedobject-field__label"><#LANG_LINKED_PROPERTY#></div>
-                <div class="md-linkedobject-field__actions">
-                    <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-property" title="Очистить свойство" aria-label="Очистить свойство">
-                        <i class="glyphicon glyphicon-remove"></i>
-                    </button>
-                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-property" title="Открыть свойства объекта" aria-label="Открыть свойства объекта" target="_blank" rel="noopener noreferrer" hidden>
-                        <i class="glyphicon glyphicon-export"></i>
-                    </a>
-                </div>
+        <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
+            <div class="md-linkedobject-field__label"><#LANG_LINKED_PROPERTY#></div>
+            <div class="md-linkedobject-field__actions">
+                <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-property" title="Очистить свойство" aria-label="Очистить свойство">
+                    <i class="glyphicon glyphicon-remove"></i>
+                </button>
+                <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-property" title="Открыть свойства объекта" aria-label="Открыть свойства объекта" target="_blank" rel="noopener noreferrer" hidden>
+                    <i class="glyphicon glyphicon-export"></i>
+                </a>
             </div>
-            <select class="form-select md-linkedobject-field__select" data-md-linkedobject-select="property" disabled>
-                <option value=""></option>
-            </select>
-            <div class="md-linkedobject-field__hint" data-md-linkedobject-hint="property">Свойства станут доступны после выбора объекта</div>
         </div>
+        <select class="form-select md-linkedobject-field__select md-linkedobject-field__select--property" data-md-linkedobject-select="property" disabled>
+            <option value=""></option>
+        </select>
+        <div class="md-linkedobject-field__hint" data-md-linkedobject-hint="property">Свойства станут доступны после выбора объекта</div>
     </span>
 </span>
 [#endif PROPERTY_FIELD#]
@@ -95,23 +91,21 @@
           style="--md-linkedobject-width:<#WIDTH#>;">
         <span class="md-linkedobject-field__hidden" data-md-linkedobject-hidden-slot="method"></span>
         <input type="hidden" name="[#METHOD_FIELD#]" id="[#METHOD_FIELD#]" value="[#METHOD_VALUE#]" data-md-linkedobject-native="method">
-        <div class="md-linkedobject-field__surface">
-            <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
-                <div class="md-linkedobject-field__label"><#LANG_LINKED_METHOD#></div>
-                <div class="md-linkedobject-field__actions">
-                    <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-method" title="Очистить метод" aria-label="Очистить метод">
-                        <i class="glyphicon glyphicon-remove"></i>
-                    </button>
-                    <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-method" title="Открыть методы объекта" aria-label="Открыть методы объекта" target="_blank" rel="noopener noreferrer" hidden>
-                        <i class="glyphicon glyphicon-export"></i>
-                    </a>
-                </div>
+        <div class="md-linkedobject-field__toolbar md-linkedobject-field__toolbar--compact">
+            <div class="md-linkedobject-field__label"><#LANG_LINKED_METHOD#></div>
+            <div class="md-linkedobject-field__actions">
+                <button type="button" class="md-linkedobject-action" data-md-linkedobject-action="clear-method" title="Очистить метод" aria-label="Очистить метод">
+                    <i class="glyphicon glyphicon-remove"></i>
+                </button>
+                <a href="#" class="md-linkedobject-action" data-md-linkedobject-action="open-method" title="Открыть методы объекта" aria-label="Открыть методы объекта" target="_blank" rel="noopener noreferrer" hidden>
+                    <i class="glyphicon glyphicon-export"></i>
+                </a>
             </div>
-            <select class="form-select md-linkedobject-field__select" data-md-linkedobject-select="method" disabled>
-                <option value=""></option>
-            </select>
-            <div class="md-linkedobject-field__hint" data-md-linkedobject-hint="method">Методы станут доступны после выбора объекта</div>
         </div>
+        <select class="form-select md-linkedobject-field__select md-linkedobject-field__select--method" data-md-linkedobject-select="method" disabled>
+            <option value=""></option>
+        </select>
+        <div class="md-linkedobject-field__hint" data-md-linkedobject-hint="method">Методы станут доступны после выбора объекта</div>
     </span>
 </span>
 [#endif METHOD_FIELD#]
