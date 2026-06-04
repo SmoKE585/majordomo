@@ -310,6 +310,59 @@
         updateSize(wrapper, editor);
     }
 
+    function updateAutosaveProgress(wrapper, progress) {
+        if (!wrapper) {
+            return;
+        }
+        var normalized = Math.max(0, Math.min(1, progress || 0));
+        wrapper.style.setProperty('--md-codeeditor-autosave-progress', String(normalized * 100) + '%');
+        wrapper.classList.toggle('is-autosave-countdown', normalized > 0 && normalized < 1);
+    }
+
+    function stopAutosaveProgress(wrapper) {
+        if (wrapper && wrapper._codeEditorAutosaveProgressTimer) {
+            clearInterval(wrapper._codeEditorAutosaveProgressTimer);
+            wrapper._codeEditorAutosaveProgressTimer = null;
+        }
+        updateAutosaveProgress(wrapper, 0);
+    }
+
+    function startAutosaveProgress(wrapper, interval) {
+        if (!wrapper || !interval) {
+            return;
+        }
+        stopAutosaveProgress(wrapper);
+        wrapper._codeEditorAutosaveDueAt = Date.now() + (interval * 1000);
+        updateAutosaveProgress(wrapper, 0.01);
+        wrapper._codeEditorAutosaveProgressTimer = setInterval(function () {
+            var remaining = wrapper._codeEditorAutosaveDueAt - Date.now();
+            if (remaining <= 0) {
+                stopAutosaveProgress(wrapper);
+                return;
+            }
+            updateAutosaveProgress(wrapper, 1 - (remaining / (interval * 1000)));
+        }, 100);
+    }
+
+    function showAutosaveToast(wrapper, message, type) {
+        if (!window.MDJAdminUI || typeof window.MDJAdminUI.showToast !== 'function' || !message) {
+            return;
+        }
+        var now = Date.now();
+        var minGap = 3500;
+        if (wrapper && wrapper._codeEditorLastToastAt && (now - wrapper._codeEditorLastToastAt) < minGap) {
+            return;
+        }
+        if (wrapper) {
+            wrapper._codeEditorLastToastAt = now;
+        }
+        window.MDJAdminUI.showToast({
+            message: message,
+            type: type || 'success',
+            hideAfter: 1800
+        });
+    }
+
     function saveSnapshot(wrapper, editor) {
         var url = wrapper.dataset.codeEditorAutosaveUrl || '';
         var key = wrapper.dataset.codeEditorKey || '';
@@ -329,7 +382,9 @@
             if (!res || res.status !== 'ok') {
                 return res;
             }
-            updateStatus(wrapper, (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + ' ' + (res.msg || ''), 'ok');
+            var message = (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + (res.msg ? ' ' + res.msg : '');
+            updateStatus(wrapper, message, 'ok');
+            showAutosaveToast(wrapper, message, 'success');
             return res;
         }).catch(function () {
             updateStatus(wrapper, wrapper.dataset.codeEditorAutosaveFailedLabel || 'Не удалось сохранить версию', 'error');
@@ -338,6 +393,8 @@
 
     function submitEditorForm(wrapper, editor) {
         editor.save();
+        clearTimeout(wrapper._codeEditorAutosaveTimer);
+        stopAutosaveProgress(wrapper);
         saveSnapshot(wrapper, editor).finally(function () {
             var form = textareaForm(wrapper);
             if (form) {
@@ -753,11 +810,14 @@
     function autosaveCode(wrapper, editor) {
         var interval = parseInt(wrapper.dataset.codeEditorAutosave || '0', 10) || 0;
         if (!interval) {
+            stopAutosaveProgress(wrapper);
             return;
         }
 
         clearTimeout(wrapper._codeEditorAutosaveTimer);
+        startAutosaveProgress(wrapper, interval);
         wrapper._codeEditorAutosaveTimer = setTimeout(function () {
+            stopAutosaveProgress(wrapper);
             var params = buildQuery({
                 action: 'save',
                 key: wrapper.dataset.codeEditorKey || '',
@@ -769,7 +829,9 @@
                 if (!res || res.status !== 'ok') {
                     return;
                 }
-                updateStatus(wrapper, (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + ' ' + (res.msg || ''), 'ok');
+                var message = (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + (res.msg ? ' ' + res.msg : '');
+                updateStatus(wrapper, message, 'ok');
+                showAutosaveToast(wrapper, message, 'success');
             }).catch(function () {
                 updateStatus(wrapper, wrapper.dataset.codeEditorAutosaveFailedLabel || 'Автосохранение не удалось', 'error');
             });
@@ -841,6 +903,47 @@
         getDrawerContent(wrapper);
     }
 
+    function ensureLoadingState(wrapper, textarea) {
+        if (!wrapper || !textarea || wrapper._codeEditorLoading) {
+            return;
+        }
+
+        var loader = document.createElement('div');
+        loader.className = 'md-code-editor__loading';
+        loader.setAttribute('data-code-editor-loading', '1');
+        loader.innerHTML = ''
+            + '<div class="md-code-editor__loading-bar"></div>'
+            + '<div class="md-code-editor__loading-glow"></div>'
+            + '<div class="md-code-editor__loading-content">'
+            + '<div class="md-code-editor__loading-spinner" aria-hidden="true"></div>'
+            + '<div class="md-code-editor__loading-copy">'
+            + '<strong>Подготавливаю редактор</strong>'
+            + '<span>Загружаю CodeMirror, тему и подсказки.</span>'
+            + '</div>'
+            + '</div>';
+
+        textarea.classList.add('md-code-editor__source');
+        textarea.hidden = true;
+        textarea.insertAdjacentElement('afterend', loader);
+        wrapper.classList.add('is-loading');
+        wrapper._codeEditorLoading = loader;
+    }
+
+    function clearLoadingState(wrapper, textarea) {
+        if (!wrapper) {
+            return;
+        }
+        wrapper.classList.remove('is-loading');
+        if (textarea) {
+            textarea.hidden = false;
+            textarea.classList.remove('md-code-editor__source');
+        }
+        if (wrapper._codeEditorLoading && wrapper._codeEditorLoading.parentNode) {
+            wrapper._codeEditorLoading.parentNode.removeChild(wrapper._codeEditorLoading);
+        }
+        wrapper._codeEditorLoading = null;
+    }
+
     function initOne(wrapper) {
         if (wrapper.dataset.codeEditorReady === '1') {
             return;
@@ -857,9 +960,11 @@
         storeMode(wrapper, mode);
         syncModeControls(wrapper, mode);
         bindDrawer(wrapper);
+        ensureLoadingState(wrapper, textarea);
 
         ensureCodeMirror(mode, theme).then(function () {
             if (!window.CodeMirror) {
+                clearLoadingState(wrapper, textarea);
                 return;
             }
 
@@ -904,6 +1009,7 @@
             bindToolbar(wrapper, editor);
             bindVersionActions(wrapper, editor);
             updateSize(wrapper, editor);
+            clearLoadingState(wrapper, textarea);
             setTimeout(function () {
                 editor.refresh();
             }, 25);
@@ -911,6 +1017,7 @@
                 window.MDJAdminUI.boot(wrapper);
             }
         }).catch(function (error) {
+            clearLoadingState(wrapper, textarea);
             // Fail silently to keep the rest of the page usable.
             if (window.console && window.console.warn) {
                 window.console.warn(error);
