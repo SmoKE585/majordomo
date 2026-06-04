@@ -7,58 +7,50 @@
 		<script>
 		document.addEventListener('DOMContentLoaded', function () {
 		    var breadcrumb = document.querySelector('.breadcrumb');
-		    if (!breadcrumb) {
-		        return;
+		    if (breadcrumb) {
+		        var lastItem = breadcrumb.querySelector('li:last-child');
+		        if (lastItem) {
+		            lastItem.insertAdjacentHTML('beforeend', ' &rarr; <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>">[#TITLE#]</a>');
+		        }
 		    }
-		    var lastItem = breadcrumb.querySelector('li:last-child');
-		    if (!lastItem) {
-		        return;
+
+		    [#if PARENT_NAME=="classes"#]
+		    var classHero = document.querySelector('.md-classes-page__hero');
+		    if (classHero && classHero.dataset.mdObjectMerged !== '1') {
+		        var classTitle = classHero.querySelector('.md-classes-page__title');
+		        var classSummary = classHero.querySelector('.md-classes-page__summary');
+		        var classMeta = classHero.querySelector('.md-classes-page__meta');
+
+		        classHero.dataset.mdObjectMerged = '1';
+
+		        if (classTitle) {
+		            classTitle.insertAdjacentHTML('beforeend', '<span class="md-classes-page__title-separator" aria-hidden="true">&rarr;</span><span class="md-classes-page__title-object">[#TITLE#]</span>');
+		        }
+
+		        if (classSummary && '[#DESCRIPTION#]' !== '') {
+		            classSummary.insertAdjacentHTML('afterend', '<div class="md-classes-page__object-summary">[#DESCRIPTION#]</div>');
+		        }
+
+		        if (classMeta) {
+		            classMeta.insertAdjacentHTML('afterend', '' +
+		                '<div class="md-classes-page__meta md-classes-page__meta--object">' +
+		                    '<div class="md-classes-page__meta-item md-classes-page__meta-item--object">' +
+		                        '<span><#LANG_LOCATION#></span>' +
+		                        '<strong>[#if LOCATION_TITLE!=""#][#LOCATION_TITLE#][#else#]-[#endif#]</strong>' +
+		                    '</div>' +
+		                    '[#if PROPERTIES_TOTAL!=""#]<div class="md-classes-page__meta-item md-classes-page__meta-item--object"><span><#LANG_PROPERTIES#></span><strong>[#PROPERTIES_TOTAL#]</strong></div>[#endif#]' +
+		                    '[#if METHODS_TOTAL!=""#]<div class="md-classes-page__meta-item md-classes-page__meta-item--object"><span><#LANG_METHODS#></span><strong>[#METHODS_TOTAL#]</strong></div>[#endif#]' +
+		                '</div>');
+		        }
 		    }
-		    lastItem.insertAdjacentHTML('beforeend', ' &rarr; <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>">[#TITLE#]</a>');
+		    [#endif#]
 
 		    [#if DEVICE_ID!=""#]
 		    [#endif DEVICE_ID#]
 		});
 		</script>
 
-		[#if PARENT_NAME=="classes"#]
-			<section class="md-admin-section-card md-object-context-hero">
-				<div class="md-admin-section-card__body">
-					<div class="md-object-context-hero__layout">
-						<div class="md-object-context-hero__main">
-							<div class="md-object-context-hero__eyebrow"><#LANG_CLASSES#>/<#LANG_OBJECTS#></div>
-							<h1 class="md-object-context-hero__title">
-								<span class="md-object-context-hero__link">[#CLASS_TITLE#]</span>
-								<span class="md-object-context-hero__arrow" aria-hidden="true">&rarr;</span>
-								<span>[#TITLE#]</span>
-							</h1>
-							<div class="md-object-context-hero__summary">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Объект без описания.[#endif#]</div>
-							<div class="md-object-context-hero__meta">
-								<div class="md-object-context-hero__meta-item">
-									<span><#LANG_LOCATION#></span>
-									<strong>[#if LOCATION_TITLE!=""#][#LOCATION_TITLE#][#else#]-[#endif#]</strong>
-								</div>
-								[#if PROPERTIES_TOTAL!=""#]
-								<div class="md-object-context-hero__meta-item">
-									<span><#LANG_PROPERTIES#></span>
-									<strong>[#PROPERTIES_TOTAL#]</strong>
-								</div>
-								[#endif#]
-								[#if METHODS_TOTAL!=""#]
-								<div class="md-object-context-hero__meta-item">
-									<span><#LANG_METHODS#></span>
-									<strong>[#METHODS_TOTAL#]</strong>
-								</div>
-								[#endif#]
-							</div>
-						</div>
-						<div class="md-object-context-hero__actions">
-							<a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
-						</div>
-					</div>
-				</div>
-			</section>
-		[#else#]
+		[#if PARENT_NAME!="classes"#]
 			<div class="md-admin-module-page md-objects-page">
 				<section class="md-admin-section-card md-objects-page__hero">
 					<div class="md-admin-section-card__body">
