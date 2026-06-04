@@ -17,7 +17,7 @@
                     <select name="parent_id" id="classesParent" class="form-control form-select" data-md-classes-parent-select>
                         <option value="0">- no -</option>
                         [#begin PARENTS#]
-                        <option value="[#ID#]"[#if ID="<#PARENT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
+                        <option value="[#ID#]"[#if ID=="<#PARENT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
                         [#end PARENTS#]
                     </select>
                 </div>

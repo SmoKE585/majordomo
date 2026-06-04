@@ -1,8 +1,8 @@
-[#if VIEW_MODE="search_objects" || VIEW_MODE=""#]
+[#if VIEW_MODE=="search_objects" || VIEW_MODE==""#]
 	[#inc objects_search_admin.html#]
 [#endif VIEW_MODE#]
 
-[#if VIEW_MODE="edit_objects"#]
+[#if VIEW_MODE=="edit_objects"#]
 	[#if ID!=""#]
 		<script>
 		document.addEventListener('DOMContentLoaded', function () {
@@ -62,21 +62,21 @@
 			</section>
 
 			<nav class="md-admin-module-tabs" aria-label="<#LANG_OBJECTS#>">
-				<a class="md-admin-module-tabs__link [#if TAB=""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_DETAILS#></a>
-				<a class="md-admin-module-tabs__link [#if TAB="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>
-				<a class="md-admin-module-tabs__link [#if TAB="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>
+				<a class="md-admin-module-tabs__link [#if TAB==""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_DETAILS#></a>
+				<a class="md-admin-module-tabs__link [#if TAB=="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>
+				<a class="md-admin-module-tabs__link [#if TAB=="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>
 			</nav>
 	[#endif ID#]
-	[#if TAB=""#]
+	[#if TAB==""#]
 		[#inc objects_edit_default.html#]
 	[#endif TAB#]
-	[#if TAB="properties"#]
+	[#if TAB=="properties"#]
 		[#inc objects_edit_properties.html#]
 	[#endif TAB#]
-	[#if TAB="methods"#]
+	[#if TAB=="methods"#]
 		[#inc objects_edit_methods.html#]
 	[#endif TAB#]
-	[#if TAB="history"#]
+	[#if TAB=="history"#]
 		[#inc objects_edit_history.html#]
 	[#endif TAB#]
 	[#if ID!=""#]
@@ -84,8 +84,8 @@
 	[#endif ID#]
 [#endif VIEW_MODE#]
 
-[#if VIEW_MODE="view_objects"#]
-	[#if TAB=""#]
+[#if VIEW_MODE=="view_objects"#]
+	[#if TAB==""#]
 		[#inc objects_view_default.html#]
 	[#endif TAB#]
 [#endif VIEW_MODE#]

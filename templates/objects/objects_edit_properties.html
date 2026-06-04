@@ -81,7 +81,7 @@
                         </div>
                         <div class="md-admin-record-card__badges">
                             [#if CLASS_ID!="0"#]<span class="badge md-admin-status-badge">Class</span>[#endif#]
-                            [#if CLASS_ID="0"#]<span class="badge md-admin-status-badge">Object</span>[#endif#]
+                            [#if CLASS_ID=="0"#]<span class="badge md-admin-status-badge">Object</span>[#endif#]
                             [#if KEEP_HISTORY != 0#]<span class="badge md-admin-status-badge">История: [#KEEP_HISTORY#] дней</span>[#endif#]
                             [#if VALIDATION_TYPE != 0#]<span class="badge md-admin-status-badge">Валидация</span>[#endif#]
                             [#if ONCHANGE != ''#]<span class="badge md-admin-status-badge">Метод: [#ONCHANGE#]</span>[#endif#]
@@ -117,7 +117,7 @@
                     </div>
                 </div>
                 <div class="md-admin-record-card__actions">
-                    [#if CLASS_ID="0"#]
+                    [#if CLASS_ID=="0"#]
                     <button type="button" class="btn btn-light btn-sm" data-md-prop-config-toggle="[#ID#]"><span><#LANG_EDIT#></span></button>
                     <div class="btn-group">
                         <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
@@ -129,7 +129,7 @@
                 </div>
             </article>
 
-            [#if CLASS_ID="0"#]
+            [#if CLASS_ID=="0"#]
             <section class="md-admin-section-card md-object-property-config" data-md-prop-config="[#ID#]" hidden>
                 <div class="md-admin-section-card__body">
                     <form action="?" method="post" class="md-admin-form-grid">

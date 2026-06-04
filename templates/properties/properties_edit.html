@@ -28,7 +28,7 @@
                     <select name="onchange" id="propertyOnchange" class="form-control form-select">
                         <option value="" selected>Выберите связанный метод</option>
                         [#begin METHODS#]
-                        <option value="[#TITLE#]"[#if TITLE="<#ONCHANGE#>"#] selected[#endif#]>[#TITLE#]</option>
+                        <option value="[#TITLE#]"[#if TITLE=="<#ONCHANGE#>"#] selected[#endif#]>[#TITLE#]</option>
                         [#end METHODS#]
                     </select>
                 </div>
@@ -45,8 +45,8 @@
                 <label class="col-lg-3 col-form-label" for="propertyDataType"><#LANG_DATA_TYPE#></label>
                 <div class="col-lg-9">
                     <select name="data_type" id="propertyDataType" class="form-control form-select">
-                        <option value="0"[#if DATA_TYPE="0"#] selected[#endif#]><#LANG_DATA_TYPE_GENERAL#></option>
-                        <option value="5"[#if DATA_TYPE="5"#] selected[#endif#]><#LANG_DATA_TYPE_IMAGE#></option>
+                        <option value="0"[#if DATA_TYPE=="0"#] selected[#endif#]><#LANG_DATA_TYPE_GENERAL#></option>
+                        <option value="5"[#if DATA_TYPE=="5"#] selected[#endif#]><#LANG_DATA_TYPE_IMAGE#></option>
                     </select>
                 </div>
             </div>
@@ -55,11 +55,11 @@
                 <label class="col-lg-3 col-form-label" for="validation_type"><#LANG_VALIDATION_TYPE#></label>
                 <div class="col-lg-9">
                     <select name="validation_type" id="validation_type" class="form-control form-select" data-md-property-validation>
-                        <option value="0"[#if VALIDATION_TYPE="0"#] selected[#endif#]><#LANG_NO#></option>
-                        <option value="1"[#if VALIDATION_TYPE="1"#] selected[#endif#]><#LANG_VALIDATION_TYPE_NUMBER#></option>
-                        <option value="2"[#if VALIDATION_TYPE="2"#] selected[#endif#]><#LANG_VALIDATION_TYPE_BINARY#></option>
-                        <option value="3"[#if VALIDATION_TYPE="3"#] selected[#endif#]><#LANG_VALIDATION_TYPE_DICTIONARY#></option>
-                        <option value="100"[#if VALIDATION_TYPE="100"#] selected[#endif#]><#LANG_VALIDATION_TYPE_CUSTOM#></option>
+                        <option value="0"[#if VALIDATION_TYPE=="0"#] selected[#endif#]><#LANG_NO#></option>
+                        <option value="1"[#if VALIDATION_TYPE=="1"#] selected[#endif#]><#LANG_VALIDATION_TYPE_NUMBER#></option>
+                        <option value="2"[#if VALIDATION_TYPE=="2"#] selected[#endif#]><#LANG_VALIDATION_TYPE_BINARY#></option>
+                        <option value="3"[#if VALIDATION_TYPE=="3"#] selected[#endif#]><#LANG_VALIDATION_TYPE_DICTIONARY#></option>
+                        <option value="100"[#if VALIDATION_TYPE=="100"#] selected[#endif#]><#LANG_VALIDATION_TYPE_CUSTOM#></option>
                     </select>
                 </div>
             </div>
@@ -79,10 +79,10 @@
                 </div>
             </div>
 
-            <div id="validation_dictionary" class="row g-3 align-items-start md-property-edit__group [#if VALIDATION_TYPE!="3"#]d-none[#endif#][#if ERR_VALIDATION_LIST="1"#] has-error[#endif#]" data-md-property-validation-block="3">
+            <div id="validation_dictionary" class="row g-3 align-items-start md-property-edit__group [#if VALIDATION_TYPE!="3"#]d-none[#endif#][#if ERR_VALIDATION_LIST=="1"#] has-error[#endif#]" data-md-property-validation-block="3">
                 <label class="col-lg-3 col-form-label" for="validationList"><#LANG_VALIDATION_TYPE_DICTIONARY#>:</label>
                 <div class="col-lg-9">
-                    <input type="text" id="validationList" name="validation_list" value="[#VALIDATION_LIST#]" class="form-control [#if ERR_VALIDATION_LIST="1"#]is-invalid[#endif#]">
+                    <input type="text" id="validationList" name="validation_list" value="[#VALIDATION_LIST#]" class="form-control [#if ERR_VALIDATION_LIST=="1"#]is-invalid[#endif#]">
                 </div>
             </div>
 
@@ -99,7 +99,7 @@
                 <div class="col-lg-9">
                     <div class="md-property-edit__radio-group">
                         <label class="md-property-edit__radio">
-                            <input type="radio" name="data_key" value="1"[#if DATA_KEY="1"#] checked[#endif#]>
+                            <input type="radio" name="data_key" value="1"[#if DATA_KEY=="1"#] checked[#endif#]>
                             <span><#LANG_YES#></span>
                         </label>
                         <label class="md-property-edit__radio">

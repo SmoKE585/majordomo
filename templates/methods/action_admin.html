@@ -2,7 +2,7 @@
  @version 0.1 (auto-set)
 #-->
 
-[#if VIEW_MODE="search_methods" || VIEW_MODE=""#]
+[#if VIEW_MODE=="search_methods" || VIEW_MODE==""#]
 <div class="md-admin-module-page md-related-module-page md-related-module-page--methods">
     [#if "<#IS_SET_CLASS_ID#>"!="1"#]
     <section class="md-admin-section-card md-related-module-hero">
@@ -27,7 +27,7 @@
 </div>
 [#endif VIEW_MODE#]
 
-[#if VIEW_MODE="edit_methods"#]
+[#if VIEW_MODE=="edit_methods"#]
 <div class="md-admin-module-page md-related-module-page md-related-module-page--methods">
     [#if "<#IS_SET_CLASS_ID#>"!="1"#]
     <section class="md-admin-section-card md-related-module-hero md-related-module-hero--compact">
@@ -48,6 +48,6 @@
 </div>
 [#endif VIEW_MODE#]
 
-[#if VIEW_MODE="view_methods"#]
+[#if VIEW_MODE=="view_methods"#]
  [#inc methods_view.html#]
 [#endif VIEW_MODE#]

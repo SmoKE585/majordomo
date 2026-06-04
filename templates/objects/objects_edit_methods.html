@@ -1,4 +1,4 @@
-[#if OVERWRITE=""#]
+[#if OVERWRITE==""#]
 <section class="md-admin-module-list md-object-methods-page">
     <div class="md-admin-module-list__toolbar md-admin-module-list__toolbar--embedded">
         <div class="md-related-module-toolbar__stats">
@@ -19,7 +19,7 @@
                         <strong>[#OBJECT_TITLE#].[#TITLE#]</strong>
                     </div>
                     <div class="md-admin-record-card__badges">
-                        [#if CUSTOMIZED="1"#]<span class="badge md-admin-status-badge md-admin-status-badge--danger"><#LANG_OVERWRITE#></span>[#endif#]
+                        [#if CUSTOMIZED=="1"#]<span class="badge md-admin-status-badge md-admin-status-badge--danger"><#LANG_OVERWRITE#></span>[#endif#]
                         [#if CUSTOMIZED!="1"#]<span class="badge md-admin-status-badge"><#LANG_CLASS#></span>[#endif#]
                     </div>
                 </div>
@@ -88,7 +88,7 @@
                                     <select name="script_id" id="objectMethodScript" class="form-control form-select">
                                         <option value="0"></option>
                                         [#begin SCRIPTS#]
-                                        <option value="[#ID#]"[#if ID="<#SCRIPT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
+                                        <option value="[#ID#]"[#if ID=="<#SCRIPT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
                                         [#end SCRIPTS#]
                                     </select>
                                 </div>
@@ -114,8 +114,8 @@
                                             <label class="md-code-editor__mode-switch">
                                                 <span>Mode</span>
                                                 <select class="form-control form-control-sm" name="code_editor_mode" data-code-editor-mode-select>
-                                                    <option value="php"[#if CODE_EDITOR_MODE="php"#] selected[#endif#]>PHP</option>
-                                                    <option value="python"[#if CODE_EDITOR_MODE="python"#] selected[#endif#]>Python</option>
+                                                    <option value="php"[#if CODE_EDITOR_MODE=="php"#] selected[#endif#]>PHP</option>
+                                                    <option value="python"[#if CODE_EDITOR_MODE=="python"#] selected[#endif#]>Python</option>
                                                 </select>
                                             </label>
                                             <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
@@ -158,15 +158,15 @@
                             <div class="col-lg-9">
                                 <div class="md-method-edit__radio-group">
                                     <label class="md-method-edit__radio">
-                                        <input type="radio" name="call_parent" value="1"[#if CALL_PARENT="1"#] checked[#endif#]>
+                                        <input type="radio" name="call_parent" value="1"[#if CALL_PARENT=="1"#] checked[#endif#]>
                                         <span><#LANG_BEFORE_CODE_EXECUTION#></span>
                                     </label>
                                     <label class="md-method-edit__radio">
-                                        <input type="radio" name="call_parent" value="2"[#if CALL_PARENT="2"#] checked[#endif#]>
+                                        <input type="radio" name="call_parent" value="2"[#if CALL_PARENT=="2"#] checked[#endif#]>
                                         <span><#LANG_AFTER_CODE_EXECUTION#></span>
                                     </label>
                                     <label class="md-method-edit__radio">
-                                        <input type="radio" name="call_parent" value="0"[#if CALL_PARENT="0"#] checked[#endif#]>
+                                        <input type="radio" name="call_parent" value="0"[#if CALL_PARENT=="0"#] checked[#endif#]>
                                         <span><#LANG_NEVER#></span>
                                     </label>
                                 </div>

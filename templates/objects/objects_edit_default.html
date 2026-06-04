@@ -21,7 +21,7 @@
                     <select name="class_id" id="objectClass" class="form-control form-select [#if ERR_CLASS_ID#]is-invalid[#endif#]" required>
                         <option value="">select</option>
                         [#begin CLASS_ID_OPTIONS#]
-                        <option value="[#ID#]"[#if ID="<#CLASS_ID#>"#] selected[#endif#]>[#TITLE#]</option>
+                        <option value="[#ID#]"[#if ID=="<#CLASS_ID#>"#] selected[#endif#]>[#TITLE#]</option>
                         [#end CLASS_ID_OPTIONS#]
                     </select>
                 </div>

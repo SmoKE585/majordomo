@@ -1,5 +1,5 @@
 <section class="md-admin-module-list md-methods-admin-list">
-    <div class="md-admin-module-list__toolbar [#if "<#IS_SET_CLASS_ID#>"="1"#]md-admin-module-list__toolbar--embedded[#endif#]">
+    <div class="md-admin-module-list__toolbar [#if "<#IS_SET_CLASS_ID#>"=="1"#]md-admin-module-list__toolbar--embedded[#endif#]">
         <div class="md-methods-admin-list__stats">
             <div class="md-methods-admin-list__stat"><span><#LANG_METHODS#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
             [#if PARENT_METHODS#]<div class="md-methods-admin-list__stat"><span><#LANG_PARENT_METHODS#></span><strong>[#PARENT_METHODS_TOTAL#]</strong></div>[#endif#]
@@ -21,10 +21,10 @@
                         </div>
                         <div class="md-admin-record-card__badges">
                             [#if SCRIPT_ID!="0"#]<span class="badge md-admin-status-badge"><#LANG_SCRIPT#></span>[#endif#]
-                            [#if SCRIPT_ID="0"#]<span class="badge md-admin-status-badge"><#LANG_CODE#></span>[#endif#]
-                            [#if CALL_PARENT="1"#]<span class="badge md-admin-status-badge"><#LANG_BEFORE_CODE_EXECUTION#></span>[#endif#]
-                            [#if CALL_PARENT="2"#]<span class="badge md-admin-status-badge"><#LANG_AFTER_CODE_EXECUTION#></span>[#endif#]
-                            [#if CALL_PARENT="0"#]<span class="badge md-admin-status-badge"><#LANG_NEVER#></span>[#endif#]
+                            [#if SCRIPT_ID=="0"#]<span class="badge md-admin-status-badge"><#LANG_CODE#></span>[#endif#]
+                            [#if CALL_PARENT=="1"#]<span class="badge md-admin-status-badge"><#LANG_BEFORE_CODE_EXECUTION#></span>[#endif#]
+                            [#if CALL_PARENT=="2"#]<span class="badge md-admin-status-badge"><#LANG_AFTER_CODE_EXECUTION#></span>[#endif#]
+                            [#if CALL_PARENT=="0"#]<span class="badge md-admin-status-badge"><#LANG_NEVER#></span>[#endif#]
                         </div>
                     </div>
                 </div>
@@ -67,9 +67,9 @@
                             </div>
                             <div class="md-admin-record-card__badges">
                                 <span class="badge md-admin-status-badge"><#LANG_PARENT_METHODS#></span>
-                                [#if CALL_PARENT="1"#]<span class="badge md-admin-status-badge"><#LANG_BEFORE_CODE_EXECUTION#></span>[#endif#]
-                                [#if CALL_PARENT="2"#]<span class="badge md-admin-status-badge"><#LANG_AFTER_CODE_EXECUTION#></span>[#endif#]
-                                [#if CALL_PARENT="0"#]<span class="badge md-admin-status-badge"><#LANG_NEVER#></span>[#endif#]
+                                [#if CALL_PARENT=="1"#]<span class="badge md-admin-status-badge"><#LANG_BEFORE_CODE_EXECUTION#></span>[#endif#]
+                                [#if CALL_PARENT=="2"#]<span class="badge md-admin-status-badge"><#LANG_AFTER_CODE_EXECUTION#></span>[#endif#]
+                                [#if CALL_PARENT=="0"#]<span class="badge md-admin-status-badge"><#LANG_NEVER#></span>[#endif#]
                             </div>
                         </div>
                     </div>

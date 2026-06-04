@@ -2,7 +2,7 @@
  @version 0.1 (auto-set)
 #-->
 
-[#if VIEW_MODE="search_properties" || VIEW_MODE=""#]
+[#if VIEW_MODE=="search_properties" || VIEW_MODE==""#]
 <div class="md-admin-module-page md-related-module-page md-related-module-page--properties">
     [#if "<#IS_SET_CLASS_ID#>"!="1"#]
     <section class="md-admin-section-card md-related-module-hero">
@@ -27,7 +27,7 @@
 </div>
 [#endif VIEW_MODE#]
 
-[#if VIEW_MODE="edit_properties"#]
+[#if VIEW_MODE=="edit_properties"#]
 <div class="md-admin-module-page md-related-module-page md-related-module-page--properties">
     [#if "<#IS_SET_CLASS_ID#>"!="1"#]
     <section class="md-admin-section-card md-related-module-hero md-related-module-hero--compact">
@@ -48,6 +48,6 @@
 </div>
 [#endif VIEW_MODE#]
 
-[#if VIEW_MODE="view_properties"#]
+[#if VIEW_MODE=="view_properties"#]
  [#inc properties_view.html#]
 [#endif VIEW_MODE#]
