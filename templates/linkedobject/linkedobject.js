@@ -39,21 +39,30 @@
         }
 
         var nativeInput = fieldNode.querySelector('[data-md-linkedobject-native]');
+        var sourceInput = document.getElementById(fieldId);
+        var slot = fieldNode.querySelector('[data-md-linkedobject-hidden-slot]');
+
         if (nativeInput) {
             nativeInput.classList.add('md-linkedobject-field__source-input');
             if (nativeInput.type !== 'hidden') {
                 nativeInput.type = 'hidden';
             }
+
+            if (sourceInput && sourceInput !== nativeInput && !fieldNode.contains(sourceInput)) {
+                if (!nativeInput.value && typeof sourceInput.value !== 'undefined') {
+                    nativeInput.value = sourceInput.value || '';
+                }
+                sourceInput.replaceWith(fieldNode);
+            }
+
             return nativeInput;
         }
 
-        var sourceInput = document.getElementById(fieldId);
         if (!sourceInput) {
             fieldNode.remove();
             return null;
         }
 
-        var slot = fieldNode.querySelector('[data-md-linkedobject-hidden-slot]');
         sourceInput.classList.add('md-linkedobject-field__source-input');
         if (sourceInput.type !== 'hidden') {
             sourceInput.type = 'hidden';
@@ -63,7 +72,6 @@
         if (slot) {
             slot.appendChild(sourceInput);
         }
-
         return sourceInput;
     }
 
@@ -86,6 +94,39 @@
                 label: description ? (title + ' - ' + description) : title
             };
         });
+    }
+
+    function extractObjectsPayload(data) {
+        if (Array.isArray(data)) {
+            return data;
+        }
+        if (data && Array.isArray(data.OBJECTS)) {
+            return data.OBJECTS;
+        }
+        return [];
+    }
+
+    function extractPropertiesPayload(data) {
+        if (Array.isArray(data)) {
+            return {
+                items: data,
+                deviceId: ''
+            };
+        }
+        return {
+            items: data && Array.isArray(data.PROPERTIES) ? data.PROPERTIES : [],
+            deviceId: data && data.DEVICE_ID ? data.DEVICE_ID : ''
+        };
+    }
+
+    function extractMethodsPayload(data) {
+        if (Array.isArray(data)) {
+            return data;
+        }
+        if (data && Array.isArray(data.METHODS)) {
+            return data.METHODS;
+        }
+        return [];
     }
 
     function buildPlainSelect(select, items, selectedValue) {
@@ -256,8 +297,9 @@
         }
 
         return fetchJson(state.baseUrl + '?ajax=1&op=properties&object=' + encodeURIComponent(state.objectInput.value)).then(function (data) {
-            state.deviceId = data.DEVICE_ID || '';
-            state.propertyItems = normalizeCollection(data.PROPERTIES);
+            var payload = extractPropertiesPayload(data);
+            state.deviceId = payload.deviceId || '';
+            state.propertyItems = normalizeCollection(payload.items);
             syncPropertyField(state);
             syncObjectMeta(state);
         }).catch(function () {
@@ -277,7 +319,7 @@
         }
 
         return fetchJson(state.baseUrl + '?ajax=1&op=methods&object=' + encodeURIComponent(state.objectInput.value)).then(function (data) {
-            state.methodItems = normalizeCollection(data.METHODS);
+            state.methodItems = normalizeCollection(extractMethodsPayload(data));
             syncMethodField(state);
             syncObjectMeta(state);
         }).catch(function () {
@@ -412,7 +454,7 @@
         var currentValue = state.objectInput ? state.objectInput.value : '';
 
         return fetchJson(state.baseUrl + '?ajax=1&op=objects').then(function (data) {
-            buildObjectSelect(state.objectSelect, data.OBJECTS || [], currentValue);
+            buildObjectSelect(state.objectSelect, extractObjectsPayload(data), currentValue);
             initObjectTomSelect(state);
             if (state.objectTomSelect) {
                 state.objectTomSelect.setValue(currentValue || '', true);
