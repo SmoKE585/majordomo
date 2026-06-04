@@ -41,6 +41,20 @@ class linkedobject extends module
             if (isset($GLOBALS[$field_name])) {
                 return $GLOBALS[$field_name];
             }
+            if (isset($this->owner) && is_object($this->owner)) {
+                if (isset($this->owner->$field_name)) {
+                    return $this->owner->$field_name;
+                }
+                if (isset($this->owner->data) && is_array($this->owner->data)) {
+                    if (isset($this->owner->data[$field_name])) {
+                        return $this->owner->data[$field_name];
+                    }
+                    $upper_field_name = strtoupper($field_name);
+                    if (isset($this->owner->data[$upper_field_name])) {
+                        return $this->owner->data[$upper_field_name];
+                    }
+                }
+            }
             return '';
         }
 
