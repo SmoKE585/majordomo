@@ -61,6 +61,41 @@
   transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
 }
 
+.md-linkedobject-action > .glyphicon {
+  display: none;
+}
+
+.md-linkedobject-action::before {
+  display: inline-block;
+  font-family: "bootstrap-icons" !important;
+  font-size: .9rem;
+  font-style: normal;
+  font-weight: 400 !important;
+  line-height: 1;
+  text-transform: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.md-linkedobject-action[data-md-linkedobject-action^="clear-"]::before {
+  content: "\f62a";
+}
+
+.md-linkedobject-action[data-md-linkedobject-action="refresh-objects"]::before {
+  content: "\f130";
+}
+
+.md-linkedobject-action[data-md-linkedobject-action="open-object"]::before,
+.md-linkedobject-action[data-md-linkedobject-action="open-property"]::before,
+.md-linkedobject-action[data-md-linkedobject-action="open-method"]::before {
+  content: "\f1c5";
+}
+
+.md-linkedobject-action[data-md-linkedobject-action="open-device"]::before {
+  content: "\f8cd";
+  font-size: .85rem;
+}
+
 .md-linkedobject-action:hover,
 .md-linkedobject-action:focus-visible {
   color: #fff;

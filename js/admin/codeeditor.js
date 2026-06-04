@@ -351,30 +351,52 @@
         updateStatus(wrapper, (wrapper.dataset.codeEditorErrorLabel || 'Line') + ' ' + line + ': ' + (message || ''), 'error');
     }
 
+    function getDrawerContent(wrapper) {
+        if (!wrapper) {
+            return null;
+        }
+        if (wrapper._codeEditorDrawerContent) {
+            return wrapper._codeEditorDrawerContent;
+        }
+        wrapper._codeEditorDrawerContent = wrapper.querySelector('[data-code-editor-drawer-content]');
+        return wrapper._codeEditorDrawerContent;
+    }
+
+    function queryDrawerNode(wrapper, selector) {
+        var content = getDrawerContent(wrapper);
+        return content ? content.querySelector(selector) : null;
+    }
+
     function openDrawer(wrapper) {
-        var drawer = wrapper.querySelector('[data-code-editor-drawer]');
-        var backdrop = wrapper.querySelector('[data-code-editor-backdrop]');
-        if (!drawer || !backdrop) {
+        var drawerContent = getDrawerContent(wrapper);
+        if (!drawerContent || !window.MDJAdminUI || typeof window.MDJAdminUI.openDrawer !== 'function') {
             return;
         }
-        drawer.hidden = false;
-        backdrop.hidden = false;
+        if (!wrapper._codeEditorDrawerOwner) {
+            wrapper._codeEditorDrawerOwner = 'code-editor:' + (wrapper.dataset.codeEditorKey || 'editor') + ':' + (wrapper.dataset.codeEditorId || '0') + ':' + Math.random().toString(36).slice(2, 8);
+        }
+        window.MDJAdminUI.openDrawer({
+            owner: wrapper._codeEditorDrawerOwner,
+            title: drawerContent.getAttribute('data-md-drawer-title') || wrapper.dataset.codeEditorDrawerTitle || 'History',
+            subtitle: drawerContent.getAttribute('data-md-drawer-subtitle') || wrapper.dataset.codeEditorDrawerSubtitle || '',
+            width: '672px',
+            body: drawerContent,
+            onClose: function () {
+                wrapper.classList.remove('is-drawer-open');
+            }
+        });
         wrapper.classList.add('is-drawer-open');
     }
 
     function closeDrawer(wrapper) {
-        var drawer = wrapper.querySelector('[data-code-editor-drawer]');
-        var backdrop = wrapper.querySelector('[data-code-editor-backdrop]');
-        if (!drawer || !backdrop) {
-            return;
+        if (window.MDJAdminUI && typeof window.MDJAdminUI.closeDrawer === 'function') {
+            window.MDJAdminUI.closeDrawer(wrapper._codeEditorDrawerOwner || '');
         }
-        drawer.hidden = true;
-        backdrop.hidden = true;
         wrapper.classList.remove('is-drawer-open');
     }
 
     function renderRestoreItems(wrapper, editor, items) {
-        var list = wrapper.querySelector('[data-code-editor-autosave-list]');
+        var list = queryDrawerNode(wrapper, '[data-code-editor-autosave-list]');
         if (!list) {
             return;
         }
@@ -409,7 +431,7 @@
             preview.className = 'btn btn-outline-secondary btn-sm';
             preview.textContent = wrapper.dataset.codeEditorPreviewLabel || 'Preview';
             preview.addEventListener('click', function () {
-                var codeBox = wrapper.querySelector('[data-code-editor-preview]');
+                var codeBox = queryDrawerNode(wrapper, '[data-code-editor-preview]');
                 if (!codeBox) {
                     return;
                 }
@@ -534,7 +556,7 @@
         }
         wrapper.dataset.codeEditorVersionBound = '1';
 
-        wrapper.addEventListener('click', function (event) {
+        function handleVersionAction(event) {
             var actionButton = event.target.closest('[data-code-editor-action]');
             if (actionButton && wrapper.contains(actionButton) && actionButton.getAttribute('data-code-editor-action') === 'restore-error') {
                 var oldCode = decodeBase64(wrapper.dataset.codeEditorOldCodeB64 || '');
@@ -546,14 +568,14 @@
             }
 
             var button = event.target.closest('[data-code-editor-version-action]');
-            if (!button || !wrapper.contains(button)) {
+            if (!button) {
                 return;
             }
 
             var action = button.getAttribute('data-code-editor-version-action');
             var item = button.closest('[data-code-editor-version]');
             var code = item ? decodeBase64(item.getAttribute('data-code-editor-version-code-b64') || '') : '';
-            var preview = wrapper.querySelector('[data-code-editor-preview]');
+            var preview = queryDrawerNode(wrapper, '[data-code-editor-preview]');
 
             event.preventDefault();
 
@@ -573,7 +595,14 @@
                 closeDrawer(wrapper);
                 updateStatus(wrapper, wrapper.dataset.codeEditorRestoredLabel || 'Version restored', 'ok');
             }
-        });
+        }
+
+        wrapper.addEventListener('click', handleVersionAction);
+
+        var drawerContent = getDrawerContent(wrapper);
+        if (drawerContent && drawerContent !== wrapper) {
+            drawerContent.addEventListener('click', handleVersionAction);
+        }
     }
 
     function textareaForm(wrapper) {
@@ -760,22 +789,7 @@
     }
 
     function bindDrawer(wrapper) {
-        var drawer = wrapper.querySelector('[data-code-editor-drawer]');
-        var backdrop = wrapper.querySelector('[data-code-editor-backdrop]');
-        if (backdrop && !backdrop.dataset.codeEditorBound) {
-            backdrop.dataset.codeEditorBound = '1';
-            backdrop.addEventListener('click', function () {
-                closeDrawer(wrapper);
-            });
-        }
-        if (drawer && !drawer.dataset.codeEditorBound) {
-            drawer.dataset.codeEditorBound = '1';
-            drawer.addEventListener('click', function (event) {
-                if (event.target.closest('[data-code-editor-action="close-drawer"]')) {
-                    closeDrawer(wrapper);
-                }
-            });
-        }
+        getDrawerContent(wrapper);
     }
 
     function initOne(wrapper) {

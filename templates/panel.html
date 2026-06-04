@@ -13,6 +13,20 @@
 	[#if AUTHORIZED#]
 	[#inc panel_js_scripts.html#]
 	[#if PRINT!="1"#]
+	<div class="md-admin-drawer-backdrop" data-md-drawer-close hidden></div>
+	<aside class="md-admin-drawer" id="mdAdminDrawerHost" aria-labelledby="mdAdminDrawerTitle" aria-hidden="true" tabindex="-1" hidden>
+		<div class="md-admin-drawer__header">
+			<div>
+				<div class="md-admin-drawer__eyebrow" id="mdAdminDrawerEyebrow" hidden></div>
+				<h2 id="mdAdminDrawerTitle"></h2>
+				<div class="md-admin-drawer__subtitle" id="mdAdminDrawerSubtitle" hidden></div>
+			</div>
+			<button type="button" class="btn-close" data-md-drawer-close aria-label="<#LANG_CLOSE#>"></button>
+		</div>
+		<div class="md-admin-drawer__body" id="mdAdminDrawerBody"></div>
+		<div class="md-admin-drawer__footer" id="mdAdminDrawerFooter" hidden></div>
+	</aside>
+
 	<div class="md-admin-search-backdrop" data-md-search-close></div>
 	<aside class="md-admin-search-drawer" id="mdmGlobalSearchDrawer" aria-labelledby="mdmGlobalSearchTitle" aria-hidden="true">
 		<div class="md-admin-search-drawer__header">
@@ -34,16 +48,7 @@
 		</div>
 	</aside>
 	
-	<div class="md-admin-console-backdrop" data-md-console-close></div>
-	<aside class="md-admin-console-drawer" id="console" aria-labelledby="mdAdminConsoleTitle" aria-hidden="true">
-		<div class="md-admin-console-drawer__header">
-			<div>
-				<div class="md-admin-console-drawer__eyebrow"><#LANG_CONTROL_PANEL#></div>
-				<h2 id="mdAdminConsoleTitle"><#LANG_CONSOLE#></h2>
-				<div class="md-admin-console-drawer__subtitle">Редактор кода, история команд и список методов без лишней обвязки.</div>
-			</div>
-			<button type="button" class="btn-close" id="btnConsoleClose" data-md-console-close aria-label="<#LANG_CLOSE#>"></button>
-		</div>
+	<div class="md-admin-console-drawer-template" id="mdAdminConsoleDrawerContent" hidden data-md-drawer-eyebrow="<#LANG_CONTROL_PANEL#>" data-md-drawer-title="<#LANG_CONSOLE#>" data-md-drawer-subtitle="Редактор кода, история команд и список методов без лишней обвязки.">
 		<div class="md-admin-console-drawer__body">
 			<div class="md-admin-console-alerts">
 				<div class="alert alert-danger text-center" id="dangerAlertConsole" hidden>Команда пуста. Введите код или выражение.</div>
@@ -51,10 +56,6 @@
 			</div>
 
 			<form id="adminConsoleForm" class="md-admin-console-composer" action="?" method="post">
-				<div class="md-admin-console-toolbar md-admin-console-toolbar--top">
-					<button type="button" id="btnConsoleToggleModule" class="btn btn-info">Подключить модуль</button>
-					<button type="button" id="btnConsoleClearHistory" class="btn btn-default">Очистить историю</button>
-				</div>
 				<select class="form-control md-admin-console-module" id="currModuleName">
 					<option value="0"><#LANG_NEWDASH_CONSOLE_CHOOSE_MODULE#></option>
 					[#begin SUB_MODULES#]
@@ -123,7 +124,11 @@
 				</div>
 			</div>
 		</div>
-	</aside>
+	</div>
+	<div class="md-admin-console-drawer__footer" id="mdAdminConsoleDrawerFooter" hidden>
+		<button type="button" id="btnConsoleToggleModule" class="btn btn-outline-secondary">Подключить модуль</button>
+		<button type="button" id="btnConsoleClearHistory" class="btn btn-light">Очистить историю</button>
+	</div>
 	[#endif PRINT#]
 	
 	<div class="row text-center" style="margin-top: 20px;display:none;" id="preloader">

@@ -50,15 +50,7 @@
 
    <textarea name="code" id="code" rows="30" cols="100" class="form-control">[#CODE#]</textarea>
 
-   <div class="md-code-editor__drawer-backdrop" data-code-editor-backdrop hidden></div>
-   <aside class="md-code-editor__drawer" data-code-editor-drawer hidden>
-    <div class="md-code-editor__drawer-header">
-     <div>
-      <h3 class="md-code-editor__drawer-title"><#LANG_HISTORY#></h3>
-      <p class="md-code-editor__drawer-subtitle">Autosave backups and saved versions</p>
-     </div>
-     <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="close-drawer"><#LANG_CLOSE#></button>
-    </div>
+   <div class="md-code-editor__drawer-content" data-code-editor-drawer-content hidden data-md-drawer-title="<#LANG_HISTORY#>" data-md-drawer-subtitle="Autosave backups and saved versions">
     <div class="md-code-editor__drawer-body">
      <div class="md-code-editor__section">
       <h4><#LANG_HISTORY#></h4>
@@ -92,7 +84,7 @@
       <pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
      </div>
     </div>
-   </aside>
+   </div>
   </div>
  [#endif ID#]
 </div>

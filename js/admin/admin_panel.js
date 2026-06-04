@@ -142,6 +142,174 @@
         element.classList.toggle('show', command === 'show' || (command === 'toggle' && !element.classList.contains('show')));
     }
 
+    function initAdminDrawerHost(root) {
+        var drawer = document.getElementById('mdAdminDrawerHost');
+        var backdrop = document.querySelector('.md-admin-drawer-backdrop');
+        var body = document.body;
+        var eyebrow = document.getElementById('mdAdminDrawerEyebrow');
+        var title = document.getElementById('mdAdminDrawerTitle');
+        var subtitle = document.getElementById('mdAdminDrawerSubtitle');
+        var bodyNode = document.getElementById('mdAdminDrawerBody');
+        var footerNode = document.getElementById('mdAdminDrawerFooter');
+
+        if (!drawer || !backdrop || !bodyNode || !footerNode || window.MDJAdminDrawerHost) {
+            return;
+        }
+
+        var current = null;
+
+        function restoreNode(entry) {
+            if (!entry || !entry.node || !entry.parent) {
+                return;
+            }
+            if (entry.nextSibling && entry.nextSibling.parentNode === entry.parent) {
+                entry.parent.insertBefore(entry.node, entry.nextSibling);
+            } else {
+                entry.parent.appendChild(entry.node);
+            }
+            if (entry.wasHidden) {
+                entry.node.hidden = true;
+            }
+        }
+
+        function resetContainers() {
+            bodyNode.innerHTML = '';
+            footerNode.innerHTML = '';
+            footerNode.hidden = true;
+        }
+
+        function closeDrawer(owner) {
+            if (!current || (owner && current.owner && owner !== current.owner)) {
+                return false;
+            }
+
+            body.classList.remove('md-admin-drawer-open');
+            drawer.setAttribute('aria-hidden', 'true');
+            drawer.hidden = true;
+            backdrop.hidden = true;
+            drawer.style.removeProperty('--md-admin-drawer-width');
+
+            if (current.bodyMount) {
+                restoreNode(current.bodyMount);
+            }
+            if (current.footerMount) {
+                restoreNode(current.footerMount);
+            }
+            resetContainers();
+
+            if (typeof current.onClose === 'function') {
+                current.onClose();
+            }
+
+            if (current.restoreFocus && current.restoreFocus.isConnected && typeof current.restoreFocus.focus === 'function') {
+                current.restoreFocus.focus();
+            }
+
+            current = null;
+            return true;
+        }
+
+        function mountNode(node, target) {
+            if (!node || !target) {
+                return null;
+            }
+            var mount = {
+                node: node,
+                parent: node.parentNode,
+                nextSibling: node.nextSibling,
+                wasHidden: !!node.hidden
+            };
+            node.hidden = false;
+            target.appendChild(node);
+            return mount;
+        }
+
+        function openDrawer(options) {
+            if (!options || !options.body) {
+                return false;
+            }
+
+            closeDrawer();
+            if (window.MDJAdminSearch && typeof window.MDJAdminSearch.close === 'function') {
+                window.MDJAdminSearch.close();
+            }
+
+            var drawerTitle = options.title || '';
+            var drawerSubtitle = options.subtitle || '';
+            var drawerEyebrow = options.eyebrow || '';
+
+            title.textContent = drawerTitle;
+            eyebrow.textContent = drawerEyebrow;
+            subtitle.textContent = drawerSubtitle;
+            eyebrow.hidden = !drawerEyebrow;
+            subtitle.hidden = !drawerSubtitle;
+
+            if (options.width) {
+                drawer.style.setProperty('--md-admin-drawer-width', options.width);
+            }
+
+            current = {
+                owner: options.owner || '',
+                onClose: options.onClose || null,
+                restoreFocus: document.activeElement && document.activeElement !== document.body ? document.activeElement : null,
+                bodyMount: mountNode(options.body, bodyNode),
+                footerMount: options.footer ? mountNode(options.footer, footerNode) : null
+            };
+
+            footerNode.hidden = !current.footerMount;
+            backdrop.hidden = false;
+            drawer.hidden = false;
+            drawer.setAttribute('aria-hidden', 'false');
+            body.classList.add('md-admin-drawer-open');
+
+            window.setTimeout(function () {
+                var focusTarget = typeof options.focus === 'function' ? options.focus() : options.focus;
+                if (focusTarget && typeof focusTarget.focus === 'function') {
+                    focusTarget.focus();
+                    return;
+                }
+                drawer.focus();
+            }, 40);
+
+            return true;
+        }
+
+        if (backdrop.dataset.mdDrawerBound !== '1') {
+            backdrop.dataset.mdDrawerBound = '1';
+            backdrop.addEventListener('click', function () {
+                closeDrawer();
+            });
+        }
+
+        drawer.querySelectorAll('[data-md-drawer-close]').forEach(function (button) {
+            if (button.dataset.mdDrawerBound === '1') {
+                return;
+            }
+            button.dataset.mdDrawerBound = '1';
+            button.addEventListener('click', function (event) {
+                event.preventDefault();
+                closeDrawer();
+            });
+        });
+
+        if (!window.MDJAdminDrawerEscapeBound) {
+            window.MDJAdminDrawerEscapeBound = true;
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    closeDrawer();
+                }
+            });
+        }
+
+        window.MDJAdminDrawerHost = {
+            open: openDrawer,
+            close: closeDrawer,
+            getCurrentOwner: function () {
+                return current ? current.owner : '';
+            }
+        };
+    }
+
     function initAdminSidebarSections(root) {
         root.querySelectorAll('[data-md-sidebar-category-toggle]').forEach(function (button) {
             var categoryId = button.getAttribute('data-md-sidebar-category-toggle');
@@ -473,6 +641,9 @@
         }
 
         function openSearch(value) {
+            if (window.MDJAdminDrawerHost && typeof window.MDJAdminDrawerHost.close === 'function') {
+                window.MDJAdminDrawerHost.close();
+            }
             body.classList.add('md-admin-search-open');
             drawer.setAttribute('aria-hidden', 'false');
             if (typeof value === 'string') {
@@ -862,13 +1033,13 @@
     }
 
     function initAdminConsoleDrawer(root) {
-        var drawer = document.getElementById('console');
-        var backdrop = document.querySelector('.md-admin-console-backdrop');
+        var drawerContent = document.getElementById('mdAdminConsoleDrawerContent');
+        var drawerFooter = document.getElementById('mdAdminConsoleDrawerFooter');
         var output = document.getElementById('console_output');
         var outputHint = document.getElementById('console_output_hintResize');
         var command = document.getElementById('command');
-        var commandEditorHost = drawer ? drawer.querySelector('[data-code-editor-key="admin_console"]') : null;
-        var form = drawer ? drawer.querySelector('form') : null;
+        var commandEditorHost = drawerContent ? drawerContent.querySelector('[data-code-editor-key="admin_console"]') : null;
+        var form = drawerContent ? drawerContent.querySelector('form') : null;
         var moduleSelect = document.getElementById('currModuleName');
         var moduleField = document.getElementById('module_add');
         var methodsModule = document.getElementById('methodsModule');
@@ -879,7 +1050,6 @@
         var warningAlert = document.getElementById('warningAlertConsole');
         var historyList = document.getElementById('consoleHistoryList');
         var toggleModuleButton = document.getElementById('btnConsoleToggleModule');
-        var closeButton = document.getElementById('btnConsoleClose');
         var clearHistoryButton = document.getElementById('btnConsoleClearHistory');
         var currentModuleName = '';
         var consoleHistoryKey = 'md-admin-console-history-v1';
@@ -887,7 +1057,7 @@
         var currentHistoryIndex = -1;
         var pendingModuleLoad = false;
 
-        if (!drawer || !command || !output) {
+        if (!drawerContent || !command || !output) {
             return;
         }
 
@@ -946,11 +1116,22 @@
         }
 
         function openDrawer() {
-            document.body.classList.add('md-admin-console-open');
-            drawer.setAttribute('aria-hidden', 'false');
-            if (window.MDJAdminUI && typeof window.MDJAdminUI.closeSearch === 'function') {
-                window.MDJAdminUI.closeSearch();
+            if (!window.MDJAdminDrawerHost) {
+                return;
             }
+            window.MDJAdminDrawerHost.open({
+                owner: 'console',
+                eyebrow: drawerContent.getAttribute('data-md-drawer-eyebrow') || 'Панель управления',
+                title: drawerContent.getAttribute('data-md-drawer-title') || 'Консоль',
+                subtitle: drawerContent.getAttribute('data-md-drawer-subtitle') || '',
+                width: '920px',
+                body: drawerContent,
+                footer: drawerFooter,
+                focus: function () {
+                    ensureConsoleEditorBindings();
+                    return getConsoleEditor() ? null : command;
+                }
+            });
             window.setTimeout(function () {
                 ensureConsoleEditorBindings();
                 focusCommand();
@@ -958,8 +1139,9 @@
         }
 
         function closeDrawer() {
-            document.body.classList.remove('md-admin-console-open');
-            drawer.setAttribute('aria-hidden', 'true');
+            if (window.MDJAdminDrawerHost) {
+                window.MDJAdminDrawerHost.close('console');
+            }
         }
 
         function bindConsoleEditor() {
@@ -1004,7 +1186,7 @@
                 currentHistoryIndex = -1;
             });
 
-            if (document.body.classList.contains('md-admin-console-open')) {
+            if (window.MDJAdminDrawerHost && window.MDJAdminDrawerHost.getCurrentOwner() === 'console') {
                 window.setTimeout(function () {
                     editor.focus();
                 }, 0);
@@ -1018,22 +1200,22 @@
                 return;
             }
 
-            if (drawer._codeEditorBindTimer) {
+            if (drawerContent._codeEditorBindTimer) {
                 return;
             }
 
             var attempts = 0;
-            drawer._codeEditorBindTimer = window.setInterval(function () {
+            drawerContent._codeEditorBindTimer = window.setInterval(function () {
                 attempts += 1;
                 if (bindConsoleEditor() || attempts > 100) {
-                    window.clearInterval(drawer._codeEditorBindTimer);
-                    drawer._codeEditorBindTimer = 0;
+                    window.clearInterval(drawerContent._codeEditorBindTimer);
+                    drawerContent._codeEditorBindTimer = 0;
                 }
             }, 120);
         }
 
         function toggleDrawer() {
-            if (document.body.classList.contains('md-admin-console-open')) {
+            if (window.MDJAdminDrawerHost && window.MDJAdminDrawerHost.getCurrentOwner() === 'console') {
                 closeDrawer();
             } else {
                 openDrawer();
@@ -1338,9 +1520,9 @@
             setOutputMessage('Ожидание команды...', 'консоль');
         }
 
-        if (drawer.dataset.mdConsoleBound !== '1') {
-            drawer.dataset.mdConsoleBound = '1';
-            drawer.addEventListener('click', function (event) {
+        if (drawerContent.dataset.mdConsoleBound !== '1') {
+            drawerContent.dataset.mdConsoleBound = '1';
+            drawerContent.addEventListener('click', function (event) {
                 var historyButton = event.target.closest('[data-md-console-history-value]');
                 if (historyButton) {
                     event.preventDefault();
@@ -1375,14 +1557,6 @@
             });
         }
 
-        if (closeButton && closeButton.dataset.mdConsoleBound !== '1') {
-            closeButton.dataset.mdConsoleBound = '1';
-            closeButton.addEventListener('click', function (event) {
-                event.preventDefault();
-                closeDrawer();
-            });
-        }
-
         if (clearHistoryButton && clearHistoryButton.dataset.mdConsoleBound !== '1') {
             clearHistoryButton.dataset.mdConsoleBound = '1';
             clearHistoryButton.addEventListener('click', function () {
@@ -1400,11 +1574,6 @@
                 setCommandValue('');
                 focusCommand();
             });
-        }
-
-        if (backdrop && backdrop.dataset.mdConsoleBound !== '1') {
-            backdrop.dataset.mdConsoleBound = '1';
-            backdrop.addEventListener('click', closeDrawer);
         }
 
         if (moduleSelect && moduleSelect.dataset.mdConsoleBound !== '1') {
@@ -1434,15 +1603,6 @@
             });
             command.addEventListener('input', function () {
                 currentHistoryIndex = -1;
-            });
-        }
-
-        if (!window.MDJAdminConsoleEscapeBound) {
-            window.MDJAdminConsoleEscapeBound = true;
-            document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape' && document.body.classList.contains('md-admin-console-open')) {
-                    closeDrawer();
-                }
             });
         }
 
@@ -1479,10 +1639,6 @@
                 renderHistory();
             }
         };
-
-        if (closeButton) {
-            closeButton.setAttribute('data-md-console-close', '1');
-        }
     }
 
     function boot(root) {
@@ -1492,6 +1648,7 @@
         initThemeSwitcher(root);
         initCheckboxToggles(root);
         initBootstrapWidgets(root);
+        initAdminDrawerHost(root);
         initAdminSidebarSections(root);
         initPersistentCollapses(root);
         initToggleTargets(root);
@@ -1643,6 +1800,18 @@
             if (window.MDJAdminSearch) {
                 window.MDJAdminSearch.close();
             }
+        },
+        openDrawer: function (options) {
+            if (window.MDJAdminDrawerHost) {
+                return window.MDJAdminDrawerHost.open(options);
+            }
+            return false;
+        },
+        closeDrawer: function (owner) {
+            if (window.MDJAdminDrawerHost) {
+                return window.MDJAdminDrawerHost.close(owner);
+            }
+            return false;
         },
         openConsole: function () {
             if (window.MDJAdminConsole) {
