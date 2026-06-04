@@ -244,7 +244,8 @@ class objects extends module
             } elseif ($op == 'property_history') {
                 $property_id = (int)gr('property_id');
                 $range = gr('history_range', 'trim');
-                $res = $this->buildPropertyHistoryResponse((int)$id, $property_id, $range);
+                $page = (int)gr('history_page');
+                $res = $this->buildPropertyHistoryResponse((int)$id, $property_id, $range, $page);
             }
             echo json_encode($res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -1146,15 +1147,16 @@ class objects extends module
         $object_id = (int)$this->id;
         $property_id = (int)gr('property_id');
         $range = gr('history_range', 'trim');
+        $page = (int)gr('history_page');
 
-        $response = $this->buildPropertyHistoryResponse($object_id, $property_id, $range);
+        $response = $this->buildPropertyHistoryResponse($object_id, $property_id, $range, $page);
         echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         global $db;
         exit;
     }
 
-    function buildPropertyHistoryResponse($object_id, $property_id, $range)
+    function buildPropertyHistoryResponse($object_id, $property_id, $range, $page = 1)
     {
         $object = SQLSelectOne("SELECT * FROM objects WHERE ID=" . (int)$object_id);
         if (empty($object['ID'])) {
@@ -1191,9 +1193,21 @@ class objects extends module
         $range_data = $this->getPropertyHistoryRangeDefinition($range);
         $property_name = $object['TITLE'] . '.' . $property['TITLE'];
         $pvalue = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID='" . (int)$property['ID'] . "' AND OBJECT_ID='" . (int)$object['ID'] . "'");
+        $page = max(1, (int)$page);
+        $per_page = 50;
 
         $history = array();
-        $recent = array();
+        $history_page = array(
+            'items' => array(),
+            'page' => 1,
+            'per_page' => $per_page,
+            'total' => 0,
+            'pages' => 0,
+            'from' => 0,
+            'to' => 0,
+            'has_prev' => false,
+            'has_next' => false
+        );
         $stats = array(
             'count' => 0,
             'min' => null,
@@ -1209,7 +1223,7 @@ class objects extends module
                 'max' => $this->normalizeHistoryMetric(getHistoryMax($property_name, $range_data['start_time'], $range_data['stop_time'])),
                 'avg' => $this->normalizeHistoryMetric(getHistoryAvg($property_name, $range_data['start_time'], $range_data['stop_time']))
             );
-            $recent = $this->getPropertyRecentHistory($pvalue['ID'], $range_data['start_time'], $range_data['stop_time'], 30);
+            $history_page = $this->getPropertyHistoryPage($pvalue['ID'], $range_data['start_time'], $range_data['stop_time'], $page, $per_page);
         }
 
         $current_value = isset($pvalue['VALUE']) ? $pvalue['VALUE'] : getGlobal($property_name);
@@ -1250,7 +1264,17 @@ class objects extends module
                 'avg' => $stats['avg']
             ),
             'chart' => $chart_data,
-            'history' => $recent
+            'history' => $history_page['items'],
+            'history_pagination' => array(
+                'page' => (int)$history_page['page'],
+                'per_page' => (int)$history_page['per_page'],
+                'total' => (int)$history_page['total'],
+                'pages' => (int)$history_page['pages'],
+                'from' => (int)$history_page['from'],
+                'to' => (int)$history_page['to'],
+                'has_prev' => !empty($history_page['has_prev']),
+                'has_next' => !empty($history_page['has_next'])
+            )
         );
     }
 
@@ -1278,7 +1302,7 @@ class objects extends module
         );
     }
 
-    function getPropertyRecentHistory($value_id, $start_time, $stop_time, $limit = 30)
+    function getPropertyHistoryPage($value_id, $start_time, $stop_time, $page = 1, $per_page = 50)
     {
         if (defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1) {
             $table_name = createHistoryTable($value_id);
@@ -1286,12 +1310,22 @@ class objects extends module
             $table_name = 'phistory';
         }
 
-        $rows = SQLSelect("SELECT VALUE, SOURCE, ADDED FROM $table_name WHERE VALUE_ID='" . (int)$value_id . "' AND ADDED>=('" . date('Y-m-d H:i:s', $start_time) . "') AND ADDED<=('" . date('Y-m-d H:i:s', $stop_time) . "') ORDER BY ADDED DESC LIMIT " . (int)$limit);
-        $result = array();
+        $page = max(1, (int)$page);
+        $per_page = max(1, min(200, (int)$per_page));
+        $where = "VALUE_ID='" . (int)$value_id . "' AND ADDED>=('" . date('Y-m-d H:i:s', $start_time) . "') AND ADDED<=('" . date('Y-m-d H:i:s', $stop_time) . "')";
+        $count_row = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM $table_name WHERE " . $where);
+        $total_rows = isset($count_row['TOTAL']) ? (int)$count_row['TOTAL'] : 0;
+        $total_pages = $total_rows > 0 ? (int)ceil($total_rows / $per_page) : 0;
+        if ($total_pages > 0 && $page > $total_pages) {
+            $page = $total_pages;
+        }
+        $offset = ($page - 1) * $per_page;
+        $rows = SQLSelect("SELECT VALUE, SOURCE, ADDED FROM $table_name WHERE " . $where . " ORDER BY ADDED DESC LIMIT " . (int)$offset . "," . (int)$per_page);
+        $items = array();
         $total = count($rows);
 
         for ($i = 0; $i < $total; $i++) {
-            $result[] = array(
+            $items[] = array(
                 'value' => $rows[$i]['VALUE'],
                 'source' => $rows[$i]['SOURCE'],
                 'added' => date('c', strtotime($rows[$i]['ADDED'])),
@@ -1299,7 +1333,17 @@ class objects extends module
             );
         }
 
-        return $result;
+        return array(
+            'items' => $items,
+            'page' => $total_pages > 0 ? $page : 1,
+            'per_page' => $per_page,
+            'total' => $total_rows,
+            'pages' => $total_pages,
+            'from' => $total_rows > 0 ? ($offset + 1) : 0,
+            'to' => $total_rows > 0 ? ($offset + count($items)) : 0,
+            'has_prev' => $page > 1,
+            'has_next' => $total_pages > 0 && $page < $total_pages
+        );
     }
 
     function preparePropertyHistoryChart($history, $max_points = 160)

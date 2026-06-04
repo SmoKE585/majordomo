@@ -5844,6 +5844,106 @@ body.md-mqtt-drawer-open {
   line-height: 1.2;
 }
 
+.md-object-context-hero {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(16, 185, 129, .1), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, .98), rgba(247, 250, 248, .94));
+}
+
+.md-object-context-hero__layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.md-object-context-hero__main,
+.md-object-context-hero__actions {
+  min-width: 0;
+}
+
+.md-object-context-hero__main {
+  flex: 1 1 560px;
+}
+
+.md-object-context-hero__actions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.md-object-context-hero__eyebrow {
+  margin-bottom: 8px;
+  color: var(--md-admin-primary, #4792d1);
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.md-object-context-hero__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--md-admin-text, #1f2933);
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.md-object-context-hero__link {
+  color: #526273;
+}
+
+.md-object-context-hero__arrow {
+  color: var(--md-admin-muted, #6b7a88);
+}
+
+.md-object-context-hero__summary {
+  margin-top: 8px;
+  color: #526273;
+  font-size: .9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.md-object-context-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.md-object-context-hero__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  color: #314155;
+  background: rgba(255, 255, 255, .9);
+  border: 1px solid rgba(31, 41, 51, .08);
+  border-radius: 999px;
+}
+
+.md-object-context-hero__meta-item span {
+  color: #708092;
+  font-size: .74rem;
+  font-weight: 600;
+}
+
+.md-object-context-hero__meta-item strong {
+  color: #192534;
+  font-size: .84rem;
+  font-weight: 700;
+}
+
 .md-object-properties-hero__search {
   min-width: min(320px, 100%);
 }
@@ -6218,11 +6318,12 @@ body.md-mqtt-drawer-open {
 
 .md-object-history-drawer {
   position: fixed;
-  right: 0;
+  right: 18px;
   bottom: 0;
-  left: 0;
+  left: auto;
   z-index: 1090;
   display: flex;
+  width: min(980px, calc(100vw - 36px));
   max-height: min(88vh, 920px);
   flex-direction: column;
   overflow: hidden;
@@ -6549,6 +6650,52 @@ body.md-object-history-open .md-object-history-drawer {
   overflow-x: auto;
 }
 
+.md-object-history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.md-object-history-pagination__pages {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.md-object-history-pagination__page,
+.md-object-history-pagination__dots {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: .84rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.md-object-history-pagination__page {
+  color: #4b5d70;
+  background: rgba(100, 116, 139, .08);
+  border: 1px solid rgba(100, 116, 139, .16);
+  transition: all .16s ease;
+}
+
+.md-object-history-pagination__page:hover,
+.md-object-history-pagination__page:focus-visible,
+.md-object-history-pagination__page.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, #4792d1, #0f8a64);
+  border-color: transparent;
+}
+
+.md-object-history-pagination__dots {
+  color: var(--md-admin-muted, #6b7a88);
+}
+
 .md-object-history-table {
   width: 100%;
   min-width: 620px;
@@ -6696,6 +6843,9 @@ body.md-object-history-open .md-object-history-drawer {
   }
 
   .md-object-history-drawer {
+    right: 0;
+    left: 0;
+    width: 100%;
     max-height: 100vh;
     border-radius: 24px 24px 0 0;
   }
@@ -6720,6 +6870,11 @@ body.md-object-history-open .md-object-history-drawer {
 
   .md-object-history-stats {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .md-object-history-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 

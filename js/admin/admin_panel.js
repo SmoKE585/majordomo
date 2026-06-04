@@ -771,10 +771,13 @@
         var chartSummary = document.getElementById('mdObjectHistoryChartSummary');
         var feed = document.getElementById('mdObjectHistoryFeed');
         var feedCount = document.getElementById('mdObjectHistoryFeedCount');
+        var pagination = document.getElementById('mdObjectHistoryPagination');
+        var paginationPages = document.getElementById('mdObjectHistoryPaginationPages');
         var tabs = document.getElementById('mdObjectHistoryTabs');
         var body = document.body;
         var activeTrigger = null;
         var activeRange = '7d';
+        var activePage = 1;
         var activeRequest = null;
         var activeTab = 'history';
 
@@ -835,6 +838,7 @@
 
         function openDrawer(trigger) {
             activeTrigger = trigger;
+            activePage = 1;
             body.classList.add('md-object-history-open');
             drawer.setAttribute('aria-hidden', 'false');
             title.textContent = trigger.getAttribute('data-property-name') || 'История свойства';
@@ -854,6 +858,64 @@
             if (activeTrigger) {
                 activeTrigger.focus();
             }
+        }
+
+        function buildPaginationPages(currentPage, totalPages) {
+            var pages = [];
+            var startPage = Math.max(1, currentPage - 2);
+            var endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) {
+                pages.push(1);
+            }
+            if (startPage > 2) {
+                pages.push('dots-left');
+            }
+            for (var page = startPage; page <= endPage; page++) {
+                pages.push(page);
+            }
+            if (endPage < totalPages - 1) {
+                pages.push('dots-right');
+            }
+            if (endPage < totalPages) {
+                pages.push(totalPages);
+            }
+
+            return pages;
+        }
+
+        function renderPagination(meta) {
+            if (!pagination || !paginationPages) {
+                return;
+            }
+
+            var totalPages = Number(meta && meta.pages ? meta.pages : 0);
+            var currentPage = Number(meta && meta.page ? meta.page : 1);
+            activePage = currentPage;
+
+            if (totalPages <= 1) {
+                pagination.hidden = true;
+                paginationPages.innerHTML = '';
+                return;
+            }
+
+            pagination.hidden = false;
+            paginationPages.innerHTML = buildPaginationPages(currentPage, totalPages).map(function (item) {
+                if (typeof item !== 'number') {
+                    return '<span class="md-object-history-pagination__dots">...</span>';
+                }
+                var activeClass = item === currentPage ? ' is-active' : '';
+                return '<button type="button" class="md-object-history-pagination__page' + activeClass + '" data-md-history-page="' + item + '">' + item + '</button>';
+            }).join('');
+
+            pagination.querySelectorAll('[data-md-history-page-nav]').forEach(function (button) {
+                var direction = button.getAttribute('data-md-history-page-nav');
+                if (direction === 'prev') {
+                    button.disabled = !meta.has_prev;
+                } else if (direction === 'next') {
+                    button.disabled = !meta.has_next;
+                }
+            });
         }
 
         function renderStats(data) {
@@ -922,10 +984,16 @@
             ].filter(Boolean).join(' - ');
         }
 
-        function renderFeed(items) {
-            feedCount.textContent = items.length ? ('Записей: ' + items.length) : '';
+        function renderFeed(items, paginationMeta) {
+            var total = Number(paginationMeta && paginationMeta.total ? paginationMeta.total : 0);
+            var from = Number(paginationMeta && paginationMeta.from ? paginationMeta.from : 0);
+            var to = Number(paginationMeta && paginationMeta.to ? paginationMeta.to : 0);
+            feedCount.textContent = total ? ('Показаны ' + from + '-' + to + ' из ' + total) : '';
             if (!items.length) {
                 feed.innerHTML = '<tr><td colspan="3" class="md-object-history-table__empty">История за выбранный период пока пуста.</td></tr>';
+                if (pagination) {
+                    pagination.hidden = true;
+                }
                 return;
             }
 
@@ -954,7 +1022,8 @@
             currentMeta.textContent = metaParts.join(' • ');
 
             renderStats(data.stats || {});
-            renderFeed(data.history || []);
+            renderFeed(data.history || [], data.history_pagination || {});
+            renderPagination(data.history_pagination || {});
             toggleChartTab(!!(data.meta && data.meta.is_numeric));
             if (data.meta && data.meta.is_numeric) {
                 renderChart(data.chart || {});
@@ -985,7 +1054,7 @@
 
             setState('loading', 'Загружаю историю', 'Получаю точки графика и последние изменения.');
             activeRequest = new AbortController();
-            fetch(baseUrl + '&history_range=' + encodeURIComponent(activeRange), {
+            fetch(baseUrl + '&history_range=' + encodeURIComponent(activeRange) + '&history_page=' + encodeURIComponent(activePage), {
                 headers: {
                     'Accept': 'application/json'
                 },
@@ -1042,10 +1111,42 @@
                     return;
                 }
                 activeRange = nextRange;
+                activePage = 1;
                 setRangeButtons(activeRange);
                 loadHistory();
             });
         });
+
+        if (drawer.dataset.mdHistoryPaginationBound !== '1') {
+            drawer.dataset.mdHistoryPaginationBound = '1';
+            drawer.addEventListener('click', function (event) {
+                var pageButton = event.target.closest('[data-md-history-page]');
+                if (pageButton) {
+                    var nextPage = parseInt(pageButton.getAttribute('data-md-history-page'), 10);
+                    if (!isNaN(nextPage) && nextPage > 0 && nextPage !== activePage) {
+                        activePage = nextPage;
+                        loadHistory();
+                    }
+                    return;
+                }
+
+                var navButton = event.target.closest('[data-md-history-page-nav]');
+                if (navButton) {
+                    if (navButton.disabled) {
+                        return;
+                    }
+                    var direction = navButton.getAttribute('data-md-history-page-nav');
+                    if (direction === 'prev' && activePage > 1) {
+                        activePage -= 1;
+                        loadHistory();
+                    } else if (direction === 'next') {
+                        activePage += 1;
+                        loadHistory();
+                    }
+                    return;
+                }
+            });
+        }
 
         drawer.querySelectorAll('[data-md-history-tab]').forEach(function (button) {
             if (button.dataset.mdHistoryTabBound === '1') {
