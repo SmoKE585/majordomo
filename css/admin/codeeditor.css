@@ -368,13 +368,18 @@
 
 .md-code-editor__preview {
   margin-top: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 0.85rem 0.95rem;
   border-radius: 14px;
   border: 1px solid var(--md-codeeditor-border);
   background: #020617;
   color: #e2e8f0;
   font-size: 0.85rem;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   overflow: auto;
   max-height: 18rem;
 }
