@@ -6070,6 +6070,19 @@ body.md-mqtt-drawer-open {
   font-weight: 600;
 }
 
+.md-object-property-card__copy-pair {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.md-object-property-card__copy-pair .md-admin-record-card__separator {
+  margin: 0;
+}
+
 .md-object-method-editor__summary {
   margin-top: 8px;
   color: var(--md-admin-muted, #6b7a88);

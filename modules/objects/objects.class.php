@@ -129,7 +129,7 @@ class objects extends module
      */
     function admin(&$out)
     {
-        if ($this->ajax && $this->view_mode == 'edit_objects' && $this->tab == 'properties') {
+        if ($this->ajax) {
             global $op;
             if ($op == 'property_history') {
                 $this->renderPropertyHistoryJson();

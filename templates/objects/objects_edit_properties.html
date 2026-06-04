@@ -59,15 +59,15 @@
                     </button>
                     <div class="md-admin-record-card__content">
                         <div class="md-admin-record-card__title">
-                            <button type="button" class="md-object-property-card__copy-trigger md-admin-record-card__class" data-md-copy-value="<#TITLE#>.[#TITLE#]" data-md-copy-toast="Скопировано: <#TITLE#>.[#TITLE#]"><#TITLE#></button>
-                            <span class="md-admin-record-card__separator">.</span>
-                            <button type="button" class="md-object-property-card__copy-trigger md-object-property-card__property-name" data-md-copy-value="[#TITLE#]" data-md-copy-toast="Скопировано: [#TITLE#]">[#TITLE#]</button>
+                            <span class="md-object-property-card__copy-pair">
+                                <button type="button" class="md-object-property-card__copy-trigger md-admin-record-card__class" data-md-copy-value="<#TITLE#>.[#TITLE#]" data-md-copy-toast="Скопировано: <#TITLE#>.[#TITLE#]"><#TITLE#></button><span class="md-admin-record-card__separator">.</span><button type="button" class="md-object-property-card__copy-trigger md-object-property-card__property-name" data-md-copy-value="[#TITLE#]" data-md-copy-toast="Скопировано: [#TITLE#]">[#TITLE#]</button>
+                            </span>
                             [#if KEEP_HISTORY!="0"#]
                             <button
                                 type="button"
                                 class="md-object-property-card__history"
                                 data-md-prop-history-open
-                                data-history-url="index.php?action=objects&ajax=1&id=<#ID#>&op=property_history&property_id=[#ID#]"
+                                data-history-url="admin.php?md=objects&ajax=1&id=<#ID#>&op=property_history&property_id=[#ID#]"
                                 data-property-name="<#TITLE#>.[#TITLE#]"
                                 data-property-title="[#TITLE#]"
                                 data-property-description="[#DESCRIPTION#]"
@@ -104,7 +104,7 @@
                     </div>
                     <div class="md-object-property-card__value-editor" data-md-prop-editor="[#ID#]" hidden>
                         <form action="?" method="post" class="md-object-property-card__value-form">
-                            <textarea name="value[#ID#]" rows="3" class="form-control md-admin-textarea">[#VALUE_HTML#]</textarea>
+                            <input type="text" name="value[#ID#]" value="[#VALUE_HTML#]" class="form-control">
                             <div class="md-admin-form-actions">
                                 <input type="submit" name="submit" value="<#LANG_UPDATE#>" class="btn btn-primary btn-sm">
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-md-prop-cancel="[#ID#]"><#LANG_CANCEL#></button>
@@ -363,8 +363,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (current && editor) {
                 current.hidden = true;
                 editor.hidden = false;
-                var textarea = editor.querySelector('textarea');
-                if (textarea) textarea.focus();
+                var input = editor.querySelector('input[name="value[' + id + ']"]');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
             }
         });
     });
