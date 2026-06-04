@@ -1,134 +1,345 @@
 <?php
 
-$settings_structure = array(
-    'default' => array(
-        'GENERAL_ALICE_NAME' => array(
-            'title' => 'Computer\'s name',
+$settings_sections = array(
+    'interface' => array(
+        'title' => 'Интерфейс',
+        'description' => 'Основные параметры внешнего вида и локализации системы.',
+        'settings' => array(
+            'GENERAL_ALICE_NAME' => array(
+                'title' => 'Имя системы',
+                'notes' => 'Так система представляется в интерфейсе, API и голосовых сообщениях.',
+                'default' => '',
+                'priority' => 40,
+            ),
+            'SITE_LANGUAGE' => array(
+                'title' => 'Язык интерфейса',
+                'notes' => 'Определяет язык административной панели и основных системных сообщений.',
+                'type' => 'select',
+                'default' => 'en',
+                'priority' => 39,
+            ),
+            'SITE_TIMEZONE' => array(
+                'title' => 'Часовой пояс',
+                'notes' => 'Используется для расписаний, журналов, таймеров и отображения времени.',
+                'type' => 'select',
+                'default' => 'Europe/Moscow',
+                'priority' => 38,
+            ),
+            'THEME' => array(
+                'title' => 'Тема оформления',
+                'notes' => 'Переключает светлую и тёмную тему интерфейса.',
+                'type' => 'select',
+                'default' => 'dark',
+                'data' => 'light=Светлая|dark=Тёмная',
+                'priority' => 37,
+            ),
         ),
-        'GENERAL_START_LAYOUT' => array(
-            'title' => 'Homepage Layout',
-            'type' => 'select',
-            'data' => '=Default|homepages=Home Pages|menu=Menu|apps=Applications|cp=Control Panel'
-        )
+    ),
+    'voice' => array(
+        'title' => 'Голос и озвучивание',
+        'description' => 'Параметры синтеза речи и код, который выполняется до и после озвучивания.',
+        'settings' => array(
+            'VOICE_LANGUAGE' => array(
+                'title' => 'Язык голосовых уведомлений',
+                'notes' => 'Язык по умолчанию для голосовых уведомлений и ответов.',
+                'type' => 'select',
+                'default' => 'en',
+                'priority' => 30,
+            ),
+            'SPEAK_SIGNAL' => array(
+                'title' => 'Звуковой сигнал перед фразой',
+                'notes' => 'Добавляет короткий сигнал перед озвучиванием, чтобы сообщение было заметнее.',
+                'type' => 'onoff',
+                'default' => '1',
+                'priority' => 29,
+            ),
+            'HOOK_BEFORE_SAY' => array(
+                'title' => 'Код перед озвучиванием',
+                'notes' => 'Код выполняется непосредственно перед вызовом `say()` и может менять поведение озвучки.',
+                'type' => 'textarea',
+                'default' => '',
+                'priority' => 28,
+                'rows' => 4,
+            ),
+            'HOOK_AFTER_SAY' => array(
+                'title' => 'Код после озвучивания',
+                'notes' => 'Код выполняется сразу после завершения озвучивания.',
+                'type' => 'textarea',
+                'default' => '',
+                'priority' => 27,
+                'rows' => 4,
+            ),
+        ),
+    ),
+    'events' => array(
+        'title' => 'События и хуки',
+        'description' => 'Маршрутизация событий и пользовательский код для воспроизведения, сканирования и реакций системы.',
+        'settings' => array(
+            'HOOK_EVENT_COMMAND' => array(
+                'title' => 'Маршрутизация команды',
+                'notes' => 'Определяет, какие обработчики получают событие команды.',
+                'type' => 'json',
+                'default' => '{"scripts":{"filter":""}}',
+                'priority' => 26,
+            ),
+            'HOOK_EVENT_ASK' => array(
+                'title' => 'Маршрутизация вопроса',
+                'notes' => 'Определяет, куда передаётся событие вопроса от системы или устройств.',
+                'type' => 'json',
+                'default' => '{"terminals":{"filter":""}}',
+                'priority' => 25,
+            ),
+            'HOOK_EVENT_SAY' => array(
+                'title' => 'Маршрутизация озвучивания',
+                'notes' => 'Настраивает получателей обычных голосовых сообщений.',
+                'type' => 'json',
+                'default' => '{"terminals":{"filter":""}}',
+                'priority' => 24,
+            ),
+            'HOOK_EVENT_SAYTO' => array(
+                'title' => 'Маршрутизация адресного сообщения',
+                'notes' => 'Указывает получателей для озвучки, адресованной конкретной зоне или терминалу.',
+                'type' => 'json',
+                'default' => '{"terminals":{"filter":""}}',
+                'priority' => 23,
+            ),
+            'HOOK_EVENT_SAYREPLY' => array(
+                'title' => 'Маршрутизация ответа',
+                'notes' => 'Определяет, кто получает голосовой ответ системы.',
+                'type' => 'json',
+                'default' => '{"terminals":{"filter":""}}',
+                'priority' => 22,
+            ),
+            'HOOK_EVENT_HOURLY' => array(
+                'title' => 'Маршрутизация почасового события',
+                'notes' => 'Настраивает обработчики для регулярного почасового события.',
+                'type' => 'json',
+                'default' => '{"terminals":{"filter":""}}',
+                'priority' => 21,
+            ),
+            'HOOK_BARCODE' => array(
+                'title' => 'Код обработки штрихкода',
+                'notes' => 'Пользовательский код, который выполняется после считывания штрихкода.',
+                'type' => 'textarea',
+                'default' => '',
+                'priority' => 20,
+                'rows' => 4,
+            ),
+            'HOOK_PLAYMEDIA' => array(
+                'title' => 'Код для PlayMedia',
+                'notes' => 'Код вызывается при запуске воспроизведения медиа.',
+                'type' => 'textarea',
+                'default' => '',
+                'priority' => 19,
+                'rows' => 4,
+            ),
+            'HOOK_BEFORE_PLAYSOUND' => array(
+                'title' => 'Код перед воспроизведением звука',
+                'notes' => 'Выполняется до запуска `playSound()` и позволяет подготовить окружение.',
+                'type' => 'textarea',
+                'default' => '',
+                'priority' => 18,
+                'rows' => 4,
+            ),
+            'HOOK_AFTER_PLAYSOUND' => array(
+                'title' => 'Код после воспроизведения звука',
+                'notes' => 'Выполняется после завершения `playSound()`.',
+                'type' => 'textarea',
+                'default' => '',
+                'priority' => 17,
+                'rows' => 4,
+            ),
+        ),
     ),
     'system' => array(
-        'SYSTEM_DISABLE_DEBMES' => array(
-            'title' => 'Disable logging (DebMes)',
-            'type' => 'onoff',
-            'DEFAULTVALUE' => '0'
+        'title' => 'Система',
+        'description' => 'Параметры журналирования, сохранения базы и служебного доступа.',
+        'settings' => array(
+            'SYSTEM_DISABLE_DEBMES' => array(
+                'title' => 'Отключить журнал DebMes',
+                'notes' => 'Полностью выключает запись в DebMes. Полезно только для очень нагруженных систем.',
+                'type' => 'onoff',
+                'default' => '0',
+                'priority' => 16,
+            ),
+            'SYSTEM_DEBMES_PATH' => array(
+                'title' => 'Папка журналов DebMes',
+                'notes' => 'Каталог, в котором хранятся файлы журналов DebMes.',
+                'type' => 'path',
+                'default' => '',
+                'priority' => 15,
+            ),
+            'SYSTEM_DB_MAIN_SAVE_PERIOD' => array(
+                'title' => 'Период сохранения основной БД, минут',
+                'notes' => 'Как часто сохранять основную базу данных на диск.',
+                'default' => '15',
+                'priority' => 14,
+            ),
+            'SYSTEM_DB_HISTORY_SAVE_PERIOD' => array(
+                'title' => 'Период сохранения истории, минут',
+                'notes' => 'Как часто сохранять исторические данные и значения.',
+                'default' => '60',
+                'priority' => 13,
+            ),
+            'SYSTEM_WEBSOCKETS_TOKEN' => array(
+                'title' => 'Токен доступа к WebSocket',
+                'notes' => 'Если задан, WebSocket-клиенты должны передавать этот токен при подключении.',
+                'type' => 'password',
+                'default' => '',
+                'priority' => 12,
+            ),
         ),
-        'SYSTEM_DEBMES_PATH' => array(
-            'title' => 'Path to DebMes logs',
-        ),
-        'SYSTEM_DB_MAIN_SAVE_PERIOD' => array(
-            'title' => 'Database save period (main data), minutes',
-            'default' => '15'
-        ),
-        'SYSTEM_DB_HISTORY_SAVE_PERIOD' => array(
-            'title' => 'Database save period (history data), minutes',
-            'default' => '60'
-        ),
-        'SYSTEM_WEBSOCKETS_TOKEN' => array(
-            'title' => 'WebSocket authorization token',
-            'notes' => 'If set, websocket clients must pass this token as ?token=...'
-        )
     ),
-    'behavior' => array(
-        'BEHAVIOR_NOBODYHOME_TIMEOUT' => array(
-            'title' => 'NobodyHome mode activation timeout (minutes)',
-            'default' => '60',
-            'notes' => 'Set 0 to disable',
-        )
+    'editor' => array(
+        'title' => 'Редактор кода',
+        'description' => 'Параметры встроенного редактора для скриптов, методов и других кодовых полей.',
+        'settings' => array(
+            'CODEEDITOR_TURNONSETTINGS' => array(
+                'title' => LANG_CODEEDITOR_TURNONSETTINGS,
+                'notes' => 'Включает пользовательские настройки редактора вместо стандартного поведения.',
+                'type' => 'onoff',
+                'default' => '0',
+                'priority' => 11,
+            ),
+            'CODEEDITOR_SHOWLINE' => array(
+                'title' => LANG_CODEEDITOR_SHOWLINE,
+                'notes' => 'Максимальная высота редактора до появления внутренней прокрутки.',
+                'type' => 'select',
+                'data' => '10=10|35=35|45=45|100=100|500=500|1000=1000|99999=' . LANG_CODEEDITOR_BYCODEHEIGHT,
+                'priority' => 10,
+            ),
+            'CODEEDITOR_MIXLINE' => array(
+                'title' => LANG_CODEEDITOR_MIXLINE,
+                'notes' => 'Минимальная стартовая высота редактора в строках.',
+                'type' => 'select',
+                'data' => '5=5|10=10|25=25|40=40|1=' . LANG_CODEEDITOR_BYCODEHEIGHT,
+                'priority' => 9,
+            ),
+            'CODEEDITOR_UPTOLINE' => array(
+                'title' => LANG_CODEEDITOR_UPTOLINE,
+                'notes' => 'Автоматически переводит редактор к строке, в которой обнаружена ошибка.',
+                'type' => 'onoff',
+                'priority' => 8,
+            ),
+            'CODEEDITOR_SHOWERROR' => array(
+                'title' => LANG_CODEEDITOR_SHOWERROR,
+                'notes' => 'Показывает текст ошибки рядом с проблемной строкой.',
+                'type' => 'onoff',
+                'priority' => 7,
+            ),
+            'CODEEDITOR_AUTOCLOSEQUOTES' => array(
+                'title' => LANG_CODEEDITOR_AUTOCLOSEQUOTES,
+                'notes' => 'Автоматически закрывает кавычки и скобки при вводе.',
+                'type' => 'onoff',
+                'priority' => 6,
+            ),
+            'CODEEDITOR_WRAPLINES' => array(
+                'title' => LANG_CODEEDITOR_WRAPLINES,
+                'notes' => 'Включает перенос длинных строк без горизонтальной прокрутки.',
+                'type' => 'onoff',
+                'priority' => 5,
+            ),
+            'CODEEDITOR_THEME' => array(
+                'title' => LANG_CODEEDITOR_THEME,
+                'notes' => 'Тема оформления встроенного редактора кода.',
+                'type' => 'select',
+                'data' => 'codemirror=' . LANG_DEFAULT . '|smoke_theme=SmoKE xD Theme|ambiance=Ambiance|base16-light=base16-light|dracula=Dracula|icecoder=Icecoder|material=Material|moxer=Moxer|neat=Neat',
+                'default' => 'codemirror',
+                'priority' => 4,
+            ),
+            'CODEEDITOR_AUTOSAVE' => array(
+                'title' => LANG_CODEEDITOR_AUTOSAVE,
+                'notes' => 'Частота автоматического сохранения кода во время редактирования.',
+                'type' => 'select',
+                'data' => '0=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_ONLY_HANDS . '|5=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_5 . '|10=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_10 . '|15=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_15 . '|30=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_30 . '|60=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_60,
+                'priority' => 3,
+            ),
+        ),
     ),
-    'hook' => array(
-        'HOOK_BARCODE' => array(
-            'title' => 'Bar-code reading (code)',
+    'access' => array(
+        'title' => 'Удалённый доступ',
+        'description' => 'Параметры домашней сети и базовой авторизации при внешнем доступе.',
+        'settings' => array(
+            'REMOTE_HOME_NETWORK' => array(
+                'title' => 'Домашняя сеть',
+                'notes' => 'Маска локальной сети, например `192.168.0.*`, чтобы отделять домашний доступ от внешнего.',
+                'default' => '',
+                'priority' => 2,
+            ),
+            'REMOTE_EXT_ACCESS_USERNAME' => array(
+                'title' => 'Логин внешнего доступа',
+                'notes' => 'Имя пользователя для удалённого входа, если он включён.',
+                'default' => '',
+                'priority' => 1,
+            ),
+            'REMOTE_EXT_ACCESS_PASSWORD' => array(
+                'title' => 'Пароль внешнего доступа',
+                'notes' => 'Пароль для удалённого входа. Оставляйте сложный пароль.',
+                'type' => 'password',
+                'default' => '',
+                'priority' => 0,
+            ),
         ),
-        'HOOK_PLAYMEDIA' => array(
-            'title' => 'Playmedia (code)',
-        ),
-        'HOOK_BEFORE_PLAYSOUND' => array(
-            'title' => 'Before PlaySound (code)',
-        ),
-        'HOOK_AFTER_PLAYSOUND' => array(
-            'title' => 'After PlaySound (code)'
-        )
-    ),
-    'codeeditor' => array(
-        'CODEEDITOR_TURNONSETTINGS' => array(
-            'title' => LANG_CODEEDITOR_TURNONSETTINGS,
-            'type' => 'onoff'
-        ),
-        'CODEEDITOR_SHOWLINE' => array(
-            'title' => LANG_CODEEDITOR_SHOWLINE,
-            'type' => 'select',
-            'data' => '10=10|35=35|45=45|100=100|500=500|1000=1000|99999=' . LANG_CODEEDITOR_BYCODEHEIGHT
-        ),
-        'CODEEDITOR_MIXLINE' => array(
-            'title' => LANG_CODEEDITOR_MIXLINE,
-            'type' => 'select',
-            'data' => '5=5|10=10|25=25|40=40|1=' . LANG_CODEEDITOR_BYCODEHEIGHT
-        ),
-        'CODEEDITOR_UPTOLINE' => array(
-            'title' => LANG_CODEEDITOR_UPTOLINE,
-            'type' => 'onoff'
-        ),
-        'CODEEDITOR_SHOWERROR' => array(
-            'title' => LANG_CODEEDITOR_SHOWERROR,
-            'type' => 'onoff'
-        ),
-        'CODEEDITOR_AUTOCLOSEQUOTES' => array(
-            'title' => LANG_CODEEDITOR_AUTOCLOSEQUOTES,
-            'type' => 'onoff'
-        ),
-        'CODEEDITOR_WRAPLINES' => array(
-            'title' => LANG_CODEEDITOR_WRAPLINES,
-            'type' => 'onoff'
-        ),
-        'CODEEDITOR_THEME' => array(
-            'title' => LANG_CODEEDITOR_THEME,
-            'type' => 'select',
-            'data' => 'codemirror=' . LANG_DEFAULT . '|smoke_theme=SmoKE xD Theme|ambiance=Ambiance|base16-light=base16-light|dracula=Dracula|icecoder=Icecoder|material=Material|moxer=Moxer|neat=Neat',
-            'default' => 'codemirror'
-        ),
-        'CODEEDITOR_AUTOSAVE' => array(
-            'title' => LANG_CODEEDITOR_AUTOSAVE,
-            'type' => 'select',
-            'data' => '0=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_ONLY_HANDS . '|5=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_5 . '|10=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_10 . '|15=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_15 . '|30=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_30 . '|60=' . LANG_CODEEDITOR_AUTOSAVE_PARAMS_EVERY_60
-        )
-    ),
-    'backup' => array(
-        'BACKUP_PATH' => array(
-            'title' => 'Path to store backup',
-        )
     ),
     'mail' => array(
-        'MAIL_TYPE' => array(
-            'title' => 'Protocol',
-            'priority' => '10',
-            'type' => 'select',
-            'data' => 'smtp=SMTP|sendmail=SendMail',
+        'title' => 'Почта',
+        'description' => 'Настройки отправки почтовых уведомлений через SMTP или Sendmail.',
+        'settings' => array(
+            'MAIL_TYPE' => array(
+                'title' => 'Способ отправки',
+                'notes' => 'Выберите SMTP для внешнего почтового сервера или Sendmail для локальной отправки.',
+                'type' => 'select',
+                'data' => 'smtp=SMTP|sendmail=Sendmail',
+                'priority' => 10,
+            ),
+            'MAIL_HOST' => array(
+                'title' => 'SMTP-сервер',
+                'notes' => 'Адрес SMTP-сервера, через который отправляются письма.',
+                'priority' => 9,
+            ),
+            'MAIL_AUTH' => array(
+                'title' => 'Требовать авторизацию',
+                'notes' => 'Включите, если SMTP-сервер требует логин и пароль.',
+                'type' => 'onoff',
+                'default' => '0',
+                'priority' => 8,
+            ),
+            'MAIL_USER' => array(
+                'title' => 'SMTP-логин',
+                'notes' => 'Имя пользователя для входа на SMTP-сервер.',
+                'priority' => 7,
+            ),
+            'MAIL_PASSWORD' => array(
+                'title' => 'SMTP-пароль',
+                'notes' => 'Пароль для входа на SMTP-сервер.',
+                'type' => 'password',
+                'priority' => 6,
+            ),
+            'MAIL_PORT' => array(
+                'title' => 'SMTP-порт',
+                'notes' => 'Обычно это `25`, `465` или `587` в зависимости от сервера.',
+                'priority' => 5,
+            ),
+            'MAIL_SECURE' => array(
+                'title' => 'Защита соединения',
+                'notes' => 'Тип шифрования для соединения с SMTP-сервером.',
+                'type' => 'select',
+                'data' => '=Без шифрования|ssl=SSL|tls=TLS',
+                'priority' => 4,
+            ),
         ),
-        'MAIL_HOST' => array('title' => 'SMTP host', 'priority' => 9),
-        'MAIL_AUTH' => array('title' => 'Authorization required', 'type' => 'onoff', 'default' => 0, 'priority' => 8),
-        'MAIL_USER' => array('title' => 'SMTP username', 'priority' => 7),
-        'MAIL_PASSWORD' => array('title' => 'SMTP password', 'priority' => 6),
-        'MAIL_PORT' => array('title' => 'SMTP port', 'priority' => 5),
-        'MAIL_SECURE' => array('title' => 'SMTP security', 'type' => 'select', 'data' => '=None|ssl=SSL|tls=TLS', 'priority' => 4),
     ),
-    'remote' => array(
-        'REMOTE_HOME_NETWORK' => array(
-            'title' => LANG_GENERAL_HOME_NETWORK,
-            'notes' => 'e.g. 192.168.0.*',
-            'priority' => 10,
+    'backup' => array(
+        'title' => 'Резервные копии',
+        'description' => 'Папка для хранения резервных копий системы.',
+        'settings' => array(
+            'BACKUP_PATH' => array(
+                'title' => 'Папка для резервных копий',
+                'notes' => 'Если путь задан, резервные копии будут складываться в этот каталог.',
+                'type' => 'path',
+                'default' => '',
+                'priority' => 10,
+            ),
         ),
-        'REMOTE_EXT_ACCESS_USERNAME' => array(
-            'title' => LANG_USERNAME,
-            'priority' => 5,
-        ),
-        'REMOTE_EXT_ACCESS_PASSWORD' => array(
-            'title' => LANG_PASSWORD,
-            'priority' => 4,
-        )
-    )
+    ),
 );

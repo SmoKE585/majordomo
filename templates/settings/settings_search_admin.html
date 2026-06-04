@@ -1,155 +1,228 @@
 <!--#
- @version 0.2 (auto-set)
+ @version 0.3 (ux refresh)
 #-->
-[#if FILTER_SET="" && HIDE_FILTERS!="1"#]
-<ul class="nav nav-tabs">
-[#begin SECTIONS#]
-[#if FILTER!=""#][#endif#]
-<li [#if SELECTED="1"#]class="active"[#endif#]><a href="?filter_name=[#FILTER#]">[#TITLE#]</a></li>
-[#end SECTIONS#]
-</ul>
-<br/>&nbsp;
-[#endif FILTER_SET#]
 
-
-<!-- table settings search -->
-[#if UPDATED#]
-<div class="alert alert-success">
-<#LANG_SETTINGS_UPDATED#>
-</div>
-[#endif UPDATED#]
-<!-- results -->
-[#if RESULT#]
-
-<script language="javascript">
-$(function() {
-        $(".edit-notes").click(function() {
-                var id = $(this).data('id');
-                $('#notes_' + id).show();
-                $(this).remove();
-        });
-});
-</script>
-
-<!-- search results (list) -->
-<form action="?" method="post" name="frmList_settings" class="form-horizontal">
-[#begin RESULT#]
-[#if HR="1"#]
-<hr>
-[#endif#]
-<div class="form-group">
-        <label class="control-label">[#TITLE#]:
-                <#LANG_HCB#>[#HINT_NAME#]<#LANG_HCE#>
-        </label>
-        <div class="controls">
-                [#if TYPE="text"#]
-                [#if NAME=="SITE_TIMEZONE" || NAME=="SITE_LANGUAGE" || NAME=="THEME"#]
-                [#VALUE#]
-                <a href="<#ROOTHTML#>popup/first_start.html" target=_blank><#LANG_UPDATE#></a>
-                <input type="hidden" class="form-control" name="value_[#ID#]" value="[#VALUE#]">
-                [#else#]
-                <input type="text" class="form-control" name="value_[#ID#]" value="[#VALUE#]" size=50>
-                [#endif#]
-                [#endif TYPE#]
-
-                [#if TYPE="json"#]
-                <pre>[#VALUE#]</pre>
-                [#if OPTIONS#]
-                <table class="table">
-                        <thead>
-                        <tr>
-                                <th><#LANG_TITLE#></th>
-                                <th><#LANG_PRIORITY#></th>
-                                <th>Filter</th>
-                        </tr>
-                        </thead>
-                        [#begin OPTIONS#]
-                        <tr>
-                                <td>[#OPTION_TITLE#]</td>
-                                <td><input type="text" name="[#OPTION_TITLE#]_<#RESULT.ID#>_priority" value="[#PRIORITY#]"></td>
-                                <td><input type="text" name="[#OPTION_TITLE#]_<#RESULT.ID#>_filter" value="[#FILTER#]"></td>
-                        </tr>
-                        [#end OPTIONS#]
-                </table>
-                [#endif <OPTIONS></OPTIONS>#]
-                [#endif TYPE#]
-
-                [#if TYPE="path"#]
-                <input type="text"   class="form-control" name="value_[#ID#]" value="[#VALUE#]" id="value_[#ID#]" size=50 onclick="openFileBrowser('value_[#ID#]');">
-                [#endif TYPE#]
-
-
-                [#if TYPE="onoff"#]
-                <label class="radio"><input type="radio" name="value_[#ID#]" value="1"[#if VALUE="1"#] checked[#endif#]>On</label>
-                <label class="radio"><input type="radio" name="value_[#ID#]" value="0"[#if VALUE!="1"#] checked[#endif#]>Off</label>
-                [#endif TYPE#]
-
-                [#if TYPE="yesno"#]
-                <label class="radio"><input type="radio" name="value_[#ID#]" value="1"[#if VALUE="1"#] checked[#endif#]>Yes</label>
-                <label class="radio"><input type="radio" name="value_[#ID#]" value="0"[#if VALUE!="1"#] checked[#endif#]>No</label>
-                [#endif TYPE#]
-
-                [#if TYPE="select"#]
-                [#begin OPTIONS#]
-                <label class="radio"><input type="radio" name="value_<#RESULT.ID#>" value="[#OPTION_VALUE#]"[#if OPTION_VALUE="<#RESULT.VALUE#>"#] checked[#endif#]>[#OPTION_TITLE#]</label>
-                [#end OPTIONS#]
-                [#endif TYPE#]
-
-
-                [#if TYPE="enable"#]
-                <label class="radio"><input type="radio" name="value_[#ID#]" value="1"[#if VALUE="1"#] checked[#endif#]>Enable</label>
-                <label class="radio"><input type="radio" name="value_[#ID#]" value="0"[#if VALUE!="1"#] checked[#endif#]>Disable</label>
-                [#endif TYPE#]
-                <p class="help-block">
-                [#if TYPE=="text" || TYPE=="path"#]
-                [#if DEFAULTVALUE!=""#]
-                <#LANG_DEFAULT_VALUE#>: [#DEFAULTVALUE#]
-                [#endif#]
-                [#endif TYPE#]
-                [#if TYPE="onoff"#]
-                <#LANG_DEFAULT_VALUE#>: [#if DEFAULTVALUE="1"#]On[#else#]Off[#endif#]
-                [#endif TYPE#]
-                [#if TYPE="yesno"#]
-                [#if DEFAULTVALUE!=""#]
-                <#LANG_DEFAULT_VALUE#>: [#if DEFAULTVALUE="1"#]Yes[#else#]No[#endif#]
-                [#endif#]
-                [#endif TYPE#]
-                [#if TYPE="enable"#]
-                [#if DEFAULTVALUE!=""#]
-                <#LANG_DEFAULT_VALUE#>: [#if DEFAULTVALUE="1"#]Enable[#else#]Disable[#endif#]
-                [#endif#]
-                [#endif TYPE#]
+<div class="md-settings-page">
+    <section class="md-settings-hero">
+        <div class="md-settings-hero__body">
+            <div>
+                <div class="md-settings-hero__eyebrow">Настройки MajorDoMo</div>
+                <h1 class="md-settings-hero__title"><#LANG_MODULE_SETTINGS#></h1>
+                <p class="md-settings-hero__lead">
+                    Все параметры собраны по понятным разделам, без служебного шума. Для каждой настройки есть короткая подсказка, а лишние и устаревшие пункты убраны из рабочего интерфейса.
                 </p>
-                [#if URL_TITLE!=""#]<p class="help-block"><a href="[#URL#]" target=_blank>[#URL_TITLE#]</a></p>[#endif#]
-                [#if NOTES!=""#]
-                <p class="help-block edit-notes" data-id="[#ID#]"><acronym title="Click to edit">[#NOTES#]</acronym></p>
-                <div id="notes_[#ID#]" style="display:none;" >
-                <p><i>Edit configuration help tip</i></p>
-                <textarea name="notes_[#ID#]" cols=45 rows=3 id="edit_notes_area_[#ID#]">[#NOTES#]</textarea>
+            </div>
+            <div class="md-settings-hero__stats">
+                <div class="md-settings-stat">
+                    <span class="md-settings-stat__label">Раздел</span>
+                    <span class="md-settings-stat__value">[#ACTIVE_SECTION_TITLE#]</span>
                 </div>
-                [#endif#]
-                
+                <div class="md-settings-stat">
+                    <span class="md-settings-stat__label">Настроек</span>
+                    <span class="md-settings-stat__value">[#ACTIVE_SECTION_COUNT#]</span>
+                </div>
+                <div class="md-settings-stat">
+                    <span class="md-settings-stat__label">Секций</span>
+                    <span class="md-settings-stat__value">[#SECTION_COUNT#]</span>
+                </div>
+                <div class="md-settings-stat">
+                    <span class="md-settings-stat__label">Режим</span>
+                    <span class="md-settings-stat__value">Контрольная панель</span>
+                </div>
+            </div>
         </div>
-</div>
-  <!--#
-  <br>&lt;#SETTINGS_[#NAME#]#&gt;
-  #-->
-  
-[#end RESULT#]
+    </section>
 
-<div class="form-actions">
-        <button class="btn btn-default btn-primary" type="submit" name="submit"><i class="icon-ok"></i> <#LANG_SUBMIT#></button>
-        [#if ACTION!=""#]
-        <a class="btn btn-default" href="?mode=reset&filter_name=<#FILTER_NAME#>" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><#LANG_RESET_TO_DEFAULT#></a>
-        [#endif ACTION#]
-        <input type="hidden" name="mode" value="update">
-        <input type="hidden" name="filter_name" value="<#FILTER_NAME#>">
+    <section class="md-settings-tabs-card">
+        <div class="md-settings-tabs-card__body">
+            <nav class="md-settings-tabs" aria-label="Разделы настроек">
+                [#begin SECTIONS#]
+                <a href="?filter_name=[#FILTER#]" class="md-settings-tab [#if SELECTED="1"#]is-active[#endif#]">[#TITLE#]</a>
+                [#end SECTIONS#]
+            </nav>
+        </div>
+    </section>
+
+    [#if UPDATED#]
+    <div class="md-admin-inline-note md-admin-inline-note--success">
+        <i class="glyphicon glyphicon-ok"></i>
+        <span>Изменения сохранены.</span>
+    </div>
+    [#endif UPDATED#]
+
+    <section class="md-settings-form-card">
+        <div class="md-settings-form-card__body">
+            <div class="md-settings-toolbar">
+                <div class="md-settings-toolbar__meta">
+                    <h2 class="md-settings-toolbar__title">[#ACTIVE_SECTION_TITLE#]</h2>
+                    <p class="md-settings-toolbar__description">[#ACTIVE_SECTION_DESCRIPTION#]</p>
+                </div>
+                <div class="md-settings-toolbar__actions">
+                    <input type="search" class="form-control md-settings-search" placeholder="Быстрый поиск по текущему разделу" data-settings-search-input>
+                    <a class="btn btn-light" href="?mode=reset&filter_name=<#FILTER_NAME#>" onClick="return confirm('Вернуть значения по умолчанию для этого раздела?')">Сбросить раздел</a>
+                </div>
+            </div>
+
+            [#if RESULT#]
+            <form action="?" method="post" name="frmList_settings">
+                <div class="md-settings-grid">
+                    [#begin RESULT#]
+                    <article class="md-settings-card [#if IS_WIDE="1"#]is-wide[#endif#]" data-settings-card data-settings-search="[#SEARCH_TEXT#]">
+                        <div class="md-settings-card__header">
+                            <h3 class="md-settings-card__title">
+                                <span>[#TITLE#]</span>
+                                [#if NOTES!=""#]
+                                <button type="button" class="md-settings-help" data-bs-toggle="tooltip" data-bs-placement="top" title="[#NOTES_SAFE#]" aria-label="Подсказка">
+                                    <i class="glyphicon glyphicon-question-sign"></i>
+                                </button>
+                                [#endif#]
+                            </h3>
+                        </div>
+
+                        [#if NOTES!=""#]
+                        <p class="md-settings-card__note">[#NOTES#]</p>
+                        [#endif#]
+
+                        <div class="md-settings-control">
+                            [#if TYPE="text"#]
+                            <input type="text" class="form-control" name="value_[#ID#]" value="[#VALUE#]">
+                            [#endif TYPE#]
+
+                            [#if TYPE="password"#]
+                            <div class="md-settings-secret">
+                                <input type="password" class="form-control" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]">
+                                <button type="button" class="btn btn-light" data-settings-toggle-secret="value_[#ID#]">Показать</button>
+                            </div>
+                            [#endif TYPE#]
+
+                            [#if TYPE="textarea"#]
+                            <textarea class="form-control" name="value_[#ID#]" rows="[#ROWS#]">[#VALUE#]</textarea>
+                            [#endif TYPE#]
+
+                            [#if TYPE="path"#]
+                            <div class="md-settings-path">
+                                <input type="text" class="form-control" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]">
+                                <button type="button" class="btn btn-light" data-settings-browse="value_[#ID#]">Выбрать</button>
+                            </div>
+                            [#endif TYPE#]
+
+                            [#if TYPE="onoff"#]
+                            <div class="md-settings-choice-group">
+                                <label class="md-settings-choice">
+                                    <input type="radio" name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
+                                    <span>Включено</span>
+                                </label>
+                                <label class="md-settings-choice">
+                                    <input type="radio" name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
+                                    <span>Выключено</span>
+                                </label>
+                            </div>
+                            [#endif TYPE#]
+
+                            [#if TYPE="yesno"#]
+                            <div class="md-settings-choice-group">
+                                <label class="md-settings-choice">
+                                    <input type="radio" name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
+                                    <span>Да</span>
+                                </label>
+                                <label class="md-settings-choice">
+                                    <input type="radio" name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
+                                    <span>Нет</span>
+                                </label>
+                            </div>
+                            [#endif TYPE#]
+
+                            [#if TYPE="enable"#]
+                            <div class="md-settings-choice-group">
+                                <label class="md-settings-choice">
+                                    <input type="radio" name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
+                                    <span>Включено</span>
+                                </label>
+                                <label class="md-settings-choice">
+                                    <input type="radio" name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
+                                    <span>Выключено</span>
+                                </label>
+                            </div>
+                            [#endif TYPE#]
+
+                            [#if TYPE="select"#][#if IS_SELECT_DROPDOWN="1"#]
+                            <select class="form-control form-select" name="value_[#ID#]">
+                                [#begin OPTIONS#]
+                                <option value="[#OPTION_VALUE#]"[#if OPTION_VALUE="<#RESULT.VALUE_RAW#>"#] selected[#endif#]>[#OPTION_TITLE#]</option>
+                                [#end OPTIONS#]
+                            </select>
+                            [#endif#][#endif TYPE#]
+
+                            [#if TYPE="select"#][#if IS_SELECT_CHOICES="1"#]
+                            <div class="md-settings-choice-group">
+                                [#begin OPTIONS#]
+                                <label class="md-settings-choice">
+                                    <input type="radio" name="value_<#RESULT.ID#>" value="[#OPTION_VALUE#]"[#if OPTION_VALUE="<#RESULT.VALUE_RAW#>"#] checked[#endif#]>
+                                    <span>[#OPTION_TITLE#]</span>
+                                </label>
+                                [#end OPTIONS#]
+                            </div>
+                            [#endif#][#endif TYPE#]
+
+                            [#if TYPE="json"#]
+                            [#if OPTIONS#]
+                            <table class="md-settings-json-table">
+                                <thead>
+                                <tr>
+                                    <th>Получатель</th>
+                                    <th>Приоритет</th>
+                                    <th>Фильтр</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                [#begin OPTIONS#]
+                                <tr>
+                                    <td>[#OPTION_TITLE#]</td>
+                                    <td><input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_priority" value="[#PRIORITY#]"></td>
+                                    <td><input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_filter" value="[#FILTER#]"></td>
+                                </tr>
+                                [#end OPTIONS#]
+                                </tbody>
+                            </table>
+                            [#else#]
+                            <div class="md-admin-empty-state">Для этой настройки пока нет маршрутов.</div>
+                            [#endif#]
+                            [#endif TYPE#]
+                        </div>
+
+                        [#if DEFAULT_DISPLAY!=""#]
+                        <div class="md-settings-card__footer">
+                            <span class="md-settings-badge">По умолчанию: [#DEFAULT_DISPLAY#]</span>
+                            [#if ISDEFAULT="1"#]<span>Используется значение по умолчанию</span>[#endif#]
+                        </div>
+                        [#endif#]
+                    </article>
+                    [#end RESULT#]
+                </div>
+
+                <div class="md-settings-empty" data-settings-empty>
+                    По текущему запросу настройки не найдены.
+                </div>
+
+                <div class="md-settings-actions">
+                    <div class="md-settings-actions__primary">
+                        <button class="btn btn-primary" type="submit" name="submit">
+                            <i class="glyphicon glyphicon-floppy-saved"></i> Сохранить изменения
+                        </button>
+                    </div>
+                    <div class="md-settings-actions__secondary">
+                        <a class="btn btn-light" href="?filter_name=<#FILTER_NAME#>">Отменить локальный поиск</a>
+                    </div>
+                </div>
+
+                <input type="hidden" name="mode" value="update">
+                <input type="hidden" name="filter_name" value="<#FILTER_NAME#>">
+            </form>
+            [#else RESULT#]
+            <div class="md-admin-empty-state">
+                <#LANG_NO_RECORDS_FOUND#>
+            </div>
+            [#endif RESULT#]
+        </div>
+    </section>
 </div>
-</form>
-<!-- / search results (list) -->
-[#else RESULT#]
-<div class="alert alert-error">
-<#LANG_NO_RECORDS_FOUND#>
-</div>
-[#endif RESULT#]
-<!-- / results -->
