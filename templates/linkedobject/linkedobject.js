@@ -292,7 +292,13 @@
             return;
         }
 
+        if ((state.objectInput.value || '') === (value || '') && state.lastLoadedObjectValue === (value || '')) {
+            syncObjectMeta(state);
+            return;
+        }
+
         state.objectInput.value = value || '';
+        state.lastLoadedObjectValue = value || '';
         state.deviceId = '';
         if (!value && state.propertyInput) {
             state.propertyInput.value = '';
@@ -341,9 +347,6 @@
         }
 
         return new window.TomSelect(select, {
-            valueField: 'value',
-            labelField: 'text',
-            searchField: ['text', 'value'],
             maxItems: 1,
             allowEmptyOption: true,
             closeAfterSelect: true,
@@ -354,6 +357,7 @@
 
     function initObjectTomSelect(state) {
         state.objectTomSelect = initLinkedTomSelect(state.objectSelect, {
+            searchField: ['text', 'value'],
             placeholder: state.objectField.getAttribute('data-md-linkedobject-placeholder') || 'Выберите объект',
             render: {
                 option: renderTomOption
@@ -370,6 +374,7 @@
         }
 
         state.propertyTomSelect = initLinkedTomSelect(state.propertySelect, {
+            searchField: ['text', 'value'],
             placeholder: state.propertyField.getAttribute('data-md-linkedobject-label') || 'Свойство',
             render: {
                 option: renderSimpleTomOption
@@ -389,6 +394,7 @@
         }
 
         state.methodTomSelect = initLinkedTomSelect(state.methodSelect, {
+            searchField: ['text', 'value'],
             placeholder: state.methodField.getAttribute('data-md-linkedobject-label') || 'Метод',
             render: {
                 option: renderSimpleTomOption
@@ -486,13 +492,17 @@
         initPropertyTomSelect(state);
         initMethodTomSelect(state);
 
+        if (state.objectSelect && state.objectSelect.dataset.mdBound !== '1') {
+            state.objectSelect.dataset.mdBound = '1';
+            state.objectSelect.addEventListener('change', function () {
+                handleObjectChange(state, state.objectSelect.value || '');
+            });
+        }
+
         if (state.objectTomSelect) {
             state.objectTomSelect.setValue(state.objectInput.value || '', true);
         } else if (state.objectSelect) {
             state.objectSelect.value = state.objectInput.value || '';
-            state.objectSelect.addEventListener('change', function () {
-                handleObjectChange(state, state.objectSelect.value || '');
-            });
         }
 
         if (state.clearObjectAction && state.clearObjectAction.dataset.mdBound !== '1') {
