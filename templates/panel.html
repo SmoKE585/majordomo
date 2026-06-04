@@ -85,12 +85,11 @@
 				     data-code-editor-md="admin_console"
 				     data-code-editor-hide-errors-on-edit="1">
 					<div class="md-code-editor__toolbar" data-code-editor-toolbar>
-						<label class="md-code-editor__mode-switch">
-							<span>Режим</span>
-							<select class="form-control form-control-sm" name="code_editor_mode" data-code-editor-mode-select>
-								<option value="php" selected>PHP</option>
-								<option value="python">Python</option>
-							</select>
+						<label class="md-code-editor__mode-switch" data-mode="php">
+							<input type="checkbox" data-code-editor-mode-toggle aria-label="Режим редактора">
+							<span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--php">PHP</span>
+							<span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--python">Python</span>
+							<input type="hidden" name="code_editor_mode" value="php" data-code-editor-mode-select>
 						</label>
 						<button type="submit" class="btn btn-success btn-sm" data-code-editor-action="save">Выполнить</button>
 						<button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>

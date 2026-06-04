@@ -29,7 +29,7 @@
 .md-code-editor {
   position: relative;
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
   padding: 0;
   color: var(--md-codeeditor-text);
 }
@@ -46,51 +46,110 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.85rem 0.95rem;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
   border: 1px solid var(--md-codeeditor-border);
-  border-radius: 18px;
+  border-radius: 14px;
   background: linear-gradient(180deg, var(--md-codeeditor-surface), var(--md-codeeditor-surface-2));
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
 }
 
 .md-code-editor__toolbar .btn {
   border-radius: 999px;
+  min-height: 2rem;
+  padding: 0.3rem 0.72rem;
+  font-size: 0.8125rem;
+  line-height: 1.1;
 }
 
 .md-code-editor__mode-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+  --md-codeeditor-mode-track: linear-gradient(135deg, rgba(71, 146, 209, 0.14), rgba(56, 189, 248, 0.18));
+  --md-codeeditor-mode-thumb: linear-gradient(135deg, #4792d1, #38bdf8);
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
   margin-right: 0.5rem;
-  padding: 0.2rem 0.65rem;
+  padding: 0.2rem;
   border: 1px solid var(--md-codeeditor-border);
   border-radius: 999px;
-  background: var(--md-codeeditor-surface);
+  background: var(--md-codeeditor-mode-track);
   color: var(--md-codeeditor-muted);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  isolation: isolate;
+  overflow: hidden;
 }
 
-.md-code-editor__mode-switch span {
+.md-code-editor__mode-switch::before {
+  content: "";
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: calc(50% - 0.2rem);
+  height: calc(100% - 0.4rem);
+  border-radius: 999px;
+  background: var(--md-codeeditor-mode-thumb);
+  box-shadow: 0 8px 18px rgba(56, 189, 248, 0.28);
+  transition: transform 160ms ease-out, background 160ms ease-out, box-shadow 160ms ease-out;
+  z-index: 0;
+}
+
+.md-code-editor__mode-switch[data-mode="python"] {
+  --md-codeeditor-mode-track: linear-gradient(135deg, rgba(250, 204, 21, 0.18), rgba(245, 158, 11, 0.2));
+  --md-codeeditor-mode-thumb: linear-gradient(135deg, #f59e0b, #facc15);
+}
+
+.md-code-editor__mode-switch[data-mode="python"]::before {
+  transform: translateX(100%);
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.28);
+}
+
+.md-code-editor__mode-switch input[type="checkbox"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.md-code-editor__mode-switch-option {
+  position: relative;
+  z-index: 1;
+  min-width: 3.75rem;
+  padding: 0.32rem 0.8rem;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   white-space: nowrap;
+  transition: color 160ms ease-out;
 }
 
-.md-code-editor__mode-switch .form-control {
-  width: auto;
-  min-width: 6.5rem;
-  height: 1.9rem;
-  padding-top: 0.2rem;
-  padding-bottom: 0.2rem;
-  font-size: 0.85rem;
+.md-code-editor__mode-switch[data-mode="php"] .md-code-editor__mode-switch-option--php,
+.md-code-editor__mode-switch[data-mode="python"] .md-code-editor__mode-switch-option--python {
+  color: #ffffff;
+}
+
+.md-code-editor__mode-switch input[type="checkbox"]:focus-visible + .md-code-editor__mode-switch-option {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.38);
+  border-radius: 999px;
 }
 
 .md-code-editor__toolbar [data-code-editor-action] {
-  min-width: 2.5rem;
+  min-width: 2.2rem;
+}
+
+.md-code-editor__action-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.md-code-editor__action-content .bi {
+  font-size: 0.9rem;
 }
 
 .md-code-editor__status {
   margin-left: auto;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--md-codeeditor-muted);
   line-height: 1.2;
 }
@@ -109,12 +168,12 @@
 
 .md-code-editor .CodeMirror {
   height: auto;
-  min-height: 18rem;
+  min-height: 0;
   border: 1px solid var(--md-codeeditor-border);
-  border-radius: 18px;
+  border-radius: 14px;
   background: var(--md-codeeditor-surface);
   color: var(--md-codeeditor-text);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.1);
 }
 
 .md-code-editor .CodeMirror-gutters {
@@ -296,6 +355,12 @@
 @media (max-width: 767px) {
   .md-code-editor__toolbar {
     border-radius: 14px;
+  }
+
+  .md-code-editor__status {
+    margin-left: 0;
+    width: 100%;
+    order: 99;
   }
 
   .md-code-editor .CodeMirror {

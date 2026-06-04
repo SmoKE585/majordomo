@@ -131,11 +131,30 @@
     }
 
     function getCurrentMode(wrapper) {
+        var toggle = wrapper.querySelector('[data-code-editor-mode-toggle]');
+        if (toggle) {
+            return toggle.checked ? 'python' : 'php';
+        }
         var select = wrapper.querySelector('[data-code-editor-mode-select]');
         if (select && select.value) {
             return normalizeMode(select.value);
         }
         return normalizeMode(wrapper.dataset.codeEditorMode || 'php');
+    }
+
+    function syncModeControls(wrapper, mode) {
+        var toggle = wrapper.querySelector('[data-code-editor-mode-toggle]');
+        if (toggle) {
+            toggle.checked = mode === 'python';
+        }
+        var select = wrapper.querySelector('[data-code-editor-mode-select]');
+        if (select && select.value !== mode) {
+            select.value = mode;
+        }
+        var switcher = wrapper.querySelector('.md-code-editor__mode-switch');
+        if (switcher) {
+            switcher.setAttribute('data-mode', mode);
+        }
     }
 
     function setEditorMode(wrapper, editor, mode, persist) {
@@ -147,10 +166,7 @@
         if (persist !== false) {
             storeMode(wrapper, mode);
         }
-        var select = wrapper.querySelector('[data-code-editor-mode-select]');
-        if (select && select.value !== mode) {
-            select.value = mode;
-        }
+        syncModeControls(wrapper, mode);
         return ensureCodeMirror(mode, wrapper.dataset.codeEditorTheme || 'codemirror').then(function () {
             editor.setOption('mode', editorModeConfig(mode));
             editor.setOption('autoCloseTags', mode === 'htmlmixed');
@@ -294,12 +310,56 @@
         updateSize(wrapper, editor);
     }
 
+    function saveSnapshot(wrapper, editor) {
+        var url = wrapper.dataset.codeEditorAutosaveUrl || '';
+        var key = wrapper.dataset.codeEditorKey || '';
+        if (!url || !key) {
+            return Promise.resolve();
+        }
+
+        var params = buildQuery({
+            action: 'save',
+            key: key,
+            id: wrapper.dataset.codeEditorId || '',
+            md: wrapper.dataset.codeEditorMd || '',
+            code: editor.getValue()
+        });
+
+        return postJSON(url, params).then(function (res) {
+            if (!res || res.status !== 'ok') {
+                return res;
+            }
+            updateStatus(wrapper, (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + ' ' + (res.msg || ''), 'ok');
+            return res;
+        }).catch(function () {
+            updateStatus(wrapper, wrapper.dataset.codeEditorAutosaveFailedLabel || 'Не удалось сохранить версию', 'error');
+        });
+    }
+
+    function submitEditorForm(wrapper, editor) {
+        editor.save();
+        saveSnapshot(wrapper, editor).finally(function () {
+            var form = textareaForm(wrapper);
+            if (form) {
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+            }
+        });
+    }
+
     function updateSize(wrapper, editor) {
         var minLines = parseInt(wrapper.dataset.codeEditorMinLines || '0', 10) || 0;
         var maxLines = parseInt(wrapper.dataset.codeEditorMaxLines || '0', 10) || 0;
-        var lineHeight = parseInt(wrapper.dataset.codeEditorLineHeight || '20', 10) || 20;
+        var lineHeight = editor && typeof editor.defaultTextHeight === 'function'
+            ? editor.defaultTextHeight()
+            : (parseInt(wrapper.dataset.codeEditorLineHeight || '20', 10) || 20);
         var totalLines = editor.lineCount();
         var height = '';
+        var editorWrapper = editor.getWrapperElement();
+        var scroller = editor.getScrollerElement();
 
         if (wrapper.classList.contains('is-fullscreen')) {
             editor.setSize('100%', '100%');
@@ -314,8 +374,9 @@
             height = 'auto';
         }
 
-        editor.getWrapperElement().style.height = height;
-        editor.getScrollerElement().style.height = height;
+        editorWrapper.style.height = height;
+        scroller.style.height = height;
+        scroller.style.minHeight = minLines > 0 ? (minLines * lineHeight) + 'px' : '0';
     }
 
     function updateStatus(wrapper, message, type) {
@@ -348,7 +409,7 @@
         wrapper._codeEditorErrorLine = lineIndex;
         editor.addLineClass(lineIndex, 'background', 'md-code-editor-line-error');
         editor.scrollIntoView({line: lineIndex, ch: 0}, 120);
-        updateStatus(wrapper, (wrapper.dataset.codeEditorErrorLabel || 'Line') + ' ' + line + ': ' + (message || ''), 'error');
+        updateStatus(wrapper, (wrapper.dataset.codeEditorErrorLabel || 'Строка') + ' ' + line + ': ' + (message || ''), 'error');
     }
 
     function getDrawerContent(wrapper) {
@@ -377,7 +438,7 @@
         }
         window.MDJAdminUI.openDrawer({
             owner: wrapper._codeEditorDrawerOwner,
-            title: drawerContent.getAttribute('data-md-drawer-title') || wrapper.dataset.codeEditorDrawerTitle || 'History',
+            title: drawerContent.getAttribute('data-md-drawer-title') || wrapper.dataset.codeEditorDrawerTitle || 'История',
             subtitle: drawerContent.getAttribute('data-md-drawer-subtitle') || wrapper.dataset.codeEditorDrawerSubtitle || '',
             width: '672px',
             body: drawerContent,
@@ -405,7 +466,7 @@
         if (!items || !items.length) {
             var empty = document.createElement('div');
             empty.className = 'md-code-editor__empty';
-            empty.textContent = wrapper.dataset.codeEditorAutosaveEmpty || 'No backups yet';
+            empty.textContent = wrapper.dataset.codeEditorAutosaveEmpty || 'Сохранённых версий пока нет';
             list.appendChild(empty);
             return;
         }
@@ -429,7 +490,7 @@
             var preview = document.createElement('button');
             preview.type = 'button';
             preview.className = 'btn btn-outline-secondary btn-sm';
-            preview.textContent = wrapper.dataset.codeEditorPreviewLabel || 'Preview';
+            preview.textContent = wrapper.dataset.codeEditorPreviewLabel || 'Показать';
             preview.addEventListener('click', function () {
                 var codeBox = queryDrawerNode(wrapper, '[data-code-editor-preview]');
                 if (!codeBox) {
@@ -442,14 +503,14 @@
             var restore = document.createElement('button');
             restore.type = 'button';
             restore.className = 'btn btn-primary btn-sm';
-            restore.textContent = wrapper.dataset.codeEditorRestoreLabel || 'Restore';
+            restore.textContent = wrapper.dataset.codeEditorRestoreLabel || 'Восстановить';
             restore.addEventListener('click', function () {
-                if (!window.confirm(wrapper.dataset.codeEditorConfirm || 'Restore this version?')) {
+                if (!window.confirm(wrapper.dataset.codeEditorConfirm || 'Восстановить эту версию?')) {
                     return;
                 }
                 restoreFromCode(wrapper, editor, item.code || '');
                 closeDrawer(wrapper);
-                updateStatus(wrapper, wrapper.dataset.codeEditorRestoredLabel || 'Version restored', 'ok');
+                updateStatus(wrapper, wrapper.dataset.codeEditorRestoredLabel || 'Версия восстановлена', 'ok');
             });
 
             actions.appendChild(preview);
@@ -476,7 +537,7 @@
             renderRestoreItems(wrapper, editor, res.msg || []);
         }).catch(function () {
             renderRestoreItems(wrapper, editor, []);
-            updateStatus(wrapper, wrapper.dataset.codeEditorRestoreFailedLabel || 'Could not load backups', 'error');
+            updateStatus(wrapper, wrapper.dataset.codeEditorRestoreFailedLabel || 'Не удалось загрузить версии', 'error');
         });
     }
 
@@ -498,6 +559,18 @@
             });
         }
 
+        var modeToggle = toolbar.querySelector('[data-code-editor-mode-toggle]');
+        if (modeToggle && !modeToggle.dataset.codeEditorBound) {
+            modeToggle.dataset.codeEditorBound = '1';
+            modeToggle.addEventListener('change', function () {
+                setEditorMode(wrapper, editor, modeToggle.checked ? 'python' : 'php', true).catch(function (error) {
+                    if (window.console && window.console.warn) {
+                        window.console.warn(error);
+                    }
+                });
+            });
+        }
+
         toolbar.addEventListener('click', function (event) {
             var button = event.target.closest('[data-code-editor-action]');
             if (!button || !toolbar.contains(button)) {
@@ -507,15 +580,7 @@
             event.preventDefault();
 
             if (action === 'save') {
-                editor.save();
-                var form = textareaForm(wrapper);
-                if (form) {
-                    if (typeof form.requestSubmit === 'function') {
-                        form.requestSubmit();
-                    } else {
-                        form.submit();
-                    }
-                }
+                submitEditorForm(wrapper, editor);
                 return;
             }
 
@@ -588,12 +653,12 @@
             }
 
             if (action === 'restore') {
-                if (!window.confirm(wrapper.dataset.codeEditorConfirm || 'Restore this version?')) {
+                if (!window.confirm(wrapper.dataset.codeEditorConfirm || 'Восстановить эту версию?')) {
                     return;
                 }
                 restoreFromCode(wrapper, editor, code);
                 closeDrawer(wrapper);
-                updateStatus(wrapper, wrapper.dataset.codeEditorRestoredLabel || 'Version restored', 'ok');
+                updateStatus(wrapper, wrapper.dataset.codeEditorRestoredLabel || 'Версия восстановлена', 'ok');
             }
         }
 
@@ -704,9 +769,9 @@
                 if (!res || res.status !== 'ok') {
                     return;
                 }
-                updateStatus(wrapper, (wrapper.dataset.codeEditorSavedLabel || 'Saved') + ' ' + (res.msg || ''), 'ok');
+                updateStatus(wrapper, (wrapper.dataset.codeEditorSavedLabel || 'Сохранено') + ' ' + (res.msg || ''), 'ok');
             }).catch(function () {
-                updateStatus(wrapper, wrapper.dataset.codeEditorAutosaveFailedLabel || 'Autosave failed', 'error');
+                updateStatus(wrapper, wrapper.dataset.codeEditorAutosaveFailedLabel || 'Автосохранение не удалось', 'error');
             });
         }, interval * 1000);
     }
@@ -722,26 +787,10 @@
                 }
             },
             'Ctrl-S': function () {
-                editor.save();
-                var form = textareaForm(wrapper);
-                if (form) {
-                    if (typeof form.requestSubmit === 'function') {
-                        form.requestSubmit();
-                    } else {
-                        form.submit();
-                    }
-                }
+                submitEditorForm(wrapper, editor);
             },
             'Cmd-S': function () {
-                editor.save();
-                var form = textareaForm(wrapper);
-                if (form) {
-                    if (typeof form.requestSubmit === 'function') {
-                        form.requestSubmit();
-                    } else {
-                        form.submit();
-                    }
-                }
+                submitEditorForm(wrapper, editor);
             },
             'Ctrl-F': 'findPersistent',
             'Cmd-F': 'findPersistent',
@@ -806,6 +855,7 @@
         wrapper.dataset.codeEditorReady = '1';
         wrapper.dataset.codeEditorMode = mode;
         storeMode(wrapper, mode);
+        syncModeControls(wrapper, mode);
         bindDrawer(wrapper);
 
         ensureCodeMirror(mode, theme).then(function () {

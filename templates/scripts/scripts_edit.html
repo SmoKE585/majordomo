@@ -83,14 +83,13 @@
           data-code-editor-md="[#SYSTEM_NAME#]"
           data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
       <div class="md-code-editor__toolbar" data-code-editor-toolbar>
-       <label class="md-code-editor__mode-switch">
-        <span>Mode</span>
-        <select class="form-control form-control-sm" name="code_editor_mode" data-code-editor-mode-select>
-         <option value="php"[#if CODE_EDITOR_MODE="php"#] selected[#endif#]>PHP</option>
-         <option value="python"[#if CODE_EDITOR_MODE="python"#] selected[#endif#]>Python</option>
-        </select>
+       <label class="md-code-editor__mode-switch" data-mode="[#if CODE_EDITOR_MODE="python"#]python[#else#]php[#endif#]">
+        <input type="checkbox" data-code-editor-mode-toggle [#if CODE_EDITOR_MODE="python"#]checked[#endif#] aria-label="Code editor mode">
+        <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--php">PHP</span>
+        <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--python">Python</span>
+        <input type="hidden" name="code_editor_mode" value="[#if CODE_EDITOR_MODE="python"#]python[#else#]php[#endif#]" data-code-editor-mode-select>
        </label>
-       <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><#LANG_SAVE#></button>
+       <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><span class="md-code-editor__action-content"><i class="bi bi-floppy" aria-hidden="true"></i><span><#LANG_SAVE#></span></span></button>
        [#if CODE_EDITOR_VALIDATE="1"#]
         <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
        [#endif CODE_EDITOR_VALIDATE#]
@@ -111,11 +110,11 @@
 
       <textarea name="code" id="code" rows="30" cols="100" class="form-control">[#CODE#]</textarea>
 
-      <div class="md-code-editor__drawer-content" data-code-editor-drawer-content hidden data-md-drawer-title="<#LANG_HISTORY#>" data-md-drawer-subtitle="Autosave backups and saved versions">
+      <div class="md-code-editor__drawer-content" data-code-editor-drawer-content hidden data-md-drawer-title="<#LANG_HISTORY#>" data-md-drawer-subtitle="Автосохранённые версии и снимки кода">
        <div class="md-code-editor__drawer-body">
         <div class="md-code-editor__section">
          <h4><#LANG_HISTORY#></h4>
-         <p>Saved versions are stored automatically when the code changes.</p>
+         <p>Версии сохраняются автоматически после паузы в редактировании и перед ручным сохранением.</p>
          <div class="md-code-editor__version-list">
           [#if HISTORY_AVAILABLE#]
            [#begin CODE_HISTORY#]
@@ -131,7 +130,7 @@
             </article>
            [#end CODE_HISTORY#]
           [#else#]
-           <div class="md-code-editor__empty">No saved versions yet.</div>
+           <div class="md-code-editor__empty">Сохранённых версий пока нет.</div>
           [#endif HISTORY_AVAILABLE#]
          </div>
         </div>
@@ -140,7 +139,7 @@
          <h4><#LANG_CODEEDITOR_AUTOSAVE#></h4>
          <p><#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></p>
          <div class="md-code-editor__restore-list" data-code-editor-autosave-list>
-          <div class="md-code-editor__empty">No autosave backups loaded yet.</div>
+          <div class="md-code-editor__empty">Версии ещё не загружены.</div>
          </div>
          <pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
         </div>
