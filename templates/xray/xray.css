@@ -248,10 +248,13 @@
 
 .xray-table-wrap {
 	margin-bottom: 0;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
 }
 
 .xray-table {
 	margin-bottom: 0;
+	min-width: 760px;
 }
 
 .xray-table > thead > tr > th {
@@ -283,6 +286,20 @@
 	gap: 6px;
 	flex-wrap: wrap;
 	justify-content: flex-end;
+	white-space: nowrap;
+}
+
+.xray-table .btn,
+.xray-table a.btn {
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.xray-table td.text-right,
+.xray-table th.text-right,
+.xray-table td:last-child,
+.xray-table th:last-child {
+	white-space: nowrap;
 }
 
 .xray-data-grid {

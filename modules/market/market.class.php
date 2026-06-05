@@ -226,6 +226,7 @@ class market extends module
             $out['LINK_URL'] = urlencode($link);
             $out['INSTALL_URL'] = urlencode(gr('url'));
             $out['VERSION_URL'] = urlencode(gr('version'));
+            $out['REPO_URL'] = urlencode(gr('repo_url'));
 
             global $names;
 
@@ -413,6 +414,7 @@ class market extends module
         } else {
             $this->can_be_updated = array();
             $this->can_be_updated_new = array();
+            $plugin_names_seen = array();
             $total = count($data->PLUGINS);
             for ($i = 0; $i < $total; $i++) {
                 $rec = (array)$data->PLUGINS[$i];
@@ -428,33 +430,14 @@ class market extends module
                     }
                 }
 
-                if (!isset($rec['LATEST_VERSION_URL'])) {
-                    if (preg_match('/github\.com/is', $rec['REPOSITORY_URL']) && (isset($rec['EXISTS']) || $rec['MODULE_NAME'] == $name)) {
-                        $git_url = str_replace('archive/master.tar.gz', 'commits/master.atom', $rec['REPOSITORY_URL']);
-                        $options = array(
-                            CURLOPT_HTTPHEADER => array('Accept: application/xml')
-                        );
-                        $github_feed = getURL($git_url, 5 * 60, '', '', false, $options);
-                        $tmp = GetXMLTree($github_feed);
-                        if (is_array($tmp)) {
-                            $items_data = XMLTreeToArray($tmp);
-                            $items = isset($items_data['feed']['entry']) ? $items_data['feed']['entry'] : false;
-                        } else {
-                            $items = false;
-                        }
-                        if (is_array($items)) {
-                            $latest_item = $items[0];
-                            $updated = strtotime($latest_item['updated']['textvalue']);
-                            $rec['LATEST_VERSION'] = date('Y-m-d H:i:s', $updated);
-                            $rec['LATEST_VERSION_COMMENT'] = $latest_item['title']['textvalue'];
-                            $rec['LATEST_VERSION_URL'] = $latest_item['link']['href'];
-                        }
-                    }
-                }
                 if (!$rec['REPOSITORY_URL']) {
                     $rec['REPOSITORY_URL'] = 'https://connect.smartliving.ru/market/?op=download&name=' . urlencode($rec['MODULE_NAME']) . "&serial=" . urlencode(gg('Serial'));
                 }
                 $rec = $this->applyCustomRepositoryUrl($rec);
+                if ($this->shouldSkipPaidMarketPlugin($rec)) {
+                    continue;
+                }
+                $rec = $this->applyRepositoryVersionMetadata($rec, (isset($rec['EXISTS']) || $rec['MODULE_NAME'] == $name));
                 $rec['MODULE_NAME_ENCODED'] = urlencode($rec['MODULE_NAME']);
                 $rec['REPOSITORY_URL_ENCODED'] = urlencode($rec['REPOSITORY_URL']);
                 $rec['LATEST_VERSION_ENCODED'] = urlencode($rec['LATEST_VERSION']);
@@ -462,6 +445,7 @@ class market extends module
                     $this->url = $rec['REPOSITORY_URL'];
                     $this->version = $rec['LATEST_VERSION'];
                 }
+                $plugin_names_seen[$rec['MODULE_NAME']] = 1;
 
                 if ((isset($rec['EXISTS']) && !isset($rec['IGNORE_UPDATE'])) || isset($missing[$rec['MODULE_NAME']])) {
                     $this->can_be_updated[] = array('NAME' => $rec['MODULE_NAME'], 'URL' => $rec['REPOSITORY_URL'], 'VERSION' => $rec['LATEST_VERSION']);
@@ -474,6 +458,22 @@ class market extends module
                     continue;
                 }
                 $plugins[] = $rec;
+            }
+
+            $local_custom_plugins = $this->getLocalCustomRepositoryPlugins($category_id, $search, $plugin_names_seen);
+            if (is_array($local_custom_plugins) && count($local_custom_plugins) > 0) {
+                foreach ($local_custom_plugins as $rec) {
+                    if ((isset($rec['EXISTS']) && !isset($rec['IGNORE_UPDATE'])) || isset($missing[$rec['MODULE_NAME']])) {
+                        $this->can_be_updated[] = array('NAME' => $rec['MODULE_NAME'], 'URL' => $rec['REPOSITORY_URL'], 'VERSION' => $rec['LATEST_VERSION']);
+                    }
+                    if (isset($rec['EXISTS']) && $rec['INSTALLED_VERSION'] != $rec['LATEST_VERSION'] && $rec['LATEST_VERSION'] != '') {
+                        $this->have_updates[] = $rec['MODULE_NAME'];
+                        $this->can_be_updated_new[] = array('NAME' => $rec['MODULE_NAME'], 'URL' => $rec['REPOSITORY_URL'], 'VERSION' => $rec['LATEST_VERSION']);
+                    } elseif ($category_id == 'updates') {
+                        continue;
+                    }
+                    $plugins[] = $rec;
+                }
             }
 
             if ($this->ajax && $_GET['op'] == 'check_updates') {
@@ -543,17 +543,27 @@ class market extends module
             }
         }
 
+        $this->storeCustomRepositoryUrl($name, $url);
+
+        $msg = $url != '' ? "Custom repository URL saved" : "Custom repository URL cleared";
+        $this->redirect("?ok_msg=" . urlencode($msg));
+    }
+
+    function storeCustomRepositoryUrl($name, $url)
+    {
+        $name = trim((string)$name);
+        if ($name == '') {
+            return false;
+        }
         $rec = SQLSelectOne("SELECT * FROM plugins WHERE MODULE_NAME LIKE '" . DBSafe($name) . "'");
         $rec['MODULE_NAME'] = $name;
-        $rec['CUSTOM_REPOSITORY_URL'] = $url;
+        $rec['CUSTOM_REPOSITORY_URL'] = trim((string)$url);
         if (isset($rec['ID']) && $rec['ID']) {
             SQLUpdate('plugins', $rec);
         } else {
             SQLInsert('plugins', $rec);
         }
-
-        $msg = $url != '' ? "Custom repository URL saved" : "Custom repository URL cleared";
-        $this->redirect("?ok_msg=" . urlencode($msg));
+        return true;
     }
 
     function applyCustomRepositoryUrl($rec)
@@ -569,6 +579,201 @@ class market extends module
             $rec['CUSTOM_REPOSITORY_URL_BASE64'] = '';
         }
         return $rec;
+    }
+
+    function shouldSkipPaidMarketPlugin($rec)
+    {
+        if (!empty($rec['CUSTOM_REPOSITORY_ACTIVE'])) {
+            return false;
+        }
+        $price = isset($rec['PRICE']) ? trim((string)$rec['PRICE']) : '';
+        if ($price != '') {
+            return true;
+        }
+        if (isset($rec['CAN_DOWNLOAD']) && (string)$rec['CAN_DOWNLOAD'] !== '1') {
+            return true;
+        }
+        return false;
+    }
+
+    function getLocalCustomRepositoryPlugins($category_id, $search = '', $plugin_names_seen = array())
+    {
+        $result = array();
+
+        if (!($search != '' || in_array($category_id, array('', 'installed', 'custom', 'updates')))) {
+            return $result;
+        }
+
+        $custom_rows = SQLSelect("SELECT MODULE_NAME, CURRENT_VERSION, CUSTOM_REPOSITORY_URL, IS_INSTALLED FROM plugins WHERE CUSTOM_REPOSITORY_URL != ''");
+        if (!is_array($custom_rows) || !count($custom_rows)) {
+            return $result;
+        }
+
+        foreach ($custom_rows as $custom_row) {
+            $module_name = trim($custom_row['MODULE_NAME']);
+            if ($module_name == '' || isset($plugin_names_seen[$module_name])) {
+                continue;
+            }
+
+            if ($search != '' && stripos($module_name, $search) === false) {
+                continue;
+            }
+
+            $module_rec = SQLSelectOne("SELECT NAME, TITLE FROM project_modules WHERE NAME LIKE '" . DBSafe($module_name) . "'");
+            $title = isset($module_rec['TITLE']) && $module_rec['TITLE'] != '' ? $module_rec['TITLE'] : $module_name;
+
+            $rec = array(
+                'MODULE_NAME' => $module_name,
+                'TITLE' => $title,
+                'DESCRIPTION_RU' => 'Локальный модуль с пользовательским Git/архив репозиторием.',
+                'DESCRIPTION_EN' => 'Local module with custom Git/archive repository.',
+                'AUTHOR' => '',
+                'AUTHOR_URL' => '',
+                'URL' => '',
+                'CAN_DOWNLOAD' => '1',
+                'EXISTS' => 1,
+                'INSTALLED_VERSION' => isset($custom_row['CURRENT_VERSION']) ? $custom_row['CURRENT_VERSION'] : '',
+                'REPOSITORY_URL' => $custom_row['CUSTOM_REPOSITORY_URL'],
+                'LATEST_VERSION' => isset($custom_row['CURRENT_VERSION']) ? $custom_row['CURRENT_VERSION'] : '',
+                'LATEST_VERSION_COMMENT' => '',
+                'LATEST_VERSION_URL' => '',
+                'CUSTOM_REPOSITORY_ACTIVE' => 1,
+                'CUSTOM_REPOSITORY_URL' => $custom_row['CUSTOM_REPOSITORY_URL'],
+                'CUSTOM_REPOSITORY_URL_BASE64' => base64_encode($custom_row['CUSTOM_REPOSITORY_URL'])
+            );
+
+            $ignore_rec = SQLSelectOne("SELECT * FROM ignore_updates WHERE `NAME` LIKE '" . DBSafe($module_name) . "'");
+            if (isset($ignore_rec['ID'])) {
+                $rec['IGNORE_UPDATE'] = 1;
+            }
+
+            $rec = $this->applyRepositoryVersionMetadata($rec, true);
+            $rec['MODULE_NAME_ENCODED'] = urlencode($rec['MODULE_NAME']);
+            $rec['REPOSITORY_URL_ENCODED'] = urlencode($rec['REPOSITORY_URL']);
+            $rec['LATEST_VERSION_ENCODED'] = urlencode($rec['LATEST_VERSION']);
+            $result[] = $rec;
+        }
+
+        return $result;
+    }
+
+    function applyRepositoryVersionMetadata($rec, $allow_remote_lookup = true)
+    {
+        if (!$allow_remote_lookup || empty($rec['REPOSITORY_URL'])) {
+            return $rec;
+        }
+
+        $github_info = $this->getGithubRepositoryInfo($rec['REPOSITORY_URL']);
+        if (!$github_info) {
+            return $rec;
+        }
+
+        $latest_item = $this->fetchGithubLatestCommit($github_info['feed_url']);
+        if (!$latest_item) {
+            return $rec;
+        }
+
+        $rec['REPOSITORY_BRANCH'] = $github_info['ref'];
+        $rec['LATEST_VERSION'] = $latest_item['version'];
+        $rec['LATEST_VERSION_COMMENT'] = $latest_item['comment'];
+        $rec['LATEST_VERSION_URL'] = $latest_item['url'];
+        $rec['LATEST_VERSION_DATE'] = $latest_item['updated'];
+        return $rec;
+    }
+
+    function getGithubRepositoryInfo($url)
+    {
+        $url = trim((string)$url);
+        if ($url == '') {
+            return false;
+        }
+
+        if (preg_match('/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/archive\/([^\/?#]+)\.(tar\.gz|tgz)$/is', $url, $m)) {
+            return array(
+                'owner' => $m[1],
+                'repo' => $m[2],
+                'ref' => $m[3],
+                'feed_url' => 'https://github.com/' . $m[1] . '/' . $m[2] . '/commits/' . $m[3] . '.atom'
+            );
+        }
+
+        if (preg_match('/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/archive\/refs\/heads\/([^\/?#]+)\.tar\.gz$/is', $url, $m)) {
+            return array(
+                'owner' => $m[1],
+                'repo' => $m[2],
+                'ref' => $m[3],
+                'feed_url' => 'https://github.com/' . $m[1] . '/' . $m[2] . '/commits/' . $m[3] . '.atom'
+            );
+        }
+
+        if (preg_match('/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/archive\/refs\/tags\/([^\/?#]+)\.tar\.gz$/is', $url, $m)) {
+            return array(
+                'owner' => $m[1],
+                'repo' => $m[2],
+                'ref' => $m[3],
+                'feed_url' => 'https://github.com/' . $m[1] . '/' . $m[2] . '/commits/' . $m[3] . '.atom'
+            );
+        }
+
+        return false;
+    }
+
+    function fetchGithubLatestCommit($feed_url)
+    {
+        $options = array(
+            CURLOPT_HTTPHEADER => array('Accept: application/xml')
+        );
+        $github_feed = getURL($feed_url, 5 * 60, '', '', false, $options);
+        if ($github_feed == '') {
+            return false;
+        }
+        $tmp = GetXMLTree($github_feed);
+        if (!is_array($tmp)) {
+            return false;
+        }
+        $items_data = XMLTreeToArray($tmp);
+        $items = isset($items_data['feed']['entry']) ? $items_data['feed']['entry'] : false;
+        if (!is_array($items) || !isset($items[0])) {
+            return false;
+        }
+
+        $latest_item = $items[0];
+        $commit_url = isset($latest_item['link']['href']) ? $latest_item['link']['href'] : '';
+        $commit_sha = '';
+        if ($commit_url != '' && preg_match('/\/commit\/([a-f0-9]+)/i', $commit_url, $m)) {
+            $commit_sha = strtolower($m[1]);
+        }
+        if ($commit_sha == '' && isset($latest_item['id']['textvalue']) && preg_match('/Commit\/([a-f0-9]+)/i', $latest_item['id']['textvalue'], $m)) {
+            $commit_sha = strtolower($m[1]);
+        }
+        if ($commit_sha == '') {
+            return false;
+        }
+
+        $updated = isset($latest_item['updated']['textvalue']) ? strtotime($latest_item['updated']['textvalue']) : 0;
+        $comment = isset($latest_item['title']['textvalue']) ? trim($latest_item['title']['textvalue']) : '';
+        if ($updated) {
+            $comment = trim($comment . ' [' . date('Y-m-d H:i:s', $updated) . ']');
+        }
+
+        return array(
+            'version' => $commit_sha,
+            'comment' => $comment,
+            'url' => $commit_url,
+            'updated' => $updated ? date('Y-m-d H:i:s', $updated) : ''
+        );
+    }
+
+    function getRepositoryLatestVersion($url)
+    {
+        $github_info = $this->getGithubRepositoryInfo($url);
+        if ($github_info) {
+            $latest_item = $this->fetchGithubLatestCommit($github_info['feed_url']);
+            if ($latest_item && !empty($latest_item['version'])) {
+                return $latest_item['version'];
+            }
+        }
+        return 'manual-' . date('YmdHis');
     }
 
     function getCustomRepositoryUrl($name)
@@ -596,6 +801,10 @@ class market extends module
         }
 
         if (preg_match('/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/commit\/([^\/?#]+)\/?$/is', $url, $m)) {
+            return 'https://github.com/' . $m[1] . '/' . $m[2] . '/archive/' . $m[3] . '.tar.gz';
+        }
+
+        if (preg_match('/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/releases\/tag\/([^\/?#]+)\/?$/is', $url, $m)) {
             return 'https://github.com/' . $m[1] . '/' . $m[2] . '/archive/' . $m[3] . '.tar.gz';
         }
 
@@ -970,7 +1179,7 @@ class market extends module
         }
     }
 
-    function upload(&$out, $frame = 0)
+    function upload(&$out, $frame = 0, $custom_repository_url = '')
     {
         set_time_limit(0);
         global $restore;
@@ -1048,6 +1257,16 @@ class market extends module
             if ($x == 1 && $latest_dir) {
                 $folder = '/' . $latest_dir;
             }
+            $validation = $this->validateModulePackage(ROOT . 'cms/saverestore/temp' . $folder);
+            if (!$validation['VALID']) {
+                if ($frame) {
+                    $this->echonow($validation['MESSAGE'] . "<br/>", 'red');
+                }
+                $this->removeTree(ROOT . 'cms/saverestore/temp');
+                return false;
+            }
+            $folder = substr($validation['INSTALL_ROOT'], strlen(ROOT . 'cms/saverestore/temp'));
+            $name = $validation['MODULE_NAME'];
             @unlink(ROOT . 'cms/saverestore/temp' . $folder . '/config.php');
             @unlink(ROOT . 'cms/saverestore/temp' . $folder . '/README.md');
             chdir('../../../');
@@ -1086,6 +1305,9 @@ class market extends module
             $rec['CURRENT_VERSION'] = $version . '';
             $rec['IS_INSTALLED'] = 1;
             $rec['LATEST_UPDATE'] = date('Y-m-d H:i:s');
+            if ($custom_repository_url != '') {
+                $rec['CUSTOM_REPOSITORY_URL'] = $custom_repository_url;
+            }
             if ($rec['ID']) {
                 SQLUpdate('plugins', $rec);
             } else {
@@ -1101,6 +1323,122 @@ class market extends module
         }
 
 
+    }
+
+    function validateModulePackage($folder)
+    {
+        $folder = rtrim($folder, '/\\');
+        if (!is_dir($folder)) {
+            return array('VALID' => false, 'MESSAGE' => 'Package folder not found.');
+        }
+
+        $package_root = $this->detectPackageRoot($folder);
+        $modules_dir = $package_root . '/modules';
+        if (!is_dir($modules_dir)) {
+            return array(
+                'VALID' => false,
+                'MESSAGE' => 'Архив не похож на модуль MajorDoMo: не найдена папка modules/<module_name>. Ожидается пакет с modules/<module>/<module>.class.php.'
+            );
+        }
+
+        $module_candidates = array();
+        $dir = opendir($modules_dir);
+        while (($entry = readdir($dir)) !== false) {
+            if ($entry == '.' || $entry == '..') {
+                continue;
+            }
+            $module_path = $modules_dir . '/' . $entry;
+            if (!is_dir($module_path)) {
+                continue;
+            }
+            $class_file = $module_path . '/' . $entry . '.class.php';
+            if (is_file($class_file) && preg_match('/^[a-z0-9_]+$/', $entry)) {
+                $module_candidates[] = $entry;
+            }
+        }
+        closedir($dir);
+
+        if (count($module_candidates) === 0) {
+            return array(
+                'VALID' => false,
+                'MESSAGE' => 'В архиве не найден основной файл модуля вида modules/<module>/<module>.class.php.'
+            );
+        }
+
+        if (count($module_candidates) > 1) {
+            return array(
+                'VALID' => false,
+                'MESSAGE' => 'В архиве найдено несколько модулей. Для ручной установки поддерживается один модуль на архив.'
+            );
+        }
+
+        $module_name = $module_candidates[0];
+        return array(
+            'VALID' => true,
+            'MODULE_NAME' => $module_name,
+            'INSTALL_ROOT' => $package_root
+        );
+    }
+
+    function detectPackageRoot($folder)
+    {
+        if (is_dir($folder . '/modules')) {
+            return $folder;
+        }
+
+        $entries = array();
+        $dir = opendir($folder);
+        while (($entry = readdir($dir)) !== false) {
+            if ($entry == '.' || $entry == '..') {
+                continue;
+            }
+            $entries[] = $entry;
+        }
+        closedir($dir);
+
+        if (count($entries) === 1 && is_dir($folder . '/' . $entries[0])) {
+            return $folder . '/' . $entries[0];
+        }
+        return $folder;
+    }
+
+    function installFromRepositoryUrl(&$out, $repo_url, $frame = 0)
+    {
+        $repo_url = $this->normalizeCustomRepositoryUrl($repo_url);
+        if (!$repo_url) {
+            if ($frame) {
+                $this->echonow("Invalid repository URL<br/>", 'red');
+                return false;
+            }
+            $this->redirect("?err_msg=" . urlencode("Invalid repository URL"));
+        }
+
+        if (!is_dir(ROOT . 'cms/saverestore')) {
+            @umask(0);
+            @mkdir(ROOT . 'cms/saverestore', 0777);
+        }
+
+        $detected_version = $this->getRepositoryLatestVersion($repo_url);
+        $filename = ROOT . 'cms/saverestore/repository_install_' . md5($repo_url) . '.tgz';
+        if (file_exists($filename)) {
+            unlink($filename);
+        }
+
+        $downloaded = $this->downloadPlugin($repo_url, $filename, $frame);
+        if (!file_exists($downloaded)) {
+            return false;
+        }
+
+        global $restore;
+        global $name;
+        global $version;
+        global $folder;
+        $restore = basename($downloaded);
+        $name = '';
+        $folder = '';
+        $version = $detected_version;
+
+        return $this->upload($out, $frame, $repo_url);
     }
 
     function checkIfCycleRestartRequired($plugin_name)

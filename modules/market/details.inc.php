@@ -24,26 +24,26 @@ $out['MODULE_NAME_ENCODED'] = urlencode($plugin_rec['MODULE_NAME']);
 
 if (isset($plugin_data['REPOSITORY_URL'])) {
     $plugin_data = $this->applyCustomRepositoryUrl($plugin_data);
+    $plugin_data = $this->applyRepositoryVersionMetadata($plugin_data, true);
     $out['REPOSITORY_URL_ENCODED'] = urlencode($plugin_data['REPOSITORY_URL']);
     $out['LATEST_VERSION_ENCODED'] = urlencode($plugin_data['LATEST_VERSION']);
     $out['MODULE_NAME_ENCODED'] = urlencode($plugin_data['MODULE_NAME']);
 
-    $github_feed_url = $plugin_data['REPOSITORY_URL'];
-    $github_feed_url = str_replace('/archive/', '/commits/', $github_feed_url);
-    $github_feed_url = str_replace('.tar.gz', '.atom', $github_feed_url);
-    $github_feed = getURL($github_feed_url, 30 * 60);
-
-    if ($github_feed != '') {
-        $tmp = GetXMLTree($github_feed);
-        if (is_array($tmp)) {
-            $data = XMLTreeToArray($tmp);
-            $items = $data['feed']['entry'];
-        } else {
-            $items = false;
-        }
-        if (is_array($items)) {
-            foreach($items as $item) {
-                $out['COMMITS'][] = array('LINK'=>$item['link']['href'],'LINK_URL'=>urlencode($item['link']['href']), 'CONTENT'=>$item['content']['textvalue'], 'UPDATED'=>$item['updated']['textvalue']);
+    $github_info = $this->getGithubRepositoryInfo($plugin_data['REPOSITORY_URL']);
+    if ($github_info) {
+        $github_feed = getURL($github_info['feed_url'], 30 * 60);
+        if ($github_feed != '') {
+            $tmp = GetXMLTree($github_feed);
+            if (is_array($tmp)) {
+                $data = XMLTreeToArray($tmp);
+                $items = isset($data['feed']['entry']) ? $data['feed']['entry'] : false;
+            } else {
+                $items = false;
+            }
+            if (is_array($items)) {
+                foreach($items as $item) {
+                    $out['COMMITS'][] = array('LINK'=>$item['link']['href'],'LINK_URL'=>urlencode($item['link']['href']), 'CONTENT'=>$item['content']['textvalue'], 'UPDATED'=>$item['updated']['textvalue']);
+                }
             }
         }
     }

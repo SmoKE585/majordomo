@@ -1,30 +1,164 @@
-<p>
-    <a href="?" class="btn btn-default"><#LANG_BACK#></a>
-</p>
-
-<div class="row">
-    <div class="col-md-6"><h3>[#MODULE_NAME#]</h3></div>
-    <div class="col-md-6 text-right">
-        <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]" class="btn btn-default btn-success" onclick="return confirm('<#LANG_ARE_YOU_SURE#>');"><i class="glyphicon glyphicon-download"></i> <#LANG_UPDATE#></a>
-        [#if URL!=""#]
-        <a href="[#URL#]" target="_blank" class="btn btn-default"><i class="glyphicon glyphicon-globe"></i> <#LANG_URL#></a>
-        [#endif#]
+<style>
+    .market-details {
+        --market-primary: #4792d1;
+        --market-surface: #ffffff;
+        --market-surface-alt: #f6f8fb;
+        --market-border: rgba(31, 41, 51, 0.10);
+        --market-text: #1f2933;
+        --market-muted: #66788a;
+        --market-shadow: 0 16px 40px rgba(31, 41, 51, 0.08);
+    }
+    .market-details__topbar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+    .market-details__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .market-details__actions .btn,
+    .market-details__back {
+        border-radius: 999px;
+        padding: 9px 16px;
+    }
+    .market-details__panel {
+        background: var(--market-surface);
+        border: 1px solid var(--market-border);
+        border-radius: 20px;
+        box-shadow: var(--market-shadow);
+        overflow: hidden;
+    }
+    .market-details__hero {
+        padding: 24px;
+        background: linear-gradient(135deg, rgba(71,146,209,.1), rgba(71,146,209,.02));
+        border-bottom: 1px solid var(--market-border);
+    }
+    .market-details__title {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.15;
+        font-weight: 700;
+        color: var(--market-text);
+    }
+    .market-details__subtitle {
+        margin: 10px 0 0;
+        color: var(--market-muted);
+        font-size: 15px;
+        line-height: 1.6;
+    }
+    .market-details__section {
+        padding: 22px 24px 24px;
+    }
+    .market-details__section-title {
+        margin: 0 0 16px;
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--market-text);
+    }
+    .market-details__table {
+        margin: 0;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+    }
+    .market-details__table tr {
+        background: var(--market-surface-alt);
+    }
+    .market-details__table td {
+        vertical-align: top;
+        border-top: 0;
+        padding: 16px;
+    }
+    .market-details__table td:first-child {
+        width: 180px;
+        color: var(--market-muted);
+        white-space: nowrap;
+        border-radius: 14px 0 0 14px;
+    }
+    .market-details__table td:last-child {
+        border-radius: 0 14px 14px 0;
+    }
+    .market-details__commit-text {
+        color: #314252;
+        line-height: 1.6;
+    }
+    .market-details__commit-actions {
+        white-space: nowrap;
+        text-align: right;
+    }
+    .market-details__commit-actions .btn {
+        border-radius: 999px;
+        margin-left: 8px;
+    }
+    @media (max-width: 767px) {
+        .market-details__hero,
+        .market-details__section {
+            padding: 18px;
+        }
+        .market-details__title {
+            font-size: 24px;
+        }
+        .market-details__table,
+        .market-details__table tbody,
+        .market-details__table tr,
+        .market-details__table td {
+            display: block;
+            width: 100%;
+        }
+        .market-details__table tr {
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .market-details__table td:first-child,
+        .market-details__table td:last-child {
+            border-radius: 0;
+        }
+        .market-details__commit-actions {
+            text-align: left;
+            padding-top: 0;
+        }
+        .market-details__commit-actions .btn {
+            margin: 0 8px 8px 0;
+        }
+    }
+</style>
+<div class="market-details">
+    <div class="market-details__topbar">
+        <a href="?" class="btn btn-default market-details__back"><i class="glyphicon glyphicon-chevron-left"></i> <#LANG_BACK#></a>
+        <div class="market-details__actions">
+            <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]" class="btn btn-success" onclick="return confirm('<#LANG_ARE_YOU_SURE#>');"><i class="glyphicon glyphicon-download"></i> <#LANG_UPDATE#></a>
+            [#if URL!=""#]
+            <a href="[#URL#]" target="_blank" class="btn btn-default"><i class="glyphicon glyphicon-globe"></i> <#LANG_URL#></a>
+            [#endif#]
+        </div>
     </div>
+    <section class="market-details__panel">
+        <div class="market-details__hero">
+            <h1 class="market-details__title">[#MODULE_NAME#]</h1>
+            <p class="market-details__subtitle">История обновлений и быстрый доступ к повторной установке конкретной версии модуля.</p>
+        </div>
+        [#if COMMITS#]
+        <div class="market-details__section">
+            <h2 class="market-details__section-title"><#LANG_UPDATES#></h2>
+            <table class="table market-details__table">
+                <tbody>
+                [#begin COMMITS#]
+                <tr>
+                    <td>[#UPDATED#]</td>
+                    <td class="market-details__commit-text">[#CONTENT#]</td>
+                    <td class="market-details__commit-actions">
+                        <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&link=[#LINK_URL#]" class="btn btn-default btn-sm" onclick="return confirm('<#LANG_ARE_YOU_SURE#>');"><i class="glyphicon glyphicon-download"></i> <#LANG_RESTORE#></a>
+                        <a href="[#LINK#]" target="_blank" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-globe"></i> <#LANG_DETAILS#></a>
+                    </td>
+                </tr>
+                [#end COMMITS#]
+                </tbody>
+            </table>
+        </div>
+        [#endif COMMITS#]
+    </section>
 </div>
-
-
-[#if COMMITS#]
-<h4><#LANG_UPDATES#></h4>
-<table class="table table-striped">
-    [#begin COMMITS#]
-    <tr>
-        <td>[#UPDATED#]</td>
-        <td>[#CONTENT#]</td>
-        <td>
-            <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&link=[#LINK_URL#]" class="btn btn-default btn-sm" onclick="return confirm('<#LANG_ARE_YOU_SURE#>');"><i class="glyphicon glyphicon-download"></i> <#LANG_RESTORE#></a>
-            <a href="[#LINK#]" target="_blank" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-globe"></i> <#LANG_DETAILS#></a>
-        </td>
-    </tr>
-    [#end COMMITS#]
-</table>
-[#endif COMMITS#]
