@@ -1,191 +1,14 @@
-<style>
-    .market-plugin-list {
-        display: grid;
-        gap: 16px;
-    }
-    .market-plugin-card {
-        display: grid;
-        grid-template-columns: 88px minmax(0, 1fr) minmax(240px, 300px);
-        gap: 18px;
-        align-items: start;
-        padding: 18px;
-        margin-bottom: 0;
-        background: #fff;
-        border: 1px solid rgba(31, 41, 51, 0.10);
-        border-radius: 18px;
-        box-shadow: 0 14px 34px rgba(31, 41, 51, 0.06);
-    }
-    .market-plugin-card__icon-link,
-    .market-plugin-card__icon-placeholder {
-        display: block;
-        width: 88px;
-        height: 88px;
-        border-radius: 20px;
-        padding: 10px;
-        background: linear-gradient(180deg, #ffffff 0%, #f3f6f9 100%);
-        border: 1px solid rgba(31, 41, 51, 0.10);
-    }
-    .market-plugin-card__icon-link img,
-    .market-plugin-card__icon-placeholder img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-    }
-    .market-plugin-card__header {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 10px;
-    }
-    .market-plugin-card__author {
-        color: #7a8a99;
-        font-size: 13px;
-    }
-    .market-plugin-card__title {
-        margin: 0;
-        font-size: 22px;
-        line-height: 1.2;
-        font-weight: 700;
-        color: #1f2933;
-    }
-    .market-plugin-card__title a {
-        color: inherit;
-    }
-    .market-plugin-card__badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 5px 10px;
-        border-radius: 999px;
-        background: rgba(45, 157, 91, .12);
-        color: #207245;
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: .02em;
-    }
-    .market-plugin-card__description {
-        margin: 0;
-        padding: 14px 16px;
-        border-left: 4px solid #4792d1;
-        border-radius: 12px;
-        background: #f7fafc;
-        color: #314252;
-        max-height: 132px;
-        overflow: auto;
-        line-height: 1.6;
-        font-size: 14px;
-        overflow-wrap: break-word;
-    }
-    .market-plugin-card__meta {
-        margin-top: 12px;
-        color: #66788a;
-        font-size: 13px;
-        line-height: 1.5;
-    }
-    .market-plugin-card__actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-    .market-plugin-card__actions .btn {
-        border-radius: 999px;
-        padding: 9px 15px;
-    }
-    .market-plugin-card__actions .btn-market-ignore {
-        background: #aa22a6;
-        border-color: #8d0789;
-        color: #fff;
-    }
-    .market-plugin-card__actions .btn-market-ignore:hover,
-    .market-plugin-card__actions .btn-market-ignore:focus {
-        background: #911b8d;
-        border-color: #7b1077;
-        color: #fff;
-    }
-    .market-plugin-card__secondary {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 10px;
-    }
-    .market-plugin-empty {
-        padding: 36px 24px;
-        border-radius: 18px;
-        background: #f7fafc;
-        border: 1px dashed rgba(31, 41, 51, 0.16);
-        text-align: center;
-        color: #66788a;
-        font-size: 15px;
-    }
-    .market-plugin-count-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 24px;
-        height: 24px;
-        padding: 0 8px;
-        margin-left: 8px;
-        border-radius: 999px;
-        background: #47a447;
-        color: #fff;
-        font-size: 12px;
-        font-weight: 700;
-        vertical-align: middle;
-    }
-    @media (max-width: 991px) {
-        .market-plugin-card {
-            grid-template-columns: 72px minmax(0, 1fr);
-        }
-        .market-plugin-card__actions-shell {
-            grid-column: 1 / -1;
-        }
-        .market-plugin-card__actions,
-        .market-plugin-card__secondary {
-            justify-content: flex-start;
-        }
-    }
-    @media (max-width: 767px) {
-        .market-plugin-card {
-            grid-template-columns: 1fr;
-            padding: 16px;
-        }
-        .market-plugin-card__icon-link,
-        .market-plugin-card__icon-placeholder {
-            width: 72px;
-            height: 72px;
-        }
-        .market-plugin-card__title {
-            font-size: 19px;
-        }
-    }
-</style>
-<script>
-if ($('#tab>li.active').text() == '<#LANG_UPDATES#>' && !$('#tab>li.active .market-plugin-count-badge').length) {
-    $('#tab>li.active>a').append('<span class="market-plugin-count-badge">' + $('#market_application .market-plugin-card').length + '</span>');
-}
-function setCustomRepositoryUrl(moduleName, currentUrlBase64) {
-    var currentUrl = currentUrlBase64 ? atob(currentUrlBase64) : '';
-    var url = prompt('Укажите Git/архив URL для установки.\nGitHub repo/tree/commit будет преобразован в архив master/branch/commit.\nПустое значение сбросит пользовательский URL.', currentUrl || '');
-    if (url === null) {
-        return false;
-    }
-    window.location.href = '<#ROOTHTML#>panel/market.html?mode=save_custom_repository&name=' + encodeURIComponent(moduleName) + '&custom_url=' + encodeURIComponent(url);
-    return false;
-}
-</script>
 [#if PLUGINS#]
 <div class="market-plugin-list" id="market_application">
     [#begin PLUGINS#]
     <div class="market-plugin-card">
         [#if EXIST="1"#]
         <a class="market-plugin-card__icon-link" href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]">
-            <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" onerror="this.src='<#ROOTHTML#>img/modules/default.png'">
+            <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
         </a>
         [#else#]
         <span class="market-plugin-card__icon-placeholder">
-            <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" onerror="this.src='<#ROOTHTML#>img/modules/default.png'">
+            <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
         </span>
         [#endif#]
         <div>
@@ -224,15 +47,22 @@ function setCustomRepositoryUrl(moduleName, currentUrlBase64) {
         <div class="market-plugin-card__actions-shell">
             <div class="market-plugin-card__actions">
                 [#if CAN_DOWNLOAD="1" OR CUSTOM_REPOSITORY_ACTIVE="1"#]
-                    <a class="btn btn-[#if CUSTOM_REPOSITORY_ACTIVE="1"#]info[#else#]default[#endif#]" href="#" onclick="return setCustomRepositoryUrl('[#MODULE_NAME#]', '[#CUSTOM_REPOSITORY_URL_BASE64#]');" title="[#if CUSTOM_REPOSITORY_ACTIVE="1"#]Используется пользовательский URL[#else#]Указать свой Git/архив URL[#endif#]"><i class="glyphicon glyphicon-link"></i> Свой GIT</a>
+                    <a
+                        class="btn btn-[#if CUSTOM_REPOSITORY_ACTIVE="1"#]info[#else#]default[#endif#]"
+                        href="#"
+                        data-market-action="custom-repo"
+                        data-module-name="[#MODULE_NAME#]"
+                        data-current-url="[#CUSTOM_REPOSITORY_URL_BASE64#]"
+                        title="[#if CUSTOM_REPOSITORY_ACTIVE="1"#]Используется пользовательский URL[#else#]Указать свой Git/архив URL[#endif#]"
+                    ><i class="glyphicon glyphicon-link"></i> Свой GIT</a>
                     <a class="btn btn-[#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]success[#else#]warning[#endif#]" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]">[#if EXISTS#]<i class="glyphicon glyphicon-refresh"></i> [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]<#LANG_UPDATE#>[#else#]Перекачать[#endif#][#else#]<i class="glyphicon glyphicon-download"></i> <#LANG_ADD#>[#endif#]</a>
-                    [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>" AND INSTALLED_VERSION != ''#]<a class="btn btn-market-ignore" onclick="return confirm('<#LANG_ARE_YOU_SURE#>')" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=dontupdate&name=[#MODULE_NAME#]&value=[#LATEST_VERSION#]"><i class="glyphicon glyphicon-minus-sign"></i> Не обновлять</a>[#endif#]
+                    [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>" AND INSTALLED_VERSION != ''#]<a class="btn btn-market-ignore" data-confirm="<#LANG_ARE_YOU_SURE#>" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=dontupdate&name=[#MODULE_NAME#]&value=[#LATEST_VERSION#]"><i class="glyphicon glyphicon-minus-sign"></i> Не обновлять</a>[#endif#]
                 [#endif#]
             </div>
             [#if EXISTS#]
             <div class="market-plugin-card__secondary">
                 <a href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]" class="btn btn-default"><i class="glyphicon glyphicon-info-sign"></i> <#LANG_HISTORY#></a>
-                <a class="btn btn-danger" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=uninstall&name=[#MODULE_NAME#]" onclick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#></a>
+                <a class="btn btn-danger" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=uninstall&name=[#MODULE_NAME#]" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#></a>
             </div>
             [#endif#]
         </div>
@@ -242,3 +72,4 @@ function setCustomRepositoryUrl(moduleName, currentUrlBase64) {
 [#else PLUGINS#]
 <div class="market-plugin-empty"><#LANG_NO_RECORDS_FOUND#></div>
 [#endif PLUGINS#]
+

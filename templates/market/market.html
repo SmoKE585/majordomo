@@ -1,307 +1,16 @@
+<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-06-05-3" type="text/css">
+<script src="<#ROOTHTML#>templates/market/market.js?v=2026-06-05-3"></script>
+<div
+    data-market-config
+    data-roothtml="<#ROOTHTML#>"
+    data-loading-text="<#LANG_NEWDASH_LOADING#>"
+    data-search-label="Поиск"
+    data-search-close-label="Закрыть поиск"
+    data-install-prompt="Укажите Git/архив URL для установки.\nGitHub repo/tree/commit будет преобразован в архив master/branch/commit.\nПустое значение сбросит пользовательский URL."
+    data-list-load-error="Не удалось загрузить список расширений."
+></div>
+
 [#if MODE=""#]
-<style>
-    .market-page {
-        --market-primary: #4792d1;
-        --market-primary-dark: #2c6ca3;
-        --market-accent: #eff6fb;
-        --market-surface: #ffffff;
-        --market-surface-alt: #f6f8fb;
-        --market-border: rgba(31, 41, 51, 0.12);
-        --market-text: #1f2933;
-        --market-muted: #66788a;
-        --market-success: #2d9d5b;
-        --market-warning: #f4b740;
-        --market-danger: #cb3a31;
-        --market-shadow: 0 16px 40px rgba(31, 41, 51, 0.08);
-        --market-radius-lg: 18px;
-        --market-radius-md: 14px;
-        --market-radius-sm: 10px;
-        color: var(--market-text);
-    }
-    .market-page a {
-        transition: color .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
-    }
-    .market-page .alert {
-        border-radius: var(--market-radius-sm);
-        border: 0;
-        box-shadow: 0 10px 28px rgba(31, 41, 51, 0.08);
-    }
-    .market-toolbar-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
-        gap: 20px;
-        margin-bottom: 24px;
-    }
-    .market-hero,
-    .market-card {
-        background: var(--market-surface);
-        border: 1px solid var(--market-border);
-        border-radius: var(--market-radius-lg);
-        box-shadow: var(--market-shadow);
-    }
-    .market-hero {
-        padding: 24px 26px;
-        min-height: auto;
-        background:
-            linear-gradient(180deg, rgba(71,146,209,.08), rgba(71,146,209,.02)),
-            var(--market-surface);
-        color: var(--market-text);
-    }
-    .market-hero__eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(71,146,209,.12);
-        color: var(--market-primary-dark);
-        font-size: 12px;
-        letter-spacing: .06em;
-        text-transform: uppercase;
-    }
-    .market-hero__title {
-        margin: 14px 0 8px;
-        font-size: 28px;
-        line-height: 1.15;
-        font-weight: 700;
-    }
-    .market-hero__text {
-        margin: 0;
-        max-width: 620px;
-        font-size: 15px;
-        line-height: 1.65;
-        color: var(--market-muted);
-    }
-    .market-hero__actions {
-        margin-top: 18px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-    .market-hero__actions .btn {
-        border-radius: 999px;
-        padding: 10px 18px;
-        font-weight: 600;
-    }
-    .market-hero__actions .btn .glyphicon {
-        margin-right: 4px;
-    }
-    .market-hero__actions .btn-market-hero {
-        color: #fff;
-        background: var(--market-primary);
-        border-color: var(--market-primary);
-    }
-    .market-hero__actions .btn-market-ghost {
-        color: var(--market-text);
-        background: #fff;
-        border: 1px solid rgba(31, 41, 51, .10);
-    }
-    .market-card {
-        padding: 22px;
-    }
-    .market-card__title {
-        margin: 0 0 6px;
-        font-size: 21px;
-        font-weight: 700;
-    }
-    .market-card__subtitle {
-        margin: 0 0 18px;
-        color: var(--market-muted);
-        line-height: 1.55;
-    }
-    .market-search {
-        position: relative;
-        margin-bottom: 18px;
-    }
-    .market-search .form-control {
-        height: 48px;
-        border-radius: 14px;
-        border: 1px solid var(--market-border);
-        padding: 12px 16px 12px 46px;
-        box-shadow: none;
-    }
-    .market-search .form-control:focus {
-        border-color: rgba(71,146,209,.6);
-        box-shadow: 0 0 0 4px rgba(71,146,209,.12);
-    }
-    .market-search__icon,
-    .market-search__spinner {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--market-muted);
-    }
-    .market-search__icon {
-        left: 16px;
-    }
-    .market-search__spinner {
-        right: 16px;
-        display: none;
-    }
-    .market-search.is-loading .market-search__spinner {
-        display: inline-block;
-    }
-    .market-search.is-loading .market-search__icon {
-        display: none;
-    }
-    .market-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    .market-actions .btn {
-        border-radius: 999px;
-        padding: 9px 16px;
-    }
-    .market-help {
-        margin-top: 14px;
-        padding-top: 14px;
-        border-top: 1px solid rgba(31, 41, 51, 0.08);
-        color: var(--market-muted);
-        font-size: 13px;
-        line-height: 1.6;
-    }
-    .market-manual-upload {
-        display: none;
-        margin-top: 18px;
-        padding: 18px;
-        border-radius: var(--market-radius-md);
-        background: var(--market-surface-alt);
-        border: 1px dashed rgba(71,146,209,.4);
-    }
-    .market-manual-upload.is-open {
-        display: block;
-    }
-    .market-manual-upload .form-control,
-    .market-manual-upload .btn {
-        border-radius: 12px;
-    }
-    .market-manual-upload__grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-    }
-    .market-manual-upload__panel {
-        padding: 16px;
-        border-radius: 14px;
-        background: #fff;
-        border: 1px solid rgba(31, 41, 51, 0.08);
-    }
-    .market-manual-upload__panel h3 {
-        margin: 0 0 8px;
-        font-size: 16px;
-        font-weight: 700;
-    }
-    .market-manual-upload__panel p {
-        margin: 0 0 14px;
-        color: var(--market-muted);
-        font-size: 13px;
-        line-height: 1.6;
-    }
-    .market-section {
-        background: var(--market-surface);
-        border: 1px solid var(--market-border);
-        border-radius: var(--market-radius-lg);
-        box-shadow: var(--market-shadow);
-        overflow: hidden;
-    }
-    .market-tabs-wrap {
-        padding: 20px 20px 0;
-    }
-    .market-tabs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        border: 0;
-    }
-    .market-tabs > li {
-        float: none;
-        margin: 0;
-    }
-    .market-tabs > li > a {
-        margin: 0;
-        border: 1px solid rgba(31, 41, 51, 0.08);
-        border-radius: 999px;
-        background: #fff;
-        color: var(--market-muted);
-        font-weight: 600;
-        padding: 10px 16px;
-    }
-    .market-tabs > li.active > a,
-    .market-tabs > li.active > a:focus,
-    .market-tabs > li.active > a:hover,
-    .market-tabs > li > a:hover {
-        color: var(--market-primary-dark);
-        border-color: rgba(71,146,209,.22);
-        background: rgba(71,146,209,.1);
-    }
-    .market-results {
-        min-height: 260px;
-        padding: 20px;
-        background: linear-gradient(180deg, rgba(71,146,209,.03), rgba(255,255,255,0) 140px), #fff;
-        border-top: 1px solid rgba(31, 41, 51, 0.08);
-    }
-    .market-results__loading,
-    .market-results__error {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        min-height: 180px;
-        padding: 24px;
-        border-radius: var(--market-radius-md);
-        background: var(--market-surface-alt);
-        color: var(--market-muted);
-        text-align: center;
-        font-size: 15px;
-    }
-    .market-results__loading .glyphicon {
-        color: var(--market-primary);
-        animation: market-spin 1s linear infinite;
-    }
-    .market-connect-error {
-        margin-bottom: 16px;
-        display: none;
-    }
-    @keyframes market-spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-    @media (max-width: 991px) {
-        .market-toolbar-grid {
-            grid-template-columns: 1fr;
-        }
-        .market-hero,
-        .market-card,
-        .market-results {
-            padding-left: 18px;
-            padding-right: 18px;
-        }
-    }
-    @media (max-width: 767px) {
-        .market-hero {
-            padding: 20px 18px;
-        }
-        .market-hero__title {
-            font-size: 24px;
-        }
-        .market-card {
-            padding: 18px;
-        }
-        .market-tabs-wrap {
-            padding: 18px 18px 0;
-        }
-        .market-results {
-            padding: 18px;
-        }
-        .market-manual-upload__grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
 <div class="market-page" id="marketPage">
     <div class="market-toolbar-grid">
         <section class="market-hero">
@@ -309,13 +18,13 @@
             <h1 class="market-hero__title"><#LANG_NEWMARKET_BANNER#></h1>
             <p class="market-hero__text"><#LANG_NEWMARKET_BANNER_TEXT#></p>
             <div class="market-hero__actions">
-                <a href="https://mjdm.ru/forum/viewforum.php?f=36" target="_blank" class="btn btn-market-hero" role="button"><#LANG_NEWMARKET_BANNER_BTN#></a>
+                <a href="https://mjdm.ru/forum/viewforum.php?f=36" target="_blank" class="btn btn-market-hero" role="button"><i class="glyphicon glyphicon-comment"></i> <#LANG_NEWMARKET_BANNER_BTN#></a>
                 <button type="button" class="btn btn-market-ghost" data-market-action="scroll-to-catalog"><i class="glyphicon glyphicon-search"></i> <#LANG_NEWMARKET_SERACH_BLOCK#></button>
             </div>
         </section>
         <section class="market-card" aria-labelledby="marketSearchHeading">
             <h2 class="market-card__title" id="marketSearchHeading"><#LANG_NEWMARKET_SERACH_BLOCK#></h2>
-            <p class="market-card__subtitle">Быстрый поиск, обновление установленных расширений и ручная установка архивов из локального файла.</p>
+            <p class="market-card__subtitle">Legacy-каталог модулей MajorDoMo. Поддерживаются ручная установка архивов и Git/архив URL для собственных репозиториев.</p>
             <div class="market-search" id="marketSearchBox">
                 <i class="glyphicon glyphicon-search market-search__icon"></i>
                 <i class="glyphicon glyphicon-refresh market-search__spinner"></i>
@@ -323,8 +32,8 @@
             </div>
             <div class="market-actions">
                 [#if CLEAR_FIRST!="1"#]
-                <a href="?mode=iframe&mode2=update_new" onclick="return confirm('<#LANG_ARE_YOU_SURE#>')" class="btn btn-success"><i class="glyphicon glyphicon-download-alt"></i> <#LANG_UPDATE_NEW_EXTENSIONS#></a>
-                <a href="?mode=iframe&mode2=update_all" onclick="return confirm('<#LANG_ARE_YOU_SURE#>')" class="btn btn-danger"><i class="glyphicon glyphicon-repeat"></i> <#LANG_UPDATE_ALL_EXTENSIONS#></a>
+                <a href="?mode=iframe&mode2=update_new" data-confirm="<#LANG_ARE_YOU_SURE#>" class="btn btn-success"><i class="glyphicon glyphicon-download-alt"></i> <#LANG_UPDATE_NEW_EXTENSIONS#></a>
+                <a href="?mode=iframe&mode2=update_all" data-confirm="<#LANG_ARE_YOU_SURE#>" class="btn btn-danger"><i class="glyphicon glyphicon-repeat"></i> <#LANG_UPDATE_ALL_EXTENSIONS#></a>
                 <button type="button" class="btn btn-default" data-market-action="toggle-upload"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_UPDATE_MANUALLY#></button>
                 [#else CLEAR_FIRST#]
                 <form action="?" method="post">
@@ -338,7 +47,7 @@
                 <div class="market-manual-upload__grid">
                     <div class="market-manual-upload__panel">
                         <h3>Локальный архив</h3>
-                        <p>Поддерживается архив с пакетом MajorDoMo. Перед установкой будет проверено, что внутри действительно есть `modules/&lt;module&gt;/&lt;module&gt;.class.php`.</p>
+                        <p>Поддерживается архив с пакетом MajorDoMo. Перед установкой проверяется наличие структуры `modules/&lt;module&gt;/&lt;module&gt;.class.php`.</p>
                         <form class="form" method="post" enctype="multipart/form-data">
                             <div class="form-group">
                                 <label for="module_file"><#LANG_ADDON_FILE#> (.tgz, .tar.gz)</label>
@@ -350,7 +59,7 @@
                     </div>
                     <div class="market-manual-upload__panel">
                         <h3>Git / архив URL</h3>
-                        <p>Можно указать GitHub repo/tree/commit/tag или прямой `.tar.gz`. Система скачает архив, проверит структуру модуля и сохранит этот URL как источник обновлений.</p>
+                        <p>Поддерживаются GitHub repo/tree/commit/tag и прямой `.tar.gz`. Ссылка будет сохранена как источник обновлений модуля после успешной проверки пакета.</p>
                         <form class="form" method="get">
                             <div class="form-group">
                                 <label for="module_repo_url">Ссылка на Git или архив</label>
@@ -363,13 +72,10 @@
                     </div>
                 </div>
             </div>
-            <div class="market-help">Если временная папка осталась после прерванного обновления, сначала очистите её. Все операции установки и обновления продолжают работать через существующий фоновый iframe-процесс.</div>
+            <div class="market-help">Если временная папка осталась после прерванного обновления, сначала очистите её. Все операции установки и обновления выполняются в отдельной консоли и возвращают результат обратно на страницу.</div>
             [#endif CLEAR_FIRST#]
         </section>
     </div>
-[#endif MODE#]
-
-<div class="market-page">
     [#if ERR_MSG!=""#]
     <div class="alert alert-danger">[#ERR_MSG#]</div>
     [#endif ERR_MSG#]
@@ -378,473 +84,23 @@
     <div class="alert alert-success">[#OK_MSG#]</div>
     [#endif OK_MSG#]
 
-    [#if MODE=""#]
-        [#if CATEGORIES#]
-            <section class="market-section" id="marketCatalogSection">
-                <div class="market-tabs-wrap">
-                    <div class="alert alert-warning market-connect-error" id="problemLinkToConnect">Не удалось корректно получить данные маркета. Проверьте соединение с `connect.smartliving.ru` или попробуйте повторить позже.</div>
-                    <ul id="tab" class="nav nav-tabs market-tabs">
-                        [#begin CATEGORIES#]
-                        <li id="tab_[#ID#]"><a data-toggle="tab" href="#panel_[#ID#]" id="panel_[#ID#]" data-category-id="[#ID#]">[#TITLE#]</a></li>
-                        [#end CATEGORIES#]
-                    </ul>
-                </div>
-                <div class="market-results" id="search_result"></div>
-            </section>
-            <script type="text/javascript">
-                (function () {
-                    var filterInput = document.getElementById('filter');
-                    var searchResult = document.getElementById('search_result');
-                    var tab = document.getElementById('tab');
-                    var searchBox = document.getElementById('marketSearchBox');
-                    var manualUpload = document.getElementById('marketManualUpload');
-                    var searchTimer = 0;
-                    var searchTabId = 'li_search';
-                    var searchHintId = 'li_search_hint';
-
-                    function setLoadingState(isLoading) {
-                        if (!searchBox) {
-                            return;
-                        }
-                        if (isLoading) {
-                            searchBox.classList.add('is-loading');
-                        } else {
-                            searchBox.classList.remove('is-loading');
-                        }
-                    }
-
-                    function renderLoading() {
-                        searchResult.innerHTML = '<div class="market-results__loading"><i class="glyphicon glyphicon-refresh"></i><span><#LANG_NEWDASH_LOADING#></span></div>';
-                    }
-
-                    function renderError(message) {
-                        searchResult.innerHTML = '<div class="market-results__error">' + message + '</div>';
-                    }
-
-                    function getSearchTab() {
-                        return document.getElementById(searchTabId);
-                    }
-
-                    function getSearchHintTab() {
-                        return document.getElementById(searchHintId);
-                    }
-
-                    function removeSearchTabs() {
-                        var searchTab = getSearchTab();
-                        var searchHintTab = getSearchHintTab();
-                        if (searchTab) {
-                            searchTab.parentNode.removeChild(searchTab);
-                        }
-                        if (searchHintTab) {
-                            searchHintTab.parentNode.removeChild(searchHintTab);
-                        }
-                    }
-
-                    function createSearchTabs() {
-                        if (!tab || getSearchTab()) {
-                            return;
-                        }
-                        var clearItem = document.createElement('li');
-                        clearItem.id = searchHintId;
-                        clearItem.innerHTML = '<a data-toggle="tab" href="#" data-market-action="clear-search"><#LANG_NEWMARKET_CLOSE_SEACRH#></a>';
-                        var searchItem = document.createElement('li');
-                        searchItem.id = searchTabId;
-                        searchItem.className = 'active';
-                        searchItem.innerHTML = '<a data-toggle="tab" href="#panel_installed" id="panel_search"><#LANG_NEWMARKET_SEARCH#></a>';
-                        tab.insertBefore(searchItem, tab.firstChild);
-                        tab.insertBefore(clearItem, searchItem.nextSibling);
-                    }
-
-                    function setActiveTabLink(link) {
-                        if (!tab || !link) {
-                            return;
-                        }
-                        var items = tab.querySelectorAll('li');
-                        for (var i = 0; i < items.length; i++) {
-                            items[i].classList.remove('active');
-                        }
-                        if (link.parentNode) {
-                            link.parentNode.classList.add('active');
-                        }
-                    }
-
-                    function requestPluginList(categoryId, searchText) {
-                        renderLoading();
-                        setLoadingState(!!searchText);
-                        var problem = document.getElementById('problemLinkToConnect');
-                        if (problem) {
-                            problem.style.display = 'none';
-                        }
-                        jQuery.ajax({
-                            url: '<#ROOTHTML#>ajax/market.html?op=check_updates'
-                        }).done(function (data) {
-                            try {
-                                JSON.parse(data);
-                            } catch (e) {
-                                if (problem) {
-                                    problem.style.display = 'block';
-                                }
-                            }
-                            jQuery.ajax({
-                                url: '<#ROOTHTML#>ajax/market.html?op=list&category_id=' + encodeURIComponent(categoryId) + '&search=' + encodeURIComponent(searchText || '')
-                            }).done(function (html) {
-                                searchResult.innerHTML = html;
-                            }).fail(function () {
-                                renderError('Не удалось загрузить список расширений.');
-                            }).always(function () {
-                                setLoadingState(false);
-                            });
-                        }).fail(function () {
-                            if (problem) {
-                                problem.style.display = 'block';
-                            }
-                            jQuery.ajax({
-                                url: '<#ROOTHTML#>ajax/market.html?op=list&category_id=' + encodeURIComponent(categoryId) + '&search=' + encodeURIComponent(searchText || '')
-                            }).done(function (html) {
-                                searchResult.innerHTML = html;
-                            }).fail(function () {
-                                renderError('Не удалось загрузить список расширений.');
-                            }).always(function () {
-                                setLoadingState(false);
-                            });
-                        });
-                    }
-
-                    window.refreshPluginsList = function (categoryId, searchText) {
-                        requestPluginList(categoryId, searchText || '');
-                    };
-
-                    window.filterPlugins = function () {
-                        if (!filterInput) {
-                            return;
-                        }
-                        var query = filterInput.value.toLowerCase().trim();
-                        if (query) {
-                            createSearchTabs();
-                            var searchLink = document.getElementById('panel_search');
-                            if (searchLink) {
-                                setActiveTabLink(searchLink);
-                            }
-                            requestPluginList(0, query);
-                            return;
-                        }
-                        removeSearchTabs();
-                        var installedLink = document.getElementById('panel_installed');
-                        if (installedLink) {
-                            setActiveTabLink(installedLink);
-                            requestPluginList('installed', '');
-                        }
-                    };
-
-                    if (filterInput) {
-                        filterInput.addEventListener('input', function () {
-                            clearTimeout(searchTimer);
-                            setLoadingState(true);
-                            searchTimer = setTimeout(window.filterPlugins, 450);
-                        });
-                    }
-
-                    if (tab) {
-                        tab.addEventListener('click', function (event) {
-                            var target = event.target;
-                            while (target && target.tagName !== 'A') {
-                                target = target.parentNode;
-                            }
-                            if (!target) {
-                                return;
-                            }
-                            if (target.getAttribute('data-market-action') === 'clear-search') {
-                                event.preventDefault();
-                                if (filterInput) {
-                                    filterInput.value = '';
-                                }
-                                window.filterPlugins();
-                                return;
-                            }
-                            var categoryId = target.getAttribute('data-category-id');
-                            if (categoryId) {
-                                event.preventDefault();
-                                setActiveTabLink(target);
-                                requestPluginList(categoryId, '');
-                            }
-                        });
-                    }
-
-                    document.addEventListener('click', function (event) {
-                        var actionTarget = event.target;
-                        while (actionTarget && actionTarget !== document) {
-                            if (actionTarget.nodeType === 1 && actionTarget.getAttribute('data-market-action')) {
-                                break;
-                            }
-                            actionTarget = actionTarget.parentNode;
-                        }
-                        if (!actionTarget || actionTarget === document || actionTarget.nodeType !== 1) {
-                            return;
-                        }
-                        var action = actionTarget.getAttribute('data-market-action');
-                        if (action === 'toggle-upload') {
-                            event.preventDefault();
-                            if (manualUpload) {
-                                manualUpload.classList.toggle('is-open');
-                            }
-                        }
-                        if (action === 'scroll-to-catalog') {
-                            event.preventDefault();
-                            var section = document.getElementById('marketCatalogSection');
-                            if (section && section.scrollIntoView) {
-                                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                        }
-                    });
-
-                    jQuery(function () {
-                        var initialTab = window.location.hash.replace('#', '') === 'panel_updates' ? 'panel_updates' : 'panel_installed';
-                        var link = document.getElementById(initialTab);
-                        if (link) {
-                            setActiveTabLink(link);
-                            requestPluginList(link.getAttribute('data-category-id'), '');
-                        }
-                    });
-                })();
-            </script>
-        [#endif CATEGORIES#]
-    [#endif MODE#]
+    [#if CATEGORIES#]
+    <section class="market-section" id="marketCatalogSection">
+        <div class="market-tabs-wrap">
+            <div class="alert alert-warning market-connect-error" id="problemLinkToConnect">Не удалось корректно получить данные маркета. Проверьте соединение с `connect.smartliving.ru` или повторите позже.</div>
+            <ul id="tab" class="nav nav-tabs market-tabs">
+                [#begin CATEGORIES#]
+                <li id="tab_[#ID#]"><a href="#panel_[#ID#]" id="panel_[#ID#]" data-category-id="[#ID#]">[#TITLE#]</a></li>
+                [#end CATEGORIES#]
+            </ul>
+        </div>
+        <div class="market-results" id="search_result"></div>
+    </section>
+    [#endif CATEGORIES#]
 </div>
+[#endif MODE#]
 
 [#if MODE="iframe"#]
-<style>
-    .md-market-update-modal {
-        --md-market-backdrop-opacity: .58;
-        position: fixed;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        z-index: 1080;
-    }
-    .md-market-update-modal__backdrop {
-        position: absolute;
-        inset: 0;
-        background: rgba(12, 18, 26, var(--md-market-backdrop-opacity));
-        backdrop-filter: blur(6px);
-        transition: background-color .24s ease;
-    }
-    .md-market-update-modal__dialog {
-        position: relative;
-        width: min(980px, 100%);
-        max-height: calc(100vh - 40px);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        border-radius: 24px;
-        background: rgba(255, 255, 255, .98);
-        box-shadow: 0 24px 60px rgba(31, 41, 51, .28);
-    }
-    .md-market-update-modal__header,
-    .md-market-update-modal__body {
-        padding: 20px 22px;
-    }
-    .md-market-update-modal__header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 14px;
-        border-bottom: 1px solid rgba(71, 146, 209, .12);
-        background:
-            radial-gradient(circle at top right, rgba(71, 146, 209, .16), transparent 14rem),
-            rgba(255, 255, 255, .98);
-    }
-    .md-market-update-modal__body {
-        display: grid;
-        gap: 16px;
-        min-height: 0;
-        overflow: auto;
-        background: #f5f8fb;
-    }
-    .md-market-update-modal__eyebrow {
-        color: #6b7a88;
-        font-size: .8rem;
-        font-weight: 700;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-    }
-    .md-market-update-modal__title {
-        margin: 6px 0 0;
-        font-size: 22px;
-        line-height: 1.2;
-        font-weight: 700;
-        color: #1f2933;
-    }
-    .md-market-update-status {
-        padding: 16px;
-        border-radius: 18px;
-        background: rgba(71, 146, 209, .06);
-        border: 1px solid rgba(71, 146, 209, .12);
-    }
-    .md-market-update-status__main {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-    .md-market-update-status__icon {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        flex: 0 0 16px;
-        background: rgba(71, 146, 209, .35);
-        box-shadow: 0 0 0 6px rgba(71, 146, 209, .12);
-    }
-    .md-market-update-status__icon.is-success {
-        background: #198754;
-        box-shadow: 0 0 0 6px rgba(25, 135, 84, .14);
-    }
-    .md-market-update-status__icon.is-error {
-        background: #dc3545;
-        box-shadow: 0 0 0 6px rgba(220, 53, 69, .14);
-    }
-    .md-market-update-status__label {
-        color: #6b7a88;
-        font-size: .8rem;
-    }
-    .md-market-update-status__text {
-        color: #1f2933;
-        font-weight: 600;
-    }
-    .md-market-progress {
-        height: 10px;
-        margin: 14px 0 0;
-        border-radius: 999px;
-        background: rgba(71, 146, 209, .12);
-        overflow: hidden;
-    }
-    .md-market-progress__bar {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        background: linear-gradient(90deg, #4792d1, #6ab1df);
-        transition: width .18s ease;
-    }
-    .md-market-steps {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    .md-market-step {
-        display: inline-flex;
-        align-items: center;
-        min-height: 36px;
-        padding: 7px 12px;
-        border-radius: 999px;
-        background: rgba(71, 146, 209, .06);
-        color: #6b7a88;
-        font-size: .84rem;
-        font-weight: 600;
-    }
-    .md-market-step.is-active {
-        color: #4792d1;
-        background: rgba(71, 146, 209, .13);
-    }
-    .md-market-step.is-done {
-        color: #146c43;
-        background: rgba(25, 135, 84, .12);
-    }
-    .md-market-inline-alert {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 14px 16px;
-        border-radius: 16px;
-        background: #fff7df;
-        border: 1px solid rgba(244, 183, 64, .28);
-        color: #5f4a11;
-    }
-    .md-market-console {
-        width: 100%;
-        min-height: 440px;
-        border: 0;
-        border-radius: 18px;
-        background: #0e1d33;
-    }
-    @media (max-width: 767px) {
-        .md-market-update-modal {
-            padding: 0;
-        }
-        .md-market-update-modal__dialog {
-            width: 100%;
-            max-height: 100vh;
-            min-height: 100vh;
-            border-radius: 0;
-        }
-        .md-market-update-modal__header,
-        .md-market-update-modal__body {
-            padding: 18px;
-        }
-        .md-market-console {
-            min-height: 360px;
-        }
-    }
-</style>
-<script>
-    var marketInstallInProgress = true;
-    function marketSetInstallStatus(text, state, percent, step) {
-        var label = document.getElementById('marketInstallStatusText');
-        var icon = document.getElementById('marketInstallStatusIcon');
-        var progress = document.querySelector('#marketInstallProgress .md-market-progress__bar');
-        var modal = document.querySelector('[data-market-update-modal]');
-        if (label) {
-            label.textContent = text || '';
-        }
-        if (typeof percent === 'undefined' || percent === null) {
-            percent = state === 'success' || state === 'error' ? 100 : 35;
-        }
-        if (icon) {
-            icon.classList.remove('is-success', 'is-error');
-            if (state === 'success') {
-                icon.classList.add('is-success');
-            } else if (state === 'error') {
-                icon.classList.add('is-error');
-            }
-        }
-        if (progress) {
-            progress.style.width = percent + '%';
-            progress.style.background = state === 'error'
-                ? 'linear-gradient(90deg, #dc3545, #ef6a78)'
-                : state === 'success'
-                    ? 'linear-gradient(90deg, #198754, #54b47b)'
-                    : 'linear-gradient(90deg, #4792d1, #6ab1df)';
-        }
-        if (modal) {
-            var normalizedPercent = Math.max(0, Math.min(100, percent));
-            var opacity = 0.58 + (normalizedPercent / 100) * 0.34;
-            if (state === 'error') {
-                opacity = 0.88;
-            } else if (state === 'success') {
-                opacity = 0.94;
-            }
-            modal.style.setProperty('--md-market-backdrop-opacity', opacity.toFixed(2));
-        }
-        if (step) {
-            var activeNode = document.getElementById('marketInstallStep_' + step);
-            var activeOrder = activeNode ? parseInt(activeNode.getAttribute('data-order'), 10) : NaN;
-            Array.prototype.forEach.call(document.querySelectorAll('.md-market-step'), function (item) {
-                var order = parseInt(item.getAttribute('data-order'), 10);
-                var isActive = item.id === 'marketInstallStep_' + step;
-                item.classList.toggle('is-active', isActive);
-                item.classList.toggle('is-done', !Number.isNaN(activeOrder) && !Number.isNaN(order) && order < activeOrder);
-            });
-        }
-    }
-    function marketFinishInstall(text, state) {
-        marketInstallInProgress = false;
-        window.onbeforeunload = null;
-        marketSetInstallStatus(text || 'Операция завершена, выполняется переход...', state || 'success', 100, 'finish');
-    }
-    document.addEventListener('DOMContentLoaded', function () {
-        document.body.classList.add('md-market-modal-open');
-        marketSetInstallStatus('Подготовка операции. Подробный журнал появится ниже.', 'active', 15, 'prepare');
-    });
-</script>
 <div class="md-market-update-modal" data-market-update-modal>
     <div class="md-market-update-modal__backdrop"></div>
     <div class="md-market-update-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="marketInstallTitle">
@@ -885,7 +141,6 @@
         </div>
     </div>
 </div>
-
 [#endif MODE#]
 
 [#if MODE="details"#]
