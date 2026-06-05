@@ -3912,7 +3912,7 @@ body.md-admin-search-open {
 .md-admin-search-drawer__body {
   display: flex;
   min-height: 0;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 12px;
   padding: 18px 22px 22px;
@@ -3982,9 +3982,14 @@ body.md-admin-search-open {
   flex-direction: column;
   gap: 14px;
   height: 100%;
+  max-height: none;
+  margin-top: 0;
+  padding: 0 4px 0 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-right: 4px;
+  white-space: normal;
+  border: 0;
+  background: transparent;
 }
 
 .md-admin-search-state {

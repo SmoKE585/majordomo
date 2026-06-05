@@ -57,6 +57,7 @@ if ($op == 'filter') {
     }
 
     $title = trim((string)gr('title', 'trim'));
+    $title = preg_replace('/\s+/u', ' ', $title);
     $limit = (int)gr('limit', 'int');
     if ($limit <= 0) {
         $limit = 60;
@@ -72,7 +73,115 @@ if ($op == 'filter') {
         return (string)$url;
     };
 
-    $addResult = static function ($section, $type, $title, $url, $description = '', $meta = [], $action = '') use (&$sections, &$counts, &$seen, $makeUrl) {
+    $normalizeSearchText = static function ($value) {
+        $value = mb_strtolower(trim((string)$value));
+        $value = preg_replace('/\s*\.\s*/u', '.', $value);
+        $value = str_replace(['_', '-', '/', '\\', ':'], ' ', $value);
+        $value = str_replace('.', ' ', $value);
+        $value = preg_replace('/\s+/u', ' ', $value);
+        return trim($value);
+    };
+
+    $normalizeFullTitle = static function ($value) {
+        $value = mb_strtolower(trim((string)$value));
+        $value = preg_replace('/\s*\.\s*/u', '.', $value);
+        $value = preg_replace('/\s+/u', ' ', $value);
+        return trim($value);
+    };
+
+    $queryNormalized = $normalizeSearchText($title);
+    $queryFullNormalized = $normalizeFullTitle($title);
+    $queryTokens = preg_split('/[\s\._:\-\/\\\\]+/u', $queryNormalized, -1, PREG_SPLIT_NO_EMPTY);
+    $queryTokens = array_values(array_unique(array_filter(array_map('trim', $queryTokens), static function ($value) {
+        return $value !== '';
+    })));
+
+    $buildTokenLikeCondition = static function (array $fields, array $tokens) {
+        if (!$tokens) {
+            return '1=1';
+        }
+
+        $groups = [];
+        foreach ($tokens as $token) {
+            $tokenSafe = DBSafe($token);
+            $parts = [];
+            foreach ($fields as $field) {
+                $parts[] = $field . " LIKE '%" . $tokenSafe . "%'";
+            }
+            $groups[] = '(' . implode(' OR ', $parts) . ')';
+        }
+
+        return implode(' AND ', $groups);
+    };
+
+    $matchesAllTokens = static function ($haystack, array $tokens) {
+        if (!$tokens) {
+            return true;
+        }
+        foreach ($tokens as $token) {
+            if (mb_strpos($haystack, $token) === false) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    $scoreResult = static function ($primaryTitle, $description = '', $meta = [], $aliases = []) use ($normalizeSearchText, $normalizeFullTitle, $matchesAllTokens, $queryNormalized, $queryFullNormalized, $queryTokens) {
+        $score = 0;
+        $candidates = array_merge([(string)$primaryTitle], (array)$aliases);
+
+        foreach ($candidates as $candidate) {
+            $candidateText = $normalizeSearchText($candidate);
+            $candidateFull = $normalizeFullTitle($candidate);
+
+            if ($candidateFull !== '' && $candidateFull === $queryFullNormalized) {
+                $score = max($score, 1000);
+            }
+            if ($candidateText !== '' && $candidateText === $queryNormalized) {
+                $score = max($score, 950);
+            }
+            if ($queryFullNormalized !== '' && mb_strpos($candidateFull, $queryFullNormalized) === 0) {
+                $score = max($score, 900);
+            }
+            if ($queryNormalized !== '' && mb_strpos($candidateText, $queryNormalized) === 0) {
+                $score = max($score, 850);
+            }
+            if ($candidateText !== '' && $matchesAllTokens($candidateText, $queryTokens)) {
+                $score = max($score, 780);
+            }
+            if ($queryFullNormalized !== '' && mb_strpos($candidateFull, $queryFullNormalized) !== false) {
+                $score = max($score, 720);
+            }
+            if ($queryNormalized !== '' && mb_strpos($candidateText, $queryNormalized) !== false) {
+                $score = max($score, 680);
+            }
+        }
+
+        $descriptionText = $normalizeSearchText($description);
+        if ($descriptionText !== '') {
+            if ($matchesAllTokens($descriptionText, $queryTokens)) {
+                $score = max($score, 320);
+            } elseif ($queryNormalized !== '' && mb_strpos($descriptionText, $queryNormalized) !== false) {
+                $score = max($score, 260);
+            }
+        }
+
+        foreach ((array)$meta as $metaItem) {
+            $metaText = $normalizeSearchText($metaItem);
+            if ($metaText === '') {
+                continue;
+            }
+            if ($matchesAllTokens($metaText, $queryTokens)) {
+                $score = max($score, 220);
+            } elseif ($queryNormalized !== '' && mb_strpos($metaText, $queryNormalized) !== false) {
+                $score = max($score, 180);
+            }
+        }
+
+        return $score;
+    };
+
+    $addResult = static function ($section, $type, $title, $url, $description = '', $meta = [], $action = '', $aliases = []) use (&$sections, &$counts, &$seen, $makeUrl, $scoreResult) {
         $title = trim((string)$title);
         if ($title === '') {
             return;
@@ -87,6 +196,7 @@ if ($op == 'filter') {
             $sections[$section] = [];
             $counts[$section] = 0;
         }
+        $score = $scoreResult($title, $description, $meta, $aliases);
         $sections[$section][] = [
             'type' => $type,
             'title' => $title,
@@ -96,6 +206,7 @@ if ($op == 'filter') {
                 return trim($value) !== '';
             })),
             'action' => $action,
+            '_score' => $score,
         ];
         $counts[$section]++;
     };
@@ -113,6 +224,8 @@ if ($op == 'filter') {
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
+
+    $objectMatch = [];
 
     if (preg_match('/^(.+)\.$/', $title, $m)) {
         $exactTitle = DBSafe($m[1]);
@@ -148,22 +261,86 @@ if ($op == 'filter') {
         }
     }
 
-    $modules = SQLSelect("SELECT NAME, TITLE FROM project_modules WHERE TITLE LIKE '%" . $like . "%' AND HIDDEN=0 ORDER BY TITLE LIMIT " . $limit);
-    foreach ($modules as $item) {
-        $addResult('Модули', 'module', processTitle($item['TITLE']), '?md=panel&action=' . urlencode($item['NAME']), '', ['Модуль']);
+    if (preg_match('/^([^\.]+)\.([^\.]+)$/u', $title, $m)) {
+        $objectMatch = [
+            'owner' => trim($m[1]),
+            'member' => trim($m[2]),
+        ];
+        $exactOwner = DBSafe($objectMatch['owner']);
+        $exactMember = DBSafe($objectMatch['member']);
+
+        $object = SQLSelectOne("SELECT ID, TITLE, DESCRIPTION, CLASS_ID FROM objects WHERE TITLE LIKE '" . $exactOwner . "'");
+        if (!empty($object['ID'])) {
+            $property = SQLSelectOne("SELECT properties.ID, properties.TITLE, properties.DESCRIPTION, properties.OBJECT_ID, properties.CLASS_ID FROM properties WHERE properties.TITLE LIKE '" . $exactMember . "' AND (properties.OBJECT_ID='" . (int)$object['ID'] . "' OR properties.CLASS_ID='" . (int)$object['CLASS_ID'] . "') ORDER BY properties.OBJECT_ID DESC LIMIT 1");
+            if (!empty($property['ID'])) {
+                $propertyObjectId = !empty($property['OBJECT_ID']) ? (int)$property['OBJECT_ID'] : (int)$object['ID'];
+                $propertyClassId = (int)$object['CLASS_ID'];
+                $addResult('Точное совпадение', 'property', $object['TITLE'] . '.' . $property['TITLE'], '/panel/class/' . $propertyClassId . '/object/' . $propertyObjectId . '/properties.html', $property['DESCRIPTION'] ?? '', ['Свойство'], '', [$object['TITLE'], $property['TITLE']]);
+            }
+
+            $method = SQLSelectOne("SELECT methods.ID, methods.TITLE, methods.DESCRIPTION, methods.OBJECT_ID, methods.CLASS_ID FROM methods WHERE methods.TITLE LIKE '" . $exactMember . "' AND (methods.OBJECT_ID='" . (int)$object['ID'] . "' OR methods.CLASS_ID='" . (int)$object['CLASS_ID'] . "') ORDER BY methods.OBJECT_ID DESC LIMIT 1");
+            if (!empty($method['ID'])) {
+                if (!empty($method['OBJECT_ID'])) {
+                    $addResult('Точное совпадение', 'method', $object['TITLE'] . '.' . $method['TITLE'], '/panel/class/' . (int)$object['CLASS_ID'] . '/object/' . (int)$object['ID'] . '/methods/' . (int)$method['ID'] . '.html', $method['DESCRIPTION'] ?? '', ['Метод объекта'], '', [$object['TITLE'], $method['TITLE']]);
+                } else {
+                    $addResult('Точное совпадение', 'method', $object['TITLE'] . '.' . $method['TITLE'], '/panel/class/' . (int)$object['CLASS_ID'] . '/methods/' . (int)$method['ID'] . '.html', $method['DESCRIPTION'] ?? '', ['Метод класса'], '', [$object['TITLE'], $method['TITLE']]);
+                }
+            }
+        }
+
+        $class = SQLSelectOne("SELECT ID, TITLE, DESCRIPTION FROM classes WHERE TITLE LIKE '" . $exactOwner . "'");
+        if (!empty($class['ID'])) {
+            $property = SQLSelectOne("SELECT ID, TITLE, DESCRIPTION, CLASS_ID FROM properties WHERE CLASS_ID='" . (int)$class['ID'] . "' AND TITLE LIKE '" . $exactMember . "' LIMIT 1");
+            if (!empty($property['ID'])) {
+                $addResult('Точное совпадение', 'property', $class['TITLE'] . '.' . $property['TITLE'], '/panel/class/' . (int)$class['ID'] . '/properties.html', $property['DESCRIPTION'] ?? '', ['Свойство класса'], '', [$class['TITLE'], $property['TITLE']]);
+            }
+            $method = SQLSelectOne("SELECT ID, TITLE, DESCRIPTION, CLASS_ID FROM methods WHERE CLASS_ID='" . (int)$class['ID'] . "' AND TITLE LIKE '" . $exactMember . "' LIMIT 1");
+            if (!empty($method['ID'])) {
+                $addResult('Точное совпадение', 'method', $class['TITLE'] . '.' . $method['TITLE'], '/panel/class/' . (int)$class['ID'] . '/methods/' . (int)$method['ID'] . '.html', $method['DESCRIPTION'] ?? '', ['Метод класса'], '', [$class['TITLE'], $method['TITLE']]);
+            }
+        }
     }
 
-    $classes = SQLSelect("SELECT ID, TITLE, DESCRIPTION FROM classes WHERE TITLE LIKE '%" . $like . "%' OR DESCRIPTION LIKE '%" . $like . "%' ORDER BY TITLE LIMIT " . $limit);
+    $moduleCondition = $buildTokenLikeCondition(['TITLE', 'NAME'], $queryTokens);
+    $classCondition = $buildTokenLikeCondition(['classes.TITLE', 'classes.DESCRIPTION'], $queryTokens);
+    $objectCondition = $buildTokenLikeCondition(['objects.TITLE', 'objects.DESCRIPTION', 'classes.TITLE'], $queryTokens);
+    $propertyCondition = $buildTokenLikeCondition([
+        'properties.TITLE',
+        'properties.DESCRIPTION',
+        'pvalues.VALUE',
+        'objects.TITLE',
+        'classes.TITLE',
+        "CONCAT(IFNULL(objects.TITLE, ''), '.', properties.TITLE)",
+        "CONCAT(IFNULL(classes.TITLE, ''), '.', properties.TITLE)"
+    ], $queryTokens);
+    $methodCondition = $buildTokenLikeCondition([
+        'methods.TITLE',
+        'methods.DESCRIPTION',
+        'methods.CODE',
+        'objects.TITLE',
+        'classes.TITLE',
+        "CONCAT(IFNULL(objects.TITLE, ''), '.', methods.TITLE)",
+        "CONCAT(IFNULL(classes.TITLE, ''), '.', methods.TITLE)"
+    ], $queryTokens);
+    $scriptCondition = $buildTokenLikeCondition(['scripts.TITLE', 'scripts.CODE'], $queryTokens);
+
+    $modules = SQLSelect("SELECT NAME, TITLE FROM project_modules WHERE HIDDEN=0 AND (TITLE LIKE '%" . $like . "%' OR NAME LIKE '%" . $like . "%' OR (" . $moduleCondition . ")) ORDER BY TITLE LIMIT " . $limit);
+    foreach ($modules as $item) {
+        $moduleTitle = processTitle($item['TITLE']);
+        $addResult('Модули', 'module', $moduleTitle, '?md=panel&action=' . urlencode($item['NAME']), '', ['Модуль', $item['NAME']], '', [$item['NAME'], $moduleTitle]);
+    }
+
+    $classes = SQLSelect("SELECT ID, TITLE, DESCRIPTION FROM classes WHERE (TITLE LIKE '%" . $like . "%' OR DESCRIPTION LIKE '%" . $like . "%' OR (" . $classCondition . ")) ORDER BY TITLE LIMIT " . $limit);
     foreach ($classes as $class) {
         $addResult('Классы', 'class', $class['TITLE'], '/panel/class/' . (int)$class['ID'] . '.html', $class['DESCRIPTION'] ?? '', ['Класс']);
     }
 
-    $objects = SQLSelect("SELECT objects.ID, objects.TITLE, objects.DESCRIPTION, objects.CLASS_ID, classes.TITLE AS CLASS FROM objects LEFT JOIN classes ON objects.CLASS_ID=classes.ID WHERE (objects.TITLE LIKE '%" . $like . "%' OR objects.DESCRIPTION LIKE '%" . $like . "%') ORDER BY objects.TITLE LIMIT " . $limit);
+    $objects = SQLSelect("SELECT objects.ID, objects.TITLE, objects.DESCRIPTION, objects.CLASS_ID, classes.TITLE AS CLASS FROM objects LEFT JOIN classes ON objects.CLASS_ID=classes.ID WHERE (objects.TITLE LIKE '%" . $like . "%' OR objects.DESCRIPTION LIKE '%" . $like . "%' OR (" . $objectCondition . ")) ORDER BY objects.TITLE LIMIT " . $limit);
     foreach ($objects as $object) {
-        $addResult('Объекты', 'object', $object['TITLE'], '/panel/class/' . (int)$object['CLASS_ID'] . '/object/' . (int)$object['ID'] . '.html', $object['DESCRIPTION'] ?? '', [$object['CLASS'] ?? '']);
+        $addResult('Объекты', 'object', $object['TITLE'], '/panel/class/' . (int)$object['CLASS_ID'] . '/object/' . (int)$object['ID'] . '.html', $object['DESCRIPTION'] ?? '', [$object['CLASS'] ?? ''], '', [$object['CLASS'] ?? '']);
     }
 
-    $properties = SQLSelect("SELECT properties.ID, properties.CLASS_ID, properties.TITLE, properties.DESCRIPTION, objects.CLASS_ID AS OBJECT_CLASS_ID, objects.ID AS OBJECT_ID, classes.TITLE AS CLASS, objects.TITLE AS OBJECT, pvalues.VALUE AS VALUE FROM properties LEFT JOIN classes ON properties.CLASS_ID=classes.ID LEFT JOIN pvalues ON (properties.ID=pvalues.PROPERTY_ID AND (properties.OBJECT_ID=pvalues.OBJECT_ID OR properties.OBJECT_ID=0)) LEFT JOIN objects ON (properties.OBJECT_ID=objects.ID OR pvalues.OBJECT_ID=objects.ID) WHERE (properties.TITLE LIKE '%" . $like . "%' OR properties.DESCRIPTION LIKE '%" . $like . "%' OR pvalues.VALUE LIKE '%" . $like . "%') ORDER BY properties.TITLE LIMIT " . $limit);
+    $properties = SQLSelect("SELECT properties.ID, properties.CLASS_ID, properties.TITLE, properties.DESCRIPTION, objects.CLASS_ID AS OBJECT_CLASS_ID, objects.ID AS OBJECT_ID, classes.TITLE AS CLASS, objects.TITLE AS OBJECT, pvalues.VALUE AS VALUE FROM properties LEFT JOIN classes ON properties.CLASS_ID=classes.ID LEFT JOIN pvalues ON (properties.ID=pvalues.PROPERTY_ID AND (properties.OBJECT_ID=pvalues.OBJECT_ID OR properties.OBJECT_ID=0)) LEFT JOIN objects ON (properties.OBJECT_ID=objects.ID OR pvalues.OBJECT_ID=objects.ID) WHERE (properties.TITLE LIKE '%" . $like . "%' OR properties.DESCRIPTION LIKE '%" . $like . "%' OR pvalues.VALUE LIKE '%" . $like . "%' OR CONCAT(IFNULL(objects.TITLE, ''), '.', properties.TITLE) LIKE '%" . $like . "%' OR CONCAT(IFNULL(classes.TITLE, ''), '.', properties.TITLE) LIKE '%" . $like . "%' OR (" . $propertyCondition . ")) ORDER BY properties.TITLE LIMIT " . $limit);
     foreach ($properties as $property) {
         $owner = !empty($property['OBJECT']) ? $property['OBJECT'] : $property['CLASS'];
         $url = !empty($property['OBJECT_ID'])
@@ -173,38 +350,60 @@ if ($op == 'filter') {
         if (isset($property['VALUE']) && $property['VALUE'] !== '') {
             $meta[] = mb_substr((string)$property['VALUE'], 0, 80);
         }
-        $addResult('Свойства', 'property', $owner . '.' . $property['TITLE'], $url, $property['DESCRIPTION'] ?? '', $meta);
+        $aliases = [$owner, $property['TITLE']];
+        if (isset($property['CLASS']) && $property['CLASS'] !== '') {
+            $aliases[] = $property['CLASS'];
+        }
+        $addResult('Свойства', 'property', $owner . '.' . $property['TITLE'], $url, $property['DESCRIPTION'] ?? '', $meta, '', $aliases);
     }
 
-    $methods = SQLSelect("SELECT methods.ID, methods.TITLE, methods.OBJECT_ID, methods.DESCRIPTION, objects.CLASS_ID AS OBJECT_CLASS_ID, methods.CLASS_ID, classes.TITLE AS CLASS, objects.TITLE AS OBJECT FROM methods LEFT JOIN classes ON methods.CLASS_ID=classes.ID LEFT JOIN objects ON methods.OBJECT_ID=objects.ID WHERE (methods.TITLE LIKE '%" . $like . "%' OR methods.CODE LIKE '%" . $like . "%' OR methods.DESCRIPTION LIKE '%" . $like . "%') ORDER BY methods.TITLE LIMIT " . $limit);
+    $methods = SQLSelect("SELECT methods.ID, methods.TITLE, methods.OBJECT_ID, methods.DESCRIPTION, objects.CLASS_ID AS OBJECT_CLASS_ID, methods.CLASS_ID, classes.TITLE AS CLASS, objects.TITLE AS OBJECT FROM methods LEFT JOIN classes ON methods.CLASS_ID=classes.ID LEFT JOIN objects ON methods.OBJECT_ID=objects.ID WHERE (methods.TITLE LIKE '%" . $like . "%' OR methods.CODE LIKE '%" . $like . "%' OR methods.DESCRIPTION LIKE '%" . $like . "%' OR CONCAT(IFNULL(objects.TITLE, ''), '.', methods.TITLE) LIKE '%" . $like . "%' OR CONCAT(IFNULL(classes.TITLE, ''), '.', methods.TITLE) LIKE '%" . $like . "%' OR (" . $methodCondition . ")) ORDER BY methods.TITLE LIMIT " . $limit);
     foreach ($methods as $method) {
         if (!empty($method['OBJECT_ID'])) {
-            $addResult('Методы', 'method', $method['OBJECT'] . '.' . $method['TITLE'], '/panel/class/' . (int)$method['OBJECT_CLASS_ID'] . '/object/' . (int)$method['OBJECT_ID'] . '/methods/' . (int)$method['ID'] . '.html', $method['DESCRIPTION'] ?? '', ['Метод объекта']);
+            $addResult('Методы', 'method', $method['OBJECT'] . '.' . $method['TITLE'], '/panel/class/' . (int)$method['OBJECT_CLASS_ID'] . '/object/' . (int)$method['OBJECT_ID'] . '/methods/' . (int)$method['ID'] . '.html', $method['DESCRIPTION'] ?? '', ['Метод объекта'], '', [$method['OBJECT'] ?? '', $method['TITLE'], $method['CLASS'] ?? '']);
         } else {
-            $addResult('Методы', 'method', $method['CLASS'] . '.' . $method['TITLE'], '/panel/class/' . (int)$method['CLASS_ID'] . '/methods/' . (int)$method['ID'] . '.html', $method['DESCRIPTION'] ?? '', ['Метод класса']);
+            $addResult('Методы', 'method', $method['CLASS'] . '.' . $method['TITLE'], '/panel/class/' . (int)$method['CLASS_ID'] . '/methods/' . (int)$method['ID'] . '.html', $method['DESCRIPTION'] ?? '', ['Метод класса'], '', [$method['CLASS'] ?? '', $method['TITLE']]);
         }
     }
 
-    $scripts = SQLSelect("SELECT ID, TITLE FROM scripts WHERE (TITLE LIKE '%" . $like . "%' OR CODE LIKE '%" . $like . "%') ORDER BY TITLE LIMIT " . $limit);
+    $scripts = SQLSelect("SELECT ID, TITLE FROM scripts WHERE (TITLE LIKE '%" . $like . "%' OR CODE LIKE '%" . $like . "%' OR (" . $scriptCondition . ")) ORDER BY TITLE LIMIT " . $limit);
     foreach ($scripts as $script) {
         $addResult('Скрипты', 'script', $script['TITLE'], '/panel/script/' . (int)$script['ID'] . '.html', '', ['Скрипт']);
     }
 
 
     if (file_exists(DIR_MODULES . 'zwave/zwave.class.php')) {
-        $devices = SQLSelect("SELECT ID, DEVICE_ID, TITLE, LINKED_OBJECT, LINKED_PROPERTY FROM zwave_properties WHERE (TITLE LIKE '%" . $like . "%' OR LINKED_OBJECT LIKE '%" . $like . "%' OR LINKED_PROPERTY LIKE '%" . $like . "%') ORDER BY TITLE LIMIT " . $limit);
+        $zwaveCondition = $buildTokenLikeCondition(['TITLE', 'LINKED_OBJECT', 'LINKED_PROPERTY'], $queryTokens);
+        $devices = SQLSelect("SELECT ID, DEVICE_ID, TITLE, LINKED_OBJECT, LINKED_PROPERTY FROM zwave_properties WHERE (TITLE LIKE '%" . $like . "%' OR LINKED_OBJECT LIKE '%" . $like . "%' OR LINKED_PROPERTY LIKE '%" . $like . "%' OR (" . $zwaveCondition . ")) ORDER BY TITLE LIMIT " . $limit);
         foreach ($devices as $device) {
-            $addResult('Z-Wave', 'zwave', $device['TITLE'], '/panel/zwave/' . (int)$device['DEVICE_ID'] . '.html', '', [$device['LINKED_OBJECT'] ?? '', $device['LINKED_PROPERTY'] ?? '']);
+            $deviceFullTitle = trim(($device['LINKED_OBJECT'] ?? '') . '.' . ($device['LINKED_PROPERTY'] ?? ''), '.');
+            $addResult('Z-Wave', 'zwave', $device['TITLE'], '/panel/zwave/' . (int)$device['DEVICE_ID'] . '.html', '', [$device['LINKED_OBJECT'] ?? '', $device['LINKED_PROPERTY'] ?? ''], '', [$deviceFullTitle]);
         }
     }
 
 
     if (file_exists(DIR_MODULES . 'app_gpstrack/app_gpstrack.class.php')) {
-        $actions = SQLSelect("SELECT gpsactions.ID, gpslocations.TITLE, users.NAME FROM gpsactions LEFT JOIN users ON gpsactions.USER_ID=users.ID LEFT JOIN gpslocations ON gpsactions.LOCATION_ID=gpslocations.ID WHERE (gpslocations.TITLE LIKE '%" . $like . "%' OR gpsactions.CODE LIKE '%" . $like . "%') ORDER BY gpslocations.TITLE LIMIT " . $limit);
+        $gpsCondition = $buildTokenLikeCondition(['gpslocations.TITLE', 'gpsactions.CODE', 'users.NAME'], $queryTokens);
+        $actions = SQLSelect("SELECT gpsactions.ID, gpslocations.TITLE, users.NAME FROM gpsactions LEFT JOIN users ON gpsactions.USER_ID=users.ID LEFT JOIN gpslocations ON gpsactions.LOCATION_ID=gpslocations.ID WHERE (gpslocations.TITLE LIKE '%" . $like . "%' OR gpsactions.CODE LIKE '%" . $like . "%' OR (" . $gpsCondition . ")) ORDER BY gpslocations.TITLE LIMIT " . $limit);
         foreach ($actions as $action) {
             $addResult('GPS', 'gps', $action['TITLE'], '/panel/app_gpstrack/action_' . (int)$action['ID'] . '.html', '', [$action['NAME'] ?? '']);
         }
     }
+
+    foreach ($sections as $sectionName => &$items) {
+        usort($items, static function ($a, $b) {
+            if (($a['_score'] ?? 0) === ($b['_score'] ?? 0)) {
+                return strnatcasecmp((string)$a['title'], (string)$b['title']);
+            }
+            return (($b['_score'] ?? 0) <=> ($a['_score'] ?? 0));
+        });
+        foreach ($items as &$item) {
+            unset($item['_score']);
+        }
+        unset($item);
+        $counts[$sectionName] = count($items);
+    }
+    unset($items);
 
     $total = 0;
     foreach ($sections as $items) {

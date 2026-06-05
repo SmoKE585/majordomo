@@ -5,6 +5,17 @@
     var escapeHtml = admin.escapeHtml || function (value) {
         return String(value || '');
     };
+    var typeLabels = {
+        module: 'Модуль',
+        class: 'Класс',
+        object: 'Объект',
+        property: 'Свойство',
+        method: 'Метод',
+        script: 'Скрипт',
+        zwave: 'Z-Wave',
+        gps: 'GPS',
+        item: 'Элемент'
+    };
 
     function initGlobalSearchDrawer(root) {
         var drawer = document.getElementById('mdmGlobalSearchDrawer');
@@ -50,11 +61,13 @@
                     return '';
                 }
                 var cards = items.map(function (item) {
+                    var itemType = String(item.type || 'item');
+                    var itemTypeLabel = typeLabels[itemType] || itemType;
                     var meta = (item.meta || []).map(function (metaItem) {
                         return '<span>' + escapeHtml(metaItem) + '</span>';
                     }).join('');
                     return '<a class="md-admin-search-result" href="' + escapeHtml(item.url || '#') + '">' +
-                        '<span class="md-admin-search-result__type md-admin-search-result__type--' + escapeHtml(item.type || 'item') + '">' + escapeHtml(item.type || 'item') + '</span>' +
+                        '<span class="md-admin-search-result__type md-admin-search-result__type--' + escapeHtml(itemType) + '">' + escapeHtml(itemTypeLabel) + '</span>' +
                         '<span class="md-admin-search-result__content">' +
                             '<strong>' + escapeHtml(item.title) + '</strong>' +
                             (item.description ? '<small>' + escapeHtml(item.description) + '</small>' : '') +
