@@ -128,55 +128,47 @@
 	}
 
 	function renderProperties(list) {
-		var cards = [];
+		var rows = '';
 		for (var i = 0; i < list.length; i++) {
-			cards.push(createCard({
-				title: list[i].NAME || '',
-				subtitle: list[i].DESC || '',
-				rows: [
-					{label: config.langValue || 'Value', value: escapeHtml(list[i].VALUE || '')},
-					{label: config.langUpdated || 'Updated', value: escapeHtml(list[i].UPDATE || '')},
-					{label: config.langSource || 'Source', value: escapeHtml(list[i].SOURCE || '')}
-				]
-			}));
+			rows += '<tr>' +
+				'<td>' + escapeHtml(list[i].NAME || '') + '<div class="xray-muted">' + escapeHtml(list[i].DESC || '') + '</div></td>' +
+				'<td>' + escapeHtml(list[i].VALUE || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].UPDATE || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].SOURCE || '') + '</td>' +
+			'</tr>';
 		}
-		return createCardList(cards);
+		return createTable('<thead><tr><th style="width:34%">' + escapeHtml(config.langTitle || 'Title') + '</th><th style="width:22%">' + escapeHtml(config.langValue || 'Value') + '</th><th style="width:16%">' + escapeHtml(config.langUpdated || 'Updated') + '</th><th>' + escapeHtml(config.langSource || 'Source') + '</th></tr></thead>', rows);
 	}
 
 	function renderMethods(list) {
-		var cards = [];
+		var rows = '';
 		for (var i = 0; i < list.length; i++) {
-			cards.push(createCard({
-				title: list[i].METHOD || '',
-				subtitle: list[i].DESC || '',
-				rows: [
-					{label: config.langParams || 'Params', value: escapeHtml(list[i].PARAMS || '')},
-					{label: config.langExecuted || 'Executed', value: escapeHtml(list[i].EXECUTED || '')},
-					{label: config.langSource || 'Source', value: escapeHtml(list[i].SOURCE || '')}
-				]
-			}));
+			rows += '<tr>' +
+				'<td>' + escapeHtml(list[i].METHOD || '') + '<div class="xray-muted">' + escapeHtml(list[i].DESC || '') + '</div></td>' +
+				'<td>' + escapeHtml(list[i].PARAMS || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].EXECUTED || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].SOURCE || '') + '</td>' +
+			'</tr>';
 		}
-		return createCardList(cards);
+		return createTable('<thead><tr><th style="width:24%">' + escapeHtml(config.langMethod || 'Method') + '</th><th style="width:34%">' + escapeHtml(config.langParams || 'Params') + '</th><th style="width:16%">' + escapeHtml(config.langExecuted || 'Executed') + '</th><th>' + escapeHtml(config.langSource || 'Source') + '</th></tr></thead>', rows);
 	}
 
 	function renderScripts(list) {
-		var cards = [];
+		var rows = '';
 		for (var i = 0; i < list.length; i++) {
 			if (!list[i] || !list[i].SCRIPT) {
 				continue;
 			}
-			cards.push(createCard({
-				title: list[i].SCRIPT || '',
-				subtitle: list[i].DESC || '',
-				rows: [
-					{label: config.langParams || 'Params', value: escapeHtml(list[i].PARAMS || '')},
-					{label: config.langExecuted || 'Executed', value: escapeHtml(list[i].EXECUTED || '')},
-					{label: config.langSource || 'Source', value: escapeHtml(list[i].SOURCE || '')}
-				],
-				actions: list[i].ID ? [createButton((config.rootHtml || '') + 'admin.php?action=scripts&md=scripts&inst=adm&view_mode=edit_scripts&id=' + encodeURIComponent(list[i].ID), 'Открыть', 'btn-outline-secondary')] : []
-			}));
+			var openLink = list[i].ID ? '<a href="' + escapeHtml((config.rootHtml || '') + 'admin.php?action=scripts&md=scripts&inst=adm&view_mode=edit_scripts&id=' + encodeURIComponent(list[i].ID)) + '">Открыть</a>' : '';
+			rows += '<tr>' +
+				'<td>' + escapeHtml(list[i].SCRIPT || '') + '<div class="xray-muted">' + escapeHtml(list[i].DESC || '') + '</div></td>' +
+				'<td>' + escapeHtml(list[i].PARAMS || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].EXECUTED || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].SOURCE || '') + '</td>' +
+				'<td class="text-right">' + openLink + '</td>' +
+			'</tr>';
 		}
-		return createCardList(cards);
+		return createTable('<thead><tr><th style="width:24%">' + escapeHtml(config.langScript || 'Script') + '</th><th style="width:32%">' + escapeHtml(config.langParams || 'Params') + '</th><th style="width:16%">' + escapeHtml(config.langExecuted || 'Executed') + '</th><th style="width:18%">' + escapeHtml(config.langSource || 'Source') + '</th><th style="width:10%"></th></tr></thead>', rows);
 	}
 
 	function renderPerformance(list) {
@@ -208,19 +200,16 @@
 	}
 
 	function renderDead(list) {
-		var cards = [];
+		var rows = '';
 		for (var i = 0; i < list.length; i++) {
-			cards.push(createCard({
-				title: list[i].TITLE || '',
-				subtitle: list[i].DESCRIPTION || '',
-				rows: [
-					{label: 'Updated', value: escapeHtml(list[i].UPDATED || '')},
-					{label: 'Location', value: escapeHtml(list[i].LOCATIONTITLE || '')}
-				],
-				tags: [createTag('Не отвечает', 'xray-tag--danger')]
-			}));
+			rows += '<tr>' +
+				'<td>' + escapeHtml(list[i].TITLE || '') + '<div class="xray-muted">' + escapeHtml(list[i].DESCRIPTION || '') + '</div></td>' +
+				'<td>' + escapeHtml(list[i].UPDATED || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].LOCATIONTITLE || '') + '</td>' +
+				'<td>' + createTag('Не отвечает', 'xray-tag--danger') + '</td>' +
+			'</tr>';
 		}
-		return createCardList(cards);
+		return createTable('<thead><tr><th>Объект</th><th style="width:18%">Обновлено</th><th style="width:22%">Расположение</th><th style="width:1%"></th></tr></thead>', rows);
 	}
 
 	function renderEvents(list) {
@@ -257,7 +246,7 @@
 	}
 
 	function renderServices(list) {
-		var cards = [];
+		var rows = '';
 		for (var i = 0; i < list.length; i++) {
 			var statusClass = 'xray-tag--muted';
 			var statusText = config.statusUnknown || 'Неизвестно';
@@ -291,15 +280,14 @@
 			} else {
 				actions.push(createActionButton('button', config.langStart || 'Запуск', 'btn-primary js-service-command', 'data-href="' + escapeHtml(list[i].CNT_START || '#') + '"'));
 			}
-			cards.push(createCard({
-				title: list[i].TITLE || '',
-				subtitle: list[i].STATUS_DETAILS || '',
-				tags: tags,
-				actions: actions,
-				klass: list[i].ALIVE == 0 ? 'xray-data-card--danger' : ''
-			}));
+			rows += '<tr' + (list[i].ALIVE == 0 ? ' class="xray-table-row--danger"' : '') + '>' +
+				'<td>' + escapeHtml(list[i].TITLE || '') + '</td>' +
+				'<td><div class="xray-service-status">' + tags.join('') + '</div></td>' +
+				'<td>' + (list[i].STATUS_DETAILS ? '<div class="xray-muted">' + escapeHtml(list[i].STATUS_DETAILS) + '</div>' : '<span class="xray-muted">-</span>') + '</td>' +
+				'<td class="text-right"><div class="xray-table-actions">' + actions.join('') + '</div></td>' +
+			'</tr>';
 		}
-		return createCardList(cards, 'xray-data-grid--services');
+		return createTable('<thead><tr><th style="width:18%">Цикл</th><th style="width:28%">Статус</th><th>Подробности</th><th style="width:1%"></th></tr></thead>', rows);
 	}
 
 	function renderLogs(content) {
@@ -539,18 +527,16 @@
 			owner: 'xray-log-files',
 			eyebrow: 'X-Ray',
 			title: config.drawerLogFilesTitle || 'Файлы логов',
-			subtitle: 'Выбор логов, которые участвуют в консоли и очистке.',
-			width: 'min(560px, 100vw)',
+			subtitle: 'Скачивание и быстрое переключение между логами за сегодня.',
+			width: 'min(960px, 100vw)',
 			body: body,
 			footer: el('xrayLogDrawerFooter'),
-			focus: function () {
-				return state.filesTomSelect && state.filesTomSelect.control_input ? state.filesTomSelect.control_input : el('files');
-			}
+			focus: el('xrayDrawerCloseBtn')
 		});
 		return false;
 	}
 
-	function resetSelectedFiles() {
+	function clearSelectedFiles() {
 		if (state.filesTomSelect) {
 			state.filesTomSelect.clear(true);
 		} else {
@@ -565,9 +551,12 @@
 		updateSelectedFilesBadge();
 	}
 
-	function pickLogFile(file) {
+	function pickLogFile(file, behavior) {
 		if (!file) {
 			return;
+		}
+		if (behavior === 'replace') {
+			clearSelectedFiles();
 		}
 		if (state.filesTomSelect) {
 			state.filesTomSelect.addItem(file);
@@ -584,6 +573,10 @@
 			}
 		}
 		updateSelectedFilesBadge();
+		if (behavior === 'replace') {
+			closeXrayDrawer('xray-log-files');
+			submitToolbarForm();
+		}
 	}
 
 	function showCycleLog(cycle) {
@@ -597,7 +590,7 @@
 			eyebrow: 'X-Ray',
 			title: config.drawerCycleLogTitle || 'Лог цикла',
 			subtitle: cycle,
-			width: 'min(760px, 100vw)',
+			width: 'min(980px, 100vw)',
 			body: el('xrayCycleDrawerBody'),
 			footer: el('xrayCycleDrawerFooter'),
 			focus: el('xrayCycleDrawerCloseBtn'),
@@ -678,7 +671,7 @@
 		var pickButton = target.closest('.js-xray-pick-file');
 		if (pickButton) {
 			event.preventDefault();
-			pickLogFile(pickButton.getAttribute('data-file'));
+			pickLogFile(pickButton.getAttribute('data-file'), pickButton.getAttribute('data-behavior'));
 		}
 	}
 
@@ -714,8 +707,7 @@
 		var clearButton = el('clearlogsbtn');
 		var toolbarForm = el('xrayToolbarForm');
 		var openLogDrawerButton = el('openLogDrawerBtn');
-		var drawerApplyButton = el('xrayDrawerApplyBtn');
-		var drawerResetButton = el('xrayDrawerResetBtn');
+		var drawerCloseButton = el('xrayDrawerCloseBtn');
 		var cycleDrawerCloseButton = el('xrayCycleDrawerCloseBtn');
 
 		setText(el('xrayModeBadge'), formatModeLabel(config.viewMode || ''));
@@ -752,16 +744,9 @@
 			});
 		}
 
-		if (drawerApplyButton) {
-			drawerApplyButton.addEventListener('click', function () {
+		if (drawerCloseButton) {
+			drawerCloseButton.addEventListener('click', function () {
 				closeXrayDrawer('xray-log-files');
-				submitToolbarForm();
-			});
-		}
-
-		if (drawerResetButton) {
-			drawerResetButton.addEventListener('click', function () {
-				resetSelectedFiles();
 			});
 		}
 

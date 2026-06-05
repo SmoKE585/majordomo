@@ -1,75 +1,14 @@
-.xray-shell-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 16px;
-	margin-bottom: 14px;
+.xray-page__hero {
+	margin-bottom: 10px;
 }
 
-.xray-shell-header__main {
-	min-width: 0;
-}
-
-.xray-shell-header__eyebrow {
-	margin-bottom: 6px;
-	color: #6b7a88;
-	font-size: 11px;
-	font-weight: 700;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-}
-
-.xray-shell-header__title {
-	margin: 0;
-	font-size: 28px;
-	font-weight: 700;
-	color: #1f2933;
-}
-
-.xray-shell-header__summary {
-	margin-top: 6px;
-	max-width: 760px;
-	color: #6b7a88;
-	font-size: 13px;
-	line-height: 1.6;
-}
-
-.xray-shell-header__meta {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: flex-end;
-	gap: 10px;
-}
-
-.xray-meta-pill {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	min-width: 132px;
-	padding: 10px 12px;
-	border: 1px solid rgba(31, 41, 51, 0.08);
-	border-radius: 14px;
-	background: #fff;
-	box-shadow: 0 8px 18px rgba(31, 41, 51, 0.04);
-}
-
-.xray-meta-pill span {
-	color: #6b7a88;
-	font-size: 11px;
-	font-weight: 700;
-	letter-spacing: 0.05em;
-	text-transform: uppercase;
-}
-
-.xray-meta-pill strong {
-	color: #1f2933;
-	font-size: 16px;
-	font-weight: 700;
+.xray-page__tabs {
+	margin-bottom: 10px;
 }
 
 .xray-toolbar {
-	margin: 0 0 14px;
-	padding: 14px;
+	margin: 0 0 12px;
+	padding: 12px 14px;
 	border: 1px solid rgba(31, 41, 51, 0.08);
 	border-radius: 16px;
 	background: #fff;
@@ -84,10 +23,16 @@
 }
 
 .xray-toolbar__drawer-btn,
+.xray-toolbar__files,
 .xray-toolbar__limit,
 .xray-toolbar__search,
 .xray-toolbar__actions {
 	margin: 0;
+}
+
+.xray-toolbar__files {
+	flex: 1 1 360px;
+	min-width: 260px;
 }
 
 .xray-toolbar__drawer-btn {
@@ -118,6 +63,7 @@
 	display: flex;
 	gap: 10px;
 	flex-wrap: wrap;
+	align-items: flex-end;
 }
 
 .xray-inline-stat {
@@ -166,6 +112,39 @@
 .xray-toolbar .form-control {
 	height: 42px;
 	border-radius: 12px;
+}
+
+.xray-toolbar .ts-wrapper {
+	font-size: 13px;
+}
+
+.xray-toolbar .ts-wrapper.multi .ts-control {
+	min-height: 42px;
+	padding: 6px 10px;
+	border: 1px solid rgba(31, 41, 51, 0.12);
+	border-radius: 12px;
+	box-shadow: none;
+}
+
+.xray-toolbar .ts-wrapper.focus .ts-control {
+	border-color: rgba(71, 146, 209, 0.42);
+	box-shadow: 0 0 0 3px rgba(71, 146, 209, 0.12);
+}
+
+.xray-toolbar .ts-wrapper.multi .ts-control > div {
+	margin: 2px 6px 2px 0;
+	padding: 5px 9px;
+	border-radius: 999px;
+	background: rgba(71, 146, 209, 0.12);
+	color: #2c5d87;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.xray-toolbar .ts-dropdown {
+	border: 1px solid rgba(31, 41, 51, 0.12);
+	border-radius: 12px;
+	box-shadow: 0 16px 36px rgba(31, 41, 51, 0.12);
 }
 
 .xray-toolbar__actions {
@@ -279,102 +258,19 @@
 	vertical-align: middle;
 }
 
-.xray-table-actions {
-	display: inline-flex;
-	gap: 6px;
-	flex-wrap: wrap;
-	justify-content: flex-end;
-}
-
-.xray-data-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-	gap: 12px;
-}
-
-.xray-data-grid--services {
-	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-}
-
-.xray-data-card {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	padding: 14px;
-	border: 1px solid rgba(31, 41, 51, 0.08);
-	border-radius: 16px;
-	background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-}
-
-.xray-data-card--danger {
-	border-color: rgba(217, 83, 79, 0.22);
-	background: linear-gradient(180deg, #ffffff 0%, #fff7f7 100%);
-}
-
-.xray-data-card__head {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 10px;
-}
-
-.xray-data-card__title {
-	font-size: 15px;
-	font-weight: 700;
-	color: #1f2933;
-	word-break: break-word;
-}
-
-.xray-data-card__title a {
-	color: inherit;
-	text-decoration: none;
-}
-
-.xray-data-card__title a:hover {
-	color: #2f6fa6;
-}
-
-.xray-data-card__subtitle {
-	color: #6b7a88;
-	font-size: 13px;
-	line-height: 1.5;
-	word-break: break-word;
-}
-
-.xray-data-card__rows {
-	display: grid;
-	gap: 8px;
-}
-
-.xray-data-card__row {
-	display: grid;
-	grid-template-columns: minmax(92px, 120px) minmax(0, 1fr);
-	gap: 10px;
-	padding-top: 8px;
-	border-top: 1px solid rgba(31, 41, 51, 0.06);
-}
-
-.xray-data-card__row span {
+.xray-table .xray-muted {
+	margin-top: 4px;
 	color: #6b7a88;
 	font-size: 12px;
-	font-weight: 600;
+	line-height: 1.5;
 }
 
-.xray-data-card__row strong,
-.xray-data-card__row code {
-	color: #1f2933;
-	font-size: 13px;
-	font-weight: 600;
-	word-break: break-word;
+.xray-table-row--danger > td {
+	background: rgba(217, 83, 79, 0.04);
 }
 
-.xray-data-card__row code {
-	padding: 0;
-	background: transparent;
-}
-
-.xray-data-card__tags {
-	display: flex;
+.xray-table-actions {
+	display: inline-flex;
 	gap: 6px;
 	flex-wrap: wrap;
 	justify-content: flex-end;
@@ -415,13 +311,6 @@
 .xray-tag--muted {
 	background: rgba(107, 122, 136, 0.14);
 	color: #54606c;
-}
-
-.xray-data-card__actions {
-	display: flex;
-	gap: 8px;
-	flex-wrap: wrap;
-	padding-top: 4px;
 }
 
 .xray-empty-state {
@@ -491,7 +380,7 @@
 
 .xray-drawer-footer {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
 	gap: 10px;
 	width: 100%;
 }
@@ -535,6 +424,7 @@
 }
 
 .xray-log-file-card__pick {
+	display: inline-block;
 	padding: 0;
 	border: 0;
 	background: transparent;
@@ -558,6 +448,13 @@
 	font-size: 12px;
 }
 
+.xray-log-file-card__actions {
+	display: inline-flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
 .xray-log-file-card__download {
 	border-radius: 10px;
 }
@@ -567,42 +464,16 @@
 	word-break: break-word;
 }
 
-#xrayLogDrawerBody .ts-wrapper {
-	font-size: 13px;
-}
-
-#xrayLogDrawerBody .ts-wrapper.multi .ts-control {
-	min-height: 48px;
-	padding: 8px 10px;
-	border: 1px solid rgba(31, 41, 51, 0.12);
-	border-radius: 12px;
-	box-shadow: none;
-}
-
-#xrayLogDrawerBody .ts-wrapper.focus .ts-control {
-	border-color: rgba(71, 146, 209, 0.42);
-	box-shadow: 0 0 0 3px rgba(71, 146, 209, 0.12);
-}
-
-#xrayLogDrawerBody .ts-wrapper.multi .ts-control > div {
-	margin: 3px 6px 3px 0;
-	padding: 5px 9px;
-	border-radius: 999px;
-	background: rgba(71, 146, 209, 0.12);
-	color: #2c5d87;
-	font-size: 12px;
-	font-weight: 700;
-}
-
-#xrayLogDrawerBody .ts-dropdown {
-	border: 1px solid rgba(31, 41, 51, 0.12);
-	border-radius: 12px;
-	box-shadow: 0 16px 36px rgba(31, 41, 51, 0.12);
-}
-
 .xray-inline-actions {
 	display: inline-flex;
 	gap: 8px;
+	align-items: center;
+}
+
+.xray-service-status {
+	display: inline-flex;
+	gap: 6px;
+	flex-wrap: wrap;
 	align-items: center;
 }
 
@@ -627,33 +498,12 @@
 }
 
 @media (max-width: 991px) {
-	.xray-shell-header {
-		flex-direction: column;
-	}
-
-	.xray-shell-header__meta {
-		justify-content: flex-start;
-	}
-
 	.xray-toolbar__actions {
 		margin-left: 0;
 	}
 }
 
 @media (max-width: 767px) {
-	.xray-shell-header__title {
-		font-size: 24px;
-	}
-
-	.xray-shell-header__meta {
-		width: 100%;
-	}
-
-	.xray-meta-pill {
-		flex: 1 1 calc(50% - 6px);
-		min-width: 0;
-	}
-
 	.xray-toolbar {
 		padding: 12px;
 	}
@@ -662,6 +512,7 @@
 		align-items: stretch;
 	}
 
+	.xray-toolbar__files,
 	.xray-toolbar__drawer-btn,
 	.xray-toolbar__quick-stats,
 	.xray-toolbar__limit,
@@ -674,12 +525,15 @@
 		max-width: none;
 	}
 
+	.xray-toolbar .ts-wrapper.multi .ts-control {
+		min-height: 42px;
+	}
+
 	.xray-toolbar__actions {
 		flex-direction: column;
 	}
 
 	.xray-action-button,
-	.xray-data-card__actions .btn,
 	.xray-drawer-footer .btn {
 		width: 100%;
 		justify-content: center;
@@ -689,30 +543,21 @@
 		flex: 1 1 calc(50% - 5px);
 	}
 
-	.xray-data-grid,
-	.xray-data-grid--services {
-		grid-template-columns: 1fr;
-	}
-
-	.xray-data-card__head {
-		flex-direction: column;
-		align-items: flex-start;
-	}
-
-	.xray-data-card__row {
-		grid-template-columns: 1fr;
-	}
-
-	.xray-data-card__tags {
-		justify-content: flex-start;
-	}
-
 	.xray-log-file-card {
-		align-items: flex-start;
+		flex-direction: column;
+		align-items: stretch;
 	}
 
 	.xray-drawer-footer {
 		flex-direction: column;
+	}
+
+	.xray-log-file-card__actions {
+		width: 100%;
+	}
+
+	.xray-log-file-card__actions .btn {
+		flex: 1 1 auto;
 	}
 
 	.xray-drawer-log {

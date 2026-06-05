@@ -1153,11 +1153,15 @@ class xray extends module
                 }
 
                 if ($this->view_mode == 'dead') {
-                    $qry .= " AND ((objects.TITLE LIKE '%" . DBSafe($filter) . "%')" . " or (objects.DESCRIPTION LIKE '%" . DBSafe($filter) . "%'))";
+                    $qry = '';
+                    if ($filter != '') {
+                        $qry .= " AND ((objects.TITLE LIKE '%" . DBSafe($filter) . "%')" . " or (objects.DESCRIPTION LIKE '%" . DBSafe($filter) . "%'))";
+                    }
                     $pRecs = SQLSelect("SELECT ID FROM properties WHERE TITLE = 'alive'");
                     $total = count($pRecs);
                     if (!$total) {
-                        return 0;
+                        echo json_encode(array('MODE' => 'dead', 'TOTAL' => 0, 'LIST' => array()));
+                        return;
                     }
                     $found = array();
                     for ($i = 0; $i < $total; $i++) {

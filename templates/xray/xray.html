@@ -55,22 +55,46 @@
 <script src="<#ROOTHTML#>3rdparty/tom-select/js/tom-select.complete.min.js"></script>
 <script src="<#ROOTHTML#>templates/xray/xray.js?v=2026-06-05-1"></script>
 
-<div class="xray-shell-header">
-	<div class="xray-shell-header__main">
-		<div class="xray-shell-header__eyebrow">Диагностика</div>
-		<h1 class="xray-shell-header__title">X-Ray</h1>
-		<div class="xray-shell-header__summary">Логи, фоновые циклы, таймеры, события, база и производительность без лишних экранов и вложенных блоков.</div>
+<section class="md-admin-section-card md-classes-page__hero xray-page__hero">
+	<div class="md-admin-section-card__body">
+		<div class="md-classes-page__hero-layout">
+			<div class="md-classes-page__hero-main">
+				<div class="md-classes-page__eyebrow">Диагностика</div>
+				<h1 class="md-classes-page__title">X-Ray</h1>
+				<div class="md-classes-page__summary">Логи, фоновые циклы, таймеры, события, база и производительность. Интерфейс остается плоским, но не теряет быстрый доступ к ключевым действиям.</div>
+				<div class="md-classes-page__meta">
+					<div class="md-classes-page__meta-item">
+						<span>Режим</span>
+						<strong id="xrayModeBadge">[#if VIEW_MODE=""#]Логи[#else#]<#VIEW_MODE#>[#endif VIEW_MODE#]</strong>
+					</div>
+					<div class="md-classes-page__meta-item">
+						<span>Автообновление</span>
+						<strong id="xrayRefreshBadge">[#if VIEW_MODE="database"#]60 c[#else#]5 c[#endif VIEW_MODE#]</strong>
+					</div>
+					[#if VIEW_MODE=""#]
+					<div class="md-classes-page__meta-item">
+						<span>Выбрано файлов</span>
+						<strong id="xraySelectedFilesBadge">[#SELECTED_FILES_TOTAL#]</strong>
+					</div>
+					<div class="md-classes-page__meta-item">
+						<span>Файлов логов</span>
+						<strong>[#FILES_TOTAL#]</strong>
+					</div>
+					<div class="md-classes-page__meta-item">
+						<span>Сегодня</span>
+						<strong>[#TODAY_FILES_TOTAL#]</strong>
+					</div>
+					[#endif VIEW_MODE#]
+				</div>
+			</div>
+			<div class="md-classes-page__hero-actions">
+				<a href="print_all.php" target="_blank" class="btn btn-outline-secondary">Структура</a>
+			</div>
+		</div>
 	</div>
-	<div class="xray-shell-header__meta">
-		<div class="xray-meta-pill"><span>Режим</span><strong id="xrayModeBadge">[#if VIEW_MODE=""#]Логи[#else#]<#VIEW_MODE#>[#endif VIEW_MODE#]</strong></div>
-		<div class="xray-meta-pill"><span>Автообновление</span><strong id="xrayRefreshBadge">[#if VIEW_MODE="database"#]60 c[#else#]5 c[#endif VIEW_MODE#]</strong></div>
-		[#if VIEW_MODE=""#]
-		<div class="xray-meta-pill"><span>Выбрано файлов</span><strong id="xraySelectedFilesBadge">[#SELECTED_FILES_TOTAL#]</strong></div>
-		[#endif VIEW_MODE#]
-	</div>
-</div>
+</section>
 
-<nav class="md-admin-module-tabs" aria-label="X-Ray">
+<nav class="md-admin-module-tabs xray-page__tabs" aria-label="X-Ray">
 	<a class="md-admin-module-tabs__link [#if VIEW_MODE=""#]is-active[#endif#]" href="?view_mode="><#LANG_LOG#></a>
 	<a class="md-admin-module-tabs__link [#if VIEW_MODE="properties"#]is-active[#endif#]" href="?view_mode=properties"><#LANG_PROPERTIES#></a>
 	<a class="md-admin-module-tabs__link [#if VIEW_MODE="methods"#]is-active[#endif#]" href="?view_mode=methods"><#LANG_METHODS#></a>
@@ -90,12 +114,20 @@
 	<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
 	<div class="xray-toolbar__row">
 		[#if VIEW_MODE=""#]
-		<button type="button" class="btn btn-default xray-toolbar__drawer-btn" id="openLogDrawerBtn">
-			<span class="glyphicon glyphicon-list-alt"></span>
-			Файлы логов
-			<span class="xray-toolbar__drawer-count" id="openLogDrawerCount">[#SELECTED_FILES_TOTAL#]</span>
-		</button>
+		<div class="xray-toolbar__files">
+			<label for="files" class="xray-toolbar__label"><#LANG_XRAY_CHOUSE_LOG_FILE#></label>
+			<select name="files[]" id="files" class="form-control" multiple="multiple" placeholder="Выберите файл лога...">
+				[#begin FILES#]
+					<option value="[#TITLE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
+				[#end FILES#]
+			</select>
+		</div>
 		<div class="xray-toolbar__quick-stats">
+			<button type="button" class="btn btn-default xray-toolbar__drawer-btn" id="openLogDrawerBtn">
+				<span class="glyphicon glyphicon-list-alt"></span>
+				Файлы логов
+				<span class="xray-toolbar__drawer-count" id="openLogDrawerCount">[#SELECTED_FILES_TOTAL#]</span>
+			</button>
 			<div class="xray-inline-stat"><span>Всего</span><strong>[#FILES_TOTAL#]</strong></div>
 			<div class="xray-inline-stat"><span>Сегодня</span><strong>[#TODAY_FILES_TOTAL#]</strong></div>
 		</div>
@@ -115,7 +147,7 @@
 			<input type="text" name="filter" id="filter" value="<#FILTER#>" placeholder="<#LANG_XRAY_LINE_FILTER#>" class="form-control">
 		</div>
 		<div class="xray-toolbar__actions">
-			<button type="submit" class="btn btn-primary xray-action-button"><#LANG_SUBMIT#></button>
+			<button type="submit" class="btn btn-primary xray-action-button">Показать</button>
 			<button type="button" class="btn btn-outline-secondary xray-action-button" id="playpausebtn"><span class="glyphicon glyphicon-pause"></span> <#LANG_XRAY_PAUSE#></button>
 			[#if VIEW_MODE=""#]
 			<button type="button" class="btn btn-outline-danger xray-action-button" id="clearlogsbtn"><span class="glyphicon glyphicon-trash"></span> Очистить лог</button>
@@ -147,42 +179,30 @@
 	<div class="xray-drawer-section">
 		<div class="xray-drawer-section__header">
 			<div>
-				<div class="xray-drawer-section__title">Выберите файл лога</div>
-				<div class="xray-drawer-section__hint">Мультивыбор через TomSelect. Можно быстро собрать свой набор логов и сразу применить фильтр.</div>
-			</div>
-		</div>
-		<select name="files[]" id="files" class="form-control" form="xrayToolbarForm" multiple="multiple" placeholder="Выберите файл лога...">
-			[#begin FILES#]
-				<option value="[#TITLE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
-			[#end FILES#]
-		</select>
-	</div>
-	<hr class="xray-drawer-divider">
-	<div class="xray-drawer-section">
-		<div class="xray-drawer-section__header">
-			<div>
 				<div class="xray-drawer-section__title">Файлы за сегодня</div>
-				<div class="xray-drawer-section__hint">Быстрый выбор и скачивание без отдельного правого блока.</div>
+				<div class="xray-drawer-section__hint">Быстрое переключение показа и скачивание. Основной выбор файлов остается в TomSelect над консолью.</div>
 			</div>
 		</div>
 		<div class="xray-log-file-list">
 			[#begin TODAY_FILES#]
 			<div class="xray-log-file-card">
 				<div class="xray-log-file-card__main">
-					<button type="button" class="xray-log-file-card__pick js-xray-pick-file" data-file="[#TITLE#]">[#BASENAME#]</button>
+					<button type="button" class="xray-log-file-card__pick js-xray-pick-file" data-file="[#TITLE#]" data-behavior="replace">[#BASENAME#]</button>
 					<div class="xray-log-file-card__meta"><span>[#SIZE#]</span><span>[#PASSED#]</span></div>
 				</div>
-				<a href="?download_file=[#TITLE#]" class="btn btn-default btn-sm xray-log-file-card__download" title="Скачать">
-					<span class="glyphicon glyphicon-download"></span>
-				</a>
+				<div class="xray-log-file-card__actions">
+					<button type="button" class="btn btn-default btn-sm js-xray-pick-file" data-file="[#TITLE#]" data-behavior="replace">Показать</button>
+					<a href="?download_file=[#TITLE#]" class="btn btn-default btn-sm xray-log-file-card__download" title="Скачать">
+						<span class="glyphicon glyphicon-download"></span>
+					</a>
+				</div>
 			</div>
 			[#end TODAY_FILES#]
 		</div>
 	</div>
 </div>
 <div id="xrayLogDrawerFooter" class="xray-drawer-footer" hidden>
-	<button type="button" class="btn btn-outline-secondary" id="xrayDrawerResetBtn">Сбросить</button>
-	<button type="button" class="btn btn-primary" id="xrayDrawerApplyBtn">Применить</button>
+	<button type="button" class="btn btn-outline-secondary" id="xrayDrawerCloseBtn">Закрыть</button>
 </div>
 [#endif VIEW_MODE#]
 
