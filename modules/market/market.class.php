@@ -435,7 +435,7 @@ class market extends module
                 if ($this->shouldSkipPaidMarketPlugin($rec)) {
                     continue;
                 }
-                $rec = $this->applyRepositoryVersionMetadata($rec, (isset($rec['EXISTS']) || $rec['MODULE_NAME'] == $name));
+                $rec = $this->applyRepositoryVersionMetadata($rec, $this->shouldUseCustomRepositoryVersioning($rec));
                 $rec['MODULE_NAME_ENCODED'] = urlencode($rec['MODULE_NAME']);
                 $rec['REPOSITORY_URL_ENCODED'] = urlencode($rec['REPOSITORY_URL']);
                 $rec['LATEST_VERSION_ENCODED'] = urlencode($rec['LATEST_VERSION']);
@@ -677,6 +677,11 @@ class market extends module
         $rec['LATEST_VERSION_URL'] = $latest_item['url'];
         $rec['LATEST_VERSION_DATE'] = $latest_item['updated'];
         return $rec;
+    }
+
+    function shouldUseCustomRepositoryVersioning($rec)
+    {
+        return !empty($rec['CUSTOM_REPOSITORY_ACTIVE']);
     }
 
     function getGithubRepositoryInfo($url)
