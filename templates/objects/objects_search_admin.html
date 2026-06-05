@@ -1,4 +1,5 @@
 <div class="md-admin-module-list md-objects-admin-list">
+    [#if EMBEDDED_IN_CLASS!="1"#]
     <section class="md-admin-section-card md-objects-list-hero">
         <div class="md-admin-section-card__body">
             <div class="md-objects-list-hero__layout">
@@ -16,9 +17,15 @@
             </div>
         </div>
     </section>
+    [#endif#]
 
     [#if RESULT#]
-    <div class="md-admin-module-list__toolbar">
+    <div class="md-admin-module-list__toolbar [#if EMBEDDED_IN_CLASS=="1"#]md-admin-module-list__toolbar--embedded md-objects-admin-list__toolbar--embedded[#endif#]">
+        [#if EMBEDDED_IN_CLASS=="1"#]
+        <div class="md-related-module-toolbar__stats">
+            <div class="md-related-module-toolbar__stat"><span><#LANG_OBJECTS#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
+        </div>
+        [#endif#]
         <div class="md-admin-module-list__pagination">
             [#if PAGES#]
             <ul class="pagination">
@@ -30,6 +37,11 @@
             </ul>
             [#endif PAGES#]
         </div>
+        [#if EMBEDDED_IN_CLASS=="1"#]
+        <div class="md-objects-admin-list__embedded-actions">
+            <a href="?view_mode=edit_objects" class="btn btn-primary"><#LANG_ADD_NEW_OBJECT#></a>
+        </div>
+        [#endif#]
     </div>
 
     <form action="?" method="post" name="frmList_objects" class="md-admin-module-list__form">
@@ -72,6 +84,16 @@
         </div>
     </form>
     [#else#]
+    [#if EMBEDDED_IN_CLASS=="1"#]
+    <div class="md-admin-module-list__toolbar md-admin-module-list__toolbar--embedded md-objects-admin-list__toolbar--embedded">
+        <div class="md-related-module-toolbar__stats">
+            <div class="md-related-module-toolbar__stat"><span><#LANG_OBJECTS#></span><strong>0</strong></div>
+        </div>
+        <div class="md-objects-admin-list__embedded-actions">
+            <a href="?view_mode=edit_objects" class="btn btn-primary"><#LANG_ADD_NEW_OBJECT#></a>
+        </div>
+    </div>
+    [#endif#]
     <div class="md-admin-empty-state"><#LANG_NO_OBJECTS_DEFINED#></div>
     [#endif RESULT#]
 </div>

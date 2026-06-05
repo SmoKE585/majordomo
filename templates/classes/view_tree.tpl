@@ -23,7 +23,7 @@
                     </span>
                 </button>
                 <div class="md-classes-card__actions">
-                    <a href="?view_mode=edit_classes&id={$item.ID}" class="btn btn-sm btn-primary" title="{$smarty.const.LANG_EDIT}">{$smarty.const.LANG_EDIT}</a>
+                    <a href="?view_mode=edit_classes&id={$item.ID}" class="btn btn-sm btn-light" title="{$smarty.const.LANG_EDIT}">{$smarty.const.LANG_EDIT}</a>
                     <div class="btn-group">
                         <button type="button" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">{$smarty.const.LANG_ACTIONS}</button>
                         <ul class="dropdown-menu dropdown-menu-end">

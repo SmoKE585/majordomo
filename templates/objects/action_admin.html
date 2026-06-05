@@ -43,6 +43,19 @@
 		                '</div>');
 		        }
 		    }
+
+		    var classTabs = document.querySelector('.md-classes-page .md-admin-module-tabs');
+		    if (classTabs && classTabs.dataset.mdObjectTabsMerged !== '1') {
+		        classTabs.dataset.mdObjectTabsMerged = '1';
+		        classTabs.classList.add('md-admin-module-tabs--composite');
+		        classTabs.insertAdjacentHTML('beforeend', '' +
+		            '<span class="md-admin-module-tabs__group md-admin-module-tabs__group--object">' +
+		                '<span class="md-admin-module-tabs__group-label" title="[#TITLE#]">[#TITLE#]</span>' +
+		                '<a class="md-admin-module-tabs__link [#if TAB==""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_DETAILS#></a>' +
+		                '<a class="md-admin-module-tabs__link [#if TAB=="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>' +
+		                '<a class="md-admin-module-tabs__link [#if TAB=="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>' +
+		            '</span>');
+		    }
 		    [#endif#]
 
 		    [#if DEVICE_ID!=""#]
@@ -92,11 +105,13 @@
 				</section>
 		[#endif#]
 
+			[#if PARENT_NAME!="classes"#]
 			<nav class="md-admin-module-tabs" aria-label="<#LANG_OBJECTS#>">
 				<a class="md-admin-module-tabs__link [#if TAB==""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_DETAILS#></a>
 				<a class="md-admin-module-tabs__link [#if TAB=="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>
 				<a class="md-admin-module-tabs__link [#if TAB=="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>
 			</nav>
+			[#endif#]
 	[#endif ID#]
 	[#if TAB==""#]
 		[#inc objects_edit_default.html#]

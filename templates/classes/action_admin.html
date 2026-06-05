@@ -70,27 +70,15 @@ document.addEventListener('DOMContentLoaded', function () {
    [#endif TAB#]
 
    [#if TAB=="properties"#]
-    <section class="md-admin-section-card md-classes-module-host">
-        <div class="md-admin-section-card__body">
-            [#inc classes_edit_properties.html#]
-        </div>
-    </section>
+    [#inc classes_edit_properties.html#]
    [#endif TAB#]
 
    [#if TAB=="methods"#]
-    <section class="md-admin-section-card md-classes-module-host">
-        <div class="md-admin-section-card__body">
-            [#inc classes_edit_methods.html#]
-        </div>
-    </section>
+    [#inc classes_edit_methods.html#]
    [#endif TAB#]
 
    [#if TAB=="objects"#]
-    <section class="md-admin-section-card md-classes-module-host">
-        <div class="md-admin-section-card__body">
-            [#module name="objects" action="admin" class_id="<#ID#>"#]
-        </div>
-    </section>
+    [#module name="objects" action="admin" class_id="<#ID#>"#]
    [#endif TAB#]
 
 [#if ID!=""#]

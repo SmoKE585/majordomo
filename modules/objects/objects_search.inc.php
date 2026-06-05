@@ -7,6 +7,9 @@
   if ($this->owner->name=='panel') {
    $out['CONTROLPANEL']=1;
   }
+  if ($this->owner->name=='classes') {
+   $out['EMBEDDED_IN_CLASS']=1;
+  }
   $qry="1";
   // search filters
 

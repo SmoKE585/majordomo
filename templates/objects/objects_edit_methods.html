@@ -19,8 +19,7 @@
                         <strong>[#OBJECT_TITLE#].[#TITLE#]</strong>
                     </div>
                     <div class="md-admin-record-card__badges">
-                        [#if CUSTOMIZED=="1"#]<span class="badge md-admin-status-badge md-admin-status-badge--danger"><#LANG_OVERWRITE#></span>[#endif#]
-                        [#if CUSTOMIZED!="1"#]<span class="badge md-admin-status-badge"><#LANG_CLASS#></span>[#endif#]
+                        <span class="badge md-admin-status-badge [#METHOD_USAGE_CLASS#]">[#METHOD_USAGE_LABEL#]</span>
                     </div>
                 </div>
             </div>

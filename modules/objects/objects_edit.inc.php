@@ -362,13 +362,28 @@ if ($this->tab == 'methods') {
     include_once(DIR_MODULES . 'classes/classes.class.php');
     $cl = new classes();
     $methods = $cl->getParentMethods($rec['CLASS_ID'], '', 1);
+    $obj_name = SQLSelectOne("SELECT TITLE FROM `objects` WHERE ID = {$rec['ID']}");
     $total = count($methods);
     for ($i = 0; $i < $total; $i++) {
-        $my_meth = SQLSelectOne("SELECT ID FROM methods WHERE OBJECT_ID='" . $rec['ID'] . "' AND TITLE LIKE '" . DBSafe($methods[$i]['TITLE']) . "'");
-        $obj_name = SQLSelectOne("SELECT TITLE FROM `objects` WHERE ID = {$rec['ID']}");
+        $my_meth = SQLSelectOne("SELECT ID, CODE, SCRIPT_ID FROM methods WHERE OBJECT_ID='" . $rec['ID'] . "' AND TITLE LIKE '" . DBSafe($methods[$i]['TITLE']) . "'");
         $methods[$i]['OBJECT_TITLE'] = $obj_name['TITLE'];
+
+        $hasClassImplementation = (trim((string)$methods[$i]['CODE']) !== '' || (int)$methods[$i]['SCRIPT_ID'] > 0);
+        $hasObjectImplementation = (!empty($my_meth['ID']) && (trim((string)$my_meth['CODE']) !== '' || (int)$my_meth['SCRIPT_ID'] > 0));
+
         if (isset($my_meth['ID'])) {
             $methods[$i]['CUSTOMIZED'] = 1;
+        }
+
+        if ($hasObjectImplementation) {
+            $methods[$i]['METHOD_USAGE_LABEL'] = 'Дополнен';
+            $methods[$i]['METHOD_USAGE_CLASS'] = 'md-admin-status-badge--danger';
+        } elseif ($hasClassImplementation) {
+            $methods[$i]['METHOD_USAGE_LABEL'] = 'Классовый';
+            $methods[$i]['METHOD_USAGE_CLASS'] = '';
+        } else {
+            $methods[$i]['METHOD_USAGE_LABEL'] = 'Не используется';
+            $methods[$i]['METHOD_USAGE_CLASS'] = 'md-admin-status-badge--muted';
         }
     }
     $out['METHODS'] = $methods;

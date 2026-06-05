@@ -61,7 +61,9 @@
                         <button type="button" class="md-admin-record-card__search" data-md-global-search="[#TITLE#]" aria-label="<#LANG_SEARCH#>">?</button>
                         <div class="md-admin-record-card__content">
                             <div class="md-admin-record-card__title">
-                                <a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=properties">[#CLASS_TITLE#]</a><span class="md-admin-record-card__separator">.</span><strong>[#TITLE#]</strong>
+                                <span class="md-parent-properties-card__path">
+                                    <a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=properties" class="md-admin-record-card__class">[#CLASS_TITLE#]</a><span class="md-admin-record-card__separator">.</span><a href="?view_mode=edit_properties&id=[#ID#]" class="md-parent-properties-card__link">[#TITLE#]</a>
+                                </span>
                             </div>
                         </div>
                     </div>

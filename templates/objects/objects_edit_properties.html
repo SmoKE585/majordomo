@@ -10,44 +10,47 @@
         <div class="md-object-properties-hero__search">
             <input type="text" class="form-control" id="filterProp" placeholder="<#LANG_NEWMARKET_SEARCH_INPUT_PLACEHOLDER#>">
         </div>
-        <button type="button" class="btn btn-primary" data-md-toggle-target="#objectPropertyCreate"><#LANG_ADD_NEW_PROPERTY#></button>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#objectPropertyCreateModal"><#LANG_ADD_NEW_PROPERTY#></button>
     </div>
 
-    <section id="objectPropertyCreate" class="md-admin-section-card md-object-properties-create" hidden>
-        <div class="md-admin-section-card__body">
-            <form action="?" method="post" class="md-admin-form-grid">
-                <div class="row g-3 align-items-start">
-                    <div class="col-lg-4"><input type="text" name="new_property" placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_NAME#> (*)" class="form-control" required></div>
-                    <div class="col-lg-4"><input type="text" name="new_description" placeholder="<#LANG_DESCRIPTION#>" class="form-control"></div>
-                    <div class="col-lg-4"><input type="text" name="new_history" placeholder="<#LANG_KEEP_HISTORY_DAYS#>" class="form-control"></div>
+    <div class="modal fade md-admin-modal" id="objectPropertyCreateModal" tabindex="-1" aria-labelledby="objectPropertyCreateModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="objectPropertyCreateModalTitle"><#LANG_ADD_NEW_PROPERTY#></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<#LANG_CLOSE#>"></button>
                 </div>
-                <div class="row g-3 align-items-start">
-                    <div class="col-lg-4">
-                        <select name="onchange" class="form-control form-select">
-                            <option value="" selected><#LANG_ONCHANGE_METHOD#></option>
-                            [#begin METHODS#]
-                            <option value="[#TITLE#]">[#TITLE#]</option>
-                            [#end METHODS#]
-                        </select>
-                    </div>
-                    <div class="col-lg-8"><textarea placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_VALUE#>" name="new_value" rows="3" class="form-control md-admin-textarea"></textarea></div>
+                <div class="modal-body">
+                    <form action="?" method="post" class="md-admin-form-grid" id="objectPropertyCreateForm">
+                        <div class="row g-3 align-items-start">
+                            <div class="col-lg-4"><input type="text" name="new_property" placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_NAME#> (*)" class="form-control" required></div>
+                            <div class="col-lg-4"><input type="text" name="new_description" placeholder="<#LANG_DESCRIPTION#>" class="form-control"></div>
+                            <div class="col-lg-4"><input type="text" name="new_history" placeholder="<#LANG_KEEP_HISTORY_DAYS#>" class="form-control"></div>
+                        </div>
+                        <div class="row g-3 align-items-start">
+                            <div class="col-lg-4">
+                                <select name="onchange" class="form-control form-select">
+                                    <option value="" selected><#LANG_ONCHANGE_METHOD#></option>
+                                    [#begin METHODS#]
+                                    <option value="[#TITLE#]">[#TITLE#]</option>
+                                    [#end METHODS#]
+                                </select>
+                            </div>
+                            <div class="col-lg-8"><textarea placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_VALUE#>" name="new_value" rows="3" class="form-control md-admin-textarea"></textarea></div>
+                        </div>
+                        <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
+                        <input type="hidden" name="id" value="<#ID#>">
+                        <input type="hidden" name="tab" value="<#TAB#>">
+                        <input type="hidden" name="mode" value="update">
+                    </form>
                 </div>
-                <div class="md-admin-form-actions">
-                    <input type="submit" name="submit" value="<#LANG_ADD#>" class="btn btn-primary">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><button type="button" class="dropdown-item" data-md-toggle-target="#objectPropertyCreate"><#LANG_CANCEL#></button></li>
-                        </ul>
-                    </div>
-                    <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-                    <input type="hidden" name="id" value="<#ID#>">
-                    <input type="hidden" name="tab" value="<#TAB#>">
-                    <input type="hidden" name="mode" value="update">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal"><#LANG_CANCEL#></button>
+                    <button type="submit" form="objectPropertyCreateForm" name="submit" value="1" class="btn btn-primary"><#LANG_ADD#></button>
                 </div>
-            </form>
+            </div>
         </div>
-    </section>
+    </div>
 
     <div class="md-admin-record-list md-object-properties-list" id="proplist">
         [#begin PROPERTIES#]
@@ -260,7 +263,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     var filterInput = document.getElementById('filterProp');
     var propertyCards = Array.prototype.slice.call(document.querySelectorAll('[data-md-object-property]'));
-    var createPanel = document.getElementById('objectPropertyCreate');
     var propertyList = document.getElementById('proplist');
 
     function showCopyToast(message) {
@@ -302,20 +304,23 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.removeChild(tempInput);
     }
 
-    function buildPropertySection(title, modifier, items) {
+    function buildPropertySection(modifier, items) {
         var section = document.createElement('section');
-        var titleNode = document.createElement('h3');
         var list = document.createElement('div');
         section.className = 'md-object-properties-group ' + modifier;
-        titleNode.className = 'md-object-properties-group__title';
-        titleNode.textContent = title;
         list.className = 'md-object-properties-group__list';
-        section.appendChild(titleNode);
         section.appendChild(list);
         items.forEach(function (item) {
             list.appendChild(item);
         });
         return section;
+    }
+
+    function buildPropertyDivider() {
+        var divider = document.createElement('hr');
+        divider.className = 'md-object-properties-divider';
+        divider.setAttribute('aria-hidden', 'true');
+        return divider;
     }
 
     if (propertyList && propertyCards.length) {
@@ -328,24 +333,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         propertyList.innerHTML = '';
         if (classCards.length) {
-            propertyList.appendChild(buildPropertySection('Свойства класса', 'md-object-properties-group--class', classCards));
+            propertyList.appendChild(buildPropertySection('md-object-properties-group--class', classCards));
+        }
+        if (classCards.length && objectCards.length) {
+            propertyList.appendChild(buildPropertyDivider());
         }
         if (objectCards.length) {
-            propertyList.appendChild(buildPropertySection('Свойства объекта', 'md-object-properties-group--object', objectCards));
+            propertyList.appendChild(buildPropertySection('md-object-properties-group--object', objectCards));
         }
     }
 
     document.querySelectorAll('[data-md-copy-value]').forEach(function (button) {
         button.addEventListener('click', function () {
             copyText(button.getAttribute('data-md-copy-value') || '', button.getAttribute('data-md-copy-toast') || '');
-        });
-    });
-
-    document.querySelectorAll('[data-md-toggle-target="#objectPropertyCreate"]').forEach(function (button) {
-        button.addEventListener('click', function () {
-            if (createPanel) {
-                createPanel.hidden = !createPanel.hidden;
-            }
         });
     });
 
