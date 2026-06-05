@@ -143,6 +143,10 @@
 .md-linkedobject-field .ts-wrapper {
   min-width: 0;
   margin: 0;
+  border: 1px solid rgba(31, 41, 51, .08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .94);
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
 }
 
 .md-linkedobject-field .ts-control,
@@ -155,20 +159,31 @@
 .md-linkedobject-field .ts-control {
   min-height: 30px;
   padding: 2px 28px 2px 8px;
-  background: rgba(255, 255, 255, .94);
+  background: transparent;
+  border-color: transparent;
   gap: 0;
   align-items: center;
 }
 
 .md-linkedobject-field.is-loading .ts-control {
-  background: rgba(248, 251, 254, .98);
+  background: transparent;
 }
 
 .md-linkedobject-field .ts-control.focus,
 .md-linkedobject-field .ts-wrapper.focus .ts-control,
 .md-linkedobject-field .ts-wrapper.single.input-active .ts-control {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.md-linkedobject-field .ts-wrapper.focus,
+.md-linkedobject-field .ts-wrapper.single.input-active {
   border-color: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .38);
   box-shadow: 0 0 0 4px rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
+}
+
+.md-linkedobject-field.is-loading .ts-wrapper {
+  background: rgba(248, 251, 254, .98);
 }
 
 .md-linkedobject-field .ts-control > input {
@@ -211,10 +226,31 @@
   background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
 }
 
+.md-linkedobject-field .ts-dropdown .option.selected {
+  color: var(--md-admin-text, #1f2933);
+  background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .16);
+}
+
 .md-linkedobject-field .ts-dropdown [data-selectable] .md-linkedobject-option__title {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.md-linkedobject-field .ts-dropdown .option.selected .md-linkedobject-option__title::after {
+  content: "Выбрано";
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  color: var(--md-admin-primary, #4792d1);
+  background: rgba(var(--md-admin-primary-rgb, 71, 146, 209), .12);
+  border-radius: 999px;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 
 .md-linkedobject-field .ts-dropdown [data-selectable] .md-linkedobject-option__meta {

@@ -260,20 +260,22 @@
 
 [#if ACTION="service"#]
 <link href="<#ROOTHTML#>templates/xray/xray.css?v=2026-06-05-1" rel="stylesheet" />
-<div class="xray-card xray-service-shell">
-	<div class="row xray-service-row">
-		<div class="col-md-3">
-			Service: <b>[#CYCLE#]</b>
+<article class="xray-data-card xray-data-card--alive xray-service-popup-card" id="xrayServiceCard">
+	<div class="xray-data-card__head">
+		<div>
+			<div class="xray-service-popup-card__eyebrow">Цикл</div>
+			<div class="xray-data-card__title">[#CYCLE#]</div>
 		</div>
-		<div class="col-md-6" id="status[#CYCLE#]Body">...</div>
-		<div class="col-md-3 xray-service-actions-wrap">
-			<div class="xray-inline-actions">
-				<button type="button" class="btn btn-default btn-sm" data-service-command="restart"><i class="glyphicon glyphicon-refresh"></i> Restart</button>
-				<button type="button" class="btn btn-default btn-sm" data-service-command="stop"><i class="glyphicon glyphicon-stop"></i> Stop</button>
-			</div>
+		<div class="xray-data-card__tags" id="status[#CYCLE#]Body">
+			<span class="xray-tag xray-tag--muted">Загрузка</span>
 		</div>
 	</div>
-</div>
+	<div class="xray-data-card__rows" id="status[#CYCLE#]Meta"></div>
+	<div class="xray-data-card__actions">
+		<button type="button" class="btn btn-sm btn-outline-secondary" data-service-command="restart"><i class="glyphicon glyphicon-refresh"></i> Рестарт</button>
+		<button type="button" class="btn btn-sm btn-outline-danger" data-service-command="stop"><i class="glyphicon glyphicon-stop"></i> Остановить</button>
+	</div>
+</article>
 
 <script>
 (function () {
@@ -282,7 +284,72 @@
 	var cycle = '[#CYCLE#]';
 	var statusTimer = 0;
 	var statusBody = document.getElementById('status' + cycle + 'Body');
+	var statusMeta = document.getElementById('status' + cycle + 'Meta');
 	var container = document.currentScript ? document.currentScript.previousElementSibling : null;
+	var serviceCard = document.getElementById('xrayServiceCard');
+
+	function escapeHtml(value) {
+		return String(value === null || value === undefined ? '' : value)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
+	function createTag(text, klass) {
+		return '<span class="xray-tag ' + escapeHtml(klass || '') + '">' + escapeHtml(text) + '</span>';
+	}
+
+	function renderRows(rows) {
+		return rows.map(function (row) {
+			return '<div class="xray-data-card__row"><span>' + escapeHtml(row.label) + '</span><strong>' + escapeHtml(row.value) + '</strong></div>';
+		}).join('');
+	}
+
+	function getStatusView(data) {
+		var status = data && data.STATUS ? String(data.STATUS) : '';
+		if (status === 'running') {
+			return { text: 'Работает', tagClass: 'xray-tag--success', cardClass: 'xray-data-card--alive' };
+		}
+		if (status === 'hang') {
+			return { text: 'Завис', tagClass: 'xray-tag--warning', cardClass: 'xray-data-card--dead' };
+		}
+		if (status === 'starting') {
+			return { text: 'Запускается', tagClass: 'xray-tag--info', cardClass: 'xray-data-card--alive' };
+		}
+		if (status === 'stopping') {
+			return { text: 'Выключается', tagClass: 'xray-tag--warning', cardClass: 'xray-data-card--dead' };
+		}
+		return { text: 'Остановлен', tagClass: 'xray-tag--danger', cardClass: 'xray-data-card--dead' };
+	}
+
+	function updateCard(data) {
+		if (!statusBody || !data) {
+			return;
+		}
+
+		var view = getStatusView(data);
+		var tags = [createTag(view.text, view.tagClass)];
+		tags.push(createTag(data.ONLINE == 1 ? 'ONLINE' : 'OFFLINE', data.ONLINE == 1 ? 'xray-tag--success' : 'xray-tag--danger'));
+		statusBody.innerHTML = tags.join('');
+
+		if (serviceCard) {
+			serviceCard.classList.remove('xray-data-card--alive', 'xray-data-card--dead');
+			serviceCard.classList.add(view.cardClass);
+		}
+
+		var rows = [];
+		if (data.UPDATED) {
+			rows.push({ label: 'Обновлено', value: data.BODY && data.BODY.match(/\(([^)]+)\)/) ? data.BODY.match(/\(([^)]+)\)/)[1] : data.UPDATED });
+		}
+		if (data.BODY && data.BODY.indexOf('status:') !== -1) {
+			rows.push({ label: 'Статус', value: view.text });
+		}
+		if (statusMeta) {
+			statusMeta.innerHTML = renderRows(rows);
+		}
+	}
 
 	function fetchStatus(op) {
 		var formData = new FormData();
@@ -300,9 +367,7 @@
 		}).then(function (response) {
 			return response.json();
 		}).then(function (data) {
-			if (statusBody && data && data.BODY) {
-				statusBody.innerHTML = data.BODY;
-			}
+			updateCard(data);
 		});
 	}
 

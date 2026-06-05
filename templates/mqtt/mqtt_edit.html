@@ -15,14 +15,6 @@
             <a href="<#ROOTHTML#>panel/mqtt.html" class="btn btn-light" aria-label="<#LANG_CLOSE#>">
                 <i class="glyphicon glyphicon-remove"></i> <#LANG_CLOSE#>
             </a>
-            <a href="<#ROOTHTML#>panel/mqtt.html" class="btn btn-light">
-                <i class="glyphicon glyphicon-arrow-left"></i> К списку
-            </a>
-            [#if ID!=""#]
-            <a href="?view_mode=delete_mqtt&id=[#ID#]" data-md-confirm="<#ARE_YOU_SURE#>" class="btn btn-outline-danger">
-                <i class="glyphicon glyphicon-remove"></i> <#LANG_DELETE#>
-            </a>
-            [#endif#]
         </div>
     </div>
 
@@ -189,6 +181,10 @@
                                             <div class="col-lg-12">
                                                 <label class="form-label">Список замен</label>
                                                 <input type="text" name="replace_list" id="replace_list" value="[#REPLACE_LIST#]" class="form-control" placeholder="например: on=1,off=0">
+                                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-md-mqtt-replace-value="on=1,off=0">ON=1, OFF=0</button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-md-mqtt-replace-value="1=on,0=off">1=ON, 0=OFF</button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -206,6 +202,11 @@
                                         <a href="<#ROOTHTML#>panel/mqtt.html" class="btn btn-outline-secondary">
                                             <i class="glyphicon glyphicon-remove"></i> Отмена
                                         </a>
+                                        [#if ID!=""#]
+                                        <a href="?view_mode=delete_mqtt&id=[#ID#]" class="btn btn-outline-danger ms-auto" data-md-confirm="Удалить этот MQTT-топик?">
+                                            <i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#>
+                                        </a>
+                                        [#endif#]
                                         <input type="hidden" name="id" value="<#ID#>">
                                         <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
                                         <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
@@ -253,5 +254,19 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         document.body.classList.add('md-mqtt-topic-open');
+
+        var replaceInput = document.getElementById('replace_list');
+        if (!replaceInput) {
+            return;
+        }
+
+        document.querySelectorAll('[data-md-mqtt-replace-value]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                replaceInput.value = button.getAttribute('data-md-mqtt-replace-value') || '';
+                replaceInput.focus();
+                replaceInput.dispatchEvent(new Event('input', { bubbles: true }));
+                replaceInput.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
     });
 </script>
