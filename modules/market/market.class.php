@@ -359,24 +359,8 @@ class market extends module
         $missing = array();
 
         $data = new stdClass();
-        if ($category_id == 'owned') {
-            $params = 'own=1';
-        } elseif ($category_id == 'all') {
+        if ($category_id == 'all') {
             $params = 'all=1';
-        } elseif ($category_id == 'custom') {
-            $data->PLUGINS = array();
-            $added_plugins = SQLSelect("SELECT MODULE_NAME FROM plugins");
-            $modules_list = array_map('current', $added_plugins);
-            $seen = array();
-            $params = '';
-            foreach ($modules_list as $module) {
-                if ($module == 'control_modules') continue;
-                if ($module == 'control_access') continue;
-                if (!$seen[$module]) {
-                    $params .= '&c[]=' . urlencode($module);
-                }
-                $seen[$module] = 1;
-            }
         } elseif ($search) {
             $params = 'search=' . urlencode($search);
         } elseif (is_numeric($category_id)) {
@@ -598,7 +582,7 @@ class market extends module
     {
         $result = array();
 
-        if (!($search != '' || in_array($category_id, array('', 'installed', 'custom', 'updates')))) {
+        if (!($search != '' || in_array($category_id, array('', 'installed', 'updates')))) {
             return $result;
         }
 

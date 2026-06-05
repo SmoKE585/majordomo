@@ -229,6 +229,22 @@
     .market-manual-upload .btn {
         border-radius: 12px;
     }
+    .market-manual-upload__intro {
+        margin-bottom: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(31, 41, 51, 0.08);
+    }
+    .market-manual-upload__title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+    }
+    .market-manual-upload__subtitle {
+        margin: 8px 0 0;
+        color: var(--market-muted);
+        font-size: 13px;
+        line-height: 1.6;
+    }
     .market-manual-upload__grid {
         display: grid;
         grid-template-columns: 1fr;
@@ -240,6 +256,17 @@
         background: #fff;
         border: 1px solid rgba(31, 41, 51, 0.08);
     }
+    .market-manual-upload__panel + .market-manual-upload__panel {
+        position: relative;
+    }
+    .market-manual-upload__panel + .market-manual-upload__panel::before {
+        content: "";
+        position: absolute;
+        top: -8px;
+        left: 18px;
+        right: 18px;
+        border-top: 1px dashed rgba(71,146,209,.28);
+    }
     .market-manual-upload__panel h3 {
         margin: 0 0 8px;
         font-size: 16px;
@@ -249,6 +276,12 @@
         margin: 0 0 14px;
         color: var(--market-muted);
         font-size: 13px;
+        line-height: 1.6;
+    }
+    .market-manual-upload__footer {
+        margin-top: 14px;
+        color: var(--market-muted);
+        font-size: 12px;
         line-height: 1.6;
     }
     .market-section {

@@ -1,5 +1,5 @@
-<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-06-05-4" type="text/css">
-<script src="<#ROOTHTML#>templates/market/market.js?v=2026-06-05-4"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-06-05-5" type="text/css">
+<script src="<#ROOTHTML#>templates/market/market.js?v=2026-06-05-5"></script>
 <div
     data-market-config
     data-roothtml="<#ROOTHTML#>"
@@ -55,6 +55,12 @@
             </div>
             [#if CLEAR_FIRST!="1"#]
             <div class="market-manual-upload" id="marketManualUpload">
+                <div class="market-manual-upload__intro">
+                    <div>
+                        <h3 class="market-manual-upload__title"><#LANG_ADD_UPDATE_MANUALLY#></h3>
+                        <p class="market-manual-upload__subtitle">Выберите локальный архив или укажите ссылку на Git/архив. Перед установкой пакет проверяется на структуру MajorDoMo-модуля.</p>
+                    </div>
+                </div>
                 <div class="market-manual-upload__grid">
                     <div class="market-manual-upload__panel">
                         <h3>Локальный архив</h3>
@@ -82,6 +88,7 @@
                         </form>
                     </div>
                 </div>
+                <div class="market-manual-upload__footer">После успешной установки Git/архив URL сохраняется в настройках модуля и используется для последующих обновлений.</div>
             </div>
             [#endif CLEAR_FIRST#]
         </section>
