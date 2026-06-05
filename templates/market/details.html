@@ -1,37 +1,40 @@
 <div class="market-details">
-    <div class="market-details__topbar">
-        <a href="?" class="btn btn-default market-details__back"><i class="glyphicon glyphicon-chevron-left"></i> <#LANG_BACK#></a>
-        <div class="market-details__actions">
-            <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]" class="btn btn-success" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-download"></i> <#LANG_UPDATE#></a>
-            [#if URL!=""#]
-            <a href="[#URL#]" target="_blank" class="btn btn-default"><i class="glyphicon glyphicon-globe"></i> <#LANG_URL#></a>
-            [#endif#]
-        </div>
-    </div>
     <section class="market-details__panel">
         <div class="market-details__hero">
+            <div class="market-details__topbar">
+                <a href="?" class="btn btn-default market-details__back"><i class="glyphicon glyphicon-chevron-left"></i> <#LANG_BACK#></a>
+                <div class="market-details__actions">
+                    <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]" class="btn btn-success" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-download"></i> <#LANG_UPDATE#></a>
+                    [#if URL!=""#]
+                    <a href="[#URL#]" target="_blank" class="btn btn-default"><i class="glyphicon glyphicon-globe"></i> <#LANG_URL#></a>
+                    [#endif#]
+                </div>
+            </div>
+            <div class="market-details__eyebrow">История модуля</div>
             <h1 class="market-details__title">[#MODULE_NAME#]</h1>
-            <p class="market-details__subtitle">История обновлений и быстрый доступ к повторной установке конкретной версии модуля.</p>
+            <p class="market-details__subtitle">Последние коммиты и быстрый откат на конкретную ревизию, если нужно вернуть модуль к предыдущему состоянию.</p>
         </div>
-        [#if COMMITS#]
         <div class="market-details__section">
             <h2 class="market-details__section-title"><#LANG_UPDATES#></h2>
-            <table class="table market-details__table">
-                <tbody>
+            [#if COMMITS#]
+            <div class="market-details__timeline">
                 [#begin COMMITS#]
-                <tr>
-                    <td>[#UPDATED#]</td>
-                    <td class="market-details__commit-text">[#CONTENT#]</td>
-                    <td class="market-details__commit-actions">
-                        <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&link=[#LINK_URL#]" class="btn btn-default btn-sm" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-download"></i> <#LANG_RESTORE#></a>
-                        <a href="[#LINK#]" target="_blank" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-globe"></i> <#LANG_DETAILS#></a>
-                    </td>
-                </tr>
+                <article class="market-details__commit">
+                    <div class="market-details__commit-head">
+                        <div class="market-details__commit-date">[#UPDATED#]</div>
+                        <div class="market-details__commit-actions">
+                            <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&link=[#LINK_URL#]" class="btn btn-default btn-sm" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-download"></i> <#LANG_RESTORE#></a>
+                            <a href="[#LINK#]" target="_blank" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-globe"></i> <#LANG_DETAILS#></a>
+                        </div>
+                    </div>
+                    <div class="market-details__commit-text">[#CONTENT#]</div>
+                </article>
                 [#end COMMITS#]
-                </tbody>
-            </table>
+            </div>
+            [#else#]
+            <div class="market-details__empty">История коммитов для этого модуля сейчас недоступна.</div>
+            [#endif COMMITS#]
         </div>
-        [#endif COMMITS#]
     </section>
 </div>
 

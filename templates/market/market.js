@@ -29,15 +29,14 @@
 
     function marketAfterListRender(root) {
         bindFallbackImages(root || document);
-        var activeItem = document.querySelector('#tab > li.active');
-        if (!activeItem) {
+        var activeLink = document.querySelector('#tab .md-admin-module-tabs__link.is-active, #tab > li.active > a');
+        if (!activeLink) {
             return;
         }
-        if (activeItem.id !== 'tab_updates') {
+        if (activeLink.id !== 'panel_updates') {
             return;
         }
-        var activeLink = activeItem.querySelector('a');
-        if (!activeLink || activeItem.querySelector('.market-plugin-count-badge')) {
+        if (activeLink.querySelector('.market-plugin-count-badge')) {
             return;
         }
         var scope = root || document;
@@ -179,13 +178,17 @@
             if (!tab || getSearchTab()) {
                 return;
             }
-            var clearItem = document.createElement('li');
+            var clearItem = document.createElement('a');
             clearItem.id = searchHintId;
-            clearItem.innerHTML = '<a href="#" data-market-action="clear-search">' + config.searchCloseLabel + '</a>';
-            var searchItem = document.createElement('li');
+            clearItem.href = '#';
+            clearItem.className = 'md-admin-module-tabs__link';
+            clearItem.setAttribute('data-market-action', 'clear-search');
+            clearItem.textContent = config.searchCloseLabel;
+            var searchItem = document.createElement('a');
             searchItem.id = searchTabId;
-            searchItem.className = 'active';
-            searchItem.innerHTML = '<a href="#panel_installed" id="panel_search">' + config.searchLabel + '</a>';
+            searchItem.href = '#panel_installed';
+            searchItem.className = 'md-admin-module-tabs__link is-active';
+            searchItem.textContent = config.searchLabel;
             tab.insertBefore(searchItem, tab.firstChild);
             tab.insertBefore(clearItem, searchItem.nextSibling);
         }
@@ -194,11 +197,14 @@
             if (!tab || !link) {
                 return;
             }
-            var items = tab.querySelectorAll('li');
-            for (var i = 0; i < items.length; i++) {
-                items[i].classList.remove('active');
-            }
-            if (link.parentNode) {
+            Array.prototype.forEach.call(tab.querySelectorAll('a'), function (item) {
+                item.classList.remove('is-active');
+                if (item.parentNode && item.parentNode.tagName === 'LI') {
+                    item.parentNode.classList.remove('active');
+                }
+            });
+            link.classList.add('is-active');
+            if (link.parentNode && link.parentNode.tagName === 'LI') {
                 link.parentNode.classList.add('active');
             }
         }
@@ -260,7 +266,7 @@
             var query = filterInput.value.toLowerCase().trim();
             if (query) {
                 createSearchTabs();
-                var searchLink = document.getElementById('panel_search');
+                var searchLink = document.getElementById(searchTabId);
                 if (searchLink) {
                     setActiveTabLink(searchLink);
                 }
@@ -344,6 +350,19 @@
         });
 
         document.addEventListener('click', function (event) {
+            Array.prototype.forEach.call(document.querySelectorAll('.market-actions-menu[open]'), function (menu) {
+                if (!menu.contains(event.target)) {
+                    menu.removeAttribute('open');
+                }
+            });
+            Array.prototype.forEach.call(document.querySelectorAll('.market-plugin-card__menu[open]'), function (menu) {
+                if (!menu.contains(event.target)) {
+                    menu.removeAttribute('open');
+                }
+            });
+        });
+
+        document.addEventListener('click', function (event) {
             var confirmTarget = event.target;
             while (confirmTarget && confirmTarget !== document) {
                 if (confirmTarget.nodeType === 1 && confirmTarget.hasAttribute('data-confirm')) {
@@ -356,6 +375,15 @@
             }
             if (!window.confirm(confirmTarget.getAttribute('data-confirm') || 'Are you sure?')) {
                 event.preventDefault();
+            } else {
+                var openMenu = confirmTarget.closest ? confirmTarget.closest('.market-actions-menu[open]') : null;
+                if (openMenu) {
+                    openMenu.removeAttribute('open');
+                }
+                openMenu = confirmTarget.closest ? confirmTarget.closest('.market-plugin-card__menu[open]') : null;
+                if (openMenu) {
+                    openMenu.removeAttribute('open');
+                }
             }
         });
 

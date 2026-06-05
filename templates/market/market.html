@@ -1,5 +1,5 @@
-<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-06-05-3" type="text/css">
-<script src="<#ROOTHTML#>templates/market/market.js?v=2026-06-05-3"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-06-05-4" type="text/css">
+<script src="<#ROOTHTML#>templates/market/market.js?v=2026-06-05-4"></script>
 <div
     data-market-config
     data-roothtml="<#ROOTHTML#>"
@@ -17,14 +17,14 @@
             <div class="market-hero__eyebrow"><i class="glyphicon glyphicon-th-large"></i> MajorDoMo Market</div>
             <h1 class="market-hero__title"><#LANG_NEWMARKET_BANNER#></h1>
             <p class="market-hero__text"><#LANG_NEWMARKET_BANNER_TEXT#></p>
-            <div class="market-hero__actions">
-                <a href="https://mjdm.ru/forum/viewforum.php?f=36" target="_blank" class="btn btn-market-hero" role="button"><i class="glyphicon glyphicon-comment"></i> <#LANG_NEWMARKET_BANNER_BTN#></a>
-                <button type="button" class="btn btn-market-ghost" data-market-action="scroll-to-catalog"><i class="glyphicon glyphicon-search"></i> <#LANG_NEWMARKET_SERACH_BLOCK#></button>
+            <div class="market-hero__meta">
+                <span>Каталог совместимых модулей и ручная установка из архива или Git-репозитория.</span>
+                <a href="https://mjdm.ru/forum/viewforum.php?f=36" target="_blank" class="market-hero__link"><i class="glyphicon glyphicon-comment"></i> <#LANG_NEWMARKET_BANNER_BTN#></a>
             </div>
         </section>
         <section class="market-card" aria-labelledby="marketSearchHeading">
             <h2 class="market-card__title" id="marketSearchHeading"><#LANG_NEWMARKET_SERACH_BLOCK#></h2>
-            <p class="market-card__subtitle">Legacy-каталог модулей MajorDoMo. Поддерживаются ручная установка архивов и Git/архив URL для собственных репозиториев.</p>
+            <p class="market-card__subtitle">Поиск по доступным модулям, установка архивов и подключение собственных Git/архив URL для обновлений.</p>
             <div class="market-search" id="marketSearchBox">
                 <i class="glyphicon glyphicon-search market-search__icon"></i>
                 <i class="glyphicon glyphicon-refresh market-search__spinner"></i>
@@ -32,9 +32,20 @@
             </div>
             <div class="market-actions">
                 [#if CLEAR_FIRST!="1"#]
-                <a href="?mode=iframe&mode2=update_new" data-confirm="<#LANG_ARE_YOU_SURE#>" class="btn btn-success"><i class="glyphicon glyphicon-download-alt"></i> <#LANG_UPDATE_NEW_EXTENSIONS#></a>
-                <a href="?mode=iframe&mode2=update_all" data-confirm="<#LANG_ARE_YOU_SURE#>" class="btn btn-danger"><i class="glyphicon glyphicon-repeat"></i> <#LANG_UPDATE_ALL_EXTENSIONS#></a>
-                <button type="button" class="btn btn-default" data-market-action="toggle-upload"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_UPDATE_MANUALLY#></button>
+                <button type="button" class="btn btn-primary market-actions__primary" data-market-action="toggle-upload"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_UPDATE_MANUALLY#></button>
+                <details class="market-actions-menu">
+                    <summary class="btn btn-default market-actions-menu__summary"><i class="glyphicon glyphicon-cog"></i> Действия <span class="caret"></span></summary>
+                    <div class="market-actions-menu__dropdown">
+                        <a href="?mode=iframe&mode2=update_new" data-confirm="<#LANG_ARE_YOU_SURE#>" class="market-actions-menu__item">
+                            <i class="glyphicon glyphicon-download-alt"></i>
+                            <span><#LANG_UPDATE_NEW_EXTENSIONS#></span>
+                        </a>
+                        <a href="?mode=iframe&mode2=update_all" data-confirm="<#LANG_ARE_YOU_SURE#>" class="market-actions-menu__item">
+                            <i class="glyphicon glyphicon-repeat"></i>
+                            <span><#LANG_UPDATE_ALL_EXTENSIONS#></span>
+                        </a>
+                    </div>
+                </details>
                 [#else CLEAR_FIRST#]
                 <form action="?" method="post">
                     <input type="hidden" name="mode" value="clear">
@@ -72,7 +83,6 @@
                     </div>
                 </div>
             </div>
-            <div class="market-help">Если временная папка осталась после прерванного обновления, сначала очистите её. Все операции установки и обновления выполняются в отдельной консоли и возвращают результат обратно на страницу.</div>
             [#endif CLEAR_FIRST#]
         </section>
     </div>
@@ -85,14 +95,14 @@
     [#endif OK_MSG#]
 
     [#if CATEGORIES#]
+    <nav id="tab" class="md-admin-module-tabs market-page__tabs" aria-label="Market categories">
+        [#begin CATEGORIES#]
+        <a href="#panel_[#ID#]" id="panel_[#ID#]" class="md-admin-module-tabs__link" data-category-id="[#ID#]">[#TITLE#]</a>
+        [#end CATEGORIES#]
+    </nav>
     <section class="market-section" id="marketCatalogSection">
         <div class="market-tabs-wrap">
             <div class="alert alert-warning market-connect-error" id="problemLinkToConnect">Не удалось корректно получить данные маркета. Проверьте соединение с `connect.smartliving.ru` или повторите позже.</div>
-            <ul id="tab" class="nav nav-tabs market-tabs">
-                [#begin CATEGORIES#]
-                <li id="tab_[#ID#]"><a href="#panel_[#ID#]" id="panel_[#ID#]" data-category-id="[#ID#]">[#TITLE#]</a></li>
-                [#end CATEGORIES#]
-            </ul>
         </div>
         <div class="market-results" id="search_result"></div>
     </section>

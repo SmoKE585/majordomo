@@ -1,7 +1,7 @@
 [#if PLUGINS#]
 <div class="market-plugin-list" id="market_application">
     [#begin PLUGINS#]
-    <div class="market-plugin-card">
+    <article class="market-plugin-card">
         [#if EXIST="1"#]
         <a class="market-plugin-card__icon-link" href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]">
             <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
@@ -11,7 +11,7 @@
             <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
         </span>
         [#endif#]
-        <div>
+        <div class="market-plugin-card__content">
             <div class="market-plugin-card__header">
                 [#if AUTHOR!=""#]
                 <div class="market-plugin-card__author">
@@ -41,32 +41,49 @@
                 [#endif#]
             [#endif#]
             [#if LATEST_VERSION!=""#]
-            <div class="market-plugin-card__meta"><#LANG_LATEST_UPDATES#>: [#if LATEST_VERSION_URL!=""#]<a href="[#LATEST_VERSION_URL#]" target="_blank">[#LATEST_VERSION#]</a>[#else#][#LATEST_VERSION#][#endif#] [#if LATEST_VERSION_COMMENT!=""#]([#LATEST_VERSION_COMMENT#])[#endif#]</div>
+            <div class="market-plugin-card__meta">
+                <span class="market-plugin-card__meta-label"><#LANG_LATEST_UPDATES#></span>
+                <span class="market-plugin-card__meta-main">
+                    [#if LATEST_VERSION_URL!=""#]<a href="[#LATEST_VERSION_URL#]" target="_blank">[#LATEST_VERSION#]</a>[#else#][#LATEST_VERSION#][#endif#]
+                </span>
+                [#if LATEST_VERSION_COMMENT!=""#]
+                <span class="market-plugin-card__meta-note">[#LATEST_VERSION_COMMENT#]</span>
+                [#endif#]
+            </div>
             [#endif#]
         </div>
         <div class="market-plugin-card__actions-shell">
-            <div class="market-plugin-card__actions">
+            <div class="market-plugin-card__primary-actions">
                 [#if CAN_DOWNLOAD="1" OR CUSTOM_REPOSITORY_ACTIVE="1"#]
                     <a
-                        class="btn btn-[#if CUSTOM_REPOSITORY_ACTIVE="1"#]info[#else#]default[#endif#]"
+                        class="btn btn-default market-plugin-card__link-btn"
                         href="#"
                         data-market-action="custom-repo"
                         data-module-name="[#MODULE_NAME#]"
                         data-current-url="[#CUSTOM_REPOSITORY_URL_BASE64#]"
                         title="[#if CUSTOM_REPOSITORY_ACTIVE="1"#]Используется пользовательский URL[#else#]Указать свой Git/архив URL[#endif#]"
                     ><i class="glyphicon glyphicon-link"></i> Свой GIT</a>
-                    <a class="btn btn-[#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]success[#else#]warning[#endif#]" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]">[#if EXISTS#]<i class="glyphicon glyphicon-refresh"></i> [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]<#LANG_UPDATE#>[#else#]Перекачать[#endif#][#else#]<i class="glyphicon glyphicon-download"></i> <#LANG_ADD#>[#endif#]</a>
-                    [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>" AND INSTALLED_VERSION != ''#]<a class="btn btn-market-ignore" data-confirm="<#LANG_ARE_YOU_SURE#>" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=dontupdate&name=[#MODULE_NAME#]&value=[#LATEST_VERSION#]"><i class="glyphicon glyphicon-minus-sign"></i> Не обновлять</a>[#endif#]
+                    <a class="btn btn-[#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]success[#else#]warning[#endif#] market-plugin-card__main-btn" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]">[#if EXISTS#]<i class="glyphicon glyphicon-refresh"></i> [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]<#LANG_UPDATE#>[#else#]Перекачать[#endif#][#else#]<i class="glyphicon glyphicon-download"></i> <#LANG_ADD#>[#endif#]</a>
                 [#endif#]
             </div>
-            [#if EXISTS#]
-            <div class="market-plugin-card__secondary">
-                <a href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]" class="btn btn-default"><i class="glyphicon glyphicon-info-sign"></i> <#LANG_HISTORY#></a>
-                <a class="btn btn-danger" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=uninstall&name=[#MODULE_NAME#]" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#></a>
-            </div>
+            [#if EXISTS OR (INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>" AND INSTALLED_VERSION != '')#]
+            <details class="market-plugin-card__menu">
+                <summary class="btn btn-default market-plugin-card__menu-summary">Ещё <span class="caret"></span></summary>
+                <div class="market-plugin-card__menu-dropdown">
+                    [#if EXISTS#]
+                    <a href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]" class="market-plugin-card__menu-item"><i class="glyphicon glyphicon-info-sign"></i> <#LANG_HISTORY#></a>
+                    [#endif#]
+                    [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>" AND INSTALLED_VERSION != ''#]
+                    <a class="market-plugin-card__menu-item" data-confirm="<#LANG_ARE_YOU_SURE#>" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=dontupdate&name=[#MODULE_NAME#]&value=[#LATEST_VERSION#]"><i class="glyphicon glyphicon-minus-sign"></i> Не обновлять</a>
+                    [#endif#]
+                    [#if EXISTS#]
+                    <a class="market-plugin-card__menu-item is-danger" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=uninstall&name=[#MODULE_NAME#]" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#></a>
+                    [#endif#]
+                </div>
+            </details>
             [#endif#]
         </div>
-    </div>
+    </article>
     [#end PLUGINS#]
 </div>
 [#else PLUGINS#]
