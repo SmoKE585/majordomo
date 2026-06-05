@@ -1281,6 +1281,8 @@ class objects extends module
     function getPropertyHistoryRangeDefinition($range)
     {
         $definitions = array(
+            '3h' => array('seconds' => 3 * 60 * 60, 'label' => '3 часа'),
+            '12h' => array('seconds' => 12 * 60 * 60, 'label' => '12 часов'),
             '24h' => array('seconds' => 24 * 60 * 60, 'label' => '24 часа'),
             '7d' => array('seconds' => 7 * 24 * 60 * 60, 'label' => '7 дней'),
             '30d' => array('seconds' => 30 * 24 * 60 * 60, 'label' => '30 дней'),
@@ -1288,7 +1290,7 @@ class objects extends module
         );
 
         if (empty($definitions[$range])) {
-            $range = '7d';
+            $range = '3h';
         }
 
         $stop_time = time();

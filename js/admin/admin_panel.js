@@ -786,7 +786,7 @@
         var tabs = document.getElementById('mdObjectHistoryTabs');
         var body = document.body;
         var activeTrigger = null;
-        var activeRange = '7d';
+        var activeRange = '3h';
         var activePage = 1;
         var activeRequest = null;
         var activeTab = 'history';
@@ -1116,7 +1116,7 @@
             }
             button.dataset.mdHistoryRangeBound = '1';
             button.addEventListener('click', function () {
-                var nextRange = button.getAttribute('data-md-history-range') || '7d';
+                var nextRange = button.getAttribute('data-md-history-range') || '3h';
                 if (nextRange === activeRange) {
                     return;
                 }

@@ -5268,10 +5268,17 @@ body.md-mqtt-topic-open {
 
 .md-mqtt-topic-drawer__body {
   display: flex;
+  align-items: stretch;
   min-height: 0;
   flex: 1;
   overflow: auto;
   padding: 18px 18px 20px;
+}
+
+.md-mqtt-topic-drawer__body > .md-mqtt-topic-page {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .md-mqtt-hero__monitor {
@@ -5480,8 +5487,10 @@ body.md-mqtt-drawer-open {
 
 .md-mqtt-topic-page__layout {
   display: flex;
+  width: 100%;
   min-width: 0;
   flex-direction: column;
+  flex: 1 1 auto;
   gap: 18px;
 }
 
@@ -6967,12 +6976,16 @@ body.md-object-history-open .md-object-history-drawer {
   }
 
   .md-object-history-drawer {
-    left: 0;
-    right: 0;
-    width: 100%;
+    inset: 0;
+    width: auto;
+    max-width: none;
     max-height: 100vh;
-    border-radius: 24px 24px 0 0;
+    border-radius: 0;
     transform: translateY(calc(100% + 24px));
+  }
+
+  body.md-object-history-open .md-object-history-drawer {
+    transform: translateY(0);
   }
 
   .md-object-history-drawer__header,
@@ -7621,9 +7634,11 @@ body.md-object-history-open .md-object-history-drawer {
 
 .md-admin-console-drawer {
   width: min(1280px, calc(100vw - 28px));
+  max-width: 100%;
 }
 
 .md-admin-console-composer {
+  min-width: 0;
   gap: 14px;
 }
 
@@ -7650,6 +7665,7 @@ body.md-object-history-open .md-object-history-drawer {
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   min-height: 0;
+  min-width: 0;
   flex: 1;
 }
 
@@ -7659,15 +7675,20 @@ body.md-object-history-open .md-object-history-drawer {
 
 .md-admin-console-output {
   min-height: 280px;
+  min-width: 0;
+  max-width: 100%;
   padding: 16px;
   background:
     radial-gradient(circle at top right, rgba(var(--md-admin-primary-rgb, 71, 146, 209), .08), transparent 18rem),
     #0f1d2d;
+  overflow-x: auto;
 }
 
 .md-admin-console-output__entry {
   display: grid;
   gap: 10px;
+  min-width: 0;
+  max-width: 100%;
   padding: 12px 14px;
   background: rgba(255, 255, 255, .06);
   border: 1px solid rgba(255, 255, 255, .08);
@@ -7683,6 +7704,8 @@ body.md-object-history-open .md-object-history-drawer {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
   color: #8fb8dd;
   font-size: .78rem;
   letter-spacing: .02em;
@@ -7691,7 +7714,10 @@ body.md-object-history-open .md-object-history-drawer {
 
 .md-admin-console-output__command,
 .md-admin-console-output__result {
+  min-width: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
+  word-wrap: break-word;
   word-break: break-word;
   white-space: pre-wrap;
 }
@@ -7709,6 +7735,24 @@ body.md-object-history-open .md-object-history-drawer {
 .md-admin-console-output__result em {
   color: #c7d5e4;
   font-style: normal;
+}
+
+@media (max-width: 575.98px) {
+  .md-admin-console-drawer {
+    inset: 0;
+    width: auto;
+    max-width: none;
+    border-radius: 0;
+  }
+
+  .md-admin-console-drawer__body {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .md-admin-console-output {
+    min-height: 220px;
+  }
 }
 
 .md-admin-console-methods {
