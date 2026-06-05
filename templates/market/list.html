@@ -21,6 +21,11 @@
                 [#if EXISTS#]
                 <span class="market-plugin-card__badge"><#LANG_MARKET_CATEGORY_INSTALLED#></span>
                 [#endif EXISTS#]
+                [#if CUSTOM_REPOSITORY_ACTIVE="1"#]
+                <span class="market-plugin-card__repo-badge is-custom">Git URL</span>
+                [#else#]
+                <span class="market-plugin-card__repo-badge">Connect</span>
+                [#endif#]
             </div>
             <h3 class="market-plugin-card__title" id="row[#ID#]_title">
                 [#if URL!=""#]<a href="[#URL#]" target="_blank">[#endif#][#TITLE#][#if URL!=""#]</a>[#endif#]
@@ -53,13 +58,13 @@
         <div class="market-plugin-card__actions-shell">
             <div class="market-plugin-card__primary-actions">
                 <a
-                    class="btn btn-default market-plugin-card__link-btn"
+                    class="btn btn-default market-plugin-card__link-btn [#if CUSTOM_REPOSITORY_ACTIVE="1"#]is-active-repo[#endif#]"
                     href="#"
                     data-market-action="custom-repo"
                     data-module-name="[#MODULE_NAME#]"
                     data-current-url="[#CUSTOM_REPOSITORY_URL_BASE64#]"
-                    title="Указать свой Git/архив URL"
-                ><i class="glyphicon glyphicon-link"></i> Свой GIT</a>
+                    title="[#if CUSTOM_REPOSITORY_ACTIVE="1"#]Используется пользовательский Git/архив URL[#else#]Указать свой Git/архив URL[#endif#]"
+                ><i class="glyphicon glyphicon-link"></i> [#if CUSTOM_REPOSITORY_ACTIVE="1"#]Свой GIT подключен[#else#]Свой GIT[#endif#]</a>
                 [#if EXISTS#]
                 <a class="btn btn-success market-plugin-card__main-btn" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]"><i class="glyphicon glyphicon-refresh"></i> <#LANG_UPDATE#></a>
                 [#else#]
