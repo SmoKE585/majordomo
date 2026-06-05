@@ -24,12 +24,12 @@ $out['MODULE_NAME_ENCODED'] = urlencode($plugin_rec['MODULE_NAME']);
 
 if (isset($plugin_data['REPOSITORY_URL'])) {
     $plugin_data = $this->applyCustomRepositoryUrl($plugin_data);
-    $plugin_data = $this->applyRepositoryVersionMetadata($plugin_data, true);
+    $plugin_data = $this->applyRepositoryVersionMetadata($plugin_data, $this->shouldUseCustomRepositoryVersioning($plugin_data));
     $out['REPOSITORY_URL_ENCODED'] = urlencode($plugin_data['REPOSITORY_URL']);
     $out['LATEST_VERSION_ENCODED'] = urlencode($plugin_data['LATEST_VERSION']);
     $out['MODULE_NAME_ENCODED'] = urlencode($plugin_data['MODULE_NAME']);
 
-    $github_info = $this->getGithubRepositoryInfo($plugin_data['REPOSITORY_URL']);
+    $github_info = $this->shouldUseCustomRepositoryVersioning($plugin_data) ? $this->getGithubRepositoryInfo($plugin_data['REPOSITORY_URL']) : false;
     if ($github_info) {
         $github_feed = getURL($github_info['feed_url'], 30 * 60);
         if ($github_feed != '') {
