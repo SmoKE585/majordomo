@@ -6336,6 +6336,9 @@ body.md-mqtt-drawer-open {
   border: 0;
   text-align: left;
   cursor: copy;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .md-object-property-card__copy-trigger:hover,
@@ -6351,7 +6354,7 @@ body.md-mqtt-drawer-open {
 .md-object-property-card__copy-pair {
   display: inline-flex;
   align-items: baseline;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0;
   min-width: 0;
   max-width: 100%;
@@ -6359,6 +6362,14 @@ body.md-mqtt-drawer-open {
 
 .md-object-property-card__copy-pair .md-admin-record-card__separator {
   margin: 0;
+  white-space: nowrap;
+}
+
+.md-object-property-card .md-admin-record-card__class,
+.md-object-property-card .md-object-property-card__property-name {
+  max-width: none;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .md-object-method-editor__summary {
@@ -6452,6 +6463,13 @@ body.md-mqtt-drawer-open {
 .md-object-property-card__value {
   display: grid;
   gap: 8px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.md-object-property-card__value.is-ws-updated {
+  animation: mdObjectPropertyValueFlash 1.9s ease-out;
 }
 
 .md-object-property-card__image {
@@ -6467,6 +6485,10 @@ body.md-mqtt-drawer-open {
 
 .md-object-property-card__value .md-admin-code-sample.is-empty {
   color: #9aa6b2;
+}
+
+.md-object-property-card__value .md-admin-code-sample {
+  margin-top: 0;
 }
 
 .md-object-property-card [data-md-prop-edit] {
@@ -6497,6 +6519,29 @@ body.md-mqtt-drawer-open {
   100% {
     background: rgba(255, 255, 255, .88);
     box-shadow: 0 10px 28px rgba(15, 23, 42, .055), 0 0 0 0 rgba(71, 146, 209, 0);
+  }
+}
+
+@keyframes mdObjectPropertyValueFlash {
+  0% {
+    background: rgba(71, 146, 209, 0);
+    box-shadow: 0 0 0 0 rgba(71, 146, 209, 0);
+    transform: translateY(0);
+  }
+  14% {
+    background: linear-gradient(135deg, rgba(71, 146, 209, .22), rgba(15, 138, 100, .16));
+    box-shadow: 0 0 0 4px rgba(71, 146, 209, .14), 0 12px 28px rgba(71, 146, 209, .14);
+    transform: translateY(-1px);
+  }
+  52% {
+    background: linear-gradient(135deg, rgba(71, 146, 209, .16), rgba(15, 138, 100, .10));
+    box-shadow: 0 0 0 8px rgba(71, 146, 209, .06), 0 10px 24px rgba(71, 146, 209, .08);
+    transform: translateY(0);
+  }
+  100% {
+    background: rgba(71, 146, 209, 0);
+    box-shadow: 0 0 0 0 rgba(71, 146, 209, 0);
+    transform: translateY(0);
   }
 }
 

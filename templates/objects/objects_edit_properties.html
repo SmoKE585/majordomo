@@ -368,11 +368,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!card) {
             return;
         }
+        var current = card.querySelector('[data-md-prop-current]');
         card.classList.remove('is-ws-updated');
+        if (current) {
+            current.classList.remove('is-ws-updated');
+        }
         void card.offsetWidth;
         card.classList.add('is-ws-updated');
+        if (current) {
+            current.classList.add('is-ws-updated');
+        }
         window.setTimeout(function () {
             card.classList.remove('is-ws-updated');
+            if (current) {
+                current.classList.remove('is-ws-updated');
+            }
         }, 2200);
     }
 
