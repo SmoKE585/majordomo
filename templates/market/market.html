@@ -455,21 +455,16 @@
                         tab.insertBefore(clearItem, searchItem.nextSibling);
                     }
 
-                    function activateTabById(id) {
-                        if (!tab) {
+                    function setActiveTabLink(link) {
+                        if (!tab || !link) {
                             return;
                         }
                         var items = tab.querySelectorAll('li');
                         for (var i = 0; i < items.length; i++) {
                             items[i].classList.remove('active');
                         }
-                        var target = document.getElementById(id);
-                        if (target) {
-                            target.classList.add('active');
-                            var link = target.querySelector('a');
-                            if (link && window.jQuery && jQuery.fn.tab) {
-                                jQuery(link).tab('show');
-                            }
+                        if (link.parentNode) {
+                            link.parentNode.classList.add('active');
                         }
                     }
 
@@ -526,14 +521,17 @@
                         var query = filterInput.value.toLowerCase().trim();
                         if (query) {
                             createSearchTabs();
-                            activateTabById(searchTabId);
+                            var searchLink = document.getElementById('panel_search');
+                            if (searchLink) {
+                                setActiveTabLink(searchLink);
+                            }
                             requestPluginList(0, query);
                             return;
                         }
                         removeSearchTabs();
                         var installedLink = document.getElementById('panel_installed');
                         if (installedLink) {
-                            activateTabById(installedLink.parentNode.id);
+                            setActiveTabLink(installedLink);
                             requestPluginList('installed', '');
                         }
                     };
@@ -566,7 +564,7 @@
                             var categoryId = target.getAttribute('data-category-id');
                             if (categoryId) {
                                 event.preventDefault();
-                                activateTabById(target.parentNode.id);
+                                setActiveTabLink(target);
                                 requestPluginList(categoryId, '');
                             }
                         });
@@ -603,7 +601,7 @@
                         var initialTab = window.location.hash.replace('#', '') === 'panel_updates' ? 'panel_updates' : 'panel_installed';
                         var link = document.getElementById(initialTab);
                         if (link) {
-                            activateTabById(link.parentNode.id);
+                            setActiveTabLink(link);
                             requestPluginList(link.getAttribute('data-category-id'), '');
                         }
                     });
