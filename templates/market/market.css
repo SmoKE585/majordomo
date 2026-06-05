@@ -587,8 +587,8 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 10px;
-        margin-bottom: 10px;
+        gap: 8px;
+        margin-bottom: 8px;
     }
     .market-plugin-card__author {
         color: #7a8a99;
@@ -607,13 +607,28 @@
     .market-plugin-card__badge {
         display: inline-flex;
         align-items: center;
-        padding: 5px 10px;
+        padding: 4px 9px;
         border-radius: 999px;
         background: rgba(45, 157, 91, .12);
         color: #207245;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         letter-spacing: .02em;
+    }
+    .market-plugin-card__repo-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: rgba(53, 80, 106, .08);
+        color: #5f7182;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .02em;
+    }
+    .market-plugin-card__repo-badge.is-custom {
+        background: rgba(71,146,209,.14);
+        color: #2c6ca3;
     }
     .market-plugin-card__description {
         margin: 0;
@@ -657,26 +672,32 @@
     }
     .market-plugin-card__actions-shell {
         display: grid;
-        gap: 10px;
+        gap: 8px;
         justify-items: stretch;
     }
     .market-plugin-card__primary-actions {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
-        gap: 8px;
+        gap: 6px;
     }
     .market-plugin-card__primary-actions .btn,
     .market-plugin-card__menu-summary {
         width: 100%;
-        min-height: 40px;
+        min-height: 34px;
         border-radius: 12px;
-        padding: 9px 12px;
+        padding: 6px 10px;
         font-weight: 600;
+        font-size: 12px;
     }
     .market-plugin-card__link-btn {
         color: #35506a;
         border-color: rgba(53, 80, 106, .14);
         background: #f7fafc;
+    }
+    .market-plugin-card__link-btn.is-active-repo {
+        color: #2c6ca3;
+        border-color: rgba(71,146,209,.28);
+        background: rgba(71,146,209,.10);
     }
     .market-plugin-card__main-btn .glyphicon,
     .market-plugin-card__link-btn .glyphicon {
@@ -719,10 +740,11 @@
         align-items: center;
         gap: 10px;
         width: 100%;
-        padding: 10px 12px;
+        padding: 9px 11px;
         border-radius: 12px;
         color: var(--market-text);
         text-decoration: none;
+        font-size: 13px;
     }
     .market-plugin-card__menu-item:hover,
     .market-plugin-card__menu-item:focus {
