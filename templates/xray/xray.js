@@ -185,18 +185,16 @@
 	}
 
 	function renderTimers(list) {
-		var cards = [];
+		var rows = '';
 		for (var i = 0; i < list.length; i++) {
-			cards.push(createCard({
-				title: list[i].TITLE || '',
-				rows: [
-					{label: 'Command', value: '<code>' + escapeHtml(list[i].COMMAND || '') + '</code>'},
-					{label: 'Scheduled', value: escapeHtml(list[i].SCHEDULED || '')}
-				],
-				actions: [createButton(list[i].STOP_LINK || '#', config.langCancel || 'Cancel', 'btn-outline-danger')]
-			}));
+			rows += '<tr>' +
+				'<td>' + escapeHtml(list[i].TITLE || '') + '</td>' +
+				'<td><code>' + escapeHtml(list[i].COMMAND || '') + '</code></td>' +
+				'<td>' + escapeHtml(list[i].SCHEDULED || '') + '</td>' +
+				'<td class="text-right">' + createButton(list[i].STOP_LINK || '#', config.langCancel || 'Cancel', 'btn-outline-danger') + '</td>' +
+			'</tr>';
 		}
-		return createCardList(cards);
+		return createTable('<thead><tr><th style="width:24%">Title</th><th>Command</th><th style="width:20%">Scheduled</th><th style="width:1%"></th></tr></thead>', rows);
 	}
 
 	function renderDead(list) {
@@ -213,17 +211,15 @@
 	}
 
 	function renderEvents(list) {
-		var cards = [];
+		var rows = '';
 		for (var i = 0; i < list.length; i++) {
-			cards.push(createCard({
-				title: list[i].EVENT || '',
-				rows: [
-					{label: 'Details', value: escapeHtml(list[i].DETAILS || '')},
-					{label: 'Added', value: escapeHtml(list[i].ADDED || '')}
-				]
-			}));
+			rows += '<tr>' +
+				'<td>' + escapeHtml(list[i].EVENT || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].DETAILS || '') + '</td>' +
+				'<td>' + escapeHtml(list[i].ADDED || '') + '</td>' +
+			'</tr>';
 		}
-		return createCardList(cards);
+		return createTable('<thead><tr><th style="width:24%">Event</th><th>Description</th><th style="width:20%">Added</th></tr></thead>', rows);
 	}
 
 	function renderDatabase(list) {
@@ -246,7 +242,7 @@
 	}
 
 	function renderServices(list) {
-		var rows = '';
+		var cards = [];
 		for (var i = 0; i < list.length; i++) {
 			var statusClass = 'xray-tag--muted';
 			var statusText = config.statusUnknown || 'Неизвестно';
@@ -280,14 +276,16 @@
 			} else {
 				actions.push(createActionButton('button', config.langStart || 'Запуск', 'btn-primary js-service-command', 'data-href="' + escapeHtml(list[i].CNT_START || '#') + '"'));
 			}
-			rows += '<tr' + (list[i].ALIVE == 0 ? ' class="xray-table-row--danger"' : '') + '>' +
-				'<td>' + escapeHtml(list[i].TITLE || '') + '</td>' +
-				'<td><div class="xray-service-status">' + tags.join('') + '</div></td>' +
-				'<td>' + (list[i].STATUS_DETAILS ? '<div class="xray-muted">' + escapeHtml(list[i].STATUS_DETAILS) + '</div>' : '<span class="xray-muted">-</span>') + '</td>' +
-				'<td class="text-right"><div class="xray-table-actions">' + actions.join('') + '</div></td>' +
-			'</tr>';
+			cards.push(createCard({
+				title: list[i].TITLE || '',
+				subtitle: list[i].STATUS_DETAILS || '',
+				tags: tags,
+				rows: list[i].UPDATE ? [{label: 'Updated', value: escapeHtml(list[i].UPDATE || '')}] : [],
+				actions: actions,
+				klass: list[i].ALIVE == 1 ? 'xray-data-card--alive' : 'xray-data-card--dead'
+			}));
 		}
-		return createTable('<thead><tr><th style="width:18%">Цикл</th><th style="width:28%">Статус</th><th>Подробности</th><th style="width:1%"></th></tr></thead>', rows);
+		return createCardList(cards, 'xray-data-grid--services');
 	}
 
 	function renderLogs(content) {

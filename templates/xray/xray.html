@@ -116,7 +116,7 @@
 		[#if VIEW_MODE=""#]
 		<div class="xray-toolbar__files">
 			<label for="files" class="xray-toolbar__label"><#LANG_XRAY_CHOUSE_LOG_FILE#></label>
-			<select name="files[]" id="files" class="form-control" multiple="multiple" placeholder="Выберите файл лога...">
+			<select name="files[]" id="files" multiple="multiple" placeholder="Выберите файл лога...">
 				[#begin FILES#]
 					<option value="[#TITLE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
 				[#end FILES#]

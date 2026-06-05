@@ -114,6 +114,15 @@
 	border-radius: 12px;
 }
 
+.xray-toolbar .ts-wrapper.form-control,
+.xray-toolbar .ts-wrapper.form-select {
+	height: auto;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
 .xray-toolbar .ts-wrapper {
 	font-size: 13px;
 }
@@ -276,6 +285,114 @@
 	justify-content: flex-end;
 }
 
+.xray-data-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 12px;
+}
+
+.xray-data-grid--services {
+	grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.xray-data-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 14px;
+	border: 1px solid rgba(31, 41, 51, 0.08);
+	border-radius: 16px;
+	background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.xray-data-card--alive {
+	border-color: rgba(25, 135, 84, 0.18);
+	background: linear-gradient(180deg, #ffffff 0%, #f4fcf7 100%);
+	box-shadow: inset 4px 0 0 rgba(25, 135, 84, 0.72);
+}
+
+.xray-data-card--dead {
+	border-color: rgba(217, 83, 79, 0.22);
+	background: linear-gradient(180deg, #ffffff 0%, #fff6f6 100%);
+	box-shadow: inset 4px 0 0 rgba(217, 83, 79, 0.78);
+}
+
+.xray-data-card__head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 10px;
+}
+
+.xray-data-card__title {
+	font-size: 15px;
+	font-weight: 700;
+	color: #1f2933;
+	word-break: break-word;
+}
+
+.xray-data-card__title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.xray-data-card__title a:hover {
+	color: #2f6fa6;
+}
+
+.xray-data-card__subtitle {
+	color: #6b7a88;
+	font-size: 13px;
+	line-height: 1.5;
+	word-break: break-word;
+}
+
+.xray-data-card__rows {
+	display: grid;
+	gap: 8px;
+}
+
+.xray-data-card__row {
+	display: grid;
+	grid-template-columns: minmax(92px, 120px) minmax(0, 1fr);
+	gap: 10px;
+	padding-top: 8px;
+	border-top: 1px solid rgba(31, 41, 51, 0.06);
+}
+
+.xray-data-card__row span {
+	color: #6b7a88;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.xray-data-card__row strong,
+.xray-data-card__row code {
+	color: #1f2933;
+	font-size: 13px;
+	font-weight: 600;
+	word-break: break-word;
+}
+
+.xray-data-card__row code {
+	padding: 0;
+	background: transparent;
+}
+
+.xray-data-card__tags {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.xray-data-card__actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	padding-top: 4px;
+}
+
 .xray-tag {
 	display: inline-flex;
 	align-items: center;
@@ -345,6 +462,7 @@
 	flex-direction: column;
 	gap: 0;
 	min-height: 0;
+	padding: 6px;
 }
 
 .xray-drawer-section {
@@ -541,6 +659,24 @@
 
 	.xray-inline-stat {
 		flex: 1 1 calc(50% - 5px);
+	}
+
+	.xray-data-grid,
+	.xray-data-grid--services {
+		grid-template-columns: 1fr;
+	}
+
+	.xray-data-card__head {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.xray-data-card__row {
+		grid-template-columns: 1fr;
+	}
+
+	.xray-data-card__tags {
+		justify-content: flex-start;
 	}
 
 	.xray-log-file-card {
