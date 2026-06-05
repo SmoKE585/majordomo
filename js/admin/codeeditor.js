@@ -3,6 +3,8 @@
 
     var ROOT = (window.ROOTHTML || '/').replace(/\/?$/, '/');
     var CM_BASE = ROOT + '3rdparty/codemirror/';
+    var DEFAULT_LINE_HEIGHT = 20;
+    var DEFAULT_VISIBLE_MIN_LINES = 5;
     var resourcePromises = {};
     var moduleRegistered = false;
 
@@ -471,20 +473,11 @@
         });
     }
 
-    function submitEditorForm(wrapper, editor) {
+    function saveEditorSnapshot(wrapper, editor) {
         editor.save();
         clearTimeout(wrapper._codeEditorAutosaveTimer);
         stopAutosaveProgress(wrapper);
-        saveSnapshot(wrapper, editor).finally(function () {
-            var form = textareaForm(wrapper);
-            if (form) {
-                if (typeof form.requestSubmit === 'function') {
-                    form.requestSubmit();
-                } else {
-                    form.submit();
-                }
-            }
-        });
+        return saveSnapshot(wrapper, editor);
     }
 
     function flushAutosave(wrapper, editor) {
@@ -527,21 +520,31 @@
     function updateSize(wrapper, editor) {
         var minLines = parseInt(wrapper.dataset.codeEditorMinLines || '0', 10) || 0;
         var maxLines = parseInt(wrapper.dataset.codeEditorMaxLines || '0', 10) || 0;
+        var fallbackLineHeight = parseInt(wrapper.dataset.codeEditorLineHeight || String(DEFAULT_LINE_HEIGHT), 10) || DEFAULT_LINE_HEIGHT;
         var lineHeight = editor && typeof editor.defaultTextHeight === 'function'
             ? editor.defaultTextHeight()
-            : (parseInt(wrapper.dataset.codeEditorLineHeight || '20', 10) || 20);
-        var totalLines = editor.lineCount();
+            : fallbackLineHeight;
+        var effectiveMinLines = Math.max(minLines, DEFAULT_VISIBLE_MIN_LINES);
+        var totalLines = Math.max(editor.lineCount(), 1);
         var height = '';
         var editorWrapper = editor.getWrapperElement();
         var scroller = editor.getScrollerElement();
+
+        if (!lineHeight || lineHeight < 1) {
+            lineHeight = fallbackLineHeight;
+        }
+
+        if (maxLines > 0 && maxLines < effectiveMinLines) {
+            maxLines = effectiveMinLines;
+        }
 
         if (wrapper.classList.contains('is-fullscreen')) {
             editor.setSize('100%', '100%');
             return;
         }
 
-        if (totalLines < minLines) {
-            height = (minLines * lineHeight) + 'px';
+        if (totalLines < effectiveMinLines) {
+            height = (effectiveMinLines * lineHeight) + 'px';
         } else if (maxLines > 0 && totalLines >= maxLines) {
             height = (maxLines * lineHeight) + 'px';
         } else {
@@ -550,7 +553,15 @@
 
         editorWrapper.style.height = height;
         scroller.style.height = height;
-        scroller.style.minHeight = minLines > 0 ? (minLines * lineHeight) + 'px' : '0';
+        scroller.style.minHeight = (effectiveMinLines * lineHeight) + 'px';
+    }
+
+    function refreshEditorLayout(wrapper) {
+        if (!wrapper || !wrapper._codeEditor) {
+            return;
+        }
+        wrapper._codeEditor.refresh();
+        updateSize(wrapper, wrapper._codeEditor);
     }
 
     function updateStatus(wrapper, message, type) {
@@ -754,7 +765,7 @@
             event.preventDefault();
 
             if (action === 'save') {
-                submitEditorForm(wrapper, editor);
+                saveEditorSnapshot(wrapper, editor);
                 return;
             }
 
@@ -842,11 +853,6 @@
         if (drawerContent && drawerContent !== wrapper) {
             drawerContent.addEventListener('click', handleVersionAction);
         }
-    }
-
-    function textareaForm(wrapper) {
-        var textarea = wrapper.querySelector('textarea');
-        return textarea ? textarea.form : null;
     }
 
     function toggleFullscreen(wrapper, editor) {
@@ -975,10 +981,10 @@
                 }
             },
             'Ctrl-S': function () {
-                submitEditorForm(wrapper, editor);
+                saveEditorSnapshot(wrapper, editor);
             },
             'Cmd-S': function () {
-                submitEditorForm(wrapper, editor);
+                saveEditorSnapshot(wrapper, editor);
             },
             'Ctrl-F': 'findPersistent',
             'Cmd-F': 'findPersistent',
@@ -1143,7 +1149,7 @@
             updateSize(wrapper, editor);
             clearLoadingState(wrapper, textarea);
             setTimeout(function () {
-                editor.refresh();
+                refreshEditorLayout(wrapper);
             }, 25);
             if (window.MDJAdminUI && typeof window.MDJAdminUI.boot === 'function') {
                 window.MDJAdminUI.boot(wrapper);
@@ -1220,14 +1226,20 @@
     document.addEventListener('shown.bs.collapse', function (event) {
         var editor = event.target.querySelector('[data-code-editor]');
         if (editor && editor._codeEditor) {
-            editor._codeEditor.refresh();
+            refreshEditorLayout(editor);
         }
     });
     document.addEventListener('shown.bs.tab', function () {
         toArray(document.querySelectorAll('[data-code-editor]')).forEach(function (wrapper) {
-            if (wrapper._codeEditor) {
-                wrapper._codeEditor.refresh();
-            }
+            refreshEditorLayout(wrapper);
+        });
+    });
+    document.addEventListener('md:drawer-opened', function (event) {
+        var root = event && event.detail && event.detail.body ? event.detail.body : document;
+        toArray(root.querySelectorAll('[data-code-editor]')).forEach(function (wrapper) {
+            window.setTimeout(function () {
+                refreshEditorLayout(wrapper);
+            }, 0);
         });
     });
 })(window, document);

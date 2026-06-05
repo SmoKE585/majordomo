@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-06-05-6" type="text/css">
+<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-06-05-7" type="text/css">
 <script src="<#ROOTHTML#>templates/market/market.js?v=2026-06-05-5"></script>
 <div
     data-market-config
@@ -107,12 +107,10 @@
         <a href="#panel_[#ID#]" id="panel_[#ID#]" class="md-admin-module-tabs__link" data-category-id="[#ID#]">[#TITLE#]</a>
         [#end CATEGORIES#]
     </nav>
-    <section class="market-section" id="marketCatalogSection">
-        <div class="market-tabs-wrap">
-            <div class="alert alert-warning market-connect-error" id="problemLinkToConnect">Не удалось корректно получить данные маркета. Проверьте соединение с `connect.smartliving.ru` или повторите позже.</div>
-        </div>
-        <div class="market-results" id="search_result"></div>
-    </section>
+    <div class="alert alert-warning market-connect-error" id="problemLinkToConnect">Не удалось корректно получить данные маркета. Проверьте соединение с `connect.smartliving.ru` или повторите позже.</div>
+    <div class="market-results" id="marketCatalogSection">
+        <div id="search_result"></div>
+    </div>
     [#endif CATEGORIES#]
 </div>
 [#endif MODE#]

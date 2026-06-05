@@ -284,24 +284,11 @@
         font-size: 12px;
         line-height: 1.6;
     }
-    .market-section {
-        background: var(--market-surface);
-        border: 1px solid var(--market-border);
-        border-radius: var(--market-radius-lg);
-        box-shadow: var(--market-shadow);
-        overflow: hidden;
-    }
     .market-page__tabs {
         margin: 0 0 14px;
     }
-    .market-tabs-wrap {
-        padding: 18px 20px 0;
-    }
     .market-results {
         min-height: 260px;
-        padding: 20px;
-        background: linear-gradient(180deg, rgba(71,146,209,.03), rgba(255,255,255,0) 140px), #fff;
-        border-top: 1px solid rgba(31, 41, 51, 0.08);
     }
     .market-results__loading,
     .market-results__error {
@@ -324,7 +311,7 @@
         animation: market-spin 1s linear infinite;
     }
     .market-connect-error {
-        margin-bottom: 16px;
+        margin-bottom: 14px;
         display: none;
     }
     @keyframes market-spin {
@@ -350,12 +337,6 @@
             font-size: 24px;
         }
         .market-card {
-            padding: 18px;
-        }
-        .market-tabs-wrap {
-            padding: 18px 18px 0;
-        }
-        .market-results {
             padding: 18px;
         }
         .market-manual-upload__grid {

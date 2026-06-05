@@ -3652,17 +3652,42 @@ body,
 
   .md-admin-module-tabs--composite {
     align-items: stretch;
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   .md-admin-module-tabs__group--object {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+    margin-top: 4px;
     margin-left: 0;
+    padding-top: 10px;
     padding-left: 0;
+    border-top: 1px solid rgba(31, 41, 51, .1);
     border-left: 0;
   }
 
   .md-admin-module-tabs__group-label {
-    max-width: 160px;
-    padding-right: 8px;
+    grid-column: 1 / -1;
+    max-width: none;
+    min-height: 0;
+    padding: 0 2px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .md-admin-module-tabs--composite > .md-admin-module-tabs__link,
+  .md-admin-module-tabs__group--object .md-admin-module-tabs__link {
+    justify-content: center;
+  }
+
+  .md-admin-module-tabs__group--object .md-admin-module-tabs__link {
+    min-width: 0;
+    white-space: normal;
+    text-align: center;
   }
 
   .md-objects-admin-list__embedded-actions {

@@ -78,6 +78,7 @@
         var exportButton = page ? page.querySelector('[data-scripts-export-submit]') : null;
         var exportLabel = exportButton ? (exportButton.getAttribute('data-scripts-export-label') || exportButton.textContent || 'Export') : '';
         var exportInputs = page ? page.querySelectorAll('[data-scripts-export-checkbox]') : [];
+        var exportToggles = page ? page.querySelectorAll('[data-scripts-export-toggle]') : [];
         var categories = page ? page.querySelectorAll('details[data-scripts-category]') : [];
         var importPanel = page ? page.querySelector('[data-scripts-import]') : null;
         var searchInput = page ? page.querySelector('[data-scripts-filter]') : null;
@@ -87,16 +88,36 @@
         var openState = readJsonStorage(STORAGE_KEY, {});
         var hasTitleFilter = titleValue.length > 0;
 
+        function syncExportToggle(input) {
+            var card = input ? input.closest('.md-scripts-record') : null;
+            var toggle = card ? card.querySelector('[data-scripts-export-toggle]') : null;
+
+            if (card) {
+                card.classList.toggle('is-export-selected', !!input.checked);
+            }
+            if (toggle) {
+                toggle.classList.toggle('is-active', !!input.checked);
+                toggle.setAttribute('aria-pressed', input.checked ? 'true' : 'false');
+            }
+        }
+
         function applyExportState() {
             var total = 0;
             exportInputs.forEach(function (input) {
                 if (input.checked) {
                     total += 1;
                 }
+                syncExportToggle(input);
             });
             if (exportButton) {
                 exportButton.textContent = total ? (exportLabel + ' ' + total) : exportLabel;
                 exportButton.disabled = total === 0;
+            }
+            if (exportForm) {
+                var exportBar = exportForm.querySelector('.md-scripts-export-bar');
+                if (exportBar) {
+                    exportBar.hidden = total === 0;
+                }
             }
         }
 
@@ -133,6 +154,17 @@
 
         exportInputs.forEach(function (input) {
             input.addEventListener('change', applyExportState);
+        });
+        exportToggles.forEach(function (toggle) {
+            toggle.addEventListener('click', function () {
+                var card = toggle.closest('.md-scripts-record');
+                var input = card ? card.querySelector('[data-scripts-export-checkbox]') : null;
+                if (!input) {
+                    return;
+                }
+                input.checked = !input.checked;
+                applyExportState();
+            });
         });
         applyExportState();
 

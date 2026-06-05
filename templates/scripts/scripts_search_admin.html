@@ -50,23 +50,20 @@
              [#if DESCRIPTION != ''#]<div class="md-admin-record-card__field">[#DESCRIPTION#]</div>[#endif#]
             </div>
            </div>
-           <div class="md-scripts-record__meta">
-            <label class="md-scripts-export">
-             <input type="checkbox" class="md-scripts-export-input" data-scripts-export-checkbox name="ids[]" value="[#ID#]">
-             <span><#LANG_EXPORT#></span>
-            </label>
-           </div>
-           <div class="md-admin-record-card__actions">
+           <input type="checkbox" class="md-scripts-export-input" data-scripts-export-checkbox name="ids[]" value="[#ID#]" hidden>
+           <div class="md-admin-record-card__actions md-scripts-record__actions">
             [#if "<#ACTION#>"=="admin"#]
-             <a href="?view_mode=edit_scripts&id=[#ID#]" class="btn btn-light btn-sm"><#LANG_EDIT#></a>
-             <div class="btn-group">
-              <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-              <ul class="dropdown-menu dropdown-menu-end">
-               <li><a class="dropdown-item" href="?view_mode=run_script&id=[#ID#]" target="_blank" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a></li>
-               <li><a class="dropdown-item" href="?id=[#ID#]&view_mode=clone"><#LANG_MAKE_COPY#></a></li>
-               <li><hr class="dropdown-divider"></li>
-               <li><a class="dropdown-item text-danger" href="?view_mode=delete_scripts&id=[#ID#]" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
-              </ul>
+              <a href="?view_mode=edit_scripts&id=[#ID#]" class="btn btn-light btn-sm"><#LANG_EDIT#></a>
+              <div class="btn-group">
+               <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
+               <ul class="dropdown-menu dropdown-menu-end">
+                <li><button type="button" class="dropdown-item" data-scripts-export-toggle aria-pressed="false"><#LANG_EXPORT#></button></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="?view_mode=run_script&id=[#ID#]" target="_blank" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a></li>
+                <li><a class="dropdown-item" href="?id=[#ID#]&view_mode=clone"><#LANG_MAKE_COPY#></a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="?view_mode=delete_scripts&id=[#ID#]" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
+               </ul>
              </div>
             [#endif ACTION#]
            </div>

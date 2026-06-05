@@ -262,6 +262,16 @@
             drawer.setAttribute('aria-hidden', 'false');
             body.classList.add('md-admin-drawer-open');
 
+            if (typeof window.CustomEvent === 'function') {
+                document.dispatchEvent(new window.CustomEvent('md:drawer-opened', {
+                    detail: {
+                        owner: current.owner,
+                        body: options.body,
+                        footer: options.footer || null
+                    }
+                }));
+            }
+
             window.setTimeout(function () {
                 var focusTarget = typeof options.focus === 'function' ? options.focus() : options.focus;
                 if (focusTarget && typeof focusTarget.focus === 'function') {
@@ -1815,6 +1825,42 @@
         headerClockTimer = window.setInterval(updateHeaderDateTime, 1000);
     }
 
+    function ensureActiveModuleTabsVisible(root) {
+        var scope = root && root.querySelectorAll ? root : document;
+
+        function alignTabs() {
+            scope.querySelectorAll('.md-admin-module-tabs').forEach(function (tabs) {
+                var activeLink = tabs.querySelector('.md-admin-module-tabs__link.is-active');
+                var overflowX = Math.ceil(tabs.scrollWidth - tabs.clientWidth);
+                var overflowY = Math.ceil(tabs.scrollHeight - tabs.clientHeight);
+
+                if (!activeLink) {
+                    return;
+                }
+
+                if (overflowX > 4) {
+                    var tabsRect = tabs.getBoundingClientRect();
+                    var activeRect = activeLink.getBoundingClientRect();
+                    var currentScrollLeft = tabs.scrollLeft;
+                    var targetScrollLeft = currentScrollLeft + (activeRect.left - tabsRect.left) - (tabs.clientWidth / 2) + (activeRect.width / 2);
+                    tabs.scrollLeft = Math.max(0, Math.round(targetScrollLeft));
+                }
+
+                if (overflowY > 4) {
+                    var currentScrollTop = tabs.scrollTop;
+                    var tabsTop = tabs.getBoundingClientRect().top;
+                    var activeTop = activeLink.getBoundingClientRect().top;
+                    var targetScrollTop = currentScrollTop + (activeTop - tabsTop) - (tabs.clientHeight / 2) + (activeLink.offsetHeight / 2);
+                    tabs.scrollTop = Math.max(0, Math.round(targetScrollTop));
+                }
+            });
+        }
+
+        alignTabs();
+        window.requestAnimationFrame(alignTabs);
+        window.setTimeout(alignTabs, 0);
+    }
+
     function boot(root) {
         window.MDJAdminLastBootRoot = root;
         copyLegacyBootstrapAttributes(root);
@@ -1833,6 +1879,7 @@
         initObjectPropertyHistoryDrawer(root);
         initAdminConsoleDrawer(root);
         initRegisteredModuleUIs(root);
+        ensureActiveModuleTabsVisible(root);
     }
 
     var registeredModuleUIs = {};
@@ -1948,6 +1995,7 @@
         copyLegacyBootstrapAttributes: copyLegacyBootstrapAttributes,
         initBootstrapWidgets: initBootstrapWidgets,
         installJqueryBridge: installJqueryBridge,
+        ensureActiveModuleTabsVisible: ensureActiveModuleTabsVisible,
         registerModuleUI: function (name, moduleUI) {
             if (!name || !moduleUI) {
                 return;
