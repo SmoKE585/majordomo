@@ -52,6 +52,7 @@ $res = SQLSelect("SELECT scripts.*, script_categories.TITLE as CATEGORY FROM scr
 $old_category = '';
 if ($res[0]['ID']) {
     $total = count($res);
+    $out['RESULT_TOTAL'] = $total;
     for ($i = 0; $i < $total; $i++) {
         if (!$res[$i]['CATEGORY']) {
             $res[$i]['CATEGORY'] = LANG_OTHER;

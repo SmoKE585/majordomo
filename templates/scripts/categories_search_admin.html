@@ -1,9 +1,11 @@
-<div class="md-scripts-card">
+<div class="md-scripts-card md-scripts-card--panel">
  <div class="md-scripts-toolbar">
-  <div class="md-scripts-section-title"><#LANG_CATEGORIES#></div>
+  <div class="md-related-module-toolbar__stats">
+   <div class="md-related-module-toolbar__stat"><span><#LANG_CATEGORIES#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
+  </div>
   <div class="md-scripts-toolbar__actions">
-   <a href="?view_mode=edit_scripts" class="btn btn-primary">+ <#LANG_ADD_NEW_SCRIPT#></a>
-   <a href="?view_mode=edit_categories&data_source=categories" class="btn btn-default">+ <#LANG_ADD_NEW_CATEGORY#></a>
+   <a href="?view_mode=edit_categories&data_source=categories" class="btn btn-primary">+ <#LANG_ADD_NEW_CATEGORY#></a>
+   <a href="?view_mode=edit_scripts" class="btn btn-outline-secondary">+ <#LANG_ADD_NEW_SCRIPT#></a>
   </div>
  </div>
 
@@ -21,8 +23,13 @@
       <div class="md-scripts-record__meta"></div>
       <div class="md-admin-record-card__actions">
        [#if "<#ACTION#>"=="admin"#]
-        <a href="?view_mode=edit_categories&id=[#ID#]&data_source=<#DATA_SOURCE#>" title="<#LANG_EDIT#>" class="btn btn-primary btn-sm"><#LANG_EDIT#></a>
-        <a href="?view_mode=delete_categories&id=[#ID#]&data_source=<#DATA_SOURCE#>" title="<#LANG_DELETE#>" class="btn btn-danger btn-sm" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a>
+        <a href="?view_mode=edit_categories&id=[#ID#]&data_source=<#DATA_SOURCE#>" title="<#LANG_EDIT#>" class="btn btn-light btn-sm"><#LANG_EDIT#></a>
+        <div class="btn-group">
+         <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
+         <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item text-danger" href="?view_mode=delete_categories&id=[#ID#]&data_source=<#DATA_SOURCE#>" title="<#LANG_DELETE#>" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
+         </ul>
+        </div>
        [#endif ACTION#]
       </div>
      </article>

@@ -1,4 +1,11 @@
-<div class="md-scripts-card md-scripts-edit-card" data-scripts-edit-page data-scripts-edit-mode="[#if ID!=""#]edit[#else#]new[#endif#]" data-scripts-breadcrumb-edit="<#LANG_EDIT_RECORD#>" data-scripts-breadcrumb-new="<#LANG_NEW_RECORD#>">
+<div class="md-scripts-edit-shell" data-scripts-edit-page data-scripts-edit-mode="[#if ID!=""#]edit[#else#]new[#endif#]" data-scripts-breadcrumb-edit="<#LANG_EDIT_RECORD#>" data-scripts-breadcrumb-new="<#LANG_NEW_RECORD#>">
+ <div class="md-admin-module-list__toolbar md-admin-module-list__toolbar--embedded">
+  <div class="md-related-module-toolbar__stats">
+   <div class="md-related-module-toolbar__stat"><span><#LANG_CATEGORIES#></span><strong>[#if ID!=""#][#TITLE#][#else#]<#LANG_ADD_NEW_CATEGORY#>[#endif#]</strong></div>
+  </div>
+  <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
+ </div>
+ <div class="md-scripts-card md-scripts-edit-card">
  <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" id="frmEdit" class="md-scripts-form">
   [#if OK#]
    <div class="alert alert-success" id="alert_msg" data-scripts-auto-hide><#LANG_DATA_SAVED#></div>
@@ -18,7 +25,7 @@
    [#else ID#]
     <input class="btn btn-primary" type="submit" name="subm" value="<#LANG_ADD#>">
    [#endif ID#]
-   <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-default"><#LANG_CANCEL#></a>
+   <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
   </div>
 
   <input type="hidden" name="id" value="<#ID#>">
@@ -27,4 +34,5 @@
   <input type="hidden" name="mode" value="update">
   <input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
  </form>
+ </div>
 </div>

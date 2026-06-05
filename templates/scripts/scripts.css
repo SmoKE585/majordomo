@@ -3,24 +3,11 @@
   gap: 14px;
 }
 
-.md-scripts-hero,
 .md-scripts-card {
   background: #fff;
   border: 1px solid rgba(31, 41, 51, .08);
   border-radius: 18px;
   box-shadow: none;
-}
-
-.md-scripts-hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 18px;
-}
-
-.md-scripts-hero--compact::after {
-  content: none;
 }
 
 .md-scripts-hero__actions,
@@ -30,39 +17,19 @@
   gap: 8px;
 }
 
-.md-scripts-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.md-scripts-tabs__item {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 8px 14px;
-  background: #fff;
-  border: 1px solid rgba(31, 41, 51, .08);
-  border-radius: 999px;
-}
-
-.md-scripts-tabs__item.is-active {
-  color: #fff;
-  background: var(--md-admin-primary, #4792d1);
-  border-color: var(--md-admin-primary, #4792d1);
-}
-
 .md-scripts-card {
   overflow: hidden;
+}
+
+.md-scripts-card--panel {
+  padding: 16px;
 }
 
 .md-scripts-toolbar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 14px;
 }
 
 .md-scripts-toolbar--stacked {
@@ -76,6 +43,14 @@
   grid-template-columns: minmax(260px, 1fr) auto minmax(180px, 240px);
   gap: 8px;
   align-items: center;
+}
+
+.md-scripts-toolbar__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
 }
 
 .md-scripts-searchbar__input,
@@ -153,6 +128,7 @@
 .md-scripts-export-form {
   display: grid;
   gap: 12px;
+  margin-top: 14px;
 }
 
 .md-scripts-export-bar {
@@ -181,6 +157,11 @@
 
 .md-scripts-edit-card {
   padding: 18px;
+}
+
+.md-scripts-edit-shell {
+  display: grid;
+  gap: 14px;
 }
 
 .md-scripts-form {
@@ -263,12 +244,6 @@
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 4px;
-}
-
-.md-scripts-more-actions {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .md-scripts-muted,
@@ -362,7 +337,6 @@
 }
 
 @media (max-width: 991.98px) {
-  .md-scripts-hero,
   .md-scripts-toolbar {
     align-items: stretch;
     flex-direction: column;
@@ -376,7 +350,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .md-scripts-hero__actions,
+  .md-scripts-toolbar__meta,
   .md-scripts-toolbar__actions,
   .md-scripts-actions {
     justify-content: flex-start;
@@ -384,18 +358,9 @@
 }
 
 @media (max-width: 575.98px) {
-  .md-scripts-hero,
   .md-scripts-card,
   .md-scripts-edit-card {
     padding: 14px;
     border-radius: 16px;
-  }
-
-  .md-scripts-tabs {
-    width: 100%;
-  }
-
-  .md-scripts-tabs__item {
-    flex: 1 1 0;
   }
 }

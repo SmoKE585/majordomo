@@ -243,6 +243,7 @@ class scripts extends module
                 $result = SQLSelect("SELECT * FROM script_categories ORDER BY TITLE");
                 if ($result) {
                     $out['RESULT'] = $result;
+                    $out['RESULT_TOTAL'] = count($result);
                 }
             }
             if ($this->view_mode == 'edit_categories') {

@@ -41,20 +41,15 @@
 </section>
 [#else OVERWRITE#]
 <div class="md-object-method-editor">
-    <section class="md-admin-section-card md-object-method-editor__hero">
-        <div class="md-admin-section-card__body">
-            <div class="md-object-method-editor__hero-layout">
-                <div class="md-object-method-editor__hero-main">
-                    <div class="md-object-method-editor__eyebrow"><#LANG_METHODS#></div>
-                    <h2 class="md-object-method-editor__title"><#OBJECT_TITLE#>.<#METHOD_TITLE#></h2>
-                    <div class="md-object-method-editor__summary">Локальная настройка выполнения метода для выбранного объекта.</div>
-                </div>
-                <div class="md-object-method-editor__hero-actions">
-                    <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
-                </div>
+    <div class="md-admin-module-list__toolbar md-admin-module-list__toolbar--embedded">
+        <div class="md-related-module-toolbar__stats">
+            <div class="md-related-module-toolbar__stat">
+                <span><#LANG_METHODS#></span>
+                <strong><#OBJECT_TITLE#>.<#METHOD_TITLE#></strong>
             </div>
         </div>
-    </section>
+        <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
+    </div>
 
     <div class="row g-3">
         <div class="col-xl-8">

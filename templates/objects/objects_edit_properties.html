@@ -17,26 +17,46 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title h5" id="objectPropertyCreateModalTitle"><#LANG_ADD_NEW_PROPERTY#></h2>
+                    <div class="md-object-property-create-modal__heading">
+                        <div class="md-object-property-create-modal__eyebrow">Свойство объекта</div>
+                        <h2 class="modal-title h5" id="objectPropertyCreateModalTitle"><#LANG_ADD_NEW_PROPERTY#></h2>
+                        <div class="md-object-property-create-modal__summary">Добавьте локальное свойство объекта, значение и при необходимости метод, который будет вызываться при изменении.</div>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<#LANG_CLOSE#>"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="?" method="post" class="md-admin-form-grid" id="objectPropertyCreateForm">
-                        <div class="row g-3 align-items-start">
-                            <div class="col-lg-4"><input type="text" name="new_property" placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_NAME#> (*)" class="form-control" required></div>
-                            <div class="col-lg-4"><input type="text" name="new_description" placeholder="<#LANG_DESCRIPTION#>" class="form-control"></div>
-                            <div class="col-lg-4"><input type="text" name="new_history" placeholder="<#LANG_KEEP_HISTORY_DAYS#>" class="form-control"></div>
-                        </div>
-                        <div class="row g-3 align-items-start">
-                            <div class="col-lg-4">
-                                <select name="onchange" class="form-control form-select">
-                                    <option value="" selected><#LANG_ONCHANGE_METHOD#></option>
+                    <form action="?" method="post" class="md-object-property-create-modal__form" id="objectPropertyCreateForm">
+                        <div class="md-object-property-create-modal__grid">
+                            <div class="md-object-property-create-modal__field">
+                                <label class="form-label" for="objectPropertyCreateName"><#LANG_PROPERTY#> <span class="text-danger">*</span></label>
+                                <input type="text" id="objectPropertyCreateName" name="new_property" placeholder="status" class="form-control" required>
+                                <div class="form-text">Короткое системное имя без пробелов. Используется в связке `Объект.Свойство`.</div>
+                            </div>
+                            <div class="md-object-property-create-modal__field md-object-property-create-modal__field--wide">
+                                <label class="form-label" for="objectPropertyCreateDescription"><#LANG_DESCRIPTION#></label>
+                                <input type="text" id="objectPropertyCreateDescription" name="new_description" placeholder="Что хранит это свойство и откуда обновляется" class="form-control">
+                            </div>
+                            <div class="md-object-property-create-modal__field">
+                                <label class="form-label" for="objectPropertyCreateHistory"><#LANG_KEEP_HISTORY_DAYS#></label>
+                                <input type="text" id="objectPropertyCreateHistory" name="new_history" placeholder="0" class="form-control">
+                                <div class="form-text">`0` или пусто: историю не хранить.</div>
+                            </div>
+                            <div class="md-object-property-create-modal__field">
+                                <label class="form-label" for="objectPropertyCreateOnChange"><#LANG_ONCHANGE_METHOD#></label>
+                                <select name="onchange" id="objectPropertyCreateOnChange" class="form-control form-select">
+                                    <option value="" selected><#LANG_NO#></option>
                                     [#begin METHODS#]
                                     <option value="[#TITLE#]">[#TITLE#]</option>
                                     [#end METHODS#]
                                 </select>
+                                <div class="form-text">Метод объекта, который будет вызван после изменения значения.</div>
                             </div>
-                            <div class="col-lg-8"><textarea placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_VALUE#>" name="new_value" rows="3" class="form-control md-admin-textarea"></textarea></div>
+                        </div>
+
+                        <div class="md-object-property-create-modal__field md-object-property-create-modal__field--stacked">
+                            <label class="form-label" for="objectPropertyCreateValue"><#LANG_VALUE#></label>
+                            <textarea id="objectPropertyCreateValue" placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_VALUE#>" name="new_value" rows="6" class="form-control md-admin-textarea"></textarea>
+                            <div class="form-text">Начальное значение можно оставить пустым и задать позже из карточки свойства.</div>
                         </div>
                         <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
                         <input type="hidden" name="id" value="<#ID#>">

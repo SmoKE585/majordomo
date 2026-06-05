@@ -2,26 +2,14 @@
  @version 0.1 (auto-set)
 #-->
 
-<link rel="stylesheet" href="<#ROOTHTML#>templates/scripts/scripts.css?v=2026-06-03-3" type="text/css">
-<script src="<#ROOTHTML#>templates/scripts/scripts.js?v=2026-06-03-2"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/scripts/scripts.css?v=2026-06-05-1" type="text/css">
+<script src="<#ROOTHTML#>templates/scripts/scripts.js?v=2026-06-05-1"></script>
 
 <div class="md-scripts-page" data-scripts-page>
- <div class="md-scripts-hero md-scripts-hero--compact">
-  <div>
-   <div class="md-scripts-hero__eyebrow"><#LANG_SECTION_OBJECTS#></div>
-   <h2 class="md-scripts-hero__title"><#LANG_MODULE_SCRIPTS#></h2>
-   <div class="md-scripts-hero__text"><#LANG_SCRIPT_HOW_TO_RUN#></div>
-  </div>
-  <div class="md-scripts-hero__actions">
-   <a href="?view_mode=edit_scripts" class="btn btn-primary">+ <#LANG_ADD_NEW_SCRIPT#></a>
-   <a href="?view_mode=edit_categories&data_source=categories" class="btn btn-default">+ <#LANG_ADD_NEW_CATEGORY#></a>
-  </div>
- </div>
-
- <div class="md-scripts-tabs" role="tablist" aria-label="<#LANG_MODULE_SCRIPTS#>">
-  <a class="md-scripts-tabs__item [#if DATA_SOURCE="scripts" || DATA_SOURCE=""#]is-active[#endif#]" href="?data_source=scripts"><#LANG_MODULE_SCRIPTS#></a>
-  <a class="md-scripts-tabs__item [#if DATA_SOURCE="categories"#]is-active[#endif#]" href="?data_source=categories"><#LANG_CATEGORIES#></a>
- </div>
+ <nav class="md-admin-module-tabs" aria-label="<#LANG_MODULE_SCRIPTS#>">
+  <a class="md-admin-module-tabs__link [#if DATA_SOURCE="scripts" || DATA_SOURCE=""#]is-active[#endif#]" href="?data_source=scripts"><#LANG_MODULE_SCRIPTS#></a>
+  <a class="md-admin-module-tabs__link [#if DATA_SOURCE="categories"#]is-active[#endif#]" href="?data_source=categories"><#LANG_CATEGORIES#></a>
+ </nav>
 
  [#if DATA_SOURCE=="" || DATA_SOURCE=="scripts"#]
   [#if VIEW_MODE="search_scripts" || VIEW_MODE=""#]
