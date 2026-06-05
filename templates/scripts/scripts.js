@@ -43,6 +43,31 @@
         node.hidden = !visible;
     }
 
+    function formatJson(value) {
+        if (typeof value === 'string') {
+            return value;
+        }
+        try {
+            return JSON.stringify(value, null, 2);
+        } catch (e) {
+            return String(value);
+        }
+    }
+
+    function formatBytes(bytes) {
+        var value = Number(bytes || 0);
+        if (!value) {
+            return '—';
+        }
+        var units = ['B', 'KB', 'MB', 'GB'];
+        var unitIndex = 0;
+        while (value >= 1024 && unitIndex < units.length - 1) {
+            value = value / 1024;
+            unitIndex += 1;
+        }
+        return value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1) + ' ' + units[unitIndex];
+    }
+
     function setBreadcrumbLabel(root) {
         var page = root.querySelector('[data-scripts-page]');
         var breadcrumb = document.querySelector('.breadcrumb');
@@ -234,6 +259,11 @@
         var errorNode = page ? page.querySelector('[data-scripts-error-line]') : null;
         var checkCodeButton = page ? page.querySelector('[data-scripts-check-code]') : null;
         var form = page ? page.querySelector('form') : null;
+        var codeEditorWrapper = page ? page.querySelector('[data-code-editor]') : null;
+        var runDrawerBody = page ? page.querySelector('[data-scripts-run-drawer]') : null;
+        var runDrawerFooter = page ? page.querySelector('[data-scripts-run-drawer-footer]') : null;
+        var runOpenButtons = page ? page.querySelectorAll('[data-scripts-run-drawer-open]') : [];
+        var runSubmitButton = page ? page.querySelector('[data-scripts-run-submit]') : null;
         var codeMirrorLines = [];
 
         if (!page) {
@@ -311,6 +341,195 @@
                 if (typeof window.ajaxAutosave === 'function') {
                     window.ajaxAutosave('checkcode');
                 }
+            });
+        }
+
+        function getEditorCode() {
+            var textarea = form ? form.querySelector('textarea[name="code"]') : null;
+            if (codeEditorWrapper && codeEditorWrapper._codeEditor) {
+                return codeEditorWrapper._codeEditor.getValue();
+            }
+            return textarea ? textarea.value : '';
+        }
+
+        function getEditorMode() {
+            var modeInput = form ? form.querySelector('[data-code-editor-mode-select]') : null;
+            return modeInput ? String(modeInput.value || 'php') : 'php';
+        }
+
+        function setRunDrawerState(payload) {
+            var statusPill = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-status]') : null;
+            var statusText = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-status-text]') : null;
+            var modeNode = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-mode]') : null;
+            var durationNode = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-duration]') : null;
+            var contentTypeNode = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-content-type]') : null;
+            var executedAtNode = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-executed-at]') : null;
+            var memoryNode = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-memory]') : null;
+            var outputNode = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-output]') : null;
+            var returnNode = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-return]') : null;
+            var headersNode = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-headers]') : null;
+            var status = payload.status || 'idle';
+            var pillText = payload.pill || 'Готов к запуску';
+
+            if (statusPill) {
+                statusPill.textContent = pillText;
+                statusPill.className = 'md-scripts-run-drawer__pill is-' + status;
+            }
+            if (statusText) {
+                statusText.textContent = payload.statusText || 'Ожидание';
+            }
+            if (modeNode) {
+                modeNode.textContent = (payload.mode || 'php').toUpperCase();
+            }
+            if (durationNode) {
+                durationNode.textContent = payload.duration || '—';
+            }
+            if (contentTypeNode) {
+                contentTypeNode.textContent = payload.contentType || '—';
+            }
+            if (executedAtNode) {
+                executedAtNode.textContent = payload.executedAt || '—';
+            }
+            if (memoryNode) {
+                memoryNode.textContent = payload.memory || '—';
+            }
+            if (outputNode) {
+                outputNode.textContent = payload.output || '—';
+            }
+            if (returnNode) {
+                returnNode.textContent = payload.returnValue || '—';
+            }
+            if (headersNode) {
+                headersNode.textContent = payload.headers || '—';
+            }
+        }
+
+        function openRunDrawer() {
+            if (!runDrawerBody || !window.MDJAdminUI || typeof window.MDJAdminUI.openDrawer !== 'function') {
+                return;
+            }
+            var titleInput = form ? form.querySelector('input[name="title"]') : null;
+            var currentTitle = titleInput ? String(titleInput.value || '').trim() : '';
+            window.MDJAdminUI.openDrawer({
+                owner: 'scripts-run:' + (page.dataset.scriptsEditTitle || 'script'),
+                eyebrow: runDrawerBody.getAttribute('data-md-drawer-eyebrow') || 'Скрипты',
+                title: currentTitle || runDrawerBody.getAttribute('data-md-drawer-title') || page.dataset.scriptsEditTitle || 'Скрипт',
+                subtitle: runDrawerBody.getAttribute('data-md-drawer-subtitle') || '',
+                width: '980px',
+                body: runDrawerBody,
+                footer: runDrawerFooter,
+                focus: function () {
+                    return runSubmitButton;
+                }
+            });
+        }
+
+        function executeCurrentScript() {
+            if (!runDrawerBody) {
+                return Promise.resolve();
+            }
+
+            var runUrl = runDrawerBody.getAttribute('data-scripts-run-url') || '';
+            var titleInput = form ? form.querySelector('input[name="title"]') : null;
+            var returnJsonInput = form ? form.querySelector('input[name="return_json"]') : null;
+            var code = getEditorCode();
+            var mode = getEditorMode();
+            var title = titleInput ? titleInput.value : '';
+            var requestBody = new URLSearchParams();
+
+            requestBody.set('id', form && form.elements.id ? form.elements.id.value : '');
+            requestBody.set('title', title || '');
+            requestBody.set('code', code || '');
+            requestBody.set('code_editor_mode', mode || 'php');
+            requestBody.set('return_json', returnJsonInput && returnJsonInput.checked ? '1' : '0');
+
+            setRunDrawerState({
+                status: 'loading',
+                pill: 'Выполняю',
+                statusText: 'Запрос отправлен',
+                mode: mode,
+                duration: '—',
+                contentType: '—',
+                executedAt: new Date().toLocaleString('ru-RU'),
+                memory: '—',
+                output: 'Запуск скрипта...',
+                returnValue: 'Ожидание...',
+                headers: 'Ожидание...'
+            });
+
+            if (runSubmitButton) {
+                runSubmitButton.disabled = true;
+            }
+
+            return fetch(runUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Accept': 'application/json'
+                },
+                body: requestBody.toString()
+            }).then(function (response) {
+                return response.json();
+            }).then(function (data) {
+                var isOk = data && data.status === 'ok';
+                setRunDrawerState({
+                    status: isOk ? 'success' : 'error',
+                    pill: isOk ? 'Выполнено' : 'Ошибка',
+                    statusText: isOk ? 'Скрипт завершён' : (data.message || 'Ошибка выполнения'),
+                    mode: data.mode || mode,
+                    duration: data.duration_ms ? (String(data.duration_ms) + ' ms') : '—',
+                    contentType: data.content_type || '—',
+                    executedAt: data.executed_at || '—',
+                    memory: formatBytes(data.memory_peak_bytes),
+                    output: data.output || (isOk ? 'Скрипт не вернул текстовый вывод.' : (data.message || 'Ошибка выполнения')),
+                    returnValue: typeof data.return_value_type !== 'undefined'
+                        ? ('[' + data.return_value_type + ']\n' + formatJson(data.return_value))
+                        : (data.syntax ? formatJson(data.syntax) : '—'),
+                    headers: data.headers && data.headers.length ? data.headers.join('\n') : '—'
+                });
+
+                if (!isOk && window.MDJAdminUI && typeof window.MDJAdminUI.showToast === 'function') {
+                    window.MDJAdminUI.showToast({message: data.message || 'Не удалось выполнить скрипт.', type: 'error'});
+                }
+            }).catch(function (error) {
+                setRunDrawerState({
+                    status: 'error',
+                    pill: 'Ошибка',
+                    statusText: 'Не удалось выполнить',
+                    mode: mode,
+                    duration: '—',
+                    contentType: '—',
+                    executedAt: '—',
+                    memory: '—',
+                    output: error && error.message ? error.message : 'Ошибка сетевого запроса.',
+                    returnValue: '—',
+                    headers: '—'
+                });
+            }).finally(function () {
+                if (runSubmitButton) {
+                    runSubmitButton.disabled = false;
+                }
+            });
+        }
+
+        runOpenButtons.forEach(function (button) {
+            if (button.dataset.scriptsRunBound === '1') {
+                return;
+            }
+            button.dataset.scriptsRunBound = '1';
+            button.addEventListener('click', function (event) {
+                event.preventDefault();
+                openRunDrawer();
+                executeCurrentScript();
+            });
+        });
+
+        if (runSubmitButton && runSubmitButton.dataset.scriptsRunBound !== '1') {
+            runSubmitButton.dataset.scriptsRunBound = '1';
+            runSubmitButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                executeCurrentScript();
             });
         }
 

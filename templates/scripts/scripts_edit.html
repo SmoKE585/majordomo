@@ -88,6 +88,7 @@
         <input type="hidden" name="code_editor_mode" value="[#if CODE_EDITOR_MODE="python"#]python[#else#]php[#endif#]" data-code-editor-mode-select>
        </label>
        <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><span class="md-code-editor__action-content"><i class="bi bi-floppy" aria-hidden="true"></i><span><#LANG_SAVE#></span></span></button>
+       <button type="button" class="btn btn-outline-primary btn-sm" data-scripts-run-drawer-open><span class="md-code-editor__action-content"><i class="bi bi-play-circle" aria-hidden="true"></i><span><#LANG_RUN_SCRIPT_BTN#></span></span></button>
        [#if CODE_EDITOR_VALIDATE="1"#]
         <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
        [#endif CODE_EDITOR_VALIDATE#]
@@ -197,13 +198,11 @@
    [#else ID#]
     <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_ADD#>"><#LANG_ADD#></button>
    [#endif ID#]
-   <button type="button" id="checkCodeBtn" class="btn btn-outline-secondary" data-scripts-check-code><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
    <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
    [#if ID!=""#]
     <div class="btn-group">
      <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
      <ul class="dropdown-menu dropdown-menu-end">
-      <li><a class="dropdown-item" href="<#ROOTHTML#>objects/?script=[#TITLE#]" target="_blank" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a></li>
       <li><a class="dropdown-item" href="?id=<#ID#>&view_mode=clone" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_MAKE_COPY#></a></li>
       <li><a class="dropdown-item" href="?ids[]=<#ID#>&view_mode=multiple"><#LANG_EXPORT#></a></li>
       <li><hr class="dropdown-divider"></li>
@@ -218,6 +217,45 @@
   <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
   <input type="hidden" name="mode" value="update">
  </form>
+
+ <div class="md-scripts-run-drawer" data-scripts-run-drawer hidden
+      data-scripts-run-url="?data_source=<#DATA_SOURCE#>&view_mode=run_script_ajax&id=<#ID#>"
+      data-md-drawer-eyebrow="<#LANG_MODULE_SCRIPTS#>"
+      data-md-drawer-title="[#TITLE#]"
+      data-md-drawer-subtitle="Запуск текущего кода из редактора без обязательного сохранения">
+  <div class="md-scripts-run-drawer__body">
+   <div class="md-scripts-run-drawer__summary">
+    <div class="md-scripts-run-drawer__pill" data-scripts-run-status>Готов к запуску</div>
+    <div class="md-scripts-run-drawer__meta">
+     <div><span>Режим</span><strong data-scripts-run-mode>PHP</strong></div>
+     <div><span>Статус</span><strong data-scripts-run-status-text>Ожидание</strong></div>
+     <div><span>Время</span><strong data-scripts-run-duration>—</strong></div>
+     <div><span>Content-Type</span><strong data-scripts-run-content-type>—</strong></div>
+     <div><span>Запуск</span><strong data-scripts-run-executed-at>—</strong></div>
+     <div><span>Память</span><strong data-scripts-run-memory>—</strong></div>
+    </div>
+   </div>
+
+   <div class="md-scripts-run-drawer__section">
+    <h4>Вывод</h4>
+    <pre class="md-scripts-run-drawer__pre" data-scripts-run-output>Нажмите «Выполнить», чтобы проверить текущий код.</pre>
+   </div>
+
+   <div class="md-scripts-run-drawer__section">
+    <h4>Возврат</h4>
+    <pre class="md-scripts-run-drawer__pre" data-scripts-run-return>—</pre>
+   </div>
+
+   <div class="md-scripts-run-drawer__section">
+    <h4>Заголовки</h4>
+    <pre class="md-scripts-run-drawer__pre" data-scripts-run-headers>—</pre>
+   </div>
+  </div>
+ </div>
+ <div class="md-scripts-run-drawer__footer" data-scripts-run-drawer-footer hidden>
+  <button type="button" class="btn btn-primary" data-scripts-run-submit><#LANG_RUN_SCRIPT_BTN#></button>
+  <button type="button" class="btn btn-outline-secondary" data-md-drawer-close><#LANG_CLOSE#></button>
+ </div>
  </div>
 </div>
 

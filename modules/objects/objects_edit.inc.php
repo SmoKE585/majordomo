@@ -192,6 +192,8 @@ if ($this->tab == 'properties') {
         if (!$props[$i]['KEEP_HISTORY'] && $rec['KEEP_HISTORY'] > 0) {
             $props[$i]['KEEP_HISTORY'] = $rec['KEEP_HISTORY'];
         }
+        $props[$i]['OBJECT_TITLE'] = $rec['TITLE'];
+        $props[$i]['FULL_NAME'] = $rec['TITLE'] . '.' . $props[$i]['TITLE'];
         $value = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID='" . $props[$i]['ID'] . "' AND OBJECT_ID='" . $rec['ID'] . "'");
         if ($this->mode == 'update') {
             global ${"value" . $props[$i]['ID']};

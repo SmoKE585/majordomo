@@ -186,6 +186,177 @@ class scripts extends module
         }
     }
 
+    function runScriptAjax()
+    {
+        $scriptId = (int)gr('id');
+        $title = trim((string)gr('title'));
+        $code = (string)gr('code');
+        $codeEditorMode = (string)gr('code_editor_mode');
+        $returnJson = (int)gr('return_json');
+        $paramsRaw = gr('params');
+        $params = array();
+        $result = array(
+            'status' => 'ok',
+            'script_id' => $scriptId,
+            'title' => $title,
+            'mode' => normalize_code_editor_mode($codeEditorMode),
+            'executed_at' => date('Y-m-d H:i:s'),
+            'duration_ms' => 0,
+            'content_type' => $returnJson ? 'application/json; charset=utf-8' : 'text/plain; charset=utf-8',
+            'headers' => array(),
+            'output' => '',
+            'return_value' => null,
+            'return_value_type' => 'null',
+            'memory_peak_bytes' => 0
+        );
+
+        if ($paramsRaw !== '' && $paramsRaw !== null) {
+            $decodedParams = json_decode((string)$paramsRaw, true);
+            if (is_array($decodedParams)) {
+                $params = $decodedParams;
+            }
+        }
+
+        if (!$title && $scriptId) {
+            $titleRec = SQLSelectOne("SELECT TITLE FROM scripts WHERE ID=" . $scriptId);
+            $title = isset($titleRec['TITLE']) ? (string)$titleRec['TITLE'] : '';
+            $result['title'] = $title;
+        }
+
+        if ($code === '' && $scriptId) {
+            $scriptRec = SQLSelectOne("SELECT TITLE, CODE, RETURN_JSON FROM scripts WHERE ID=" . $scriptId);
+            if ($scriptRec['TITLE'] && !$result['title']) {
+                $result['title'] = $scriptRec['TITLE'];
+            }
+            $code = (string)$scriptRec['CODE'];
+            if (!$returnJson) {
+                $returnJson = (int)$scriptRec['RETURN_JSON'];
+            }
+            if (!$result['mode']) {
+                $result['mode'] = isItPythonCode($code) ? 'python' : 'php';
+            }
+        }
+
+        if (!$result['mode']) {
+            $result['mode'] = isItPythonCode($code) ? 'python' : 'php';
+        }
+
+        if (trim($code) === '') {
+            $result['status'] = 'error';
+            $result['message'] = 'Код скрипта пуст.';
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+
+        $errorDetails = code_syntax_error_details($code, $result['mode']);
+        if ($errorDetails) {
+            $result['status'] = 'error';
+            $result['message'] = $errorDetails['message'];
+            $result['syntax'] = $errorDetails;
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+
+        $beforeHeaders = headers_list();
+        $startedAt = microtime(true);
+        ob_start();
+
+        try {
+            if ($scriptId) {
+                $returnValue = $this->runScriptDraft($scriptId, $code, $result['title'], $params, $returnJson);
+            } else {
+                $returnValue = $this->runScriptDraft(0, $code, $result['title'], $params, $returnJson);
+            }
+            $result['return_value'] = $this->normalizeScriptResultValue($returnValue);
+            $result['return_value_type'] = gettype($returnValue);
+        } catch (Exception $e) {
+            $result['status'] = 'error';
+            $result['message'] = $e->getMessage();
+        }
+
+        $result['output'] = ob_get_clean();
+        $result['duration_ms'] = round((microtime(true) - $startedAt) * 1000, 2);
+        $result['memory_peak_bytes'] = memory_get_peak_usage(true);
+
+        $afterHeaders = headers_list();
+        $result['headers'] = array_values(array_diff($afterHeaders, $beforeHeaders));
+
+        foreach ($result['headers'] as $headerLine) {
+            if (stripos($headerLine, 'Content-Type:') === 0) {
+                $result['content_type'] = trim(substr($headerLine, strlen('Content-Type:')));
+            }
+            $headerName = trim(strtok($headerLine, ':'));
+            if ($headerName !== '') {
+                header_remove($headerName);
+            }
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    function runScriptDraft($scriptId, $code, $title = '', $params = array(), $returnJson = 0)
+    {
+        $title = trim((string)$title);
+        $code = (string)$code;
+        $params = is_array($params) ? $params : array();
+
+        if ($scriptId) {
+            $updateRec = array('ID' => (int)$scriptId);
+            $updateRec['EXECUTED'] = date('Y-m-d H:i:s');
+            $source = 'admin:scripts:drawer-run';
+            $updateRec['EXECUTED_SRC'] = $source;
+            if ($params) {
+                $updateRec['EXECUTED_PARAMS'] = json_encode($params, JSON_UNESCAPED_UNICODE);
+                if (mb_strlen($updateRec['EXECUTED_PARAMS']) > 250) {
+                    $updateRec['EXECUTED_PARAMS'] = mb_substr($updateRec['EXECUTED_PARAMS'], 0, 250);
+                }
+            } else {
+                $updateRec['EXECUTED_PARAMS'] = '';
+            }
+            SQLUpdate('scripts', $updateRec);
+        }
+
+        if ($returnJson && !headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+
+        if (isItPythonCode($code)) {
+            return python_run_code($code, $params);
+        }
+
+        $trimmedCode = trim($code);
+        if ($trimmedCode === '') {
+            return true;
+        }
+
+        setEvalCode($trimmedCode);
+        $success = eval($trimmedCode);
+        if ($success === false) {
+            registerError('script', sprintf('Error in script "%s". Code: %s', $title, $trimmedCode));
+        }
+        return $success;
+    }
+
+    function normalizeScriptResultValue($value)
+    {
+        if (is_bool($value) || is_int($value) || is_float($value) || is_string($value) || $value === null) {
+            return $value;
+        }
+
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_object($value)) {
+            return method_exists($value, '__toString') ? (string)$value : get_class($value);
+        }
+
+        return (string)$value;
+    }
+
     /**
      * BackEnd
      *
@@ -222,6 +393,10 @@ class scripts extends module
                 $this->runScript($this->id);
                 exit;
                 //$this->redirect("?");
+            }
+            if ($this->view_mode == 'run_script_ajax') {
+                $this->runScriptAjax();
+                exit;
             }
 
             if ($this->view_mode == 'clone' && $this->id) {

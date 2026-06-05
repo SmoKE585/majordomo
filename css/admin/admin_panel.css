@@ -1169,9 +1169,8 @@ body > [id],
 }
 
 .md-admin-sidebar__icon {
-  width: 18px;
-  height: 18px;
-  filter: saturate(.85) brightness(1.2);
+    width: 22px;
+    height: 22px;
 }
 
 .md-admin-sidebar__badge {
@@ -1863,8 +1862,8 @@ button.md-admin-section-card__header {
 }
 
 .md-admin-sidebar__icon {
-  width: 18px;
-  height: 18px;
+    width: 22px;
+    height: 22px;
   opacity: .88;
 }
 
@@ -2379,8 +2378,8 @@ body {
 }
 
 .md-admin-sidebar__icon {
-  width: 17px;
-  height: 17px;
+    width: 22px;
+    height: 22px;
 }
 
 .md-admin-sidebar__brand-shell {
@@ -6092,7 +6091,34 @@ body.md-mqtt-drawer-open {
 }
 
 .md-object-property-card {
-  grid-template-columns: minmax(260px, 1.1fr) minmax(260px, 1.25fr) auto;
+  grid-template-columns: minmax(280px, 1.2fr) minmax(260px, 1fr) auto;
+  align-items: start;
+}
+
+.md-object-property-card .md-admin-record-card__main {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.md-object-property-card .md-admin-record-card__content {
+  gap: 8px;
+}
+
+.md-object-property-card .md-admin-record-card__title {
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.md-object-property-card .md-admin-record-card__meta {
+  align-content: start;
+}
+
+.md-object-property-card .md-admin-record-card__actions {
+  align-self: start;
+}
+
+.md-object-property-card.is-ws-updated {
+  animation: mdObjectPropertyWsFlash 1.8s ease-out;
 }
 
 .md-object-property-card__description,
@@ -6106,6 +6132,25 @@ body.md-mqtt-drawer-open {
 
 .md-object-property-card__links .label {
   margin-right: 3px;
+}
+
+.md-object-property-card__source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  font-size: .74rem;
+}
+
+.md-object-property-card__source-author,
+.md-object-property-card__source-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.md-object-property-card__source-time {
+  color: #8b98a7;
 }
 
 .md-object-property-card__linked-module {
@@ -6404,6 +6449,11 @@ body.md-mqtt-drawer-open {
   min-width: 0;
 }
 
+.md-object-property-card__value {
+  display: grid;
+  gap: 8px;
+}
+
 .md-object-property-card__image {
   margin-bottom: 8px;
 }
@@ -6433,6 +6483,21 @@ body.md-mqtt-drawer-open {
 .md-object-property-card__value-form,
 .md-object-property-config .md-admin-form-grid {
   min-width: 0;
+}
+
+@keyframes mdObjectPropertyWsFlash {
+  0% {
+    background: rgba(71, 146, 209, .02);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .055), 0 0 0 0 rgba(71, 146, 209, .22);
+  }
+  18% {
+    background: linear-gradient(135deg, rgba(71, 146, 209, .16), rgba(15, 138, 100, .12));
+    box-shadow: 0 12px 34px rgba(15, 23, 42, .08), 0 0 0 6px rgba(71, 146, 209, .12);
+  }
+  100% {
+    background: rgba(255, 255, 255, .88);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .055), 0 0 0 0 rgba(71, 146, 209, 0);
+  }
 }
 
 .md-object-property-config .md-admin-section-card__body {

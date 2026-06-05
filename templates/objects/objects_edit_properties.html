@@ -1,4 +1,4 @@
-<section class="md-admin-module-list md-object-properties-page">
+<section class="md-admin-module-list md-object-properties-page" data-md-object-properties-page data-md-object-title="<#TITLE#>">
     [#if OK#]
     <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
     [#endif OK#]
@@ -74,16 +74,13 @@
 
     <div class="md-admin-record-list md-object-properties-list" id="proplist">
         [#begin PROPERTIES#]
-        <div class="md-object-property-item" data-md-object-property data-search="[#TITLE#] [#DESCRIPTION#] [#SOURCE_HTML#] [#ONCHANGE#]">
+        <div class="md-object-property-item" data-md-object-property data-md-prop-full-name="[#FULL_NAME#]" data-search="[#FULL_NAME#] [#DESCRIPTION#] [#SOURCE_HTML#] [#ONCHANGE#]">
             <article class="md-admin-record-card md-object-property-card [#if CLASS_ID!="0"#]md-object-property-card--class[#endif#]">
                 <div class="md-admin-record-card__main">
-                    <button type="button" class="md-admin-record-card__search" data-md-global-search="<#TITLE#>.[#TITLE#]" aria-label="<#LANG_SEARCH#>">
-                        ?
-                    </button>
                     <div class="md-admin-record-card__content">
                         <div class="md-admin-record-card__title">
                             <span class="md-object-property-card__copy-pair">
-                                <button type="button" class="md-object-property-card__copy-trigger md-admin-record-card__class" data-md-copy-value="<#TITLE#>.[#TITLE#]" data-md-copy-toast="Скопировано: <#TITLE#>.[#TITLE#]"><#TITLE#></button><span class="md-admin-record-card__separator">.</span><button type="button" class="md-object-property-card__copy-trigger md-object-property-card__property-name" data-md-copy-value="[#TITLE#]" data-md-copy-toast="Скопировано: [#TITLE#]">[#TITLE#]</button>
+                                <button type="button" class="md-object-property-card__copy-trigger md-admin-record-card__class" data-md-copy-value="[#FULL_NAME#]" data-md-copy-toast="Скопировано: [#FULL_NAME#]">[#OBJECT_TITLE#]</button><span class="md-admin-record-card__separator">.</span><button type="button" class="md-object-property-card__copy-trigger md-object-property-card__property-name" data-md-copy-value="[#TITLE#]" data-md-copy-toast="Скопировано: [#TITLE#]">[#TITLE#]</button>
                             </span>
                             [#if KEEP_HISTORY!="0"#]
                             <button
@@ -91,7 +88,7 @@
                                 class="md-object-property-card__history"
                                 data-md-prop-history-open
                                 data-history-url="admin.php?action=objects&md=objects&view_mode=edit_objects&tab=properties&ajax=1&id=<#ID#>&op=property_history&property_id=[#ID#]"
-                                data-property-name="<#TITLE#>.[#TITLE#]"
+                                data-property-name="[#FULL_NAME#]"
                                 data-property-title="[#TITLE#]"
                                 data-property-description="[#DESCRIPTION#]"
                                 data-property-history="[#KEEP_HISTORY#]">
@@ -114,16 +111,19 @@
                     </div>
                 </div>
                 <div class="md-admin-record-card__meta">
-                    <div class="md-object-property-card__value" data-md-prop-current="[#ID#]">
+                    <div class="md-object-property-card__value" data-md-prop-current="[#ID#]" data-md-prop-current-name="[#FULL_NAME#]" data-md-prop-type="[#DATA_TYPE#]">
                         [#if DATA_TYPE="5"#]
                         [#if VALUE!=""#]
-                        <div class="md-object-property-card__image"><img src="<#ROOTHTML#>cms/images/[#VALUE#]" alt="[#TITLE#]"></div>
-                        <a href="<#ROOTHTML#>cms/images/[#VALUE#]" target="_blank">[full size]</a>
+                        <div class="md-object-property-card__image" data-md-prop-image-wrap><img src="<#ROOTHTML#>cms/images/[#VALUE#]" alt="[#TITLE#]" data-md-prop-image></div>
+                        <a href="<#ROOTHTML#>cms/images/[#VALUE#]" target="_blank" data-md-prop-image-link>[full size]</a>
                         [#endif#]
                         [#endif#]
-                        [#if DATA_TYPE="0"#]<pre class="md-admin-code-sample [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]">[#if VALUE == ''#]Property is empty[#else#][#VALUE_HTML#][#endif#]</pre>[#endif#]
-                        [#if DATA_TYPE!="0" && DATA_TYPE!="5"#]<div class="md-admin-record-card__field [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]">[#if VALUE == ''#]Property is empty[#else#][#VALUE_HTML#][#endif#]</div>[#endif#]
-                        <div class="md-object-property-card__source">[#if SOURCE!="" && VALUE != ''#]Source -> [#SOURCE_HTML#][#endif#][#if VALUE !=''#] [#if SOURCE!=""#]&middot;[#endif#] [#UPDATED#][#endif#]</div>
+                        [#if DATA_TYPE="0"#]<pre class="md-admin-code-sample [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]" data-md-prop-display>[#if VALUE == ''#]Property is empty[#else#][#VALUE_HTML#][#endif#]</pre>[#endif#]
+                        [#if DATA_TYPE!="0" && DATA_TYPE!="5"#]<div class="md-admin-record-card__field [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]" data-md-prop-display>[#if VALUE == ''#]Property is empty[#else#][#VALUE_HTML#][#endif#]</div>[#endif#]
+                        <div class="md-object-property-card__source">
+                            [#if SOURCE!="" && VALUE != ''#]<span class="md-object-property-card__source-author" data-md-prop-source>Источник: [#SOURCE_HTML#]</span>[#endif#]
+                            [#if VALUE !=''#]<span class="md-object-property-card__source-time" data-md-prop-updated>[#UPDATED#]</span>[#endif#]
+                        </div>
                     </div>
                     <div class="md-object-property-card__value-editor" data-md-prop-editor="[#ID#]" hidden>
                         <form action="?" method="post" class="md-object-property-card__value-form">
@@ -141,10 +141,10 @@
                 </div>
                 <div class="md-admin-record-card__actions">
                     [#if CLASS_ID=="0"#]
-                    <button type="button" class="btn btn-light btn-sm" data-md-prop-config-toggle="[#ID#]"><span><#LANG_EDIT#></span></button>
                     <div class="btn-group">
                         <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
                         <ul class="dropdown-menu dropdown-menu-end">
+                            <li><button type="button" class="dropdown-item" data-md-prop-config-toggle="[#ID#]"><#LANG_EDIT#></button></li>
                             <li><a class="dropdown-item text-danger" href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_prop=[#ID#]" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
                         </ul>
                     </div>
@@ -284,8 +284,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var filterInput = document.getElementById('filterProp');
+    var propertiesPage = document.querySelector('[data-md-object-properties-page]');
+    var objectTitle = propertiesPage ? (propertiesPage.getAttribute('data-md-object-title') || '').trim() : '';
     var propertyCards = Array.prototype.slice.call(document.querySelectorAll('[data-md-object-property]'));
     var propertyList = document.getElementById('proplist');
+    var wsSubscribed = false;
 
     function showCopyToast(message) {
         if (window.MDJAdminUI && typeof window.MDJAdminUI.showToast === 'function') {
@@ -343,6 +346,112 @@ document.addEventListener('DOMContentLoaded', function () {
         divider.className = 'md-object-properties-divider';
         divider.setAttribute('aria-hidden', 'true');
         return divider;
+    }
+
+    function escapeHtml(value) {
+        return String(value === null || value === undefined ? '' : value).replace(/[&<>"']/g, function (char) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char];
+        });
+    }
+
+    function formatWsDate() {
+        return new Date().toLocaleString('ru-RU');
+    }
+
+    function flashPropertyUpdate(card) {
+        if (!card) {
+            return;
+        }
+        card.classList.remove('is-ws-updated');
+        void card.offsetWidth;
+        card.classList.add('is-ws-updated');
+        window.setTimeout(function () {
+            card.classList.remove('is-ws-updated');
+        }, 2200);
+    }
+
+    function updatePropertyCardValue(card, value) {
+        if (!card) {
+            return;
+        }
+
+        var current = card.querySelector('[data-md-prop-current]');
+        var editor = card.querySelector('[data-md-prop-editor]');
+        var display = current ? current.querySelector('[data-md-prop-display]') : null;
+        var sourceMeta = current ? current.querySelector('.md-object-property-card__source') : null;
+        var source = current ? current.querySelector('[data-md-prop-source]') : null;
+        var updated = current ? current.querySelector('[data-md-prop-updated]') : null;
+        var imageWrap = current ? current.querySelector('[data-md-prop-image-wrap]') : null;
+        var image = current ? current.querySelector('[data-md-prop-image]') : null;
+        var imageLink = current ? current.querySelector('[data-md-prop-image-link]') : null;
+        var editorInput = editor ? editor.querySelector('input[type="text"], textarea') : null;
+        var type = current ? String(current.getAttribute('data-md-prop-type') || '0') : '0';
+        var textValue = value === null || typeof value === 'undefined' ? '' : String(value);
+        var hasValue = textValue !== '';
+
+        if (display) {
+            display.textContent = hasValue ? textValue : 'Property is empty';
+            display.classList.toggle('is-empty', !hasValue);
+        }
+
+        if (type === '5' && image && imageLink && imageWrap) {
+            if (hasValue) {
+                var imageUrl = (window.ROOTHTML || '/') + 'cms/images/' + textValue;
+                image.src = imageUrl;
+                imageLink.href = imageUrl;
+                imageWrap.hidden = false;
+                imageLink.hidden = false;
+            } else {
+                imageWrap.hidden = true;
+                imageLink.hidden = true;
+            }
+        }
+
+        if (editorInput) {
+            editorInput.value = textValue;
+        }
+
+        if (sourceMeta && !source) {
+            source = document.createElement('span');
+            source.className = 'md-object-property-card__source-author';
+            source.setAttribute('data-md-prop-source', '1');
+            sourceMeta.appendChild(source);
+        }
+        if (sourceMeta && !updated) {
+            updated = document.createElement('span');
+            updated.className = 'md-object-property-card__source-time';
+            updated.setAttribute('data-md-prop-updated', '1');
+            sourceMeta.appendChild(updated);
+        }
+
+        if (source) {
+            source.innerHTML = 'Источник: <span>WS</span>';
+        }
+        if (updated) {
+            updated.textContent = formatWsDate();
+        }
+
+        flashPropertyUpdate(card);
+    }
+
+    function subscribeToObjectProperties() {
+        if (!objectTitle || !window.wsSocket || typeof startedWebSockets === 'undefined' || !startedWebSockets || wsSubscribed) {
+            return;
+        }
+        wsSubscribed = true;
+        wsSocket.send(JSON.stringify({
+            action: 'Subscribe',
+            data: {
+                TYPE: 'properties',
+                PROPERTIES: objectTitle
+            }
+        }));
     }
 
     if (propertyList && propertyCards.length) {
@@ -420,5 +529,44 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    if (propertiesPage && objectTitle) {
+        $.subscribe('wsConnected', function () {
+            wsSubscribed = false;
+            subscribeToObjectProperties();
+        });
+
+        $.subscribe('wsData', function (_, response) {
+            if (!response || response.action !== 'properties') {
+                return;
+            }
+
+            var updates;
+            try {
+                updates = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            } catch (error) {
+                return;
+            }
+
+            if (!Array.isArray(updates)) {
+                return;
+            }
+
+            updates.forEach(function (item) {
+                if (!item || !item.PROPERTY) {
+                    return;
+                }
+                var propertyName = String(item.PROPERTY || '').trim();
+                var card = propertyCards.find(function (propertyCard) {
+                    return (propertyCard.getAttribute('data-md-prop-full-name') || '') === propertyName;
+                });
+                if (card) {
+                    updatePropertyCardValue(card, item.VALUE);
+                }
+            });
+        });
+
+        subscribeToObjectProperties();
+    }
 });
 </script>
