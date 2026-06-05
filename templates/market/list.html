@@ -2,7 +2,7 @@
 <div class="market-plugin-list" id="market_application">
     [#begin PLUGINS#]
     <article class="market-plugin-card">
-        [#if EXIST="1"#]
+        [#if EXISTS#]
         <a class="market-plugin-card__icon-link" href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]">
             <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
         </a>
@@ -19,9 +19,7 @@
                 </div>
                 [#endif#]
                 [#if EXISTS#]
-                    [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]
-                    <span class="market-plugin-card__badge"><#LANG_NEWMARKET_UPDATE_ALAIL#></span>
-                    [#endif#]
+                <span class="market-plugin-card__badge"><#LANG_MARKET_CATEGORY_INSTALLED#></span>
                 [#endif EXISTS#]
             </div>
             <h3 class="market-plugin-card__title" id="row[#ID#]_title">
@@ -54,31 +52,26 @@
         </div>
         <div class="market-plugin-card__actions-shell">
             <div class="market-plugin-card__primary-actions">
-                [#if CAN_DOWNLOAD="1" OR CUSTOM_REPOSITORY_ACTIVE="1"#]
-                    <a
-                        class="btn btn-default market-plugin-card__link-btn"
-                        href="#"
-                        data-market-action="custom-repo"
-                        data-module-name="[#MODULE_NAME#]"
-                        data-current-url="[#CUSTOM_REPOSITORY_URL_BASE64#]"
-                        title="[#if CUSTOM_REPOSITORY_ACTIVE="1"#]Используется пользовательский URL[#else#]Указать свой Git/архив URL[#endif#]"
-                    ><i class="glyphicon glyphicon-link"></i> Свой GIT</a>
-                    <a class="btn btn-[#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]success[#else#]warning[#endif#] market-plugin-card__main-btn" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]">[#if EXISTS#]<i class="glyphicon glyphicon-refresh"></i> [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>"#]<#LANG_UPDATE#>[#else#]Перекачать[#endif#][#else#]<i class="glyphicon glyphicon-download"></i> <#LANG_ADD#>[#endif#]</a>
+                <a
+                    class="btn btn-default market-plugin-card__link-btn"
+                    href="#"
+                    data-market-action="custom-repo"
+                    data-module-name="[#MODULE_NAME#]"
+                    data-current-url="[#CUSTOM_REPOSITORY_URL_BASE64#]"
+                    title="Указать свой Git/архив URL"
+                ><i class="glyphicon glyphicon-link"></i> Свой GIT</a>
+                [#if EXISTS#]
+                <a class="btn btn-success market-plugin-card__main-btn" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]"><i class="glyphicon glyphicon-refresh"></i> <#LANG_UPDATE#></a>
+                [#else#]
+                <a class="btn btn-primary market-plugin-card__main-btn" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]"><i class="glyphicon glyphicon-download"></i> <#LANG_ADD#></a>
                 [#endif#]
             </div>
-            [#if EXISTS OR (INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>" AND INSTALLED_VERSION != '')#]
+            [#if EXISTS#]
             <details class="market-plugin-card__menu">
                 <summary class="btn btn-default market-plugin-card__menu-summary">Ещё <span class="caret"></span></summary>
                 <div class="market-plugin-card__menu-dropdown">
-                    [#if EXISTS#]
                     <a href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]" class="market-plugin-card__menu-item"><i class="glyphicon glyphicon-info-sign"></i> <#LANG_HISTORY#></a>
-                    [#endif#]
-                    [#if INSTALLED_VERSION!="<#PLUGINS.LATEST_VERSION#>" AND INSTALLED_VERSION != ''#]
-                    <a class="market-plugin-card__menu-item" data-confirm="<#LANG_ARE_YOU_SURE#>" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=dontupdate&name=[#MODULE_NAME#]&value=[#LATEST_VERSION#]"><i class="glyphicon glyphicon-minus-sign"></i> Не обновлять</a>
-                    [#endif#]
-                    [#if EXISTS#]
                     <a class="market-plugin-card__menu-item is-danger" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=uninstall&name=[#MODULE_NAME#]" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#></a>
-                    [#endif#]
                 </div>
             </details>
             [#endif#]
