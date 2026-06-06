@@ -218,22 +218,14 @@ if (!isset($run_from_start) || $run_from_start == 0) {
 
 // CHECK/REPAIR/OPTIMIZE TABLES
 DebMes('Checking database tables.', 'maintenance');
-$tables = SQLSelect("SHOW TABLES FROM `" . DB_NAME . "`");
+$tables = SQLSelect("SELECT TABLE_NAME, ENGINE FROM information_schema.tables WHERE TABLE_SCHEMA='" . DBSafe(DB_NAME) . "' AND ENGINE!='MEMORY'");
 $total = count($tables);
 for ($i = 0; $i < $total; $i++) {
-    $table = $tables[$i]['Tables_in_' . DB_NAME] ?? null;
+    $table = $tables[$i]['TABLE_NAME'] ?? null;
     if (!$table) {
         continue;
     }
-    echo 'Checking table [' . $table . '] ...';
-    if ($result = SQLExec("CHECK TABLE " . $table . ";")) {
-        echo "OK\n";
-    } else {
-        echo " broken ... repair ...";
-        DebMes("Repairing: $table", 'maintenance');
-        SQLExec("REPAIR TABLE " . $table . ";");
-        echo "OK\n";
-    }
+    maintenanceCheckAndRepairTable($table, $tables[$i]['ENGINE'] ?? '');
 }
 
 // checking property history schema
@@ -450,9 +442,70 @@ $sv->admin($out);
 
 DebMes("Maintenance complete.", 'maintenance');
 
+function maintenanceCheckAndRepairTable($table_name, $engine)
+{
+    $table_name_safe = maintenanceNormalizeSqlIdentifier($table_name);
+    if ($table_name_safe == '') {
+        return false;
+    }
+
+    echo 'Checking table [' . $table_name_safe . '] ...';
+    $check = maintenanceCheckTable($table_name_safe);
+    if (maintenanceTableCheckIsOk($check)) {
+        echo "OK\n";
+        return true;
+    }
+
+    $message = $check['Msg_text'] ?? 'unknown error';
+    echo " broken ...";
+    DebMes("Checking table [$table_name_safe] broken ($message)", 'maintenance');
+
+    if (strtolower((string)$engine) !== 'myisam') {
+        echo " repair is not supported for engine " . $engine . "\n";
+        DebMes("Repair skipped for $table_name_safe: engine $engine is not MyISAM", 'maintenance');
+        return false;
+    }
+
+    $repair_modes = array('', ' EXTENDED', ' USE_FRM');
+    foreach ($repair_modes as $repair_mode) {
+        $repair_label = trim($repair_mode);
+        if ($repair_label == '') {
+            $repair_label = 'default';
+        }
+
+        echo " repair $repair_label ...";
+        DebMes("Repairing $table_name_safe ($repair_label)", 'maintenance');
+        SQLExec("REPAIR TABLE `$table_name_safe`$repair_mode;");
+
+        $check = maintenanceCheckTable($table_name_safe);
+        if (maintenanceTableCheckIsOk($check)) {
+            echo "OK\n";
+            DebMes("$table_name_safe repaired OK ($repair_label)", 'maintenance');
+            return true;
+        }
+
+        $message = $check['Msg_text'] ?? 'unknown error';
+        DebMes("Repair $repair_label failed for $table_name_safe ($message)", 'maintenance');
+    }
+
+    echo "FAILED\n";
+    DebMes("Repair of $table_name_safe failed", 'maintenance');
+    return false;
+}
+
+function maintenanceCheckTable($table_name)
+{
+    return SQLSelectOne("CHECK TABLE `$table_name`;");
+}
+
+function maintenanceTableCheckIsOk($check)
+{
+    return isset($check['Msg_text']) && strtoupper((string)$check['Msg_text']) === 'OK';
+}
+
 function maintenanceEnsureTableIndex($table_name, $index_name, $index_columns)
 {
-    $table_name_safe = preg_replace('/[^a-z0-9_]/i', '', (string)$table_name);
+    $table_name_safe = maintenanceNormalizeSqlIdentifier($table_name);
     $index_name_safe = preg_replace('/[^a-z0-9_]/i', '', (string)$index_name);
     $index_columns_safe = preg_replace('/[^a-z0-9_,]/i', '', (string)$index_columns);
     if ($table_name_safe == '' || $index_name_safe == '' || $index_columns_safe == '') {
@@ -472,7 +525,7 @@ function maintenanceEnsureTableIndex($table_name, $index_name, $index_columns)
 
 function maintenanceEnsureTableColumn($table_name, $column_name, $definition, $required_type)
 {
-    $table_name_safe = preg_replace('/[^a-z0-9_]/i', '', (string)$table_name);
+    $table_name_safe = maintenanceNormalizeSqlIdentifier($table_name);
     $column_name_safe = preg_replace('/[^a-z0-9_]/i', '', (string)$column_name);
     $definition_safe = preg_replace("/[^a-z0-9_(), '`]/i", '', (string)$definition);
     if ($table_name_safe == '' || $column_name_safe == '' || $definition_safe == '') {
@@ -488,4 +541,13 @@ function maintenanceEnsureTableColumn($table_name, $column_name, $definition, $r
     if (isset($column['Type']) && stripos($column['Type'], (string)$required_type) === false) {
         SQLExec("ALTER TABLE `$table_name_safe` MODIFY `$column_name_safe` $definition_safe");
     }
+}
+
+function maintenanceNormalizeSqlIdentifier($identifier)
+{
+    $identifier = (string)$identifier;
+    if (!preg_match('/^[a-z0-9_]+$/i', $identifier)) {
+        return '';
+    }
+    return $identifier;
 }

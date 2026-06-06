@@ -14,7 +14,8 @@
 if (!function_exists('SQLExec')) {
     function SQLExec($query, $ignore_errors = false)
     {
-        if (($query[0] == "#") || ($query == "")) return;
+        if ($query === '' || $query === null || $query === false) return;
+        if ($query[0] == "#") return;
         if (preg_match('/^ALTER TABLE/', $query)) {
             global $alter_executed;
             if (isset($alter_executed[$query])) return false;
@@ -75,6 +76,17 @@ if (!function_exists('SQLSelect')) {
             return $db->Select($query);
         } else {
             return false;
+        }
+    }
+}
+if (!function_exists('SQLAffectedRows')) {
+    function SQLAffectedRows()
+    {
+        global $db;
+        if ($db instanceof mysql && method_exists($db, 'AffectedRows')) {
+            return $db->AffectedRows();
+        } else {
+            return 0;
         }
     }
 }
@@ -226,27 +238,35 @@ function SQLMakeDBDump($dump_file, $ignore_tables = 0)
 {
     $dir = dirname($dump_file);
     if (!file_exists($dir)) mkdir($dir, 0777, true);
-    if (defined('PATH_TO_MYSQLDUMP')) {
-        $mysqlDumpPath = PATH_TO_MYSQLDUMP;
-    } else {
-        if (IsWindowsOS())
-            $mysqlDumpPath = SERVER_ROOT . "/server/mysql/bin/mysqldump";
-        else
-            $mysqlDumpPath = "/usr/bin/mysqldump";
-    }
-    $mysqlDumpParam = " -h " . DB_HOST . " --user=\"" . DB_USER . "\" --password=\"" . DB_PASSWORD . "\"";
-    $mysqlDumpParam .= " --no-create-db --add-drop-table " . DB_NAME;
+
+    $command = array(
+        SQLGetMysqlDumpPath(),
+        '-h', DB_HOST,
+        '--user=' . DB_USER,
+        '--password=' . DB_PASSWORD,
+        '--no-create-db',
+        '--add-drop-table',
+        DB_NAME
+    );
     if (is_array($ignore_tables)) {
         foreach ($ignore_tables as $table) {
-            $mysqlDumpParam .= " --ignore-table=" . DB_NAME . "." . $table;
+            $command[] = '--ignore-table=' . DB_NAME . '.' . $table;
         }
     }
-    exec($mysqlDumpPath . $mysqlDumpParam . "> " . $dump_file . '.tmp', $output);
-    if (file_exists($dump_file . '.tmp') && filesize($dump_file . '.tmp') > 0) {
+
+    $output = array();
+    $exit_code = SQLRunExternalCommand($command, null, $dump_file . '.tmp', $output);
+    if ($exit_code === 0 && file_exists($dump_file . '.tmp') && filesize($dump_file . '.tmp') > 0) {
+        if (file_exists($dump_file)) {
+            unlink($dump_file);
+        }
         rename($dump_file . '.tmp', $dump_file);
         debmes('DB Backup to ' . $dump_file . ' OK.', 'db_backup');
         return true;
     } else {
+        if (file_exists($dump_file . '.tmp')) {
+            unlink($dump_file . '.tmp');
+        }
         debmes('Error saving DB Backup to ' . $dump_file . ': ' . implode("\n", $output), 'db_backup');
         return false;
     }
@@ -256,23 +276,29 @@ function SQLMakeTableDump($dump_file, $table_name)
 {
     $dir = dirname($dump_file);
     if (!file_exists($dir)) mkdir($dir, 0777, true);
-    if (defined('PATH_TO_MYSQLDUMP')) {
-        $mysqlDumpPath = PATH_TO_MYSQLDUMP;
-    } else {
-        if (IsWindowsOS())
-            $mysqlDumpPath = SERVER_ROOT . "/server/mysql/bin/mysqldump";
-        else
-            $mysqlDumpPath = "/usr/bin/mysqldump";
-    }
-    $mysqlDumpParam = " -h " . DB_HOST . " --user=\"" . DB_USER . "\" --password=\"" . DB_PASSWORD . "\"";
-    $mysqlDumpParam .= " " . DB_NAME;
-    $mysqlDumpParam .= " " . $table_name;
-    exec($mysqlDumpPath . $mysqlDumpParam . "> " . $dump_file . '.tmp', $output);
-    if (file_exists($dump_file . '.tmp') && filesize($dump_file . '.tmp') > 0) {
+
+    $command = array(
+        SQLGetMysqlDumpPath(),
+        '-h', DB_HOST,
+        '--user=' . DB_USER,
+        '--password=' . DB_PASSWORD,
+        DB_NAME,
+        $table_name
+    );
+
+    $output = array();
+    $exit_code = SQLRunExternalCommand($command, null, $dump_file . '.tmp', $output);
+    if ($exit_code === 0 && file_exists($dump_file . '.tmp') && filesize($dump_file . '.tmp') > 0) {
+        if (file_exists($dump_file)) {
+            unlink($dump_file);
+        }
         rename($dump_file . '.tmp', $dump_file);
         debmes('Table ' . $table_name . ' backup to ' . $dump_file . ' OK.', 'db_backup');
         return true;
     } else {
+        if (file_exists($dump_file . '.tmp')) {
+            unlink($dump_file . '.tmp');
+        }
         debmes('Error saving table ' . $table_name . ' backup to ' . $dump_file . ': ' . implode("\n", $output), 'db_backup');
         return false;
     }
@@ -280,11 +306,6 @@ function SQLMakeTableDump($dump_file, $table_name)
 
 function SQLRestoreDBDump($dump_file)
 {
-    if (IsWindowsOS())
-        $mysqlCmdPath = SERVER_ROOT . "/server/mysql/bin/mysql";
-    else
-        $mysqlCmdPath = "mysql";
-
     $data = LoadFile($dump_file);
     if (is_integer(strpos($data, '/*M!999999\- enable the sandbox mode */'))) {
         $data_new = str_replace('/*M!999999\- enable the sandbox mode */', '', $data);
@@ -293,17 +314,89 @@ function SQLRestoreDBDump($dump_file)
         SaveFile($dump_file, $data_new);
     }
 
-    $mysqlCmdParam = " -h " . DB_HOST . " --user=\"" . DB_USER . "\" --password=\"" . DB_PASSWORD . "\"";
-    $mysqlCmdParam .= " " . DB_NAME . " <" . $dump_file;
-    $cmd = $mysqlCmdPath . $mysqlCmdParam;
-    $result = exec($cmd, $output);
-    if ($result !== false) {
+    $command = array(
+        SQLGetMysqlClientPath(),
+        '-h', DB_HOST,
+        '--user=' . DB_USER,
+        '--password=' . DB_PASSWORD,
+        DB_NAME
+    );
+
+    $output = array();
+    $exit_code = SQLRunExternalCommand($command, $dump_file, null, $output);
+    if ($exit_code === 0) {
         debmes("DB restored from " . $dump_file . " OK.", 'db_backup');
         return true;
     } else {
         debmes('Error restoring ' . $dump_file . ': ' . implode("\n", $output), 'db_backup');
         return false;
     }
+}
+
+function SQLGetMysqlDumpPath()
+{
+    if (defined('PATH_TO_MYSQLDUMP')) {
+        return PATH_TO_MYSQLDUMP;
+    }
+    if (IsWindowsOS()) {
+        return SERVER_ROOT . "/server/mysql/bin/mysqldump";
+    }
+    return "/usr/bin/mysqldump";
+}
+
+function SQLGetMysqlClientPath()
+{
+    if (defined('PATH_TO_MYSQL')) {
+        return PATH_TO_MYSQL;
+    }
+    if (IsWindowsOS()) {
+        return SERVER_ROOT . "/server/mysql/bin/mysql";
+    }
+    return "mysql";
+}
+
+function SQLRunExternalCommand($command, $stdin_file = null, $stdout_file = null, &$output = array())
+{
+    $descriptors = array(
+        0 => array('pipe', 'r'),
+        1 => array('pipe', 'w'),
+        2 => array('pipe', 'w')
+    );
+
+    if ($stdin_file !== null) {
+        $descriptors[0] = array('file', $stdin_file, 'r');
+    }
+    if ($stdout_file !== null) {
+        $descriptors[1] = array('file', $stdout_file, 'w');
+    }
+
+    $process = proc_open($command, $descriptors, $pipes);
+    if (!is_resource($process)) {
+        $output[] = 'Failed to start external command.';
+        return 1;
+    }
+
+    if ($stdin_file === null && isset($pipes[0]) && is_resource($pipes[0])) {
+        fclose($pipes[0]);
+    }
+
+    if ($stdout_file === null && isset($pipes[1]) && is_resource($pipes[1])) {
+        $stdout = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        if ($stdout !== '') {
+            $output[] = $stdout;
+        }
+    }
+
+    if (isset($pipes[2]) && is_resource($pipes[2])) {
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+        if ($stderr !== '') {
+            $output[] = $stderr;
+        }
+    }
+
+    return proc_close($process);
 }
 
 

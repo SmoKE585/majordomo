@@ -432,32 +432,38 @@ function getObjectsByProperty($property_name, $condition = '', $condition_value 
         $condition_value = $condition;
         $condition = '==';
     }
-    $pRecs = SQLSelect("SELECT ID FROM properties WHERE TITLE = '" . DBSafe($property_name) . "'");
-    $total = count($pRecs);
-    if (!$total) {
+
+    $pValues = SQLSelect("SELECT objects.TITLE, pvalues.ID AS PVALUE_ID, pvalues.VALUE
+                            FROM properties
+                            LEFT JOIN pvalues ON pvalues.PROPERTY_ID = properties.ID
+                            LEFT JOIN objects ON pvalues.OBJECT_ID = objects.ID
+                           WHERE properties.TITLE = '" . DBSafe($property_name) . "'
+                           ORDER BY properties.ID, pvalues.ID");
+    $totalv = count($pValues);
+    if (!$totalv) {
         return 0;
     }
+
     $found = array();
-    for ($i = 0; $i < $total; $i++) {
-        $pValues = SQLSelect("SELECT objects.TITLE, VALUE FROM pvalues LEFT JOIN objects ON pvalues.OBJECT_ID=objects.ID WHERE PROPERTY_ID='" . $pRecs[$i]['ID'] . "'");
-        $totalv = count($pValues);
-        for ($iv = 0; $iv < $totalv; $iv++) {
-            $v = $pValues[$iv]['VALUE'];
-            if (!$condition) {
-                $found[$pValues[$iv]['TITLE']] = 1;
-            } elseif (($condition == '=' || $condition == '==') && ($v == $condition_value)) {
-                $found[$pValues[$iv]['TITLE']] = 1;
-            } elseif (($condition == '>=') && ($v >= $condition_value)) {
-                $found[$pValues[$iv]['TITLE']] = 1;
-            } elseif (($condition == '>') && ($v > $condition_value)) {
-                $found[$pValues[$iv]['TITLE']] = 1;
-            } elseif (($condition == '<=') && ($v <= $condition_value)) {
-                $found[$pValues[$iv]['TITLE']] = 1;
-            } elseif (($condition == '<') && ($v < $condition_value)) {
-                $found[$pValues[$iv]['TITLE']] = 1;
-            } elseif (($condition == '<>' || $condition == '!=') && ($v != $condition_value)) {
-                $found[$pValues[$iv]['TITLE']] = 1;
-            }
+    for ($iv = 0; $iv < $totalv; $iv++) {
+        if (!isset($pValues[$iv]['PVALUE_ID'])) {
+            continue;
+        }
+        $v = $pValues[$iv]['VALUE'];
+        if (!$condition) {
+            $found[$pValues[$iv]['TITLE']] = 1;
+        } elseif (($condition == '=' || $condition == '==') && ($v == $condition_value)) {
+            $found[$pValues[$iv]['TITLE']] = 1;
+        } elseif (($condition == '>=') && ($v >= $condition_value)) {
+            $found[$pValues[$iv]['TITLE']] = 1;
+        } elseif (($condition == '>') && ($v > $condition_value)) {
+            $found[$pValues[$iv]['TITLE']] = 1;
+        } elseif (($condition == '<=') && ($v <= $condition_value)) {
+            $found[$pValues[$iv]['TITLE']] = 1;
+        } elseif (($condition == '<') && ($v < $condition_value)) {
+            $found[$pValues[$iv]['TITLE']] = 1;
+        } elseif (($condition == '<>' || $condition == '!=') && ($v != $condition_value)) {
+            $found[$pValues[$iv]['TITLE']] = 1;
         }
     }
 
@@ -488,30 +494,37 @@ function getObjectsByClass($class_name)
         return 0;
     }
 
-    $sqlQuery = "SELECT ID, TITLE
-                  FROM objects
-                 WHERE CLASS_ID = '" . $class_record['ID'] . "'";
-
-    $objects = SQLSelect($sqlQuery);
-
-    $sqlQuery = "SELECT ID, TITLE
-                  FROM classes WHERE PARENT_ID = '" . $class_record['ID'] . "'";
-
-    $sub_classes = SQLSelect($sqlQuery);
-
-    if (isset($sub_classes[0]['ID'])) {
-        $total = count($sub_classes);
-
-        for ($i = 0; $i < $total; $i++) {
-            $sub_objects = getObjectsByClass($sub_classes[$i]['TITLE']);
-
-            if (isset($sub_objects[0]['ID'])) {
-                foreach ($sub_objects as $obj) {
-                    $objects[] = $obj;
-                }
-            }
+    $classes = SQLSelect("SELECT ID, TITLE, PARENT_ID FROM classes");
+    $children_by_parent = array();
+    foreach ($classes as $class) {
+        $parent_id = (int)$class['PARENT_ID'];
+        if (!isset($children_by_parent[$parent_id])) {
+            $children_by_parent[$parent_id] = array();
         }
+        $children_by_parent[$parent_id][] = (int)$class['ID'];
     }
+
+    $class_ids = getObjectsByClassCollectIds((int)$class_record['ID'], $children_by_parent);
+    if (!isset($class_ids[0])) {
+        return array();
+    }
+
+    $class_ids_safe = array();
+    foreach ($class_ids as $class_id) {
+        $class_ids_safe[] = (int)$class_id;
+    }
+
+    $objects_all = SQLSelect("SELECT ID, TITLE, CLASS_ID
+                                FROM objects
+                               WHERE CLASS_ID IN (" . implode(',', $class_ids_safe) . ")
+                               ORDER BY FIELD(CLASS_ID, " . implode(',', $class_ids_safe) . "), ID");
+
+    $objects = array();
+    foreach ($objects_all as $object) {
+        unset($object['CLASS_ID']);
+        $objects[] = $object;
+    }
+
 
     /*
     $total=count($objects);
@@ -523,16 +536,40 @@ function getObjectsByClass($class_name)
     return $objects;
 }
 
+function getObjectsByClassCollectIds($class_id, $children_by_parent, $visited = array())
+{
+    if (isset($visited[$class_id])) {
+        return array();
+    }
+    $visited[$class_id] = 1;
+    $result = array((int)$class_id);
+    if (isset($children_by_parent[$class_id])) {
+        foreach ($children_by_parent[$class_id] as $child_id) {
+            $child_ids = getObjectsByClassCollectIds((int)$child_id, $children_by_parent, $visited);
+            foreach ($child_ids as $id) {
+                $result[] = $id;
+            }
+        }
+    }
+    return $result;
+}
+
 
 function getClassProperties($class_id, $def = '')
 {
 
     global $cached_class_properties;
-    if (isset($cached_class_properties[$class_id])) return $cached_class_properties[$class_id];
+    if (!is_array($def) && isset($cached_class_properties[$class_id])) return $cached_class_properties[$class_id];
 
     $class = SQLSelectOne("SELECT ID, PARENT_ID FROM classes WHERE (ID='" . (int)$class_id . "' OR TITLE = '" . DBSafe($class_id) . "')");
     if (!isset($class['ID'])) {
         return array();
+    }
+
+    if (!is_array($def)) {
+        $res = getClassPropertiesBatch((int)$class['ID']);
+        $cached_class_properties[$class_id] = $res;
+        return $res;
     }
 
     $properties = SQLSelect("SELECT properties.*, classes.TITLE AS CLASS_TITLE FROM properties LEFT JOIN classes ON properties.CLASS_ID=classes.ID WHERE CLASS_ID='" . $class['ID'] . "' AND OBJECT_ID=0");
@@ -561,6 +598,59 @@ function getClassProperties($class_id, $def = '')
         }
     }
     $cached_class_properties[$class_id] = $res;
+    return $res;
+}
+
+function getClassPropertiesBatch($class_id)
+{
+    $classes = SQLSelect("SELECT ID, PARENT_ID FROM classes");
+    $classes_by_id = array();
+    foreach ($classes as $class) {
+        $classes_by_id[(int)$class['ID']] = $class;
+    }
+
+    $class_ids = array();
+    $visited = array();
+    $current_id = (int)$class_id;
+    while ($current_id && isset($classes_by_id[$current_id])) {
+        if (isset($visited[$current_id])) {
+            break;
+        }
+        $visited[$current_id] = 1;
+        $class_ids[] = $current_id;
+        $current_id = (int)$classes_by_id[$current_id]['PARENT_ID'];
+    }
+
+    if (!isset($class_ids[0])) {
+        return array();
+    }
+
+    $class_ids_safe = array();
+    foreach ($class_ids as $id) {
+        $class_ids_safe[] = (int)$id;
+    }
+
+    $properties = SQLSelect("SELECT properties.*, classes.TITLE AS CLASS_TITLE
+                               FROM properties
+                               LEFT JOIN classes ON properties.CLASS_ID=classes.ID
+                              WHERE properties.CLASS_ID IN (" . implode(',', $class_ids_safe) . ")
+                                AND properties.OBJECT_ID=0
+                              ORDER BY FIELD(properties.CLASS_ID, " . implode(',', $class_ids_safe) . "), properties.ID");
+
+    $res = array();
+    $known_titles = array();
+    foreach ($properties as $property) {
+        $property_class_id = (int)$property['CLASS_ID'];
+        if ($property_class_id === (int)$class_id) {
+            $res[] = $property;
+            $known_titles[$property['TITLE']] = 1;
+            continue;
+        }
+        if (!isset($known_titles[$property['TITLE']])) {
+            $res[] = $property;
+            $known_titles[$property['TITLE']] = 1;
+        }
+    }
     return $res;
 }
 
@@ -1120,7 +1210,7 @@ function cleanUpPropertyHistory($property_id, $max_age_days)
     $total_removed = 0;
     $property = SQLSelectOne("SELECT * FROM properties WHERE ID=" . (int)$property_id);
     if (isset($property['ID'])) {
-        $pvalues = SQLSelect("SELECT * FROM pvalues WHERE PROPERTY_ID='" . $property_id . "'");
+        $pvalues = SQLSelect("SELECT ID FROM pvalues WHERE PROPERTY_ID='" . (int)$property_id . "'");
         $total = count($pvalues);
         for ($i = 0; $i < $total; $i++) {
             $total_removed += cleanUpValueHistory($pvalues[$i]['ID'], $max_age_days, $property['DATA_TYPE']);
@@ -1666,11 +1756,37 @@ function objectClassChanged($object_id)
     // step 2. apply matched properties of new class
     $properties = $obj->getParentProperties($rec['CLASS_ID'], '', 1);
     $total = count($properties);
+    $property_titles = array();
     for ($i = 0; $i < $total; $i++) {
-        $pvalue = SQLSelectOne("SELECT pvalues.* FROM pvalues LEFT JOIN properties ON pvalues.PROPERTY_ID=properties.ID WHERE properties.CLASS_ID=0 AND pvalues.OBJECT_ID='" . $rec['ID'] . "' AND properties.TITLE = '" . DBSafe($properties[$i]['TITLE']) . "'");
-        if ($pvalue['ID']) {
+        $property_titles[$properties[$i]['TITLE']] = 1;
+    }
+
+    $pvalues_by_title = array();
+    if (count($property_titles)) {
+        $titles_safe = array();
+        foreach (array_keys($property_titles) as $title) {
+            $titles_safe[] = "'" . DBSafe($title) . "'";
+        }
+        $object_properties = SQLSelect("SELECT pvalues.*, properties.TITLE AS PROPERTY_TITLE
+                                          FROM pvalues
+                                          LEFT JOIN properties ON pvalues.PROPERTY_ID=properties.ID
+                                         WHERE properties.CLASS_ID=0
+                                           AND pvalues.OBJECT_ID='" . (int)$rec['ID'] . "'
+                                           AND properties.TITLE IN (" . implode(',', $titles_safe) . ")
+                                         ORDER BY properties.ID");
+        foreach ($object_properties as $object_property) {
+            if (!isset($pvalues_by_title[$object_property['PROPERTY_TITLE']])) {
+                $pvalues_by_title[$object_property['PROPERTY_TITLE']] = $object_property;
+            }
+        }
+    }
+
+    for ($i = 0; $i < $total; $i++) {
+        if (isset($pvalues_by_title[$properties[$i]['TITLE']]['ID'])) {
+            $pvalue = $pvalues_by_title[$properties[$i]['TITLE']];
             $old_prop = $pvalue['PROPERTY_ID'];
             $pvalue['PROPERTY_ID'] = $properties[$i]['ID'];
+            unset($pvalue['PROPERTY_TITLE']);
             SQLUpdate('pvalues', $pvalue);
             SQLExec("DELETE FROM properties WHERE ID='" . $old_prop . "'");
         }

@@ -190,10 +190,6 @@ class mysql
             $res[] = $rec;
          }
       }
-      else
-      {
-         $this->Error($query,0);
-      }
 
       return $res;
    }
@@ -215,10 +211,12 @@ class mysql
          
          return $rec;
       }
-      else
-      {
-         $this->Error($query);
-      }
+   }
+
+   public function AffectedRows()
+   {
+      if (!$this->dbh) return 0;
+      return mysql_affected_rows($this->dbh);
    }
 
    public function Ping()

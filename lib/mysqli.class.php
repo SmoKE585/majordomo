@@ -168,8 +168,6 @@ class mysql
             while ($rec = mysqli_fetch_array($result, MYSQL_ASSOC)) {
                 $res[] = $rec;
             }
-        } else {
-            $this->Error($query, 0);
         }
 
         return $res;
@@ -190,9 +188,13 @@ class mysql
             $rec = mysqli_fetch_array($result, MYSQL_ASSOC);
 
             return $rec;
-        } else {
-            $this->Error($query);
         }
+    }
+
+    public function AffectedRows()
+    {
+        if (!$this->dbh) return 0;
+        return mysqli_affected_rows($this->dbh);
     }
 
 

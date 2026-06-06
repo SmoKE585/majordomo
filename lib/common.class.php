@@ -424,7 +424,9 @@ function addScheduledJob($title, $commands, $datetime, $expire = 1800)
     $rec['TITLE'] = $title;
     $rec['COMMANDS'] = $commands;
     $rec['RUNTIME'] = date('Y-m-d H:i:s', $datetime);
-    $rec['EXPIRE'] = date('Y-m-d H:i:s', $datetime + $expire);
+    if ((int)$expire > 0) {
+        $rec['EXPIRE'] = date('Y-m-d H:i:s', $datetime + (int)$expire);
+    }
     $rec['ID'] = SQLInsert('jobs', $rec);
 
     return $rec['ID'];
@@ -458,10 +460,10 @@ function deleteScheduledJob($id)
  * @param mixed $timeout Timeout
  * @return mixed
  */
-function setTimeOut($title, $commands, $timeout = 0)
+function setTimeOut($title, $commands, $timeout = 0, $expire = 0)
 {
     startMeasure('setTimeout');
-    $res = addScheduledJob($title, $commands, time() + $timeout);
+    $res = addScheduledJob($title, $commands, time() + $timeout, $expire);
     endMeasure('setTimeout');
     return $res;
 }
@@ -494,7 +496,10 @@ function timeOutExists($title)
  */
 function runScheduledJobs()
 {
-    SQLExec("DELETE FROM jobs WHERE EXPIRE <= '" . date('Y-m-d H:i:s') . "'");
+    $now = date('Y-m-d H:i:s');
+    $stale_started = date('Y-m-d H:i:s', time() - 300);
+
+    SQLExec("DELETE FROM jobs WHERE EXPIRE <= '" . $now . "'");
 
     if (defined('JOBS_QUEUE_LIMIT') && (int)JOBS_QUEUE_LIMIT > 0) {
         $limit = (int)JOBS_QUEUE_LIMIT;
@@ -506,8 +511,8 @@ function runScheduledJobs()
                   FROM jobs
                  WHERE PROCESSED = 0
                    AND EXPIRED   = 0
-                   AND (STARTED IS NULL OR STARTED <= '" . date('Y-m-d H:i:s', time() - 300) . "')
-                   AND RUNTIME   <= '" . date('Y-m-d H:i:s') . "'
+                   AND (STARTED IS NULL OR STARTED <= '" . $stale_started . "')
+                   AND RUNTIME   <= '" . $now . "'
                  ORDER BY RUNTIME, ID
                  LIMIT " . $limit;
 
@@ -515,24 +520,42 @@ function runScheduledJobs()
     $total = count($jobs);
 
     for ($i = 0; $i < $total; $i++) {
-        $jobs[$i]['STARTED'] = date('Y-m-d H:i:s');
-        SQLExec("UPDATE jobs SET STARTED='" . $jobs[$i]['STARTED'] . "' WHERE ID=" . (int)$jobs[$i]['ID'] . " AND PROCESSED=0 AND (STARTED IS NULL OR STARTED <= '" . date('Y-m-d H:i:s', time() - 300) . "')");
-        $claimed_job = SQLSelectOne("SELECT ID FROM jobs WHERE ID=" . (int)$jobs[$i]['ID'] . " AND STARTED='" . DBSafe($jobs[$i]['STARTED']) . "' AND PROCESSED=0");
-        if (!isset($claimed_job['ID'])) {
+        $started = date('Y-m-d H:i:s');
+        SQLExec("UPDATE jobs
+                    SET STARTED='" . $started . "'
+                  WHERE ID=" . (int)$jobs[$i]['ID'] . "
+                    AND PROCESSED=0
+                    AND EXPIRED=0
+                    AND RUNTIME <= '" . $now . "'
+                    AND (STARTED IS NULL OR STARTED <= '" . $stale_started . "')");
+        if (SQLAffectedRows() < 1) {
             continue;
         }
 
+        $claimed_job = SQLSelectOne("SELECT * FROM jobs WHERE ID=" . (int)$jobs[$i]['ID'] . " AND STARTED='" . DBSafe($started) . "' AND PROCESSED=0 AND EXPIRED=0");
+        if (!isset($claimed_job['ID'])) {
+            continue;
+        }
+        $jobs[$i] = $claimed_job;
+
         if ($jobs[$i]['COMMANDS'] != '') {
             $url = BASE_URL . '/objects/?system_call=1&job=' . $jobs[$i]['ID'] . '&title=' . urlencode($jobs[$i]['TITLE']);
-            $result = trim(getURL($url, 0));
+            $job_timeout = defined('JOBS_EXECUTION_TIMEOUT') ? (int)JOBS_EXECUTION_TIMEOUT : 300;
+            if ($job_timeout < 1) {
+                $job_timeout = 300;
+            }
+            $result = trim(getURL($url, 0, '', '', false, array(
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => $job_timeout
+            )));
             $result = preg_replace('/<!--.+-->/is', '', $result);
             if (!preg_match('/OK$/', $result)) {
                 DebMes(sprintf('Error executing job %s (%s): %s', $jobs[$i]['TITLE'], $jobs[$i]['ID'], $result) . ' (' . __FILE__ . ')', 'errors');
-                SQLExec("UPDATE jobs SET STARTED=NULL, RUNTIME='" . date('Y-m-d H:i:s', time() + 5) . "' WHERE ID=" . (int)$jobs[$i]['ID'] . " AND PROCESSED=0");
+                SQLExec("UPDATE jobs SET STARTED=NULL, RUNTIME='" . date('Y-m-d H:i:s', time() + 5) . "' WHERE ID=" . (int)$jobs[$i]['ID'] . " AND STARTED='" . DBSafe($started) . "' AND PROCESSED=0");
                 continue;
             }
         }
-        SQLExec("UPDATE jobs SET PROCESSED=1 WHERE ID=" . (int)$jobs[$i]['ID']);
+        SQLExec("UPDATE jobs SET PROCESSED=1 WHERE ID=" . (int)$jobs[$i]['ID'] . " AND STARTED='" . DBSafe($started) . "' AND PROCESSED=0");
     }
 }
 
