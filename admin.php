@@ -36,6 +36,11 @@ $cl = new control_modules();
 $app = new panel();
 
 $md = gr('md');
+if ($md == 'scripts' && gr('view_mode') == 'run_script_ajax') {
+    $_GET['action'] = 'scripts';
+    $_REQUEST['action'] = 'scripts';
+    $action = 'scripts';
+}
 if ($md != $app->name)
     $app->restoreParams();
 else

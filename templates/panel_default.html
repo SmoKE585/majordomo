@@ -21,7 +21,7 @@
         <article class="md-admin-kpi-card">
             <span class="md-admin-kpi-card__icon"><i class="glyphicon glyphicon-dashboard"></i></span>
             <span class="md-admin-kpi-card__label"><#LANG_NEWDASH_DB_REQ_SEC#></span>
-            <strong id="dashInfoDBReqS" class="badge md-admin-status-badge"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
+            <strong id="dashInfoDBReqS" class="badge md-admin-status-badge" data-dbload-level><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
         </article>
         <article class="md-admin-kpi-card">
             <span class="md-admin-kpi-card__icon"><i class="glyphicon glyphicon-cloud-download"></i></span>
@@ -56,18 +56,43 @@
                     <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="infoBlockDiv" aria-expanded="true" aria-controls="row_infoBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
                 <div id="row_infoBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div class="md-admin-info-list">
-                        <button type="button" class="md-admin-info-row" data-md-toggle-target=".reqPerMinHour">
-                            <span><#LANG_NEWDASH_DB_REQ_MIN#></span>
-                            <strong id="dashInfoDBReqM" class="badge md-admin-status-badge"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
-                        </button>
-                        <div class="md-admin-info-row reqPerMinHour">
-                            <span><#LANG_NEWDASH_DB_REQ_HOUR#></span>
-                            <strong id="dashInfoDBReqH" class="badge md-admin-status-badge"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
+                    <div class="md-admin-dbload-widget" id="dashInfoDBLoad">
+                        <div class="md-admin-dbload-widget__hero">
+                            <div>
+                                <span class="md-admin-dbload-widget__eyebrow">Database load</span>
+                                <strong id="dashInfoDBLoadStatus">Загрузка...</strong>
+                                <small id="dashInfoDBLoadSource">Ожидание данных X-Ray</small>
+                            </div>
+                            <div class="md-admin-dbload-widget__dial" data-dbload-level>
+                                <span id="dashInfoDBUsage">—</span>
+                                <small>connections</small>
+                            </div>
                         </div>
+                        <div class="md-admin-dbload-widget__metrics">
+                            <div>
+                                <span>В секунду</span>
+                                <strong id="dashInfoDBReqSDetail">—</strong>
+                            </div>
+                            <div>
+                                <span>В минуту</span>
+                                <strong id="dashInfoDBReqM">—</strong>
+                            </div>
+                            <div>
+                                <span>В час</span>
+                                <strong id="dashInfoDBReqH">—</strong>
+                            </div>
+                        </div>
+                        <div class="md-admin-dbload-widget__connections">
+                            <span><b id="dashInfoDBRunning">—</b> running</span>
+                            <span><b id="dashInfoDBConnected">—</b> connected</span>
+                            <span><b id="dashInfoDBCached">—</b> cached</span>
+                            <span><b id="dashInfoDBMax">—</b> max</span>
+                        </div>
+                    </div>
+                    <div class="md-admin-info-list">
                         <div class="md-admin-info-row reqPerMinHour">
                             <span><#LANG_NEWDASH_DB_CONNECTIONS#></span>
-                            <strong id="dashInfoDBConnections" class="badge md-admin-status-badge"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
+                            <strong id="dashInfoDBConnections" class="badge md-admin-status-badge md-admin-status-badge--muted"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
                         </div>
                         <div class="md-admin-info-row md-admin-info-row--note" id="dbreqdiscus">
                             <a href="https://mjdm.ru/forum/viewtopic.php?f=6&t=7301" target="_blank"><i class="glyphicon glyphicon-send"></i> <#LANG_NEWDASH_FORUM_DISCUSSION#></a>

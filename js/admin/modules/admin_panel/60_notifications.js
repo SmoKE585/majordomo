@@ -10,6 +10,9 @@
     var LATEST_MESSAGE_INTERVAL_HIDDEN = 60000;
 
     function safeJsonParse(data, fallback) {
+        if (data && typeof data === 'object') {
+            return data;
+        }
         try {
             return JSON.parse(data);
         } catch (e) {

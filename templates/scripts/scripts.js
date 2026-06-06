@@ -372,9 +372,7 @@
                 url.searchParams.set('id', form.elements.id.value || '');
             }
 
-            if (!url.searchParams.get('action')) {
-                url.searchParams.set('action', 'scripts');
-            }
+            url.searchParams.set('action', 'scripts');
             if (!url.searchParams.get('md')) {
                 url.searchParams.set('md', 'scripts');
             }

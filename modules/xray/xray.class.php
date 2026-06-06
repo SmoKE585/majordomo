@@ -1271,16 +1271,24 @@ class xray extends module
                             $arrayDB = array_slice(array_reverse($responce['LIST']), 0, 7);
                             echo json_encode($arrayDB);
                         } else if ($this->mode == 'showdbload') {
+                            $DBstat_PerSecType = 'main';
+                            $DBstat_Connections = '';
+                            $connectionStats = array(
+                                'running' => 0,
+                                'connected' => 0,
+                                'cached' => 0,
+                                'created' => 0,
+                                'max' => 0,
+                            );
+
                             if (isset($GLOBALS['db']->dbh->stat)) {
                                 $DBstat = $GLOBALS['db']->dbh->stat;
                                 $DBstat = explode('  ', $DBstat);
-                                $DBstat_PerSec = preg_replace('/[^0-9.]/', '', $DBstat[7]);
-                                $DBstat_PerSecType = 'main';
+                                $DBstat_PerSec = isset($DBstat[7]) ? (float)preg_replace('/[^0-9.]/', '', $DBstat[7]) : 0;
                             } else $DBstat_PerSec = 0;
 
-                            if (round($DBstat_PerSec) == 0) {
-                                $select = SQLSelect("SHOW GLOBAL STATUS");
-                                $array_sum = [
+                            $select = SQLSelect("SHOW GLOBAL STATUS");
+                            $array_sum = [
                                     1 => 'Com_select',
                                     2 => 'Com_replace',
                                     3 => 'Com_update',
@@ -1309,50 +1317,84 @@ class xray extends module
                                     26 => 'Com_show_grants',
                                     27 => 'Com_show_binlogs',
                                     28 => 'Com_drop_table',
-                                ];
+                            ];
 
-                                $totalSum = 0;
-                                $uptime = 0;
+                            $totalSum = 0;
+                            $uptime = 0;
 
-                                $DBstat_Connections = '';
-                                foreach ($select as $key => $value) {
-                                    if ($value['Variable_name'] == 'Threads_running') {
-                                        $DBstat_Connections .= 'running: ' . $value['Value'] . '; ';
+                            foreach ($select as $key => $value) {
+                                if ($value['Variable_name'] == 'Threads_running') {
+                                    $connectionStats['running'] = (int)$value['Value'];
+                                }
+                                if ($value['Variable_name'] == 'Threads_connected') {
+                                    $connectionStats['connected'] = (int)$value['Value'];
+                                }
+                                if ($value['Variable_name'] == 'Threads_cached') {
+                                    $connectionStats['cached'] = (int)$value['Value'];
+                                }
+                                if ($value['Variable_name'] == 'Threads_created') {
+                                    $connectionStats['created'] = (int)$value['Value'];
+                                }
+                                foreach ($array_sum as $comName) {
+                                    if ($value['Variable_name'] == $comName) {
+                                        $totalSum = $totalSum + $value['Value'];
+                                        continue;
                                     }
-                                    if ($value['Variable_name'] == 'Threads_connected') {
-                                        $DBstat_Connections .= 'connected: ' . $value['Value'] . '; ';
-                                    }
-                                    if ($value['Variable_name'] == 'Threads_cached') {
-                                        $DBstat_Connections .= 'cached: ' . $value['Value'] . '; ';
-                                    }
-                                    if ($value['Variable_name'] == 'Threads_created') {
-                                        $DBstat_Connections .= 'created: ' . $value['Value'] . '; ';
-                                    }
-                                    foreach ($array_sum as $comName) {
-                                        if ($value['Variable_name'] == $comName) {
-                                            $totalSum = $totalSum + $value['Value'];
-                                            continue;
-                                        }
-                                        if ($value['Variable_name'] == 'Uptime') {
-                                            $uptime = $value['Value'];
-                                        }
+                                    if ($value['Variable_name'] == 'Uptime') {
+                                        $uptime = $value['Value'];
                                     }
                                 }
+                            }
 
-                                $DBstat_Connections .= 'max: ' . current(SQLSelectOne("select @@max_connections"));
+                            if (round($DBstat_PerSec) == 0) {
+                                $connectionStats['max'] = (int)current(SQLSelectOne("select @@max_connections"));
 
-                                $DBstat_PerSec = $totalSum / $uptime;
+                                $DBstat_PerSec = $uptime > 0 ? $totalSum / $uptime : 0;
 
                                 $DBstat_PerSecType = 'rezerv';
                             }
 
+                            if (!$connectionStats['max']) {
+                                $connectionStats['max'] = (int)current(SQLSelectOne("select @@max_connections"));
+                            }
+
+                            if ($DBstat_Connections == '') {
+                                $DBstat_Connections = 'cached: ' . $connectionStats['cached'] . '; '
+                                    . 'connected: ' . $connectionStats['connected'] . '; '
+                                    . 'created: ' . $connectionStats['created'] . '; '
+                                    . 'running: ' . $connectionStats['running'] . '; '
+                                    . 'max: ' . $connectionStats['max'];
+                            }
+
+                            $requestsSecond = round($DBstat_PerSec);
+                            $requestsMinute = round($DBstat_PerSec * 60);
+                            $requestsHour = round($DBstat_PerSec * 60 * 60);
+                            $connectionUsage = $connectionStats['max'] > 0 ? round($connectionStats['connected'] / $connectionStats['max'] * 100, 1) : 0;
+                            $level = 'ok';
+                            $statusText = 'Нагрузка в норме';
+
+                            if ($requestsSecond >= 250 || $connectionUsage >= 80 || $connectionStats['running'] >= 20) {
+                                $level = 'danger';
+                                $statusText = 'Высокая нагрузка';
+                            } elseif ($requestsSecond >= 170 || $connectionUsage >= 60 || $connectionStats['running'] >= 10) {
+                                $level = 'warning';
+                                $statusText = 'Повышенная нагрузка';
+                            }
 
                             echo json_encode(array(
-                                'second' => round($DBstat_PerSec),
-                                'minute' => round($DBstat_PerSec * 60),
-                                'hours' => round($DBstat_PerSec * 60 * 60),
+                                'MODE' => 'dbload',
+                                'STATUS' => 1,
+                                'second' => $requestsSecond,
+                                'minute' => $requestsMinute,
+                                'hour' => $requestsHour,
+                                'hours' => $requestsHour,
                                 'connections' => $DBstat_Connections,
+                                'connections_data' => $connectionStats,
+                                'connection_usage_percent' => $connectionUsage,
                                 'type' => $DBstat_PerSecType,
+                                'level' => $level,
+                                'status_text' => $statusText,
+                                'updated_at' => date('Y-m-d H:i:s'),
                             ));
                         } else {
                             echo json_encode($responce);

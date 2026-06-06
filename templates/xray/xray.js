@@ -36,6 +36,7 @@
 			'dead': 'Неактивные',
 			'events': 'События',
 			'database': 'База',
+			'dbload': 'Нагрузка БД',
 			'services': 'Сервисы'
 		};
 		return labels[mode] || mode || 'Логи';
@@ -88,6 +89,11 @@
 
 	function createEmptyState(title, text) {
 		return '<div class="xray-empty-state"><div><div class="xray-spinner"></div><strong>' + escapeHtml(title) + '</strong><div>' + escapeHtml(text) + '</div></div></div>';
+	}
+
+	function formatNumber(value) {
+		var number = Number(value || 0);
+		return number.toLocaleString ? number.toLocaleString('ru-RU') : String(number);
 	}
 
 	function createTable(head, body) {
@@ -239,6 +245,41 @@
 			'</tr>';
 		}
 		return createTable('<thead><tr><th>Name</th><th>Engine</th><th>Rows</th><th>Update</th><th></th></tr></thead>', rows);
+	}
+
+	function renderDbLoad(data) {
+		var connections = data.connections_data || {};
+		var hourValue = typeof data.hour !== 'undefined' ? data.hour : data.hours;
+		var level = data.level || 'ok';
+		var sourceLabel = data.type === 'rezerv' ? 'SHOW GLOBAL STATUS' : 'mysqlnd statistics';
+		var usage = typeof data.connection_usage_percent !== 'undefined' ? data.connection_usage_percent : 0;
+
+		return '<div class="md-admin-dbload-widget md-admin-dbload-widget--xray">' +
+			'<div class="md-admin-dbload-widget__hero">' +
+				'<div>' +
+					'<span class="md-admin-dbload-widget__eyebrow">Database load</span>' +
+					'<strong>' + escapeHtml(data.status_text || 'Нагрузка в норме') + '</strong>' +
+					'<small>' + escapeHtml(sourceLabel + (data.updated_at ? ' · ' + data.updated_at : '')) + '</small>' +
+				'</div>' +
+				'<div class="md-admin-dbload-widget__dial is-' + escapeHtml(level) + '">' +
+					'<span>' + escapeHtml(usage ? (usage + '%') : '—') + '</span>' +
+					'<small>connections</small>' +
+				'</div>' +
+			'</div>' +
+			'<div class="md-admin-dbload-widget__metrics">' +
+				'<div><span>В секунду</span><strong>' + escapeHtml(formatNumber(data.second)) + '</strong></div>' +
+				'<div><span>В минуту</span><strong>' + escapeHtml(formatNumber(data.minute)) + '</strong></div>' +
+				'<div><span>В час</span><strong>' + escapeHtml(formatNumber(hourValue)) + '</strong></div>' +
+			'</div>' +
+			'<div class="md-admin-dbload-widget__connections">' +
+				'<span><b>' + escapeHtml(typeof connections.running !== 'undefined' ? connections.running : '—') + '</b> running</span>' +
+				'<span><b>' + escapeHtml(typeof connections.connected !== 'undefined' ? connections.connected : '—') + '</b> connected</span>' +
+				'<span><b>' + escapeHtml(typeof connections.cached !== 'undefined' ? connections.cached : '—') + '</b> cached</span>' +
+				'<span><b>' + escapeHtml(typeof connections.created !== 'undefined' ? connections.created : '—') + '</b> created</span>' +
+				'<span><b>' + escapeHtml(typeof connections.max !== 'undefined' ? connections.max : '—') + '</b> max</span>' +
+			'</div>' +
+			'<pre class="md-admin-dbload-widget__raw">' + escapeHtml(data.connections || '') + '</pre>' +
+		'</div>';
 	}
 
 	function renderServices(list) {
@@ -417,6 +458,8 @@
 				setHtml(el('xrayContent'), renderDead(data.LIST || []));
 			} else if (data.MODE === 'events') {
 				setHtml(el('xrayContent'), renderEvents(data.LIST || []));
+			} else if (data.MODE === 'dbload') {
+				setHtml(el('xrayContent'), renderDbLoad(data));
 			} else if (data.MODE === 'database') {
 				setHtml(el('xrayContent'), renderDatabase(data.LIST || []));
 			} else if (data.MODE === 'services') {

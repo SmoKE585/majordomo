@@ -108,6 +108,22 @@
         }
     }
 
+    function formatDashboardNumber(value) {
+        var number = Number(value || 0);
+        return number.toLocaleString ? number.toLocaleString('ru-RU') : String(number);
+    }
+
+    function applyDbLoadLevel($nodes, level) {
+        $nodes.removeClass('is-ok is-warning is-danger label-success label-warning label-danger');
+        if (level === 'danger') {
+            $nodes.addClass('is-danger label-danger');
+        } else if (level === 'warning') {
+            $nodes.addClass('is-warning label-warning');
+        } else {
+            $nodes.addClass('is-ok label-success');
+        }
+    }
+
     var filterTimer;
 
     function filterSearch() {
@@ -404,17 +420,29 @@
             url: '<#ROOTHTML#>admin.php?action=xray&md=xray&inst=adm&view_mode=database&ajax=1&op=getcontent&mode=showdbload',
             success: function(data) {
                 data = safeJsonParse(data, {});
-                if (typeof data.second === 'undefined' || typeof data.minute === 'undefined' || typeof data.hours === 'undefined') {
+                if (typeof data.second === 'undefined' || typeof data.minute === 'undefined' || (typeof data.hours === 'undefined' && typeof data.hour === 'undefined')) {
                     return;
                 }
-                $('#dashInfoDBReqS').html(data.second);
-                $('#dashInfoDBReqM').html(data.minute);
-                $('#dashInfoDBReqH').html(data.hours);
-                $('#dashInfoDBConnections').html(data.connections);
-                $('#dashInfoDBConnections').removeClass('label-warning label-danger').addClass('label-success');
+                var hourValue = typeof data.hour !== 'undefined' ? data.hour : data.hours;
+                var connections = data.connections_data || {};
+                var level = data.level || 'ok';
+                var sourceLabel = data.type === 'rezerv' ? 'SHOW GLOBAL STATUS' : 'mysqlnd statistics';
+                var usage = typeof data.connection_usage_percent !== 'undefined' ? data.connection_usage_percent : 0;
+
+                $('#dashInfoDBReqS').text(formatDashboardNumber(data.second));
+                $('#dashInfoDBReqSDetail').text(formatDashboardNumber(data.second));
+                $('#dashInfoDBReqM').text(formatDashboardNumber(data.minute));
+                $('#dashInfoDBReqH').text(formatDashboardNumber(hourValue));
+                $('#dashInfoDBConnections').text(data.connections || '—');
+                $('#dashInfoDBLoadStatus').text(data.status_text || 'Нагрузка в норме');
+                $('#dashInfoDBLoadSource').text(sourceLabel + (data.updated_at ? ' · ' + data.updated_at : ''));
+                $('#dashInfoDBUsage').text(usage ? (usage + '%') : '—');
+                $('#dashInfoDBRunning').text(typeof connections.running !== 'undefined' ? connections.running : '—');
+                $('#dashInfoDBConnected').text(typeof connections.connected !== 'undefined' ? connections.connected : '—');
+                $('#dashInfoDBCached').text(typeof connections.cached !== 'undefined' ? connections.cached : '—');
+                $('#dashInfoDBMax').text(typeof connections.max !== 'undefined' ? connections.max : '—');
+                applyDbLoadLevel($('[data-dbload-level], #dashInfoDBConnections'), level);
                 applyDbBadgeState($('#dashInfoDBReqS'), data.second, 170, 250);
-                applyDbBadgeState($('#dashInfoDBReqM'), data.minute, 10200, 15000);
-                applyDbBadgeState($('#dashInfoDBReqH'), data.hours, 612000, 900000);
             },
             error: function(data) {
                 console.log('error');
