@@ -96,6 +96,15 @@
 		return number.toLocaleString ? number.toLocaleString('ru-RU') : String(number);
 	}
 
+	function formatDbConnectionsText(value) {
+		return String(value || '—')
+			.replace(/cached:/g, 'в кэше:')
+			.replace(/connected:/g, 'подключено:')
+			.replace(/created:/g, 'создано:')
+			.replace(/running:/g, 'выполняется:')
+			.replace(/max:/g, 'лимит:');
+	}
+
 	function createTable(head, body) {
 		return '<div class="table-responsive xray-table-wrap"><table class="table table-striped table-hover xray-table">' + head + '<tbody>' + body + '</tbody></table></div>';
 	}
@@ -251,34 +260,34 @@
 		var connections = data.connections_data || {};
 		var hourValue = typeof data.hour !== 'undefined' ? data.hour : data.hours;
 		var level = data.level || 'ok';
-		var sourceLabel = data.type === 'rezerv' ? 'SHOW GLOBAL STATUS' : 'mysqlnd statistics';
+		var sourceLabel = data.type === 'rezerv' ? 'резервный расчёт по SHOW GLOBAL STATUS' : 'статистика mysqlnd';
 		var usage = typeof data.connection_usage_percent !== 'undefined' ? data.connection_usage_percent : 0;
 
 		return '<div class="md-admin-dbload-widget md-admin-dbload-widget--xray">' +
 			'<div class="md-admin-dbload-widget__hero">' +
 				'<div>' +
-					'<span class="md-admin-dbload-widget__eyebrow">Database load</span>' +
+					'<span class="md-admin-dbload-widget__eyebrow">Нагрузка базы данных</span>' +
 					'<strong>' + escapeHtml(data.status_text || 'Нагрузка в норме') + '</strong>' +
 					'<small>' + escapeHtml(sourceLabel + (data.updated_at ? ' · ' + data.updated_at : '')) + '</small>' +
 				'</div>' +
 				'<div class="md-admin-dbload-widget__dial is-' + escapeHtml(level) + '">' +
 					'<span>' + escapeHtml(usage ? (usage + '%') : '—') + '</span>' +
-					'<small>connections</small>' +
+					'<small>соединения</small>' +
 				'</div>' +
 			'</div>' +
 			'<div class="md-admin-dbload-widget__metrics">' +
-				'<div><span>В секунду</span><strong>' + escapeHtml(formatNumber(data.second)) + '</strong></div>' +
-				'<div><span>В минуту</span><strong>' + escapeHtml(formatNumber(data.minute)) + '</strong></div>' +
-				'<div><span>В час</span><strong>' + escapeHtml(formatNumber(hourValue)) + '</strong></div>' +
+				'<div><span>Запросов в секунду</span><strong>' + escapeHtml(formatNumber(data.second)) + '</strong></div>' +
+				'<div><span>Запросов в минуту</span><strong>' + escapeHtml(formatNumber(data.minute)) + '</strong></div>' +
+				'<div><span>Запросов в час</span><strong>' + escapeHtml(formatNumber(hourValue)) + '</strong></div>' +
 			'</div>' +
 			'<div class="md-admin-dbload-widget__connections">' +
-				'<span><b>' + escapeHtml(typeof connections.running !== 'undefined' ? connections.running : '—') + '</b> running</span>' +
-				'<span><b>' + escapeHtml(typeof connections.connected !== 'undefined' ? connections.connected : '—') + '</b> connected</span>' +
-				'<span><b>' + escapeHtml(typeof connections.cached !== 'undefined' ? connections.cached : '—') + '</b> cached</span>' +
-				'<span><b>' + escapeHtml(typeof connections.created !== 'undefined' ? connections.created : '—') + '</b> created</span>' +
-				'<span><b>' + escapeHtml(typeof connections.max !== 'undefined' ? connections.max : '—') + '</b> max</span>' +
+				'<span><b>' + escapeHtml(typeof connections.running !== 'undefined' ? connections.running : '—') + '</b> выполняется</span>' +
+				'<span><b>' + escapeHtml(typeof connections.connected !== 'undefined' ? connections.connected : '—') + '</b> подключено</span>' +
+				'<span><b>' + escapeHtml(typeof connections.cached !== 'undefined' ? connections.cached : '—') + '</b> в кэше</span>' +
+				'<span><b>' + escapeHtml(typeof connections.created !== 'undefined' ? connections.created : '—') + '</b> создано</span>' +
+				'<span><b>' + escapeHtml(typeof connections.max !== 'undefined' ? connections.max : '—') + '</b> лимит</span>' +
 			'</div>' +
-			'<pre class="md-admin-dbload-widget__raw">' + escapeHtml(data.connections || '') + '</pre>' +
+			'<pre class="md-admin-dbload-widget__raw">' + escapeHtml(formatDbConnectionsText(data.connections)) + '</pre>' +
 		'</div>';
 	}
 

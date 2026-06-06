@@ -35,6 +35,51 @@
         </article>
     </section>
 
+    <section class="md-admin-dashboard-widget-grid" aria-label="Виджеты мониторинга">
+        <article class="md-admin-section-card md-admin-dbload-card">
+            <header class="md-admin-section-card__header">
+                <h2>Нагрузка базы данных <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=database">X-Ray</a></h2>
+                <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="dbLoadWidgetDiv" aria-expanded="true" aria-controls="row_dbLoadWidgetDiv" aria-label="Скрыть"><i class="glyphicon glyphicon-eye-close"></i></button>
+            </header>
+            <div id="row_dbLoadWidgetDiv" class="collapse show md-admin-section-card__body">
+                <div class="md-admin-dbload-widget" id="dashInfoDBLoad">
+                    <div class="md-admin-dbload-widget__hero">
+                        <div>
+                            <span class="md-admin-dbload-widget__eyebrow">Нагрузка базы данных</span>
+                            <strong id="dashInfoDBLoadStatus">Загрузка...</strong>
+                            <small id="dashInfoDBLoadSource">Ожидание данных X-Ray</small>
+                        </div>
+                        <div class="md-admin-dbload-widget__dial" data-dbload-level>
+                            <span id="dashInfoDBUsage">—</span>
+                            <small>соединения</small>
+                        </div>
+                    </div>
+                    <div class="md-admin-dbload-widget__metrics">
+                        <div>
+                            <span>Запросов в секунду</span>
+                            <strong id="dashInfoDBReqSDetail">—</strong>
+                        </div>
+                        <div>
+                            <span>Запросов в минуту</span>
+                            <strong id="dashInfoDBReqM">—</strong>
+                        </div>
+                        <div>
+                            <span>Запросов в час</span>
+                            <strong id="dashInfoDBReqH">—</strong>
+                        </div>
+                    </div>
+                    <div class="md-admin-dbload-widget__connections">
+                        <span><b id="dashInfoDBRunning">—</b> выполняется</span>
+                        <span><b id="dashInfoDBConnected">—</b> подключено</span>
+                        <span><b id="dashInfoDBCached">—</b> в кэше</span>
+                        <span><b id="dashInfoDBMax">—</b> лимит</span>
+                    </div>
+                    <div class="md-admin-dbload-widget__raw" id="dashInfoDBConnections"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></div>
+                </div>
+            </div>
+        </article>
+    </section>
+
     <div class="md-admin-dashboard-grid">
         <div class="md-admin-dashboard-grid__main">
             <section class="md-admin-section-card" id="myBlockOnDash" style="display:none;">
@@ -56,44 +101,7 @@
                     <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="infoBlockDiv" aria-expanded="true" aria-controls="row_infoBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
                 </header>
                 <div id="row_infoBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div class="md-admin-dbload-widget" id="dashInfoDBLoad">
-                        <div class="md-admin-dbload-widget__hero">
-                            <div>
-                                <span class="md-admin-dbload-widget__eyebrow">Database load</span>
-                                <strong id="dashInfoDBLoadStatus">Загрузка...</strong>
-                                <small id="dashInfoDBLoadSource">Ожидание данных X-Ray</small>
-                            </div>
-                            <div class="md-admin-dbload-widget__dial" data-dbload-level>
-                                <span id="dashInfoDBUsage">—</span>
-                                <small>connections</small>
-                            </div>
-                        </div>
-                        <div class="md-admin-dbload-widget__metrics">
-                            <div>
-                                <span>В секунду</span>
-                                <strong id="dashInfoDBReqSDetail">—</strong>
-                            </div>
-                            <div>
-                                <span>В минуту</span>
-                                <strong id="dashInfoDBReqM">—</strong>
-                            </div>
-                            <div>
-                                <span>В час</span>
-                                <strong id="dashInfoDBReqH">—</strong>
-                            </div>
-                        </div>
-                        <div class="md-admin-dbload-widget__connections">
-                            <span><b id="dashInfoDBRunning">—</b> running</span>
-                            <span><b id="dashInfoDBConnected">—</b> connected</span>
-                            <span><b id="dashInfoDBCached">—</b> cached</span>
-                            <span><b id="dashInfoDBMax">—</b> max</span>
-                        </div>
-                    </div>
                     <div class="md-admin-info-list">
-                        <div class="md-admin-info-row reqPerMinHour">
-                            <span><#LANG_NEWDASH_DB_CONNECTIONS#></span>
-                            <strong id="dashInfoDBConnections" class="badge md-admin-status-badge md-admin-status-badge--muted"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
-                        </div>
                         <div class="md-admin-info-row md-admin-info-row--note" id="dbreqdiscus">
                             <a href="https://mjdm.ru/forum/viewtopic.php?f=6&t=7301" target="_blank"><i class="glyphicon glyphicon-send"></i> <#LANG_NEWDASH_FORUM_DISCUSSION#></a>
                         </div>

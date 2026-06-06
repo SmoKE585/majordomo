@@ -7747,10 +7747,19 @@ body.md-object-history-open .md-object-history-drawer {
   font-size: .9em;
 }
 
+.md-admin-dashboard-widget-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.md-admin-dbload-card .md-admin-section-card__body {
+  padding: 14px;
+}
+
 .md-admin-dbload-widget {
   display: grid;
   gap: 12px;
-  margin-bottom: 14px;
   padding: 14px;
   color: var(--md-admin-text, #1f2933);
   background:
@@ -7761,6 +7770,10 @@ body.md-object-history-open .md-object-history-drawer {
 }
 
 .md-admin-dbload-widget--xray {
+  margin: 0;
+}
+
+.md-admin-dbload-card .md-admin-dbload-widget {
   margin: 0;
 }
 

@@ -124,6 +124,15 @@
         }
     }
 
+    function formatDbConnectionsText(value) {
+        return String(value || '—')
+            .replace(/cached:/g, 'в кэше:')
+            .replace(/connected:/g, 'подключено:')
+            .replace(/created:/g, 'создано:')
+            .replace(/running:/g, 'выполняется:')
+            .replace(/max:/g, 'лимит:');
+    }
+
     var filterTimer;
 
     function filterSearch() {
@@ -426,14 +435,14 @@
                 var hourValue = typeof data.hour !== 'undefined' ? data.hour : data.hours;
                 var connections = data.connections_data || {};
                 var level = data.level || 'ok';
-                var sourceLabel = data.type === 'rezerv' ? 'SHOW GLOBAL STATUS' : 'mysqlnd statistics';
+                var sourceLabel = data.type === 'rezerv' ? 'резервный расчёт по SHOW GLOBAL STATUS' : 'статистика mysqlnd';
                 var usage = typeof data.connection_usage_percent !== 'undefined' ? data.connection_usage_percent : 0;
 
                 $('#dashInfoDBReqS').text(formatDashboardNumber(data.second));
                 $('#dashInfoDBReqSDetail').text(formatDashboardNumber(data.second));
                 $('#dashInfoDBReqM').text(formatDashboardNumber(data.minute));
                 $('#dashInfoDBReqH').text(formatDashboardNumber(hourValue));
-                $('#dashInfoDBConnections').text(data.connections || '—');
+                $('#dashInfoDBConnections').text(formatDbConnectionsText(data.connections));
                 $('#dashInfoDBLoadStatus').text(data.status_text || 'Нагрузка в норме');
                 $('#dashInfoDBLoadSource').text(sourceLabel + (data.updated_at ? ' · ' + data.updated_at : ''));
                 $('#dashInfoDBUsage').text(usage ? (usage + '%') : '—');
@@ -441,7 +450,7 @@
                 $('#dashInfoDBConnected').text(typeof connections.connected !== 'undefined' ? connections.connected : '—');
                 $('#dashInfoDBCached').text(typeof connections.cached !== 'undefined' ? connections.cached : '—');
                 $('#dashInfoDBMax').text(typeof connections.max !== 'undefined' ? connections.max : '—');
-                applyDbLoadLevel($('[data-dbload-level], #dashInfoDBConnections'), level);
+                applyDbLoadLevel($('[data-dbload-level]'), level);
                 applyDbBadgeState($('#dashInfoDBReqS'), data.second, 170, 250);
             },
             error: function(data) {
