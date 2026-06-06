@@ -357,6 +357,46 @@
             return modeInput ? String(modeInput.value || 'php') : 'php';
         }
 
+        function buildRunUrl() {
+            var configuredUrl = runDrawerBody ? (runDrawerBody.getAttribute('data-scripts-run-url') || '') : '';
+            var url;
+
+            try {
+                url = new URL(window.location.href);
+            } catch (e) {
+                return configuredUrl;
+            }
+
+            url.searchParams.set('view_mode', 'run_script_ajax');
+            if (form && form.elements.id) {
+                url.searchParams.set('id', form.elements.id.value || '');
+            }
+
+            if (!url.searchParams.get('action')) {
+                url.searchParams.set('action', 'scripts');
+            }
+            if (!url.searchParams.get('md')) {
+                url.searchParams.set('md', 'scripts');
+            }
+            if (!url.searchParams.get('inst')) {
+                url.searchParams.set('inst', 'adm');
+            }
+
+            if (configuredUrl) {
+                try {
+                    var configured = new URL(configuredUrl, window.location.href);
+                    var dataSource = configured.searchParams.get('data_source');
+                    if (dataSource !== null) {
+                        url.searchParams.set('data_source', dataSource);
+                    }
+                } catch (e) {
+                    // Keep the current module URL; data-* URLs are not parsed by the legacy link rewriter.
+                }
+            }
+
+            return url.pathname + url.search;
+        }
+
         function setRunDrawerState(payload) {
             var statusPill = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-status]') : null;
             var statusText = runDrawerBody ? runDrawerBody.querySelector('[data-scripts-run-status-text]') : null;
@@ -429,7 +469,7 @@
                 return Promise.resolve();
             }
 
-            var runUrl = runDrawerBody.getAttribute('data-scripts-run-url') || '';
+            var runUrl = buildRunUrl();
             var titleInput = form ? form.querySelector('input[name="title"]') : null;
             var returnJsonInput = form ? form.querySelector('input[name="return_json"]') : null;
             var code = getEditorCode();
@@ -470,7 +510,24 @@
                 },
                 body: requestBody.toString()
             }).then(function (response) {
-                return response.json();
+                return response.text().then(function (text) {
+                    var data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        data = {
+                            status: 'error',
+                            message: 'Сервер вернул не JSON-ответ.',
+                            mode: mode,
+                            content_type: response.headers.get('content-type') || '—',
+                            output: text ? text.slice(0, 2000) : 'Пустой ответ сервера.',
+                            return_value: null,
+                            return_value_type: 'null',
+                            headers: ['HTTP ' + response.status + ' ' + response.statusText]
+                        };
+                    }
+                    return data;
+                });
             }).then(function (data) {
                 var isOk = data && data.status === 'ok';
                 setRunDrawerState({

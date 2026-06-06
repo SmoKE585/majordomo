@@ -246,6 +246,15 @@ class xray extends module
         return $lines;
     }
 
+    function reverseResponseList(&$response)
+    {
+        if (isset($response['LIST']) && is_array($response['LIST'])) {
+            $response['LIST'] = array_reverse($response['LIST']);
+        } else {
+            $response['LIST'] = array();
+        }
+    }
+
     function service_control(&$out)
     {
 
@@ -789,7 +798,7 @@ class xray extends module
             }
             if ($op == 'getcontent') {
                 header("HTTP/1.0 200 OK\n");
-                header('Content-Type: text/html; charset=utf-8');
+                header('Content-Type: application/json; charset=utf-8');
                 if ($this->view_mode == 'properties') {
                     $qry = "1";
                     if ($filter) {
@@ -813,7 +822,7 @@ class xray extends module
                         $responce['LIST'][$i]['SOURCE'] = $res[$i]['SOURCE'];
                     }
 
-                    $responce['LIST'] = array_reverse($responce['LIST']);
+                    $this->reverseResponseList($responce);
 
                     echo json_encode($responce);
                 }
@@ -821,7 +830,7 @@ class xray extends module
                 if ($this->view_mode == '') {
 
                     header("HTTP/1.0 200 OK\n");
-                    header('Content-Type: text/html; charset=utf-8');
+                    header('Content-Type: application/json; charset=utf-8');
                     $limit = $out['LINES'];
                     $filter = $out['FILTER'];
                     if (!$limit) {
@@ -945,7 +954,7 @@ class xray extends module
                     }
 
 
-                    $responce['LIST'] = isset($responce['LIST']) ? array_reverse($responce['LIST']) : "";
+                    $this->reverseResponseList($responce);
 
                     echo json_encode($responce);
 
@@ -986,7 +995,7 @@ class xray extends module
                         $responce['LIST'][$i]['SOURCE'] = $res[$i]['EXECUTED_SRC'];
                     }
 
-                    $responce['LIST'] = array_reverse($responce['LIST']);
+                    $this->reverseResponseList($responce);
 
                     echo json_encode($responce);
                 }
@@ -1019,7 +1028,7 @@ class xray extends module
                         }
                     }
 
-                    $responce['LIST'] = array_reverse($responce['LIST']);
+                    $this->reverseResponseList($responce);
 
                     echo json_encode($responce);
 
@@ -1104,7 +1113,7 @@ class xray extends module
                         }
                     }
 
-                    $responce['LIST'] = array_reverse($responce['LIST']);
+                    $this->reverseResponseList($responce);
 
                     if ($this->mode == 'chart') {
                         $chart = array(array(
@@ -1146,7 +1155,7 @@ class xray extends module
                         $responce['LIST'][$i]['STOP_LINK'] = $url;
                     }
 
-                    $responce['LIST'] = array_reverse($responce['LIST']);
+                    $this->reverseResponseList($responce);
 
                     echo json_encode($responce);
 
@@ -1193,7 +1202,7 @@ class xray extends module
                         $responce['LIST'][$i]['UPDATED'] = htmlspecialchars($res[$i]['UPDATED']);
                     }
 
-                    $responce['LIST'] = array_reverse($responce['LIST']);
+                    $this->reverseResponseList($responce);
 
                     echo json_encode($responce);
                 }
@@ -1217,9 +1226,7 @@ class xray extends module
                         $responce['LIST'][$i]['ADDED'] = $res[$i]['ADDED'];
                     }
 
-                    if (isset($responce['LIST']) && is_array($responce['LIST'])) {
-                        $responce['LIST'] = array_reverse($responce['LIST']);
-                    }
+                    $this->reverseResponseList($responce);
 
                     echo json_encode($responce);
                 }
@@ -1256,7 +1263,7 @@ class xray extends module
                             $i++;
                         }
 
-                        $responce['LIST'] = array_reverse($responce['LIST']);
+                        $this->reverseResponseList($responce);
                         $responce['TOTAL'] = $i;
 
 
