@@ -3,13 +3,13 @@
     function getLatestValues() {
         clearTimeout(valuesUpdateTimeout);
         var ids='';
-        [#if TREE="1"#]
-          ids+='ids=all';
-        [#else TREE#]
         $('.mqtt_value').each(function () {
             ids+='ids[]='+this.id.replace('mqtt','')+'&';
         });
-        [#endif TREE#]
+        if (ids === '') {
+            valuesUpdateTimeout = setTimeout('getLatestValues()',2000);
+            return;
+        }
         var url='<#ROOTHTML#>ajax/mqtt.html?op=getvalues&'+ids+'&root=[#MQTT_ROOT_URL#]';
         $.ajax({
             url: url

@@ -110,42 +110,36 @@ if ($tree) {
 
 // SEARCH RESULTS
 if ($out['TREE']) {
-    $sortby_mqtt = 'PATH';
-}
-$res = SQLSelect("SELECT * FROM mqtt WHERE $qry ORDER BY " . $sortby_mqtt);
-if ($res[0]['ID']) {
-    if (!$out['TREE']) {
+    $out['RESULT'] = array(array('TREE' => 1));
+    $out['TREE_HTML'] = $this->renderMqttTreeNodes($this->getMqttTreeChildren($root));
+} else {
+    $res = SQLSelect("SELECT * FROM mqtt WHERE $qry ORDER BY " . $sortby_mqtt);
+    if ($res[0]['ID']) {
         paging($res, 50, $out); // search result paging
-    }
-    $total = count($res);
-    for ($i = 0; $i < $total; $i++) {
-        // some action for every record if required
-        //$tmp=explode(' ', $res[$i]['UPDATED']);
-        //$res[$i]['UPDATED']=fromDBDate($tmp[0])." ".$tmp[1];
-        $res[$i]['VALUE'] = str_replace('":', '": ', $res[$i]['VALUE']);
-        if ($res[$i]['TITLE'] == $res[$i]['PATH'] && !$out['TREE']) $res[$i]['PATH'] = '';
-        if ($res[$i]['LINKED_OBJECT'] != "") {
-            //$object_rec = SQLSelectOne("SELECT objects.DESCRIPTION FROM objects WHERE TITLE='" . DBSafe($res[$i]['LINKED_OBJECT']) . "'");
-            $device_rec = SQLSelectOne("SELECT ID, TITLE FROM devices WHERE LINKED_OBJECT='" . DBSafe($res[$i]['LINKED_OBJECT']) . "'");
-            if (isset($device_rec['ID']) && strtolower($res[$i]['LINKED_OBJECT']) != 'allscripts') {
-                //$res[$i]['LINKED_PROPERTY'] .= ' &mdash; ' . $device_rec['TITLE'];
-                $res[$i]['DEVICE_TITLE'] = $device_rec['TITLE'];
-                $res[$i]['DEVICE_ID'] = $device_rec['ID'];
-            } else {
-                $res[$i]['DEVICE_ID'] = 0;
-                $res[$i]['DEVICE_TITLE'] = $res[$i]['LINKED_OBJECT'];
+        $total = count($res);
+        for ($i = 0; $i < $total; $i++) {
+            // some action for every record if required
+            //$tmp=explode(' ', $res[$i]['UPDATED']);
+            //$res[$i]['UPDATED']=fromDBDate($tmp[0])." ".$tmp[1];
+            $res[$i]['VALUE'] = str_replace('":', '": ', $res[$i]['VALUE']);
+            if ($res[$i]['TITLE'] == $res[$i]['PATH']) $res[$i]['PATH'] = '';
+            if ($res[$i]['LINKED_OBJECT'] != "") {
+                //$object_rec = SQLSelectOne("SELECT objects.DESCRIPTION FROM objects WHERE TITLE='" . DBSafe($res[$i]['LINKED_OBJECT']) . "'");
+                $device_rec = SQLSelectOne("SELECT ID, TITLE FROM devices WHERE LINKED_OBJECT='" . DBSafe($res[$i]['LINKED_OBJECT']) . "'");
+                if (isset($device_rec['ID']) && strtolower($res[$i]['LINKED_OBJECT']) != 'allscripts') {
+                    //$res[$i]['LINKED_PROPERTY'] .= ' &mdash; ' . $device_rec['TITLE'];
+                    $res[$i]['DEVICE_TITLE'] = $device_rec['TITLE'];
+                    $res[$i]['DEVICE_ID'] = $device_rec['ID'];
+                } else {
+                    $res[$i]['DEVICE_ID'] = 0;
+                    $res[$i]['DEVICE_TITLE'] = $res[$i]['LINKED_OBJECT'];
+                }
+
             }
-
+            if (!$res[$i]['TITLE']) $res[$i]['TITLE'] = '[..]';
         }
-        if (!$res[$i]['TITLE']) $res[$i]['TITLE'] = '[..]';
+        $out['RESULT'] = $res;
     }
-    $out['RESULT'] = $res;
-
-    if ($out['TREE']) {
-        $out['RESULT'] = $this->pathToTree($res);
-        //dprint($out['RESULT']);
-    }
-
 }
 
 

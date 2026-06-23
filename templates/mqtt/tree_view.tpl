@@ -139,6 +139,12 @@
         background: rgba(248, 251, 254, .9);
     }
 
+    .md-mqtt-tree__loading {
+        padding: 8px 10px;
+        color: var(--md-admin-muted, #6b7a88);
+        font-size: .84rem;
+    }
+
     @media (max-width: 575.98px) {
         .md-mqtt-tree__row {
             grid-template-columns: 26px minmax(0, 1fr) 26px;
@@ -197,98 +203,77 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('[data-md-mqtt-tree-toggle]').forEach(function (button) {
-            button.title = button.getAttribute('aria-expanded') === 'true' ? 'Свернуть ветку' : 'Развернуть ветку';
-            button.addEventListener('click', function () {
+        var tree = document.querySelector('[data-md-mqtt-tree]');
+        if (!tree) {
+            return;
+        }
+
+        tree.addEventListener('click', function (event) {
+            var button = event.target.closest('[data-md-mqtt-tree-toggle]');
+            if (button) {
                 var node = button.closest('[data-md-mqtt-tree-branch]');
                 var children = getDirectChildren(node);
                 if (!children) {
                     return;
                 }
                 var isOpen = !children.hidden;
-                children.hidden = isOpen;
-                button.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-                button.title = isOpen ? 'Развернуть ветку' : 'Свернуть ветку';
-                rememberBranchStatus(node.getAttribute('data-branch-title') || node.title || '', isOpen ? 0 : 1);
-            });
-        });
+                if (isOpen) {
+                    children.hidden = true;
+                    button.setAttribute('aria-expanded', 'false');
+                    button.title = 'Развернуть ветку';
+                    rememberBranchStatus(node.getAttribute('data-md-mqtt-tree-path') || node.title || '', 0);
+                    return;
+                }
 
-        document.querySelectorAll('[data-md-mqtt-tree-edit]').forEach(function (link) {
-            link.addEventListener('click', function (event) {
+                if (node.getAttribute('data-md-mqtt-tree-loaded') !== '1') {
+                    button.disabled = true;
+                    children.innerHTML = '<div class="md-mqtt-tree__loading">Загрузка...</div>';
+                    children.hidden = false;
+                    var params = new URLSearchParams(window.location.search);
+                    params.set('ajax', '1');
+                    params.set('op', 'tree_children');
+                    params.set('root', node.getAttribute('data-md-mqtt-tree-path') || '');
+                    fetch('?' + params.toString(), { credentials: 'same-origin' })
+                        .then(function (response) { return response.json(); })
+                        .then(function (data) {
+                            children.innerHTML = data.HTML || '';
+                            node.setAttribute('data-md-mqtt-tree-loaded', '1');
+                            button.setAttribute('aria-expanded', 'true');
+                            button.title = 'Свернуть ветку';
+                            rememberBranchStatus(node.getAttribute('data-md-mqtt-tree-path') || node.title || '', 1);
+                        })
+                        .catch(function () {
+                            children.innerHTML = '<div class="md-admin-empty-state">Не удалось загрузить ветку MQTT.</div>';
+                        })
+                        .finally(function () {
+                            button.disabled = false;
+                        });
+                    return;
+                }
+
+                children.hidden = false;
+                button.setAttribute('aria-expanded', 'true');
+                button.title = 'Свернуть ветку';
+                rememberBranchStatus(node.getAttribute('data-md-mqtt-tree-path') || node.title || '', 1);
+                return;
+            }
+
+            var editLink = event.target.closest('[data-md-mqtt-tree-edit]');
+            if (editLink) {
                 event.preventDefault();
-                editItem(link.getAttribute('data-md-mqtt-tree-edit'));
-            });
+                editItem(editLink.getAttribute('data-md-mqtt-tree-edit'));
+                return;
+            }
+
+            var deleteLink = event.target.closest('[data-md-mqtt-tree-delete]');
+            if (deleteLink) {
+                event.preventDefault();
+                deletePath(deleteLink.getAttribute('data-md-mqtt-tree-delete'));
+            }
         });
     });
 </script>
 
-<div class="md-mqtt-tree">
-    {function name=menu}
-        {foreach $items as $item}
-            {if isset($item.RESULT)}
-            <section class="md-mqtt-tree__branch" title="{$item.TITLE}" data-md-mqtt-tree-branch data-branch-title="{$item.TITLE}">
-                <div class="md-mqtt-tree__row">
-                    <button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="{if isset($item.IS_VISIBLE) && $item.IS_VISIBLE==1}true{else}false{/if}" aria-label="Toggle branch">
-                        <i class="glyphicon glyphicon-chevron-right"></i>
-                    </button>
-
-                    <div class="md-mqtt-tree__content">
-                        {if isset($item.ID)}
-                            <a href="#" onclick="return editItem({$item.ID});" data-md-mqtt-tree-edit="{$item.ID}" title="{$item.PATH}" class="md-mqtt-tree__title">
-                                {if $item.TITLE!=""}{$item.TITLE}{else}[..]{/if}
-                            </a>
-                            <div class="md-mqtt-tree__meta">
-                                <span id="mqtt{$item.ID}" class="mqtt_value md-mqtt-tree__value">{$item.VALUE}</span>
-                                {if $item.LINKED_OBJECT!=""}
-                                    <span class="md-mqtt-tree__linked">
-                                        {if $item.LINKED_PROPERTY==""}M: {else}P: {/if}{$item.LINKED_OBJECT}.{if $item.LINKED_PROPERTY!=""}{$item.LINKED_PROPERTY}{else}{$item.LINKED_METHOD}{/if}
-                                    </span>
-                                {/if}
-                            </div>
-                        {else}
-                            <div class="md-mqtt-tree__branch-title">{$item.TITLE}</div>
-                        {/if}
-                    </div>
-
-                    {if isset($item.ID)}
-                        <a href="#" class="md-mqtt-tree__delete" onclick="return deletePath('{$item.PATH_URL}');" aria-label="{$smarty.const.LANG_DELETE}">
-                            <i class="glyphicon glyphicon-remove"></i>
-                        </a>
-                    {/if}
-                </div>
-
-                <div class="md-mqtt-tree__children" {if !isset($item.IS_VISIBLE) || $item.IS_VISIBLE!=1}hidden{/if}>
-                    {menu items=$item.RESULT}
-                </div>
-            </section>
-            {else}
-            <article class="md-mqtt-tree__node is-leaf" title="{$item.TITLE}">
-                <div class="md-mqtt-tree__row">
-                    <span class="md-mqtt-tree__toggle--leaf" aria-hidden="true">
-                        <i class="glyphicon glyphicon-record"></i>
-                    </span>
-
-                    <div class="md-mqtt-tree__content">
-                        <a href="#" onclick="return editItem({$item.ID});" data-md-mqtt-tree-edit="{$item.ID}" title="{$item.PATH}" class="md-mqtt-tree__title">
-                            {if $item.TITLE!=""}{$item.TITLE}{else}[..]{/if}
-                        </a>
-                        <div class="md-mqtt-tree__meta">
-                            <span id="mqtt{$item.ID}" class="mqtt_value md-mqtt-tree__value">{$item.VALUE}</span>
-                            {if $item.LINKED_OBJECT!=""}
-                                <span class="md-mqtt-tree__linked">
-                                    {if $item.LINKED_PROPERTY==""}M: {else}P: {/if}{$item.LINKED_OBJECT}.{if $item.LINKED_PROPERTY!=""}{$item.LINKED_PROPERTY}{else}{$item.LINKED_METHOD}{/if}
-                                </span>
-                            {/if}
-                        </div>
-                    </div>
-
-                    <a href="#" class="md-mqtt-tree__delete" onclick="return deletePath('{$item.PATH_URL}');" aria-label="{$smarty.const.LANG_DELETE}">
-                        <i class="glyphicon glyphicon-remove"></i>
-                    </a>
-                </div>
-            </article>
-            {/if}
-        {/foreach}
-    {/function}
-    {menu items=$RESULT}
+<div class="md-mqtt-tree" data-md-mqtt-tree>
+    {$TREE_HTML nofilter}
 </div>

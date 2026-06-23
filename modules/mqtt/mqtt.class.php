@@ -729,6 +729,16 @@ class mqtt extends module
                 dprint($session, false);
                 $session->save();
             }
+            if ($op == 'tree_children') {
+                $root = gr('root');
+                $nodes = $this->getMqttTreeChildren($root);
+                $result = array(
+                    'HTML' => $this->renderMqttTreeNodes($nodes),
+                    'COUNT' => count($nodes)
+                );
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode($result);
+            }
             exit;
         }
 
@@ -866,6 +876,169 @@ class mqtt extends module
             }
         }
         return $breadcrumbs;
+    }
+
+    function normalizeMqttTreePath($path)
+    {
+        $path = trim((string)$path);
+        $path = trim($path, '/');
+        $path = preg_replace('/\/+/', '/', $path);
+        return $path;
+    }
+
+    function getMqttTreeChildren($root = '', $limit = 200)
+    {
+        $root = $this->normalizeMqttTreePath($root);
+        $path_expr = "TRIM(BOTH '/' FROM PATH)";
+        if ($root == '') {
+            $where = "$path_expr!=''";
+            $rest_expr = $path_expr;
+        } else {
+            $where = "$path_expr LIKE '" . DBSafe($root . '/') . "%'";
+            $rest_expr = "SUBSTRING($path_expr," . (strlen($root) + 2) . ")";
+        }
+        $title = gr('title');
+        if ($title != '') {
+            $where .= " AND (TITLE LIKE '%" . DBSafe($title) . "%' OR VALUE LIKE '%" . DBSafe($title) . "%' OR PATH LIKE '%" . DBSafe($title) . "%'";
+            $where .= " OR LINKED_OBJECT LIKE '" . DBSafe($title) . "'";
+            $where .= " OR LINKED_PROPERTY LIKE '" . DBSafe($title) . "'";
+            $where .= " OR LINKED_METHOD LIKE '" . DBSafe($title) . "'";
+            $where .= ")";
+        }
+        $searchpath = gr('searchpath');
+        if ($searchpath != '') {
+            $where .= " AND (TITLE LIKE '%" . DBSafe($searchpath) . "%' OR VALUE LIKE '%" . DBSafe($searchpath) . "%' OR PATH LIKE '%" . DBSafe($searchpath) . "%'";
+            $where .= " OR LINKED_OBJECT LIKE '" . DBSafe($searchpath) . "'";
+            $where .= " OR LINKED_PROPERTY LIKE '" . DBSafe($searchpath) . "'";
+            $where .= " OR LINKED_METHOD LIKE '" . DBSafe($searchpath) . "'";
+            $where .= ")";
+        }
+        $location_id = gr('location_id', 'int');
+        if ($location_id) {
+            $where .= " AND LOCATION_ID='" . (int)$location_id . "'";
+        }
+
+        $segments = SQLSelect("SELECT DISTINCT SUBSTRING_INDEX($rest_expr,'/',1) AS SEGMENT FROM mqtt WHERE $where HAVING SEGMENT!='' ORDER BY SEGMENT LIMIT " . ((int)$limit + 1));
+        $total = count($segments);
+        if ($total > $limit) {
+            array_pop($segments);
+        }
+
+        $nodes = array();
+        foreach ($segments as $segment_rec) {
+            $segment = $segment_rec['SEGMENT'];
+            $path = ($root == '') ? $segment : $root . '/' . $segment;
+            $path_safe = DBSafe($path);
+            $rec = SQLSelectOne("SELECT ID, PATH, TITLE, LEFT(VALUE, 2048) AS VALUE, LINKED_OBJECT, LINKED_PROPERTY, LINKED_METHOD FROM mqtt WHERE $path_expr='" . $path_safe . "' ORDER BY ID DESC LIMIT 1");
+            $has_children = SQLSelectOne("SELECT ID FROM mqtt WHERE $path_expr LIKE '" . DBSafe($path . '/') . "%' LIMIT 1");
+
+            if (!isset($rec['ID']) && !isset($has_children['ID'])) {
+                continue;
+            }
+
+            $is_branch = isset($has_children['ID']) ? 1 : 0;
+            $title = $segment;
+            if (!$is_branch && isset($rec['TITLE']) && $rec['TITLE'] != '') {
+                $title = $rec['TITLE'];
+            }
+
+            $node = array(
+                'ID' => isset($rec['ID']) ? $rec['ID'] : '',
+                'TITLE' => $title,
+                'PATH' => isset($rec['PATH']) && $rec['PATH'] != '' ? $rec['PATH'] : $path,
+                'TREE_PATH' => $path,
+                'PATH_URL' => urlencode(isset($rec['PATH']) && $rec['PATH'] != '' ? $rec['PATH'] : $path),
+                'VALUE' => isset($rec['VALUE']) ? str_replace('":', '": ', $rec['VALUE']) : '',
+                'LINKED_OBJECT' => isset($rec['LINKED_OBJECT']) ? $rec['LINKED_OBJECT'] : '',
+                'LINKED_PROPERTY' => isset($rec['LINKED_PROPERTY']) ? $rec['LINKED_PROPERTY'] : '',
+                'LINKED_METHOD' => isset($rec['LINKED_METHOD']) ? $rec['LINKED_METHOD'] : '',
+                'HAS_CHILDREN' => $is_branch
+            );
+            $nodes[] = $node;
+        }
+
+        if ($total > $limit) {
+            $nodes[] = array(
+                'TITLE' => 'Показаны первые ' . (int)$limit . ' веток. Уточните фильтр или корневой раздел.',
+                'IS_NOTICE' => 1
+            );
+        }
+
+        return $nodes;
+    }
+
+    function mqttTreeHtml($value)
+    {
+        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    }
+
+    function renderMqttTreeNodes($nodes)
+    {
+        $html = '';
+        $delete_label = defined('LANG_DELETE') ? LANG_DELETE : 'Delete';
+        foreach ($nodes as $node) {
+            if (isset($node['IS_NOTICE'])) {
+                $html .= '<div class="md-admin-empty-state">' . $this->mqttTreeHtml($node['TITLE']) . '</div>';
+                continue;
+            }
+
+            $title = $this->mqttTreeHtml($node['TITLE'] != '' ? $node['TITLE'] : '[..]');
+            $path = $this->mqttTreeHtml($node['PATH']);
+            $tree_path = $this->mqttTreeHtml($node['TREE_PATH']);
+            $path_url = $this->mqttTreeHtml($node['PATH_URL']);
+            $id = isset($node['ID']) ? (int)$node['ID'] : 0;
+            $has_children = !empty($node['HAS_CHILDREN']);
+
+            if ($has_children) {
+                $html .= '<section class="md-mqtt-tree__branch" title="' . $path . '" data-md-mqtt-tree-branch data-md-mqtt-tree-path="' . $tree_path . '" data-md-mqtt-tree-loaded="0">';
+                $html .= '<div class="md-mqtt-tree__row">';
+                $html .= '<button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="false" aria-label="Развернуть ветку"><i class="glyphicon glyphicon-chevron-right"></i></button>';
+                $html .= '<div class="md-mqtt-tree__content">';
+                if ($id) {
+                    $html .= '<a href="?view_mode=edit_mqtt&id=' . $id . '" data-md-mqtt-tree-edit="' . $id . '" title="' . $path . '" class="md-mqtt-tree__title">' . $title . '</a>';
+                    $html .= $this->renderMqttTreeMeta($node);
+                } else {
+                    $html .= '<div class="md-mqtt-tree__branch-title">' . $title . '</div>';
+                }
+                $html .= '</div>';
+                if ($id) {
+                    $html .= '<a href="#" class="md-mqtt-tree__delete" data-md-mqtt-tree-delete="' . $path_url . '" aria-label="' . $this->mqttTreeHtml($delete_label) . '"><i class="glyphicon glyphicon-remove"></i></a>';
+                }
+                $html .= '</div>';
+                $html .= '<div class="md-mqtt-tree__children" hidden></div>';
+                $html .= '</section>';
+            } else {
+                $html .= '<article class="md-mqtt-tree__node is-leaf" title="' . $path . '">';
+                $html .= '<div class="md-mqtt-tree__row">';
+                $html .= '<span class="md-mqtt-tree__toggle--leaf" aria-hidden="true"><i class="glyphicon glyphicon-record"></i></span>';
+                $html .= '<div class="md-mqtt-tree__content">';
+                $html .= '<a href="?view_mode=edit_mqtt&id=' . $id . '" data-md-mqtt-tree-edit="' . $id . '" title="' . $path . '" class="md-mqtt-tree__title">' . $title . '</a>';
+                $html .= $this->renderMqttTreeMeta($node);
+                $html .= '</div>';
+                $html .= '<a href="#" class="md-mqtt-tree__delete" data-md-mqtt-tree-delete="' . $path_url . '" aria-label="' . $this->mqttTreeHtml($delete_label) . '"><i class="glyphicon glyphicon-remove"></i></a>';
+                $html .= '</div>';
+                $html .= '</article>';
+            }
+        }
+        return $html;
+    }
+
+    function renderMqttTreeMeta($node)
+    {
+        $id = isset($node['ID']) ? (int)$node['ID'] : 0;
+        if (!$id) {
+            return '';
+        }
+        $html = '<div class="md-mqtt-tree__meta">';
+        $html .= '<span id="mqtt' . $id . '" class="mqtt_value md-mqtt-tree__value">' . $this->mqttTreeHtml($node['VALUE']) . '</span>';
+        if (isset($node['LINKED_OBJECT']) && $node['LINKED_OBJECT'] != '') {
+            $linked_type = isset($node['LINKED_PROPERTY']) && $node['LINKED_PROPERTY'] == '' ? 'M: ' : 'P: ';
+            $linked_target = $node['LINKED_OBJECT'] . '.';
+            $linked_target .= isset($node['LINKED_PROPERTY']) && $node['LINKED_PROPERTY'] != '' ? $node['LINKED_PROPERTY'] : $node['LINKED_METHOD'];
+            $html .= '<span class="md-mqtt-tree__linked">' . $this->mqttTreeHtml($linked_type . $linked_target) . '</span>';
+        }
+        $html .= '</div>';
+        return $html;
     }
 
     function optimize()
