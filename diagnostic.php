@@ -259,7 +259,9 @@ if (isset($_POST['send'])) {
     curl_close($ch);
 
     if ($_POST['code']) {
-        header("Content-type:text/json");
+        if (!headers_sent()) {
+            header("Content-type:text/json");
+        }
         echo $result;
         exit;
     }

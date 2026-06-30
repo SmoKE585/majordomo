@@ -18,8 +18,10 @@ if (isset($_GET['disable_websockets'])) {
 
 if (isset($_GET['lang'])) {
     Define("SETTINGS_SITE_LANGUAGE", $_GET['lang']);
-    $_SESSION['lang'] = SETTINGS_SITE_LANGUAGE;
-} elseif (isset($_SESSION['lang'])) {
+    if (isset($_SESSION) || session_id()) {
+        $_SESSION['lang'] = SETTINGS_SITE_LANGUAGE;
+    }
+} elseif (isset($_SESSION) && isset($_SESSION['lang'])) {
     Define("SETTINGS_SITE_LANGUAGE", $_SESSION['lang']);
 }
 
@@ -123,7 +125,7 @@ if (isset($_SERVER['REQUEST_METHOD']) &&
 }
 
 if (isset($_SERVER['SERVER_ADDR']) && isset($_SERVER['SERVER_PORT'])) {
-    Define('SERVER_URL', 'http://' . $_SERVER['HTTP_HOST']);
+    Define('SERVER_URL', 'http://' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost'));
     Define('SERVER_ADDR', $_SERVER['SERVER_ADDR']);
 } else {
     Define('SERVER_URL', 'http://localhost:80');
@@ -176,7 +178,7 @@ if ($home_network != ''
     $home_network_pattern = str_replace('  ', ' ', $home_network_pattern);
     $home_network_pattern = str_replace(' ', '|', $home_network_pattern);
 
-    $remoteAddr = $_SERVER["REMOTE_ADDR"];
+    $remoteAddr = isset($_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : '';
 
     if (defined('LOCAL_IP') && LOCAL_IP != '') {
         $local_ip = LOCAL_IP;
@@ -189,17 +191,21 @@ if ($home_network != ''
     }
 
     if (!preg_match('/' . $home_network_pattern . '/is', $remoteAddr) && $remoteAddr != $local_ip && trim($remoteAddr) != '::1') {
-        if ($ext_access_username && $ext_access_password && $_SERVER['PHP_AUTH_USER'] == $ext_access_username && $_SERVER['PHP_AUTH_PW'] == $ext_access_password) {
-            $data_message = $remoteAddr . " " . date("[d/m/Y:H:i:s]") . " Username and/or password valid. Login: " . $_SERVER['PHP_AUTH_USER'] . "\n";
+        $php_auth_user = isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : '';
+        $php_auth_pw = isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : '';
+        if ($ext_access_username && $ext_access_password && $php_auth_user == $ext_access_username && $php_auth_pw == $ext_access_password) {
+            $data_message = $remoteAddr . " " . date("[d/m/Y:H:i:s]") . " Username and/or password valid. Login: " . $php_auth_user . "\n";
             //DebMes($data_message, 'auth');
         } elseif (!$ext_access_username && !$ext_access_password) {
             $data_message = $remoteAddr . " " . date("[d/m/Y:H:i:s]") . " Username and/or password dont defined and dont needed" . "\n";
             //DebMes($data_message, 'auth');
         } else {
-            header("WWW-Authenticate: Basic realm=\"" . PROJECT_TITLE . "\"");
-            header("HTTP/1.0 401 Unauthorized");
+            if (!headers_sent()) {
+                header("WWW-Authenticate: Basic realm=\"" . PROJECT_TITLE . "\"");
+                header("HTTP/1.0 401 Unauthorized");
+            }
             echo "Authorization required\n";
-            $data_message = $remoteAddr . " " . date("[d/m/Y:H:i:s]") . " Username and/or password invalid. Login: " . $_SERVER['PHP_AUTH_USER'] . "\n";
+            $data_message = $remoteAddr . " " . date("[d/m/Y:H:i:s]") . " Username and/or password invalid. Login: " . $php_auth_user . "\n";
             DebMes($data_message, 'auth');
             exit;
         }

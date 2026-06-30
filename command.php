@@ -7,16 +7,18 @@
  * @author Serge Dzheigalo <sergejey@gmail.com> https://majordomohome.com/
  * @version 1.2
  */
-if (isset($_SERVER['HTTP_ORIGIN'])) {
+if (!headers_sent() && isset($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
     header('Access-Control-Allow-Credentials: true');
     header('Access-Control-Max-Age: 86400');    // cache for 1 day
 }
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']))
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']))
-        header("Access-Control-Allow-Headers:{$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'])) {
+        if (!headers_sent()) header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+    }
+    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'])) {
+        if (!headers_sent()) header("Access-Control-Allow-Headers:{$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
+    }
     exit(0);
 }
 
@@ -62,7 +64,7 @@ if ($qry != '') { // && $qry != $lastest_word
         $terminals = getAllTerminals(-1, 'TITLE');
         $total = count($terminals);
         for ($i = 0; $i < $total; $i++) {
-            if ($terminals[$i]['HOST'] != '' && $_SERVER['REMOTE_ADDR'] == $terminals[$i]['HOST'] && !$session->data['TERMINAL']) {
+            if ($terminals[$i]['HOST'] != '' && isset($_SERVER['REMOTE_ADDR']) && $_SERVER['REMOTE_ADDR'] == $terminals[$i]['HOST'] && !$session->data['TERMINAL']) {
                 $session->data['TERMINAL'] = $terminals[$i]['NAME'];
             }
             if (mb_strtoupper($terminals[$i]['NAME'], 'UTF-8') == mb_strtoupper($session->data['TERMINAL'], 'UTF-8')) {
@@ -76,22 +78,28 @@ if ($qry != '') { // && $qry != $lastest_word
     $username = gr('username');
     if ($username) {
         $user=SQLSelectOne("SELECT * FROM users WHERE USERNAME LIKE '".DBSafe($username)."'");
-        if (!$user['PASSWORD']) {
+        if (!isset($user['ID'])) {
+            // user not found, skip auth
+        } elseif (!isset($user['PASSWORD']) || !$user['PASSWORD']) {
             $session->data['SITE_USERNAME']=$user['USERNAME'];
             $session->data['SITE_USER_ID']=$user['ID'];
         } else {
             if (!isset($_SERVER['PHP_AUTH_USER'])) {
-                header("WWW-Authenticate: Basic realm=\"" . PROJECT_TITLE . "\"");
-                header('HTTP/1.0 401 Unauthorized');
+                if (!headers_sent()) {
+                    header("WWW-Authenticate: Basic realm=\"" . PROJECT_TITLE . "\"");
+                    header('HTTP/1.0 401 Unauthorized');
+                }
                 echo 'Password required!';
                 exit;
             } else {
-                if ($_SERVER['PHP_AUTH_USER'] == $user['USERNAME'] && hash('sha512', $_SERVER['PHP_AUTH_PW']) == $user['PASSWORD']) {
+                if ($_SERVER['PHP_AUTH_USER'] == $user['USERNAME'] && isset($_SERVER['PHP_AUTH_PW']) && hash('sha512', $_SERVER['PHP_AUTH_PW']) == $user['PASSWORD']) {
                     $session->data['SITE_USERNAME'] = $user['USERNAME'];
                     $session->data['SITE_USER_ID'] = $user['ID'];
                 } else {
-                    header("WWW-Authenticate: Basic realm=\"" . PROJECT_TITLE . "\"");
-                    header('HTTP/1.0 401 Unauthorized');
+                    if (!headers_sent()) {
+                        header("WWW-Authenticate: Basic realm=\"" . PROJECT_TITLE . "\"");
+                        header('HTTP/1.0 401 Unauthorized');
+                    }
                     echo 'Incorrect username/password!';
                     exit;
                 }

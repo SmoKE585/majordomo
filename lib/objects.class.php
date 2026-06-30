@@ -54,7 +54,7 @@ function getClassTemplate($class_id, $view = '')
     }
 
     $class = SQLSelectOne("SELECT ID, TITLE, PARENT_ID FROM classes WHERE ID=" . $class_id);
-    if (!$class['ID']) {
+    if (!isset($class['ID']) || !$class['ID']) {
         return '';
     }
 
@@ -109,7 +109,7 @@ function getObjectClassTemplate($object_name, $view = '')
                 $all_objects_cached[strtolower($object['TITLE'])] = $object;
             }
         }
-        $rec = $all_objects_cached[strtolower($object_name)];
+        $rec = isset($all_objects_cached[strtolower($object_name)]) ? $all_objects_cached[strtolower($object_name)] : array();
     } else {
         $sqlQuery = "SELECT objects.*
                      FROM objects
@@ -118,7 +118,7 @@ function getObjectClassTemplate($object_name, $view = '')
     }
     //$object=getObject($object_name);
     $object = new stdClass();
-    if (!$rec['ID']) {
+    if (!isset($rec['ID']) || !$rec['ID']) {
         return '';
     }
     $object->id = $rec['ID'];
@@ -213,7 +213,7 @@ function addClassProperty($class_name, $property_name, $keep_history = 0)
 
     $prop = SQLSelectOne($sqlQuery);
 
-    if (!$prop['ID']) {
+    if (!isset($prop['ID']) || !$prop['ID']) {
         $prop = array();
 
         $prop['CLASS_ID'] = $class_id;
@@ -658,6 +658,10 @@ function getKeyData($object_id)
 {
     startMeasure('getKeyData');
     $object_rec = SQLSelectOne("SELECT ID,TITLE,CLASS_ID FROM objects WHERE ID=" . (int)$object_id);
+    if (!isset($object_rec['CLASS_ID'])) {
+        endMeasure('getKeyData');
+        return '';
+    }
     $props = getClassProperties($object_rec['CLASS_ID']);
     $add_description = '';
     foreach ($props as $k => $v) {
@@ -773,7 +777,7 @@ function getHistoryValueId($varname)
 
     endMeasure('getHistoryValue');
 
-    if (!$rec['ID'])
+    if (!isset($rec['ID']) || !$rec['ID'])
         return false;
 
     return $rec['ID'];
@@ -1725,7 +1729,7 @@ function getUserObjectByTitle($user_id, $auto_add = 0)
 function deleteObject($object_id)
 {
     $object_rec = SQLSelectOne("SELECT ID FROM objects WHERE ID=" . (int)$object_id . " OR TITLE = '" . DBSafe($object_id) . "'");
-    if ($object_rec['ID']) {
+    if (isset($object_rec['ID']) && $object_rec['ID']) {
         include_once(DIR_MODULES . 'objects/objects.class.php');
         $obj = new objects();
         $obj->delete_objects($object_rec['ID']);

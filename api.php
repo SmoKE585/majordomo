@@ -24,8 +24,8 @@ if (isset($argv[0]) && $argv[0] != '') {
     }
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
-$url = $_SERVER['REQUEST_URI'];
+$method = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'CLI';
+$url = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : (isset($argv) ? implode(' ', $argv) : '');
 $rootHTML = preg_replace('/\//', '\/', ROOTHTML);
 if (preg_match('/^' . $rootHTML . '/', $url)) {
     $url = preg_replace('/^' . $rootHTML . '/', '/', $url);
@@ -472,10 +472,11 @@ function apiShutdown()
 {
     global $result;
     $a = error_get_last();
+    $requestUri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'CLI';
     if (isset($a['type']) && ($a['type'] === E_ERROR)) {
-        DebMes("Result " . $_SERVER['REQUEST_URI'] . ' ' . json_encode($a), 'api_error');
+        DebMes("Result " . $requestUri . ' ' . json_encode($a), 'api_error');
     } elseif (isset($result['passed']) && $result['passed'] > 5) {
-        DebMes("Result [" . $result['passed'] . "] of : " . $_SERVER['REQUEST_URI'] . "\n" . json_encode($result, JSON_PRETTY_PRINT), 'api_slow');
+        DebMes("Result [" . $result['passed'] . "] of : " . $requestUri . "\n" . json_encode($result, JSON_PRETTY_PRINT), 'api_slow');
     }
 }
 

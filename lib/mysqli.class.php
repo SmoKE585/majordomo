@@ -87,7 +87,7 @@ class mysql
             $err_no = mysqli_connect_errno();
             $err_details = mysqli_connect_error();
             Define('NO_DATABASE_CONNECTION', 1);
-            if ($_SERVER['REQUEST_URI'] != '') {
+            if (isset($_SERVER['REQUEST_URI']) && $_SERVER['REQUEST_URI'] != '') {
                 $stop = 1;
                 registerError('sql', $err_no . ": " . $err_details);
                 new custom_error($err_no . ": " . $err_details, $stop);

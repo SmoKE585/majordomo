@@ -1039,7 +1039,7 @@ function isOnline($host)
                     OR TITLE =    '" . DBSafe($host) . "'";
 
     $rec = SQLSelectOne($sqlQuery);
-    if (!$rec['STATUS'] || $rec['STATUS'] == 2) {
+    if (!isset($rec['STATUS']) || !$rec['STATUS'] || $rec['STATUS'] == 2) {
         return 0;
     } else {
         return 1;
@@ -1073,12 +1073,12 @@ function checkAccess($object_type, $object_id)
     }
 
     $rule = SQLSelectOne("SELECT * FROM security_rules WHERE OBJECT_TYPE='" . DBSafe($object_type) . "' AND OBJECT_ID='" . (int)$object_id . "'");
-    if (!$rule['ID']) {
+    if (!isset($rule['ID']) || !$rule['ID']) {
         endMeasure('checkAccess');
         return true;
     }
 
-    if ($rule['TIMES']) {
+    if (isset($rule['TIMES']) && $rule['TIMES']) {
         $hours_matched = false;
         $tmp = explode(',', $rule['TIMES']);
         $total = count($tmp);
@@ -1097,7 +1097,7 @@ function checkAccess($object_type, $object_id)
         }
     }
 
-    if ($rule['USERS']) {
+    if (isset($rule['USERS']) && $rule['USERS']) {
         $users_matched = false;
         if ($session->data['SITE_USERNAME'] && !$session->data['SITE_USER_ID']) {
             $user = SQLSelectOne("SELECT ID FROM users WHERE USERNAME='" . DBSafe($session->data['SITE_USERNAME']) . "'");
@@ -1119,7 +1119,7 @@ function checkAccess($object_type, $object_id)
         }
     }
 
-    if ($rule['TERMINALS']) {
+    if (isset($rule['TERMINALS']) && $rule['TERMINALS']) {
         $terminals_matched = false;
         if ($session->data['TERMINAL']) {
             $terminal = getTerminalsByName($session->data['TERMINAL'], 1);
@@ -1218,14 +1218,14 @@ function checkAccess($object_type, $object_id)
 function checkAccessDefined($object_type, $object_id)
 {
     $rec = SQLSelectOne("SELECT ID FROM security_rules WHERE OBJECT_TYPE='" . DBSafe($object_type) . "' AND OBJECT_ID=" . (int)$object_id);
-    if ($rec['ID']) return true;
+    if (isset($rec['ID']) && $rec['ID']) return true;
     return false;
 }
 
 function checkAccessCopy($object_type, $src_id, $dst_id)
 {
     $rec = SQLSelectOne("SELECT * FROM security_rules WHERE OBJECT_TYPE='" . DBSafe($object_type) . "' AND OBJECT_ID=" . (int)$src_id);
-    if ($rec['ID']) {
+    if (isset($rec['ID']) && $rec['ID']) {
         SQLExec("DELETE FROM security_rules WHERE OBJECT_TYPE='" . DBSafe($object_type) . "' AND OBJECT_ID=" . (int)$dst_id);
         unset($rec['ID']);
         $rec['OBJECT_ID'] = (int)$dst_id;
@@ -1399,9 +1399,9 @@ function verbose_log($data)
         if (!isset($verbose_thread_id)) {
             $verbose_thread_id = date('H:i:s') . '_' . rand(1000, 9999);
             $cmd = '';
-            if ($_SERVER['REQUEST_URI'] != '') {
+            if (isset($_SERVER['REQUEST_URI']) && $_SERVER['REQUEST_URI'] != '') {
                 $cmd = $_SERVER['REQUEST_METHOD'] . ' ' . $_SERVER['REQUEST_URI'];
-            } elseif ($argv[0] != '') {
+            } elseif (isset($argv[0]) && $argv[0] != '') {
                 $cmd = implode(' ', $argv);
                 $verbose_thread_id .= '_' . basename($argv[0]);
             }

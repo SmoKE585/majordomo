@@ -869,7 +869,8 @@ class module
 
         DebMes($this->name . ' (' . $rec["TYPE"] . '): ' . $rec["MESSAGE"], 'module_notifications');
 
-        if (SQLSelectOne("SELECT COUNT(*) AS TOTAL_UNREAD FROM `module_notifications` WHERE `MODULE_NAME` = '" . $rec["MODULE_NAME"] . "' AND `IS_READ` = '0'")['TOTAL_UNREAD'] > 10) {
+        $unreadRec = SQLSelectOne("SELECT COUNT(*) AS TOTAL_UNREAD FROM `module_notifications` WHERE `MODULE_NAME` = '" . $rec["MODULE_NAME"] . "' AND `IS_READ` = '0'");
+        if (isset($unreadRec['TOTAL_UNREAD']) && $unreadRec['TOTAL_UNREAD'] > 10) {
             return json_encode(array('status' => false, 'error' => 'More than 10 notifications in the unread status.'));
         }
 
@@ -897,7 +898,8 @@ class module
         }
         $rec["IS_READ"] = 1;
 
-        if (empty(SQLSelectOne("SELECT ID FROM `module_notifications` WHERE `ID` = '" . (int)$rec["ID"] . "' AND `IS_READ` = '0'")['ID'])) {
+        $checkRec = SQLSelectOne("SELECT ID FROM `module_notifications` WHERE `ID` = '" . (int)$rec["ID"] . "' AND `IS_READ` = '0'");
+        if (empty($checkRec['ID'])) {
             return json_encode(array('status' => false, 'error' => 'No such noty found'));
         }
         SQLUpdate("module_notifications", $rec);

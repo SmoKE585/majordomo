@@ -11,7 +11,7 @@ function subscribeToEvent($module_name, $event_name, $filter_details = '', $prio
 {
     $rec = SQLSelectOne("SELECT * FROM settings WHERE NAME = 'HOOK_EVENT_" . DBSafe(strtoupper($event_name)) . "'");
 
-    if (!$rec['ID']) {
+    if (!isset($rec['ID']) || !$rec['ID']) {
         $rec = array();
         $rec['NAME'] = 'HOOK_EVENT_' . strtoupper($event_name);
         $rec['TITLE'] = $rec['NAME'];
@@ -22,7 +22,8 @@ function subscribeToEvent($module_name, $event_name, $filter_details = '', $prio
         $rec['ID'] = SQLInsert('settings', $rec);
     }
 
-    $data = json_decode($rec['VALUE'], true);
+    $data = json_decode(isset($rec['VALUE']) ? $rec['VALUE'] : '', true);
+    if (!is_array($data)) $data = array();
     if (!isset($data[$module_name])) {
         $data[$module_name] = array();
     } else {
@@ -52,7 +53,8 @@ function unsubscribeFromEvent($module_name, $event_name = '')
     $rec = SQLSelectOne($sqlQuery);
 
     if (isset($rec['ID'])) {
-        $data = json_decode($rec['VALUE'], true);
+        $data = json_decode(isset($rec['VALUE']) ? $rec['VALUE'] : '', true);
+        if (!is_array($data)) $data = array();
 
         if (isset($data[$module_name])) {
             unset($data[$module_name]);

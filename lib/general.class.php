@@ -114,7 +114,7 @@ function redirect($url, $owner = "", $no_sid = 0)
     } else {
         $param_str = "";
         if (!$no_sid) {
-            $replaceStr = $_SERVER['PHP_SELF'] . '?' . session_name() . '=' . session_id();
+            $replaceStr = (isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '/') . '?' . session_name() . '=' . session_id();
             $replaceStr .= '&pd=' . $param_str;
             if (is_object($owner)) {
                 $replaceStr .= '&md=' . $owner->name . '&inst=' . $owner->instance . '&';
@@ -124,7 +124,9 @@ function redirect($url, $owner = "", $no_sid = 0)
         $url = mdjExtractFlashNotificationsFromUrl($url, 'admin');
         $url = "Location:$url\n\n";
         $session->save();
-        header($url);
+        if (!headers_sent()) {
+            header($url);
+        }
         exit;
     }
 }

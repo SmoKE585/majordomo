@@ -24,7 +24,7 @@ if (defined('MASTER_URL') && MASTER_URL != '') {
                 $url .= '&' . $matches[1] . '=' . urlencode(trim(win2utf($matches[2])));
         }
     } else {
-        $url = 'http://' . MASTER_HOST . $_SERVER['REQUEST_URI'];
+        $url = 'http://' . MASTER_HOST . (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/');
     }
 
     $ch = curl_init();
@@ -81,7 +81,7 @@ if (isset($argv[1]) && $argv[1] != '') {
     }
 }
 
-if (preg_match('/\/\?(\w+)\.(\w+)/', $_SERVER['REQUEST_URI'], $matches)) {
+if (isset($_SERVER['REQUEST_URI']) && preg_match('/\/\?(\w+)\.(\w+)/', $_SERVER['REQUEST_URI'], $matches)) {
     $_GET['op'] = 'm';
     $_GET['object'] = $matches[1];
     $_GET['m'] = $matches[2];

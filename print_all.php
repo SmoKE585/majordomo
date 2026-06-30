@@ -13,7 +13,9 @@ include_once("./lib/loader.php");
 // get settings
 include_once("./load_settings.php");
 
-header('Content-Type: text/html; charset=utf-8');
+if (php_sapi_name() !== 'cli') {
+    header('Content-Type: text/html; charset=utf-8');
+}
 
 
 $sqlQuery = "SELECT COUNT(*) as TOTAL

@@ -39,10 +39,10 @@ function context_getcurrent($from_user_id = 0)
                  WHERE ID = '" . (int)$from_user_id . "'";
     $user = SQLSelectOne($sqlQuery);
     if (!isset($user['ID'])) return 0;
-    if ($user['ACTIVE_CONTEXT_EXTERNAL']) {
+    if (isset($user['ACTIVE_CONTEXT_EXTERNAL']) && $user['ACTIVE_CONTEXT_EXTERNAL']) {
         return 'ext' . (int)$user['ACTIVE_CONTEXT_ID'];
     } else {
-        return (int)$user['ACTIVE_CONTEXT_ID'];
+        return isset($user['ACTIVE_CONTEXT_ID']) ? (int)$user['ACTIVE_CONTEXT_ID'] : 0;
     }
 }
 
@@ -61,8 +61,8 @@ function context_get_history($user_id = 0)
 
     $user = SQLSelectOne($sqlQuery);
 
-    if ($user['ACTIVE_CONTEXT_ID'])
-        return $user['ACTIVE_CONTEXT_HISTORY'];
+    if (isset($user['ACTIVE_CONTEXT_ID']) && $user['ACTIVE_CONTEXT_ID'])
+        return isset($user['ACTIVE_CONTEXT_HISTORY']) ? $user['ACTIVE_CONTEXT_HISTORY'] : '';
 
     return '';
 }
