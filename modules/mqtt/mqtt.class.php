@@ -1029,9 +1029,16 @@ class mqtt extends module
         if (!$id) {
             return '';
         }
+        $value = isset($node['VALUE']) ? (string)$node['VALUE'] : '';
+        $has_linked = isset($node['LINKED_OBJECT']) && $node['LINKED_OBJECT'] != '';
+        if ($value === '' && !$has_linked) {
+            return '';
+        }
         $html = '<div class="md-mqtt-tree__meta">';
-        $html .= '<span id="mqtt' . $id . '" class="mqtt_value md-mqtt-tree__value">' . $this->mqttTreeHtml($node['VALUE']) . '</span>';
-        if (isset($node['LINKED_OBJECT']) && $node['LINKED_OBJECT'] != '') {
+        if ($value !== '') {
+            $html .= '<span id="mqtt' . $id . '" class="mqtt_value md-mqtt-tree__value">' . $this->mqttTreeHtml($value) . '</span>';
+        }
+        if ($has_linked) {
             $linked_type = isset($node['LINKED_PROPERTY']) && $node['LINKED_PROPERTY'] == '' ? 'M: ' : 'P: ';
             $linked_target = $node['LINKED_OBJECT'] . '.';
             $linked_target .= isset($node['LINKED_PROPERTY']) && $node['LINKED_PROPERTY'] != '' ? $node['LINKED_PROPERTY'] : $node['LINKED_METHOD'];
