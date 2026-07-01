@@ -30,11 +30,25 @@ if (defined('LANG_MODULE_SAVERESTORE')) {
 DebMes("Removing Connect module records.", 'maintenance');
 SQLExec("DELETE FROM project_modules WHERE NAME='connect'");
 SQLExec("DELETE FROM settings WHERE NAME='MODULE_CONNECT'");
-SQLExec("DELETE FROM pvalues WHERE PROPERTY_NAME IN ('ThisComputer.cycle_connectRun','ThisComputer.connect_manualRun')");
+SQLExec("DELETE FROM pvalues WHERE PROPERTY_NAME LIKE '%connect%'");
 SQLExec("DELETE FROM phistory WHERE VALUE_ID NOT IN (SELECT ID FROM pvalues)");
-SQLExec("DELETE FROM properties WHERE OBJECT_ID=(SELECT ID FROM objects WHERE TITLE='ThisComputer' LIMIT 1) AND TITLE IN ('cycle_connectRun','connect_manualRun')");
-SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, '\"connect\":{\"filter\":\"\"},', '') WHERE NAME IN ('HOOK_EVENT_SAY','HOOK_EVENT_HOURLY')");
-SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, ',\"connect\":{\"filter\":\"\"}', '') WHERE NAME IN ('HOOK_EVENT_SAY','HOOK_EVENT_HOURLY')");
+SQLExec("DELETE FROM properties WHERE TITLE LIKE '%connect%'");
+SQLExec("DELETE FROM events WHERE EVENT_NAME LIKE '%connect%'");
+SQLExec("DELETE FROM history WHERE (LINKED_OBJECT LIKE 'connect' OR LINKED_METHOD LIKE '%connect%')");
+SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, '\"connect\":{\"filter\":\"\"},', '') WHERE NAME LIKE 'HOOK_EVENT_%'");
+SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, ',\"connect\":{\"filter\":\"\"}', '') WHERE NAME LIKE 'HOOK_EVENT_%'");
+
+// Remove legacy Connect module image files
+$connect_images = array(
+    ROOT . 'img/connect_back_block.png',
+    ROOT . 'img/modules/connect.png',
+);
+foreach ($connect_images as $img) {
+    if (file_exists($img)) {
+        @unlink($img);
+        DebMes("Removed legacy Connect image: $img", 'maintenance');
+    }
+}
 
 // Remove legacy hook subscribers for deleted user systems.
 DebMes("Removing legacy hook subscribers for deleted user systems.", 'maintenance');
@@ -64,7 +78,17 @@ for ($i = 0; $i < $hook_total; $i++) {
 $config_file = ROOT . 'config.php';
 if (file_exists($config_file)) {
     $config_content = LoadFile($config_file);
-    $config_content_clean = preg_replace('/^[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*=>[ \t]*[\'"][\'"][ \t]*,[ \t]*(?:\r?\n)?/m', '', $config_content);
+
+    // Remove MODULE_CONNECT entries — handles various formats:
+    // 'MODULE_CONNECT' => '',
+    // "MODULE_CONNECT"   =>   ""   ,  // comment
+    // 'MODULE_CONNECT' => '1',
+    $config_content_clean = preg_replace(
+        '/^[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*=>[ \t]*[\'"][^\'"]*?[\'"][ \t]*,?[ \t]*(?:\/\/.*)?(?:\r?\n|$)/m',
+        '',
+        $config_content
+    );
+
     if ($config_content_clean !== $config_content) {
         SaveFile($config_file, $config_content_clean);
         DebMes("Removed legacy MODULE_CONNECT entries from config.php.", 'maintenance');

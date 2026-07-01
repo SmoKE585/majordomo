@@ -208,6 +208,17 @@ class saverestore extends module
         if (file_exists($connect_cycle)) {
             @unlink($connect_cycle);
         }
+
+        // Remove legacy Connect images
+        $connect_images = array(
+            $path . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'connect_back_block.png',
+            $path . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR . 'connect.png',
+        );
+        foreach ($connect_images as $img) {
+            if (file_exists($img)) {
+                @unlink($img);
+            }
+        }
     }
 
     function cleanupLegacyConnectConfigNoise($config_file)
@@ -217,7 +228,12 @@ class saverestore extends module
         }
 
         $content = LoadFile($config_file);
-        $clean_content = preg_replace('/^[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*=>[ \t]*[\'"][\'"][ \t]*,[ \t]*(?:\r?\n)?/m', '', $content);
+        // Remove MODULE_CONNECT entries — handles various formats
+        $clean_content = preg_replace(
+            '/^[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*=>[ \t]*[\'"][^\'"]*?[\'"][ \t]*,?[ \t]*(?:\/\/.*)?(?:\r?\n|$)/m',
+            '',
+            $content
+        );
         if ($clean_content !== $content) {
             SaveFile($config_file, $clean_content);
         }
