@@ -33,7 +33,9 @@
                                     [#if NOTIFICATIONS_COUNT != 0#]
                                     <span class="badge md-admin-sidebar__badge alert-[#NOTIFICATIONS_TYPE#]"
                                           data-bs-container="body" data-bs-toggle="popover" data-bs-trigger="manual"
-                                          data-bs-placement="bottom" data-bs-html="true">[#NOTIFICATIONS_COUNT#]</span>
+                                          data-bs-placement="right" data-bs-html="true" data-bs-custom-class="md-admin-noty-popover"
+                                          data-md-notifications="[#NOTIFICATIONS_JSON#]"
+                                          data-md-module="[#NAME#]">[#NOTIFICATIONS_COUNT#]</span>
                                     [#endif NOTIFICATIONS_COUNT#]
                                 </a>
                             </li>

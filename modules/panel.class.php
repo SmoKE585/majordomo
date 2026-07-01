@@ -223,6 +223,23 @@ class panel extends module
                     $modules[$i]["NOTIFICATIONS"] = $notifications[$modules[$i]["NAME"]];
                     $modules[$i]["NOTIFICATIONS_COUNT"] = count($modules[$i]["NOTIFICATIONS"]);
                     $modules[$i]["NOTIFICATIONS_TYPE"] = $modules[$i]["NOTIFICATIONS"][0]['TYPE'];
+                    $notyForJs = array();
+                    foreach ($modules[$i]["NOTIFICATIONS"] as $noty) {
+                        $notyType = $noty['TYPE'];
+                        if ($notyType == 'default') {
+                            $notyType = 'info';
+                        }
+                        $notyForJs[] = array(
+                            'id'   => (int)$noty['ID'],
+                            'type' => $notyType,
+                            'msg'  => $noty['MESSAGE'],
+                            'time' => date('d.m.Y H:i:s', strtotime($noty['ADDED']))
+                        );
+                    }
+                    $modules[$i]["NOTIFICATIONS_JSON"] = htmlspecialchars(
+                        json_encode($notyForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        ENT_QUOTES, 'UTF-8'
+                    );
                 } else {
                     $modules[$i]["NOTIFICATIONS_COUNT"] = 0;
                 }

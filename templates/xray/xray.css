@@ -206,7 +206,7 @@
 	border: 1px solid rgba(31, 41, 51, 0.08);
 	border-radius: 16px;
 	box-shadow: 0 8px 18px rgba(31, 41, 51, 0.05);
-	overflow: hidden;
+	overflow: clip;
 }
 
 .xray-main-card {
@@ -247,6 +247,7 @@
 }
 
 .xray-table-wrap {
+	width: 100%;
 	margin-bottom: 0;
 	overflow-x: auto;
 	-webkit-overflow-scrolling: touch;
@@ -296,9 +297,7 @@
 }
 
 .xray-table td.text-right,
-.xray-table th.text-right,
-.xray-table td:last-child,
-.xray-table th:last-child {
+.xray-table th.text-right {
 	white-space: nowrap;
 }
 

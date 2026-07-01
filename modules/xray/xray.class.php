@@ -238,12 +238,40 @@ class xray extends module
             if ($line == '') {
                 continue;
             }
+            $lineTime = $this->extractLogLineTimestamp($line, $fileTime);
             $lines[] = array(
-                'ADDED' => date('H:i:s', $fileTime),
+                '_TS'  => $lineTime,
+                'ADDED' => date('H:i:s', $lineTime),
                 'MESSAGE' => htmlspecialchars('[file] ' . $line),
             );
         }
         return $lines;
+    }
+
+    function extractLogLineTimestamp($line, $fallbackTime)
+    {
+        // PHP error log format: [01-Jul-2026 14:30:00 UTC]
+        if (preg_match('/^\[(\d{2}-[A-Z][a-z]{2}-\d{4} \d{2}:\d{2}:\d{2}(?: [A-Z]{3})?)\]/', $line, $m)) {
+            $ts = strtotime($m[1]);
+            if ($ts !== false && $ts > 0) {
+                return $ts;
+            }
+        }
+        // ISO-like format at start: [2026-07-01 14:30:00] or 2026-07-01 14:30:00
+        if (preg_match('/^\[?(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]?/', $line, $m)) {
+            $ts = strtotime($m[1]);
+            if ($ts !== false && $ts > 0) {
+                return $ts;
+            }
+        }
+        // Time-only at start: 14:30:00
+        if (preg_match('/^(\d{2}:\d{2}:\d{2})/', $line, $m)) {
+            $ts = strtotime($m[1]);
+            if ($ts !== false && $ts > 0) {
+                return $ts;
+            }
+        }
+        return $fallbackTime;
     }
 
     function reverseResponseList(&$response)
@@ -779,21 +807,59 @@ class xray extends module
                 $lines = array();
                 $total = count($res);
                 for ($i = 0; $i < $total; $i++) {
+                    $ts = (int)$res[$i]['ADDED'];
                     $lines[] = array(
-                        'ADDED' => date('H:i:s', (int)$res[$i]['ADDED']),
+                        '_TS'    => $ts,
+                        'ADDED'  => date('H:i:s', $ts),
                         'MESSAGE' => htmlspecialchars($res[$i]['MESSAGE']),
                     );
                 }
                 $fileLines = $logCyclesEnabled ? $this->getCycleFileLogLines($cycle, 80) : array();
                 if (count($fileLines)) {
+                    $fileTime = 0;
+                    if (!empty($fileLines[0]['_TS'])) {
+                        $fileTime = $fileLines[0]['_TS'];
+                    }
                     $lines[] = array(
-                        'ADDED' => date('H:i:s'),
+                        '_TS'    => $fileTime ? $fileTime : time(),
+                        'ADDED'  => date('H:i:s', $fileTime ? $fileTime : time()),
                         'MESSAGE' => htmlspecialchars('--- latest file log tail ---'),
                     );
                     $lines = array_merge($lines, $fileLines);
                     $lines = array_slice($lines, -120);
                 }
-                echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LOG_CYCLES_ENABLED' => $logCyclesEnabled, 'LINES' => $lines));
+                // Sort all lines by raw timestamp for correct chronological order
+                usort($lines, function ($a, $b) {
+                    $ta = isset($a['_TS']) ? (int)$a['_TS'] : 0;
+                    $tb = isset($b['_TS']) ? (int)$b['_TS'] : 0;
+                    if ($ta == $tb) {
+                        return 0;
+                    }
+                    return ($ta < $tb) ? -1 : 1;
+                });
+                // Strip internal _TS field before sending to client
+                $cleanLines = array();
+                foreach ($lines as $l) {
+                    $cleanLines[] = array(
+                        'ADDED'   => $l['ADDED'],
+                        'MESSAGE' => $l['MESSAGE'],
+                    );
+                }
+                echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LOG_CYCLES_ENABLED' => $logCyclesEnabled, 'LINES' => $cleanLines));
+                exit;
+            }
+            if ($op == 'clearcyclelog') {
+                header("HTTP/1.0 200 OK\n");
+                header('Content-Type: application/json; charset=utf-8');
+                $cycle = gr('cycle');
+                $cycle = $this->normalizeCycleTitle($cycle);
+                if ($cycle == '') {
+                    echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'));
+                    exit;
+                }
+                $this->ensureCycleRuntimeTables();
+                SQLExec("DELETE FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycle) . "'");
+                echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'CLEARED' => 1));
                 exit;
             }
             if ($op == 'getcontent') {

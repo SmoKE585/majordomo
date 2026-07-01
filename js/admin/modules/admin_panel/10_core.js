@@ -594,6 +594,100 @@
         });
     }
 
+    function initSidebarNotificationBadges(scope) {
+        scope.querySelectorAll('.md-admin-sidebar__badge[data-md-module]').forEach(function (badge) {
+            if (badge.dataset.mdNotyBound === '1') return;
+            badge.dataset.mdNotyBound = '1';
+
+            badge.style.cursor = 'pointer';
+
+            badge.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                var raw = badge.getAttribute('data-md-notifications');
+                if (!raw) return;
+
+                var notifications;
+                try {
+                    notifications = JSON.parse(raw);
+                } catch (e) {
+                    return;
+                }
+                if (!Array.isArray(notifications) || notifications.length === 0) return;
+
+                var html = '<div class="md-admin-noty-list">';
+                for (var i = 0; i < notifications.length; i++) {
+                    var noty = notifications[i];
+                    html +=
+                        '<div class="md-admin-noty-item">' +
+                        '<div class="md-admin-noty-item__msg">' + admin.escapeHtml(noty.msg) + '</div>' +
+                        '<div class="md-admin-noty-item__meta">' + admin.escapeHtml(noty.time) + '</div>' +
+                        '</div>';
+                }
+                html += '</div>';
+
+                var popoverInstance = window.bootstrap && window.bootstrap.Popover.getInstance(badge);
+                if (popoverInstance) {
+                    popoverInstance.setContent({ '.popover-body': html });
+                } else if (window.bootstrap) {
+                    popoverInstance = new window.bootstrap.Popover(badge, {
+                        html: true,
+                        content: html,
+                        placement: badge.getAttribute('data-bs-placement') || 'right',
+                        container: 'body',
+                        trigger: 'manual',
+                        customClass: 'md-admin-noty-popover'
+                    });
+                }
+                if (popoverInstance) {
+                    popoverInstance.show();
+                }
+
+                clearTimeout(badge._mdNotyHideTimer);
+                badge._mdNotyHideTimer = setTimeout(function () {
+                    if (popoverInstance) popoverInstance.hide();
+                }, 8000);
+
+                var moduleName = badge.getAttribute('data-md-module');
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', '?ajax_panel=1&op=dismiss_module_notifications&module_name=' + encodeURIComponent(moduleName));
+                xhr.onload = function () {
+                    if (xhr.responseText.trim() === 'OK') {
+                        badge.style.transition = 'opacity .25s ease, transform .25s ease';
+                        badge.style.opacity = '0';
+                        badge.style.transform = 'scale(0.7)';
+                        setTimeout(function () {
+                            if (badge.parentNode) badge.remove();
+                        }, 280);
+                    }
+                };
+                xhr.onerror = function () {
+                    if (popoverInstance) popoverInstance.hide();
+                };
+                xhr.send();
+            });
+        });
+    }
+
+    function initNotificationPopoverDismiss() {
+        if (document.body.dataset.mdNotyDismissBound === '1') return;
+        document.body.dataset.mdNotyDismissBound = '1';
+
+        document.addEventListener('click', function (event) {
+            var clickedOnBadge = event.target.closest('.md-admin-sidebar__badge[data-md-module]');
+            var clickedInPopover = event.target.closest('.md-admin-noty-popover');
+            if (!clickedOnBadge && !clickedInPopover) {
+                document.querySelectorAll('.md-admin-sidebar__badge[data-md-module]').forEach(function (badge) {
+                    if (window.bootstrap) {
+                        var instance = window.bootstrap.Popover.getInstance(badge);
+                        if (instance) instance.hide();
+                    }
+                });
+            }
+        });
+    }
+
     function boot(root) {
         var scope = root && root.querySelectorAll ? root : document;
         admin.setBootRoot(scope);
@@ -604,6 +698,8 @@
         initThemeSwitcher(scope);
         initCheckboxToggles(scope);
         initBootstrapWidgets(scope);
+        initSidebarNotificationBadges(scope);
+        initNotificationPopoverDismiss();
         initAdminSidebarSections(scope);
         initPersistentCollapses(scope);
         initToggleTargets(scope);
@@ -638,6 +734,7 @@
     admin.initConfirmActions = initConfirmActions;
     admin.initClassesTree = initClassesTree;
     admin.escapeHtml = escapeHtml;
+    admin.initSidebarNotificationBadges = initSidebarNotificationBadges;
     admin.updateHeaderDateTime = updateHeaderDateTime;
     admin.initHeaderDateTime = initHeaderDateTime;
     admin.ensureActiveModuleTabsVisible = ensureActiveModuleTabsVisible;

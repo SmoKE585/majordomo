@@ -25,6 +25,9 @@
 		cycleLogDisabledText: 'Файловый лог циклов выключен.',
 		cycleLogEmptyText: 'Пока нет данных. Здесь появится stdout/stderr цикла и хвост его файлового лога.',
 		cycleLogError: 'Ошибка загрузки лога.',
+		cycleLogClearConfirm: 'Очистить лог цикла? Будут удалены все записи из оперативной памяти.',
+		cycleLogCleared: 'Лог цикла очищен.',
+		cycleLogClearFailed: 'Не удалось очистить лог цикла.',
 		statusStarting: 'Запускается',
 		statusRunning: 'Работает',
 		statusHang: 'Завис',
@@ -210,6 +213,7 @@
 	<pre id="cycleLogBody" class="xray-drawer-log"></pre>
 </div>
 <div id="xrayCycleDrawerFooter" class="xray-drawer-footer" hidden>
+	<button type="button" class="btn btn-outline-danger" id="xrayCycleDrawerClearBtn"><span class="glyphicon glyphicon-trash"></span> Очистить</button>
 	<button type="button" class="btn btn-outline-secondary" id="xrayCycleDrawerCloseBtn">Закрыть</button>
 </div>
 [#endif ACTION#]

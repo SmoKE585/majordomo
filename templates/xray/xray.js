@@ -562,6 +562,37 @@
 		return false;
 	}
 
+	function clearCycleLog() {
+		if (!state.cycleLogCurrent) {
+			return false;
+		}
+		if (!window.confirm(config.cycleLogClearConfirm || 'Очистить лог цикла? Будут удалены все записи из оперативной памяти.')) {
+			return false;
+		}
+
+		var url = new URL((config.rootHtml || '') + 'panel/xray.html', window.location.origin);
+		url.searchParams.set('view_mode', 'services');
+		url.searchParams.set('ajax', '1');
+		url.searchParams.set('op', 'clearcyclelog');
+		url.searchParams.set('cycle', state.cycleLogCurrent);
+
+		fetch(url.toString(), {
+			credentials: 'same-origin'
+		}).then(function (response) {
+			return response.json();
+		}).then(function (data) {
+			if (data.STATUS === 'OK') {
+				setText(el('cycleLogBody'), (config.cycleLogCleared || 'Лог цикла очищен.') + '\n');
+			} else {
+				setText(el('cycleLogBody'), (data.MESSAGE || config.cycleLogClearFailed || 'Не удалось очистить лог цикла.') + '\n');
+			}
+		}).catch(function () {
+			setText(el('cycleLogBody'), (config.cycleLogClearFailed || 'Не удалось очистить лог цикла.') + '\n');
+		});
+
+		return false;
+	}
+
 	function closeXrayDrawer(owner) {
 		if (window.MDJAdminDrawerHost) {
 			window.MDJAdminDrawerHost.close(owner);
@@ -759,6 +790,7 @@
 		var openLogDrawerButton = el('openLogDrawerBtn');
 		var drawerCloseButton = el('xrayDrawerCloseBtn');
 		var cycleDrawerCloseButton = el('xrayCycleDrawerCloseBtn');
+		var cycleDrawerClearButton = el('xrayCycleDrawerClearBtn');
 
 		setText(el('xrayModeBadge'), formatModeLabel(config.viewMode || ''));
 		setText(el('xrayRefreshBadge'), Math.round(state.checkTimeout / 1000) + ' c');
@@ -803,6 +835,13 @@
 		if (cycleDrawerCloseButton) {
 			cycleDrawerCloseButton.addEventListener('click', function () {
 				closeXrayDrawer('xray-cycle-log');
+			});
+		}
+
+		if (cycleDrawerClearButton) {
+			cycleDrawerClearButton.addEventListener('click', function (event) {
+				event.preventDefault();
+				clearCycleLog();
 			});
 		}
 

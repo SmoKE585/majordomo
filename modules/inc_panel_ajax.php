@@ -29,6 +29,17 @@ if ($op == 'dismiss_notification') {
     exit;
 }
 
+if ($op == 'dismiss_module_notifications') {
+    $module_name = gr('module_name', 'trim');
+    if ($module_name) {
+        SQLExec("UPDATE module_notifications SET IS_READ=1 WHERE MODULE_NAME='" . DBSafe($module_name) . "' AND IS_READ=0");
+        echo "OK";
+    } else {
+        echo "ERROR";
+    }
+    exit;
+}
+
 if ($op == 'console') {
     ini_set('display_errors', 0);
     ini_set('display_startup_errors', 0);
