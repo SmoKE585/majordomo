@@ -64,8 +64,10 @@ class application extends module
         Define('THEME', $theme);
 
         if ($this->action == 'ajaxgetglobal') {
-            header("HTTP/1.0 200 OK\n");
-            header('Content-Type: text/html; charset=utf-8');
+            if (!headers_sent()) {
+                header("HTTP/1.0 200 OK\n");
+                header('Content-Type: text/html; charset=utf-8');
+            }
             $var = gr('var');
             $var = str_replace('%', '', $var);
             $res['DATA'] = getGlobal($var);
@@ -74,8 +76,10 @@ class application extends module
         }
 
         if ($this->action == 'ajaxsetglobal') {
-            header("HTTP/1.0 200 OK\n");
-            header('Content-Type: text/html; charset=utf-8');
+            if (!headers_sent()) {
+                header("HTTP/1.0 200 OK\n");
+                header('Content-Type: text/html; charset=utf-8');
+            }
             $var = gr('var');
             $var = str_replace('%', '', $var);
             setGlobal($var, gr('value'));
@@ -85,8 +89,10 @@ class application extends module
         }
 
         if ($this->action == 'getlatestnote') {
-            header("HTTP/1.0 200 OK\n");
-            header('Content-Type: text/html; charset=utf-8');
+            if (!headers_sent()) {
+                header("HTTP/1.0 200 OK\n");
+                header('Content-Type: text/html; charset=utf-8');
+            }
 
             $msg = SQLSelectOne("SELECT * FROM shouts WHERE MEMBER_ID=0 ORDER BY ID DESC LIMIT 1");
             $res = array();
@@ -96,8 +102,10 @@ class application extends module
         }
 
         if ($this->action == 'getlatestmp3') {
-            header("HTTP/1.0 200 OK\n");
-            header('Content-Type: text/html; charset=utf-8');
+            if (!headers_sent()) {
+                header("HTTP/1.0 200 OK\n");
+                header('Content-Type: text/html; charset=utf-8');
+            }
             if ($dir = @opendir(ROOT . "cms/cached/voice")) {
                 while (($file = readdir($dir)) !== false) {
                     if (preg_match('/\.mp3$/', $file)) {
@@ -187,7 +195,7 @@ class application extends module
         $terminals = getAllTerminals(-1, 'TITLE');
         $total = count($terminals);
         for ($i = 0; $i < $total; $i++) {
-            if ($terminals[$i]['HOST'] != '' && $_SERVER['REMOTE_ADDR'] == $terminals[$i]['HOST'] && empty($session->data['TERMINAL'])) {
+            if ($terminals[$i]['HOST'] != '' && isset($_SERVER['REMOTE_ADDR']) && $_SERVER['REMOTE_ADDR'] == $terminals[$i]['HOST'] && empty($session->data['TERMINAL'])) {
                 $session->data['TERMINAL'] = $terminals[$i]['NAME'];
             }
             if (mb_strtoupper($terminals[$i]['NAME'], 'UTF-8') == mb_strtoupper(isset($session->data['TERMINAL']) ? $session->data['TERMINAL'] : '', 'UTF-8')) {
@@ -204,14 +212,14 @@ class application extends module
             $main_terminal = array();
             $main_terminal['NAME'] = 'MAIN';
             $main_terminal['TITLE'] = 'MAIN';
-            $main_terminal['HOST'] = $_SERVER['SERVER_ADDR'];
+            $main_terminal['HOST'] = isset($_SERVER['SERVER_ADDR']) ? $_SERVER['SERVER_ADDR'] : '127.0.0.1';
             SQLInsert('terminals', $main_terminal);
         }
 
         if (!isset($out['TERMINAL_TITLE']) && isset($session->data['TERMINAL']) && $session->data['TERMINAL']) {
             $new_terminal = array();
             $new_terminal['TITLE'] = $session->data['TERMINAL'];
-            $new_terminal['HOST'] = $_SERVER['REMOTE_ADDR'];
+            $new_terminal['HOST'] = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
             $new_terminal['NAME'] = $new_terminal['TITLE'];
             $new_terminal['LATEST_ACTIVITY'] = date('Y-m-d H:i:s');
             $new_terminal['IS_ONLINE'] = 1;
@@ -232,7 +240,7 @@ class application extends module
         $username = gr('username');
         if ($username) {
             $user = SQLSelectOne("SELECT * FROM users WHERE USERNAME LIKE '" . DBSafe($username) . "'");
-            if (hash('sha512', '') == $user['PASSWORD'] || $user['PASSWORD'] == '') {
+            if (!isset($user['PASSWORD']) || $user['PASSWORD'] == '' || hash('sha512', '') == $user['PASSWORD']) {
                 $session->data['SITE_USERNAME'] = $user['USERNAME'];
                 $session->data['SITE_USER_ID'] = $user['ID'];
                 $site_username = $session->data['SITE_USERNAME'];
@@ -244,7 +252,7 @@ class application extends module
             $out['HIDE_USERS'] = 1;
         }
         if (!$site_username) {
-            $host_user = SQLSelectOne("SELECT * FROM users WHERE HOST!='' AND HOST='" . DBSafe($_SERVER['REMOTE_ADDR']) . "'");
+            $host_user = SQLSelectOne("SELECT * FROM users WHERE HOST!='' AND HOST='" . (isset($_SERVER['REMOTE_ADDR']) ? DBSafe($_SERVER['REMOTE_ADDR']) : '') . "'");
             if (isset($host_user['ID'])) {
                 $session->data['SITE_USERNAME'] = $host_user['USERNAME'];
                 $session->data['SITE_USER_ID'] = $host_user['ID'];
@@ -335,7 +343,7 @@ class application extends module
 
         $out['TODAY'] = $days[date('w')] . ', ' . date('d.m.Y');
         Define('TODAY', $out['TODAY']);
-        $out['REQUEST_URI'] = $_SERVER['REQUEST_URI'];
+        $out['REQUEST_URI'] = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
 
         $from_scene = gr('from_scene');
         if ($from_scene) {

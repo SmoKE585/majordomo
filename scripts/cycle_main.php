@@ -99,9 +99,13 @@ while (1) {
         $total = count($objects);
 
         for ($i = 0; $i < $total; $i++) {
+            try {
             echo date('H:i:s') . ' ' . $objects[$i]['TITLE'] . "->onNewMinute\n";
             sg($objects[$i]['TITLE'] . '.time', date('Y-m-d H:i:s'));
             callMethodSafe($objects[$i]['TITLE'] . '.onNewMinute');
+            } catch (Exception $e) {
+                DebMes('Error in onNewMinute for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main');
+            }
         }
         $old_minute = $m;
     }
@@ -110,8 +114,12 @@ while (1) {
     if ($h != $old_hour) {
         processSubscriptionsSafe('HOURLY');
         for ($i = 0; $i < $total; $i++) {
+            try {
             echo date('H:i:s') . ' ' . $objects[$i]['TITLE'] . "->onNewHour\n";
             callMethodSafe($objects[$i]['TITLE'] . '.onNewHour');
+            } catch (Exception $e) {
+                DebMes('Error in onNewHour for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main');
+            }
         }
         $old_hour = $h;
     }
@@ -120,8 +128,12 @@ while (1) {
     if ($dt != $old_date) {
         processSubscriptionsSafe('DAILY');
         for ($i = 0; $i < $total; $i++) {
+            try {
             echo date('H:i:s') . ' ' . $objects[$i]['TITLE'] . "->onNewDay\n";
             callMethodSafe($objects[$i]['TITLE'] . '.onNewDay');
+            } catch (Exception $e) {
+                DebMes('Error in onNewDay for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main');
+            }
         }
         $old_date = $dt;
     }

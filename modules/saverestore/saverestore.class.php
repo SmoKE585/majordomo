@@ -1519,12 +1519,12 @@ class saverestore extends module
             "file" => "@" . DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/' . $tar_name,
             "mode" => "upload_updates",
             "repository" => $repository_name,
-            "host" => $_SERVER['HTTP_HOST'],
+            "host" => (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost'),
             "data" => serialize($to_send)
         );
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 
-        //curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=upload_updates&repository=".$repository_name."&host=".$_SERVER['HTTP_HOST']."&data=".$to_send);
+        //curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=upload_updates&repository=".$repository_name."&host=".(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost')."&data=".$to_send);
 
         $incoming = curl_exec($ch);
 
@@ -1584,7 +1584,7 @@ class saverestore extends module
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=check_submit&repository=" . $repository_name . "&host=" . $_SERVER['HTTP_HOST'] . "&data=" . $to_send);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=check_submit&repository=" . $repository_name . "&host=" . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost') . "&data=" . $to_send);
 
         $incoming = curl_exec($ch);
 
@@ -1655,7 +1655,7 @@ class saverestore extends module
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=prepare&repository=" . $repository_name . "&host=" . $_SERVER['HTTP_HOST'] . "&data=" . serialize($to_update));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=prepare&repository=" . $repository_name . "&host=" . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost') . "&data=" . serialize($to_update));
         $incoming = curl_exec($ch);
         curl_close($ch);
 
@@ -1676,7 +1676,7 @@ class saverestore extends module
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
             curl_setopt($ch, CURLOPT_FILE, $f);
 
-            curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=download&repository=" . $repository_name . "&host=" . $_SERVER['HTTP_HOST'] . "&file=" . $res['DOWNLOAD_FILE']);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=download&repository=" . $repository_name . "&host=" . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost') . "&file=" . $res['DOWNLOAD_FILE']);
 
             $incoming = curl_exec($ch);
 
@@ -1730,7 +1730,7 @@ class saverestore extends module
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=prepareapps&repository=" . $repository_name . "&host=" . $_SERVER['HTTP_HOST'] . "&data=" . serialize($to_install));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=prepareapps&repository=" . $repository_name . "&host=" . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost') . "&data=" . serialize($to_install));
         $incoming = curl_exec($ch);
         curl_close($ch);
 
@@ -1753,7 +1753,7 @@ class saverestore extends module
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
             curl_setopt($ch, CURLOPT_FILE, $f);
 
-            curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=download&repository=" . $repository_name . "&host=" . $_SERVER['HTTP_HOST'] . "&file=" . $res['DOWNLOAD_FILE']);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=download&repository=" . $repository_name . "&host=" . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost') . "&file=" . $res['DOWNLOAD_FILE']);
 
             $incoming = curl_exec($ch);
 
@@ -1822,7 +1822,7 @@ class saverestore extends module
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=checkapps&repository=" . $repository_name . "&host=" . $_SERVER['HTTP_HOST'] . "&data=" . $to_send);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=checkapps&repository=" . $repository_name . "&host=" . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost') . "&data=" . $to_send);
 
         $incoming = curl_exec($ch);
 
@@ -1987,7 +1987,7 @@ class saverestore extends module
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=check&repository=" . $repository_name . "&host=" . $_SERVER['HTTP_HOST'] . "&data=" . $to_send);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "mode=check&repository=" . $repository_name . "&host=" . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost') . "&data=" . $to_send);
 
         $incoming = curl_exec($ch);
 

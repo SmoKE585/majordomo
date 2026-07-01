@@ -31,7 +31,7 @@ while (1)
       setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
       // saveToCache("MJD:$cycleVarName", $checked_time);
       // checking all hosts
-      $pinghosts->checkAllHosts();
+      try { $pinghosts->checkAllHosts(); } catch (Exception $e) { DebMes('Error in checkAllHosts: ' . $e->getMessage(), 'cycle_ping'); }
    }
 
    if (file_exists('./reboot') || IsSet($_GET['onetime']))

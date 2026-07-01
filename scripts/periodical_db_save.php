@@ -41,6 +41,7 @@ while (1) {
 
     if ((time() - $last_backup_main) > $timeout_main || isRebootRequired()) {
         $last_backup_main = time();
+        try {
         debmes('DB Backup started (main db)', 'db_backup');
         echo "Running main db save...";
         if (file_exists($filename_main)) rename($filename_main, $filename_main . '.prev');
@@ -56,8 +57,12 @@ while (1) {
             safe_exec('sudo cp -rf /tmp/mysql/* /var/lib/mysql');
             $backups_in_row = 0;
         }
+        } catch (Exception $e) {
+            debmes('Main db save exception: ' . $e->getMessage(), 'db_backup');
+        }
     }
     if ((time() - $last_backup_history) > $timeout_history || isRebootRequired()) {
+        try {
         debmes('DB Backup started (history)', 'db_backup');
         echo "Running history db save...";
         if (file_exists($filename_history)) rename($filename_history, $filename_history . '.prev');
@@ -67,6 +72,9 @@ while (1) {
             debmes('History db save OK', 'db_backup');
         } else {
             debmes('History db save failed.', 'db_backup');
+        }
+        } catch (Exception $e) {
+            debmes('History db save exception: ' . $e->getMessage(), 'db_backup');
         }
     }
     if (isRebootRequired() || isset($_GET['onetime'])) {

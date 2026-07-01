@@ -52,7 +52,11 @@ if (isset($_GET['once'])) {
             // saveToCache("MJD:$cycleVarName", $checked_time);
 
             for ($i = 0; $i < $total; $i++) {
-                callMethod($objects[$i]['TITLE'] . '.checkState');
+                try {
+                    callMethod($objects[$i]['TITLE'] . '.checkState');
+                } catch (Exception $e) {
+                    DebMes('Error in checkState for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_states');
+                }
             }
         }
 

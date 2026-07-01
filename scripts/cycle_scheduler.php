@@ -27,8 +27,8 @@ while (1) {
         $checked_time = time();
         setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
     }
-    runScheduledJobs();
-    $sc->checkScheduledScripts();
+    try { runScheduledJobs(); } catch (Exception $e) { DebMes('Error in runScheduledJobs: ' . $e->getMessage(), 'cycle_scheduler'); }
+    try { $sc->checkScheduledScripts(); } catch (Exception $e) { DebMes('Error in checkScheduledScripts: ' . $e->getMessage(), 'cycle_scheduler'); }
     if (isRebootRequired() || isset($_GET['onetime'])) {
         exit;
     }

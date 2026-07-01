@@ -94,6 +94,7 @@ while (1) {
 
         $total = count($queue);
         for ($i = 0; $i < $total; $i++) {
+            try {
             $q_rec = $queue[$i];
             $value = $q_rec['VALUE'];
             $old_value = $q_rec['OLD_VALUE'];
@@ -168,6 +169,9 @@ while (1) {
             }
             if ($history_saved) {
                 SQLExec("DELETE FROM phistory_queue WHERE ID=" . (int)$q_rec['ID']);
+            }
+            } catch (Exception $e) {
+                DebMes('Error processing history queue item ' . $q_rec['ID'] . ': ' . $e->getMessage(), 'cycle_phistory');
             }
         }
         unset($queue, $tmp_history, $h, $q_rec);

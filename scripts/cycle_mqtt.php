@@ -88,7 +88,11 @@ function procmsg($topic, $msg)
     $has_request_uri = isset($_SERVER['REQUEST_URI']);
     $old_request_uri = $has_request_uri ? $_SERVER['REQUEST_URI'] : '';
     $_SERVER['REQUEST_URI'] = $source_url;
-    $mqtt->processMessage($topic, $msg);
+    try {
+        $mqtt->processMessage($topic, $msg);
+    } catch (Exception $e) {
+        DebMes("Error processing MQTT message $topic: " . $e->getMessage(), 'mqtt_error');
+    }
     if ($has_request_uri) {
         $_SERVER['REQUEST_URI'] = $old_request_uri;
     } else {
@@ -168,6 +172,7 @@ function mqttRunOnce()
             setGlobal('cycle_mqttControl', 'restart');
         }
         if (!empty($mqtt->config['MQTT_WRITE_METHOD']) && (int)$mqtt->config['MQTT_WRITE_METHOD'] == 2) {
+            try {
             $queue = checkOperationsQueue('mqtt_queue');
             foreach ($queue as $mqtt_data) {
                 $topic = $mqtt_data['DATANAME'];
@@ -185,6 +190,9 @@ function mqttRunOnce()
                 if (!is_null($result) && !$result) {
                     DebMes("Error writing from queue '$value' to $topic", 'mqtt_error');
                 }
+            }
+            } catch (Exception $e) {
+                DebMes("Error in MQTT queue processing: " . $e->getMessage(), 'mqtt_error');
             }
         }
 
