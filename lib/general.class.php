@@ -519,7 +519,9 @@ function DebMes($errorMessage, $logLevel = "debug")
         fputs($f, date("H:i:s") . ' ' . $tmp[0]);
         fputs($f, " " . $errorMessage . "\n");
         fclose($f);
-        @chmod($today_file, 0666);
+        if (is_writable($today_file) || !file_exists($today_file)) {
+            @chmod($today_file, 0666);
+        }
     }
 }
 
