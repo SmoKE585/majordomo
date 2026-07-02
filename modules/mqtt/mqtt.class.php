@@ -187,10 +187,15 @@ class mqtt extends module
         return array();
     }
 
-    function hasLinkedPathWithPrefix($topic_prefix)
+    function getLinkedPathsSnapshot($force = false)
     {
-        $this->refreshLookupCache();
-        foreach ($this->lookup_linked_paths as $linked_path) {
+        $this->refreshLookupCache($force);
+        return $this->lookup_linked_paths;
+    }
+
+    function hasLinkedPathWithPrefixInList($topic_prefix, $linked_paths)
+    {
+        foreach ($linked_paths as $linked_path) {
             if (strpos($linked_path, $topic_prefix) === 0) {
                 return true;
             }
@@ -198,9 +203,48 @@ class mqtt extends module
         return false;
     }
 
+    function isLinkedPathInList($path, $linked_paths)
+    {
+        return in_array($path, $linked_paths);
+    }
+
+    function hasLinkedPathWithPrefix($topic_prefix)
+    {
+        $this->refreshLookupCache();
+        return $this->hasLinkedPathWithPrefixInList($topic_prefix, $this->lookup_linked_paths);
+    }
+
     function buildIncomingSource($topic, $msg)
     {
         return '/api.php/module/mqtt?topic=' . urlencode($topic) . '&msg=' . urlencode($msg) . '&no_session=1';
+    }
+
+    function decodeJsonObjectPayload($value)
+    {
+        if (!is_string($value)) {
+            return false;
+        }
+
+        $payload = trim($value);
+        if ($payload === '' || substr($payload, 0, 1) !== '{' || substr($payload, -1) !== '}') {
+            return false;
+        }
+
+        $decoded = json_decode($payload, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+            return false;
+        }
+
+        return $decoded;
+    }
+
+    function isLikelyJsonFragmentPath($path)
+    {
+        if (!is_string($path)) {
+            return false;
+        }
+
+        return preg_match('/["{}]/', $path) && preg_match('/[:,]/', $path);
     }
 
     function setLinkedPropertyFromMqtt($object, $property, $value, $source_url)
@@ -548,7 +592,7 @@ class mqtt extends module
      *
      * @access public
      */
-    function processMessage($path, $value)
+    function processMessage($path, $value, $ignore_stripmode = false, $linked_paths = null)
     {
         if (preg_match('/\#$/', $path)) {
             return 0;
@@ -562,25 +606,32 @@ class mqtt extends module
 
         $this->getConfig();
 
-        if (substr($value, 0, 1) == '{') {
-            $ar = json_decode($value, true);
-            if (is_array($ar)) {
-                foreach ($ar as $k => $v) {
-                    if (is_array($v)) {
-                        $v = json_encode($v);
-                    }
-                    if ($this->config['MQTT_STRIPMODE']) {
-                        $rec = SQLSelectOne("SELECT ID FROM `mqtt` where `PATH` LIKE '$path/$k%' and LINKED_OBJECT>''");
-                        if (empty($rec['ID'])) {
-                            continue;
-                        }
-                    }
-                    $this->processMessage($path . '/' . $k, $v);
+        $json_payload = $this->decodeJsonObjectPayload($value);
+        if ($json_payload !== false) {
+            foreach ($json_payload as $k => $v) {
+                if (is_array($v)) {
+                    $v = json_encode($v);
                 }
+                if (!$ignore_stripmode && $this->config['MQTT_STRIPMODE']) {
+                    if (is_array($linked_paths)) {
+                        $has_linked_path = $this->hasLinkedPathWithPrefixInList($path . '/' . $k, $linked_paths);
+                    } else {
+                        $has_linked_path = $this->hasLinkedPathWithPrefix($path . '/' . $k);
+                    }
+                    if (!$has_linked_path) {
+                        continue;
+                    }
+                }
+                $this->processMessage($path . '/' . $k, $v, $ignore_stripmode, $linked_paths);
             }
         }
 
         startMeasure('mqttProcessMessage');
+
+        if (!$ignore_stripmode && $this->config['MQTT_STRIPMODE'] && is_array($linked_paths) && !$this->isLinkedPathInList($path, $linked_paths)) {
+            endMeasure('mqttProcessMessage');
+            return false;
+        }
 
         if (preg_match("/^\\\\u\\d+/", $path)) {
             $path = json_decode('"' . $path . '"');
@@ -597,9 +648,13 @@ class mqtt extends module
 
         /* Search 'PATH' in database (db) */
         $rec = $this->getRecordByPath($path);
-        $old_value = $rec['VALUE'];
+        $old_value = isset($rec['VALUE']) ? $rec['VALUE'] : '';
 
-        if (!$rec['ID']) { /* If 'PATH' not found in db */
+        if (empty($rec['ID'])) { /* If 'PATH' not found in db */
+            if ($this->isLikelyJsonFragmentPath($path)) {
+                endMeasure('mqttProcessMessage');
+                return false;
+            }
             /* Insert new record in db */
             $rec = array();
             $rec['PATH'] = $path;
@@ -754,6 +809,7 @@ class mqtt extends module
         $out['MQTT_DELAY'] = $this->config['MQTT_DELAY'];
         $out['MQTT_WRITE_METHOD'] = isset($this->config['MQTT_WRITE_METHOD']) ? (int)$this->config['MQTT_WRITE_METHOD'] : 0;
         $out['MQTT_STRIPMODE'] = isset($this->config['MQTT_STRIPMODE']) ? $this->config['MQTT_STRIPMODE'] : 0;
+        $out['MQTT_UNLINKED_UPDATE_INTERVAL'] = isset($this->config['MQTT_UNLINKED_UPDATE_INTERVAL']) ? (int)$this->config['MQTT_UNLINKED_UPDATE_INTERVAL'] : 3600;
         $out['DEBUG_MODE'] = $this->config['DEBUG_MODE'];
         
         // TLS/SSL configuration output
@@ -786,6 +842,7 @@ class mqtt extends module
             $this->config['MQTT_QUERY'] = gr('mqtt_query');
             $this->config['MQTT_WRITE_METHOD'] = gr('mqtt_write_method', 'int');
             $this->config['MQTT_STRIPMODE'] = gr('mqtt_stripmode', 'int');
+            $this->config['MQTT_UNLINKED_UPDATE_INTERVAL'] = max(0, gr('mqtt_unlinked_update_interval', 'int'));
             $this->config['DEBUG_MODE'] = gr('debug_mode', 'int');
             
             // TLS/SSL configuration update

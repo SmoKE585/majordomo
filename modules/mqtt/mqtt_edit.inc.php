@@ -10,6 +10,7 @@ $table_name = 'mqtt';
 $rec = SQLSelectOne("SELECT * FROM $table_name WHERE ID=" . (int)$id);
 if ($this->mode == 'update') {
     $ok = 1;
+    $old_path = $rec['PATH'];
     //updating 'LOCATION_ID' (select)
     if (isset($this->location_id)) {
         $rec['LOCATION_ID'] = $this->location_id;
@@ -53,6 +54,12 @@ if ($this->mode == 'update') {
                 $rec['ID'] = SQLInsert($table_name, $rec); // adding new record
             }
             $this->invalidateLookupCache();
+            if (isset($new_rec) || $old_path != $rec['PATH'] ||
+                $old_linked_object != $rec['LINKED_OBJECT'] ||
+                $old_linked_property != $rec['LINKED_PROPERTY'] ||
+                $old_linked_method != $rec['LINKED_METHOD']) {
+                setGlobal('cycle_mqttControl', 'restart');
+            }
 
         if ($rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
             addLinkedProperty($rec['LINKED_OBJECT'], $rec['LINKED_PROPERTY'], $this->name);

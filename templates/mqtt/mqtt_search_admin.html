@@ -178,6 +178,11 @@
                             <label class="form-label">Задержка повторов, сек</label>
                             <input type="text" name="mqtt_delay" value="<#MQTT_DELAY#>" placeholder="5" class="form-control">
                         </div>
+                        <div class="col-lg-4">
+                            <label class="form-label">Обновлять непривязанные топики, сек</label>
+                            <input type="text" name="mqtt_unlinked_update_interval" value="<#MQTT_UNLINKED_UPDATE_INTERVAL#>" placeholder="3600" class="form-control">
+                            <div class="form-text">Работает только с режимом "Только известные топики". 0 отключает фоновые обновления.</div>
+                        </div>
                     </div>
                 </div>
 
