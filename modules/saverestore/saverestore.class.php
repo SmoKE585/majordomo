@@ -228,9 +228,9 @@ class saverestore extends module
         }
 
         $content = LoadFile($config_file);
-        // Remove MODULE_CONNECT entries — handles various formats
+        // Remove MODULE_CONNECT entries, including broken plain-text leftovers.
         $clean_content = preg_replace(
-            '/^[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*=>[ \t]*[\'"][^\'"]*?[\'"][ \t]*,?[ \t]*(?:\/\/.*)?(?:\r?\n|$)/m',
+            '/[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*(?:=>|=&gt;)[ \t]*[\'"][^\'"]*?[\'"][ \t]*,?[ \t]*(?:<br\s*\/?>)?[ \t]*(?:\/\/[^\r\n]*)?(?:\r?\n)?/i',
             '',
             $content
         );
