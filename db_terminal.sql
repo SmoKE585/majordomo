@@ -560,7 +560,7 @@ CREATE TABLE `layouts` (
 --
 
 INSERT INTO `layouts` (`ID`, `TITLE`, `PRIORITY`, `TYPE`, `CODE`, `APP`, `URL`, `DETAILS`, `REFRESH`, `ICON`, `HIDDEN`, `BACKGROUND_IMAGE`, `THEME`) VALUES
-(8, '<#LANG_WELCOME_GREETING#>', 1000, 'html', '<div style=\"padding-left:50px;padding-top:30px\">\r\n<h1><#LANG_WELCOME_GREETING#></h1>\r\n&nbsp;\r\n<p style=\"font-size:14px\">\r\n<#LANG_WELCOME_TEXT#>\r\n</p>\r\n</div>', '', '', '', 0, '', 0, '', ''),
+(8, '<#LANG_WELCOME_GREETING#>', 1000, 'html', '<div style=\"padding-left:50px;padding-top:30px\">\r\n<h1><#LANG_WELCOME_GREETING#></h1>\r\n&nbsp;\r\n<p style=\"font-size:14px\">\r\n<#LANG_WELCOME_TEXT#>\r\n</p>\r\n</div>', '', '', '', 0, '', 0, '', '');
 
 -- --------------------------------------------------------
 
