@@ -54,7 +54,7 @@ class Connection {
         if (!preg_match('/\AGET (\S+) HTTP\/1.1\z/', $lines[0], $matches)) {
             $this->log('Invalid request: ' . $lines[0]);
             $this->sendHttpResponse(400);
-            stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+            $this->shutdownSocket();
             return false;
         }
 
@@ -69,7 +69,7 @@ class Connection {
         if (!$this->application) {
             $this->log('Invalid application: ' . $path);
             $this->sendHttpResponse(404);
-            stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+            $this->shutdownSocket();
             $this->server->removeClientOnError($this);
             return false;
         }
@@ -87,7 +87,7 @@ class Connection {
         if (!isset($headers['Sec-WebSocket-Version']) || $headers['Sec-WebSocket-Version'] < 6) {
             $this->log('Unsupported websocket version.');
             $this->sendHttpResponse(501);
-            stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+            $this->shutdownSocket();
             $this->server->removeClientOnError($this);
             return false;
         }
@@ -99,7 +99,7 @@ class Connection {
             if ($origin === false) {
                 $this->log('No origin provided.');
                 $this->sendHttpResponse(401);
-                stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+                $this->shutdownSocket();
                 $this->server->removeClientOnError($this);
                 return false;
             }
@@ -107,7 +107,7 @@ class Connection {
             if (empty($origin)) {
                 $this->log('Empty origin provided.');
                 $this->sendHttpResponse(401);
-                stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+                $this->shutdownSocket();
                 $this->server->removeClientOnError($this);
                 return false;
             }
@@ -115,7 +115,7 @@ class Connection {
             if ($this->server->checkOrigin($origin) === false) {
                 $this->log('Invalid origin provided.');
                 $this->sendHttpResponse(401);
-                stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+                $this->shutdownSocket();
                 $this->server->removeClientOnError($this);
                 return false;
             }
@@ -124,7 +124,7 @@ class Connection {
         if (!$this->checkAuthToken($path, $headers)) {
             $this->log('Invalid websocket token.');
             $this->sendHttpResponse(401);
-            stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+            $this->shutdownSocket();
             $this->server->removeClientOnError($this);
             return false;
         }
@@ -229,6 +229,9 @@ class Connection {
         }
 
         $decodedData = $this->hybi10Decode($data);
+        if ($this->closed) {
+            return false;
+        }
 
         if ($decodedData === false) {
             $this->waitingForData = true;
@@ -255,7 +258,7 @@ class Connection {
 
         if (!isset($decodedData['type'])) {
             $this->sendHttpResponse(401);
-            stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+            $this->shutdownSocket();
             $this->server->removeClientOnError($this);
             return false;
         }
@@ -356,11 +359,21 @@ class Connection {
         if ($this->application) {
             $this->application->onDisconnect($this);
         }
-        if (is_resource($this->socket)) {
-            @stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
-        }
+        $this->shutdownSocket();
         $this->server->removeClientOnClose($this);
         return true;
+    }
+
+    private function shutdownSocket() {
+        if (!is_resource($this->socket)) {
+            return false;
+        }
+
+        try {
+            return @stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function onDisconnect() {
