@@ -1284,9 +1284,20 @@ class mqtt extends module
 
     function delete_mqtt($id)
     {
-        $rec = SQLSelectOne("SELECT * FROM mqtt WHERE ID='$id'");
+        $rec = SQLSelectOne("SELECT * FROM mqtt WHERE ID='" . (int)$id . "'");
+        if (!isset($rec['ID'])) {
+            return;
+        }
+
+        $linked_object = isset($rec['LINKED_OBJECT']) ? $rec['LINKED_OBJECT'] : '';
+        $linked_property = isset($rec['LINKED_PROPERTY']) ? $rec['LINKED_PROPERTY'] : '';
+
         // some action for related tables
-        SQLExec("DELETE FROM mqtt WHERE ID='" . $rec['ID'] . "'");
+        SQLExec("DELETE FROM mqtt WHERE ID='" . (int)$rec['ID'] . "'");
+        if ($linked_object != '' && $linked_property != '') {
+            removeLinkedPropertyIfNotUsed('mqtt', $linked_object, $linked_property, $this->name);
+        }
+        setGlobal('cycle_mqttControl', 'restart');
         $this->invalidateLookupCache();
     }
 
