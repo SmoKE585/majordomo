@@ -80,8 +80,9 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 5. `docs/agents/admin-routing.md` — контракт чистых URL, legacy `pd` и 404.
 6. `docs/agents/third-party.md` — что лежит в `3rdparty/`, зачем, план перехода на Composer.
 7. `docs/agents/configuration.md` — `.env`, `Config`, типы, легаси-константы и правила для модулей.
-8. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
-9. Этот файл — текущее состояние и ограничения.
+8. `docs/agents/entrypoints.md` — точки входа, `Application`, `AdminApplication`, `SiteApplication` и контракт глобалов.
+9. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
+10. Этот файл — текущее состояние и ограничения.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 
@@ -101,11 +102,14 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 
 | Путь | Назначение |
 | --- | --- |
-| `public/admin.php` | Точка входа админки, part-load, language-константы, 302 на чистый URL |
+| `public/admin.php` | Тонкий адаптер: создаёт `AdminApplication` |
 | `public/nf.php` | Inbound-роутинг pretty URL, legacy `pd`, 404 |
-| `public/index.php` | Фронт-контроллер сайта (`/`) |
+| `public/index.php` | Тонкий адаптер: создаёт `SiteApplication` |
 | `public/api.php` | REST API (`/api/...`) |
-| `bootstrap.php` | `chdir` в корень приложения для public-входов |
+| `bootstrap.php` | `chdir` в корень и autoloader `MajorDoMo\Core\*` |
+| `lib/core/Application.php` | Общий boot: config → loader → settings, таймеры, сессия |
+| `lib/core/AdminApplication.php` | Админка: canonicalize, part_load, `panel`, вывод |
+| `lib/core/SiteApplication.php` | Сайт: `application`, 404, postprocess, вывод |
 | `lib/admin_router.php` | Единая таблица маршрутов и преобразование legacy ↔ pretty |
 | `lib/error_page.php` | Общий рендер 404 (HTML/JSON, светлая/тёмная тема) |
 | `public/404.php` | Публичная точка входа для nginx `error_page 404` |
@@ -323,4 +327,5 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `3rdparty/freeboard/` — дашборды freeboard: эндпоинты-виджеты никуда не подключены;
 - `rc/` — архаичный пульт (Windows-бинарники + `rc/index.php`); URL `/rc/...` теперь 301 на `/panel/`;
 - `.tmp-p.json`, `obj.bat`, `templates_alt/`, `lib/_vimage_tahoma.ttf`, `cms/icons/1_iPhone_MUSIC_5_sm.png` — мусор без ссылок (аватар `cms/avatars/1_ver-logo_any_tickets-large.png` оставлен: он привязан к пользователю в БД);
-- `.htaccess` (корень и подкаталоги `lib/`, `templates/`, `cms/`, `backup/`, `3rdparty/elFinder/php/.tmp/`) — правила перенесены в `docs/deploy/nginx.conf.sample`, деплой только на nginx; каталоги, которые держались на этих файлах, сохранены через `.gitkeep`.
+- `.htaccess` (корень и подкаталоги `lib/`, `templates/`, `cms/`, `backup/`, `3rdparty/elFinder/php/.tmp/`) — правила перенесены в `docs/deploy/nginx.conf.sample`, деплой только на nginx; каталоги, которые держались на этих файлах, сохранены через `.gitkeep`;
+- `config.php.sample` — заменён документированным `.env.example`; настройки больше не живут в PHP-файле.

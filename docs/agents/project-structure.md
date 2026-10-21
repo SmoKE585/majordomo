@@ -96,8 +96,15 @@ Document root — только `public/`. Всё, что должно сохра
 
 Точки входа перенесены в `public/` физически. Так как они используют
 относительные include (`./config.php`, `./lib/...`), каждый начинается с
-`require dirname(__DIR__) . '/bootstrap.php'`: тот определяет `MD_APP_ROOT` и
-делает `chdir()` в корень приложения. `php-fpm` запускает запрос с CWD, равным
+`require dirname(__DIR__) . '/bootstrap.php'`: тот определяет `MD_APP_ROOT`,
+делает `chdir()` в корень приложения и регистрирует autoloader
+`MajorDoMo\Core\*`.
+
+С октября 2026 `public/admin.php` и `public/index.php` — тонкие адаптеры:
+boot и обработка запроса живут в `lib/core/Application.php`,
+`AdminApplication.php` и `SiteApplication.php`. Подробно —
+[`entrypoints.md`](entrypoints.md). `nf.php` пока остаётся процедурным
+роутером, но подключает те же адаптеры. `php-fpm` запускает запрос с CWD, равным
 каталогу скрипта, — это же поведение воспроизводит `dev_server.php`.
 
 ## 4. nginx
