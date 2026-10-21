@@ -23,17 +23,17 @@ define('ROOTHTML', '/');
 define('DIR_MODULES', dirname(__DIR__) . '/modules/');
 
 $rootDir = dirname(__DIR__);
-$nginxConfigPath = $rootDir . DIRECTORY_SEPARATOR . 'nginx.conf.sample';
+$nginxConfigPath = $rootDir . DIRECTORY_SEPARATOR . 'docs/deploy/nginx.conf.sample';
 
 require_once($rootDir . '/lib/admin_router.php');
 
 if (!is_file($nginxConfigPath)) {
-    fwrite(STDERR, "nginx.conf.sample not found\n");
+    fwrite(STDERR, "docs/deploy/nginx.conf.sample not found\n");
     exit(EXIT_FAIL);
 }
 $nginxConfig = file_get_contents($nginxConfigPath);
 if ($nginxConfig === false) {
-    fwrite(STDERR, "Failed to read nginx.conf.sample\n");
+    fwrite(STDERR, "Failed to read docs/deploy/nginx.conf.sample\n");
     exit(EXIT_FAIL);
 }
 
@@ -350,7 +350,7 @@ routingCheck(
 );
 
 foreach (findHtaccessLeftovers($rootDir) as $htaccess) {
-    $failures[] = "[LEGACY] {$htaccess} — web server config lives in nginx.conf.sample only";
+    $failures[] = "[LEGACY] {$htaccess} — web server config lives in docs/deploy/nginx.conf.sample only";
 }
 
 if ($failures) {

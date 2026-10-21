@@ -4,7 +4,7 @@
 
 Область применения: только административная панель. Пользовательские сцены и фронтовое меню больше не являются целевой частью MajorDoMo и не должны модернизироваться в рамках UI-миграции.
 
-> Для новых страниц обязателен `DESIGN_SYSTEM.md` и готовые компоненты `MDJUI` / `templates/ui/components/`. Этот гайд описывает миграцию legacy-модулей и общие ограничения; если правила расходятся, приоритет у `DESIGN_SYSTEM.md` и `AGENTS.md`.
+> Для новых страниц обязателен `docs/agents/DESIGN_SYSTEM.md` и готовые компоненты `MDJUI` / `templates/ui/components/`. Этот гайд описывает миграцию legacy-модулей и общие ограничения; если правила расходятся, приоритет у `docs/agents/DESIGN_SYSTEM.md` и `docs/agents/AGENTS.md`.
 
 ## Цель
 
@@ -69,7 +69,7 @@
 - `src/admin/css/admin_panel.css` считается legacy: не добавляйте туда новые компоненты без необходимости, только точечные правки существующих страниц;
 - новый общий JS — модули в `src/admin/js/modules/admin_panel/`, подключаемые через `src/admin/main.js`;
 - JS конкретной страницы модуля — локальный файл рядом с модулем, подключается только в шаблоне этого модуля и не регистрируется в общем bundle;
-- перед созданием компонента проверьте UI Kit (`/admin.php?action=ui_kit`) и `DESIGN_SYSTEM.md`.
+- перед созданием компонента проверьте UI Kit (`/admin.php?action=ui_kit`) и `docs/agents/DESIGN_SYSTEM.md`.
 
 Для CSS/JS конкретного модуля:
 
@@ -87,7 +87,7 @@ npm install
 npm run build
 ```
 
-Подробности — в `docs/admin-assets.md`.
+Подробности — в `docs/agents/admin-assets.md`.
 
 Select с поиском:
 

@@ -81,7 +81,7 @@ npm run watch:charts  # пересборка чанка графиков (вто
 
 ## UI Kit и компоненты
 
-Новые страницы собирайте из готовых компонентов: `MDJUI` + `templates/ui/components/` + классы `md-*` из `src/admin/css/ui-system.css`. Полный каталог, токены и правила — в `DESIGN_SYSTEM.md`; живая документация — `/admin.php?action=ui_kit`.
+Новые страницы собирайте из готовых компонентов: `MDJUI` + `templates/ui/components/` + классы `md-*` из `src/admin/css/ui-system.css`. Полный каталог, токены и правила — в `docs/agents/DESIGN_SYSTEM.md`; живая документация — `/admin.php?action=ui_kit`.
 
 Не создавайте альтернативные кнопки, поля, селекты, карточки и модалки. Если компонента нет, добавьте его в общий слой и продемонстрируйте в UI Kit.
 

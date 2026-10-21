@@ -71,11 +71,11 @@
 Чтобы сделать `public/` настоящим document root, нужен отдельный этап:
 перенос entrypoints + реестр веб-эндпоинтов модулей + разделение `cms/` на
 `public/media` и приватный runtime. До этого `root` указывает на корень проекта,
-а `/assets/` отдаётся через `alias` (см. `nginx.conf.sample`).
+а `/assets/` отдаётся через `alias` (см. `docs/deploy/nginx.conf.sample`).
 
 ## 4. nginx
 
-Полный конфиг — `nginx.conf.sample` (эталон) и `nginx.conf.may-13.ru.sample`
+Полный конфиг — `docs/deploy/nginx.conf.sample` (эталон) и `docs/deploy/nginx.conf.may-13.ru.sample`
 (боевой домен). Ключевые блоки:
 
 ```nginx

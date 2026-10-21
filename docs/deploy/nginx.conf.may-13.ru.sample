@@ -8,7 +8,7 @@
 #      проигрывали regex-локациям `~ \.php$` и статике — то есть фактически
 #      не работали. Теперь это `^~` / `=`.
 #   2. Добавлены запреты /lib/, templates/*.html, templates/ui/, templates/ui_kit/,
-#      dotfiles и опасных расширений — как в nginx.conf.sample.
+#      dotfiles и опасных расширений — как в docs/deploy/nginx.conf.sample.
 #   3. Добавлены явные /panel и /panel/ (301 на канонический слеш + try_files в nf.php).
 #   4. `if (!-e $request_filename) rewrite` заменён на try_files.
 #   5. PHP-локация: fastcgi_split_path_info/PATH_INFO, HTTPS=on, таймауты и

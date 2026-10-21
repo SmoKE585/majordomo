@@ -189,7 +189,7 @@ function devWithQueryString($target)
 
 /**
  * Browser libraries that moved from 3rdparty to public/assets/vendor.
- * Keep in sync with nginx.conf.sample.
+ * Keep in sync with docs/deploy/nginx.conf.sample.
  */
 function devVendorPackages()
 {

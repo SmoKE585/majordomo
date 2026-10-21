@@ -91,7 +91,7 @@ function md_ui_label($text)
                 <input class="btn-check" type="radio" name="uiKitTheme" id="uiKitThemeDark" value="dark" data-md-theme-choice="dark">
                 <label for="uiKitThemeDark" title="Тёмная тема"><?= MDJUI::icon('moon-stars') ?><span>Тёмная</span></label>
             </div>
-            <a class="md-btn md-btn--secondary" href="DESIGN_SYSTEM.md" target="_blank" rel="noopener">
+            <a class="md-btn md-btn--secondary" href="docs/agents/DESIGN_SYSTEM.md" target="_blank" rel="noopener">
                 <?= MDJUI::icon('file-text') ?><span class="md-btn__label">Документация</span>
             </a>
             <button type="button" class="md-btn md-btn--primary" data-bs-toggle="modal" data-bs-target="#mdCommandPalette">
@@ -132,9 +132,9 @@ function md_ui_label($text)
     <footer class="md-ui-page-footer">
         <span>MajorDoMo Design System · UI Kit v1.0 · <?= date('d.m.Y') ?></span>
         <span>
-            <a href="DESIGN_SYSTEM.md" target="_blank" rel="noopener">DESIGN_SYSTEM.md</a>
+            <a href="docs/agents/DESIGN_SYSTEM.md" target="_blank" rel="noopener">docs/agents/DESIGN_SYSTEM.md</a>
             <span aria-hidden="true"> · </span>
-            <a href="AGENTS.md" target="_blank" rel="noopener">AGENTS.md</a>
+            <a href="docs/agents/AGENTS.md" target="_blank" rel="noopener">docs/agents/AGENTS.md</a>
         </span>
     </footer>
 

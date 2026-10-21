@@ -49,13 +49,13 @@ try {
         "CREATE TABLE events (ID int NOT NULL AUTO_INCREMENT PRIMARY KEY,EVENT_NAME varchar(255),DETAILS text,ADDED datetime,EVENT_TYPE varchar(20)) ENGINE=InnoDB"
     );
     if (getenv('MJD_TEST_USE_SEED')) {
-        $dump=file_get_contents(ROOT.'db_terminal.sql');
+        $dump=file_get_contents(ROOT.'docs/dev/db_terminal.sql');
         if (preg_match('/^\s*(?:USE\s|(?:CREATE|DROP)\s+DATABASE\b)/mi',$dump)) throw new RuntimeException('Seed must not change databases');
         $db->dbh->multi_query($dump);
         do { $result=$db->dbh->store_result(); if($result) $result->free(); } while($db->dbh->more_results() && $db->dbh->next_result());
         foreach (array('classes','objects','properties','methods','pvalues','phistory','phistory_queue','history','jobs','operations_queue','settings','project_modules','events','cached_ws') as $table) execTest('TRUNCATE TABLE `'.$table.'`');
         $schema=array_map(fn($sql)=>str_replace('CREATE TABLE ','CREATE TABLE IF NOT EXISTS ',$sql),$schema);
-        check(true,'current db_terminal.sql imports into an isolated database');
+        check(true,'current docs/dev/db_terminal.sql imports into an isolated database');
     }
     foreach ($schema as $sql) execTest($sql);
     execTest("INSERT INTO classes (ID,TITLE) VALUES (1,'Computer')");

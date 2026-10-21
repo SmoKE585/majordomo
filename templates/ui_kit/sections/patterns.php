@@ -134,12 +134,12 @@ CODE,
         'api' => 'templates/ui/components + ui-system.css',
         'canvas_class' => 'md-ui-demo__canvas--block',
         'code' => <<<'CODE'
-1. Проверьте этого страницу и DESIGN_SYSTEM.md.
+1. Проверьте этого страницу и docs/agents/DESIGN_SYSTEM.md.
 2. Создайте templates/ui/components/my-widget.php.
 3. Добавьте метод в lib/ui/MDJUI.php.
 4. Опишите состояния и токены в css/admin/ui-system.css.
 5. Добавьте демо в templates/ui_kit/sections.
-6. Обновите DESIGN_SYSTEM.md.
+6. Обновите docs/agents/DESIGN_SYSTEM.md.
 
 /* Компонент получает $props и $slot */
 <article class="md-my-widget" <?= MDJUI::attrs($props['attrs']) ?>>
@@ -148,7 +148,7 @@ CODE,
 CODE,
     ), function () { ?>
         <div class="md-ui-steps">
-            <div class="md-ui-step"><span class="md-ui-step__num">1</span><div><strong>Проверьте</strong><p>UI Kit и DESIGN_SYSTEM.md — возможно, компонент уже есть.</p></div></div>
+            <div class="md-ui-step"><span class="md-ui-step__num">1</span><div><strong>Проверьте</strong><p>UI Kit и docs/agents/DESIGN_SYSTEM.md — возможно, компонент уже есть.</p></div></div>
             <div class="md-ui-step"><span class="md-ui-step__num">2</span><div><strong>Создайте</strong><p><code>templates/ui/components/*.php</code> + метод в <code>MDJUI</code>.</p></div></div>
             <div class="md-ui-step"><span class="md-ui-step__num">3</span><div><strong>Опишите</strong><p>Токены и состояния в <code>ui-system.css</code>, без локальных hex.</p></div></div>
             <div class="md-ui-step"><span class="md-ui-step__num">4</span><div><strong>Покажите</strong><p>Демо в UI Kit и обновите документацию.</p></div></div>

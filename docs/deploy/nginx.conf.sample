@@ -4,13 +4,13 @@
 # file, and no per-directory configuration should be added anywhere else.
 #
 # Usage:
-#   cp nginx.conf.sample /etc/nginx/sites-available/majordomo
+#   cp docs/deploy/nginx.conf.sample /etc/nginx/sites-available/majordomo
 #   # adjust root, server_name and the php-fpm socket below
 #   ln -s /etc/nginx/sites-available/majordomo /etc/nginx/sites-enabled/
 #   nginx -t && systemctl reload nginx
 #
 # ---------------------------------------------------------------------------
-# Layout (see docs/project-structure.md)
+# Layout (see docs/agents/project-structure.md)
 # ---------------------------------------------------------------------------
 #   <project>/                 PHP entry points (index/admin/nf/api/404),
 #                              modules/, lib/, templates/, cms/, 3rdparty/

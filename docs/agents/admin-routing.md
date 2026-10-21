@@ -144,9 +144,9 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 
 ## 8. nginx
 
-Канонический шаблон — `nginx.conf.sample`. Готовый пример под текущий домен
+Канонический шаблон — `docs/deploy/nginx.conf.sample`. Готовый пример под текущий домен
 (may-13.ru: subdomain-логика, `auth_basic`, proxy на 8002) —
-`nginx.conf.may-13.ru.sample`.
+`docs/deploy/nginx.conf.may-13.ru.sample`.
 
 Для pretty URL в конфиге обязательны:
 
