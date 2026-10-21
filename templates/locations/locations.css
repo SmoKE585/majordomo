@@ -1,0 +1,163 @@
+/*
+ * Locations module: rooms list, location card and room-object logic.
+ * Loaded only from templates/locations/action_admin.html.
+ */
+
+body.md-admin-shell .md-locations-page .md-locations-cell__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-count-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-count-line i {
+  color: var(--md-ui-muted);
+  font-size: 12px;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-count-line--empty {
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-locations-page .md-locations-col-name {
+  min-width: 240px;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-col-room {
+  min-width: 180px;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-room-badge {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-col-priority {
+  min-width: 160px;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-col-actions {
+  min-width: 90px;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-priority {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-priority__value {
+  min-width: 32px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Keep the wide table inside its scroll area instead of widening the page on mobile. */
+body.md-admin-shell .md-locations-page .md-locations-table-wrap .md-table__scroll {
+  contain: paint;
+}
+
+/* Location card */
+
+body.md-admin-shell .md-locations-page .md-locations-room {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+}
+
+body.md-admin-shell .md-locations-page .md-locations-room__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-room__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-room__body strong {
+  color: var(--md-ui-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-room__body span {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-locations-page .md-locations-method-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-method-row .md-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-code-editor {
+  width: 100%;
+}
+
+body.md-admin-shell .md-locations-page .md-locations-form-actions {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  box-shadow: var(--md-ui-shadow-xs);
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .md-locations-page .md-locations-room {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  body.md-admin-shell .md-locations-page .md-locations-method-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  body.md-admin-shell .md-locations-page .md-locations-form-actions .md-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  body.md-admin-shell .md-locations-page .md-locations-form-actions .dropdown {
+    flex: 1 1 100%;
+  }
+
+  body.md-admin-shell .md-locations-page .md-locations-form-actions .dropdown .md-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -1,62 +1,93 @@
 <section class="md-admin-module-list md-object-properties-page" data-md-object-properties-page data-md-object-title="<#TITLE#>">
     [#if OK#]
-    <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+    </div>
     [#endif OK#]
     [#if ERR#]
-    <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
+    <div class="md-alert md-alert--danger" role="alert">
+        <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__title"><#LANG_FILLOUT_REQURED#></div></div>
+    </div>
     [#endif ERR#]
 
-    <div class="md-object-properties-hero__actions">
-        <div class="md-object-properties-hero__search">
-            <input type="text" class="form-control" id="filterProp" placeholder="<#LANG_NEWMARKET_SEARCH_INPUT_PLACEHOLDER#>">
+    <div class="md-obj-toolbar md-obj-toolbar--standalone">
+        <label class="md-obj-search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" class="form-control" id="filterProp" placeholder="Поиск свойств" aria-label="Поиск по имени, описанию, источнику или методу">
+        </label>
+        <select class="md-obj-filter" id="propertyFilter" aria-label="Фильтр свойств">
+            <option value="">Все свойства</option>
+            <option value="class">Свойства класса</option>
+            <option value="object">Свойства объекта</option>
+            <option value="history">С историей</option>
+            <option value="source">С источником</option>
+            <option value="onchange">С методом</option>
+        </select>
+        <div class="md-obj-toolbar__spacer"></div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="md-badge md-badge--neutral">Класс: [#if CLASS_PROPERTIES_TOTAL!=""#][#CLASS_PROPERTIES_TOTAL#][#else#]0[#endif#]</span>
+            <span class="md-badge md-badge--neutral">Объект: [#if CUSTOM_PROPERTIES_TOTAL!=""#][#CUSTOM_PROPERTIES_TOTAL#][#else#]0[#endif#]</span>
+            <span class="md-badge md-badge--info">История: [#if HISTORY_PROPERTIES_TOTAL!=""#][#HISTORY_PROPERTIES_TOTAL#][#else#]0[#endif#]</span>
         </div>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#objectPropertyCreateModal"><#LANG_ADD_NEW_PROPERTY#></button>
+        <button type="button" class="md-btn md-btn--primary md-btn--sm" data-bs-toggle="modal" data-bs-target="#objectPropertyCreateModal"><i class="ti ti-plus" aria-hidden="true"></i>Добавить</button>
     </div>
 
-    <div class="modal fade md-admin-modal" id="objectPropertyCreateModal" tabindex="-1" aria-labelledby="objectPropertyCreateModalTitle" aria-hidden="true">
+    <div class="modal fade md-modal" id="objectPropertyCreateModal" tabindex="-1" aria-labelledby="objectPropertyCreateModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <div class="md-object-property-create-modal__heading">
-                        <div class="md-object-property-create-modal__eyebrow">Свойство объекта</div>
-                        <h2 class="modal-title h5" id="objectPropertyCreateModalTitle"><#LANG_ADD_NEW_PROPERTY#></h2>
-                        <div class="md-object-property-create-modal__summary">Добавьте локальное свойство объекта, значение и при необходимости метод, который будет вызываться при изменении.</div>
+                        <div class="md-card__eyebrow">Свойство объекта</div>
+                        <h2 class="modal-title" id="objectPropertyCreateModalTitle"><#LANG_ADD_NEW_PROPERTY#></h2>
+                        <div class="md-card__subtitle">Добавьте локальное свойство объекта, значение и при необходимости метод, который будет вызываться при изменении.</div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<#LANG_CLOSE#>"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="?" method="post" class="md-object-property-create-modal__form" id="objectPropertyCreateForm">
+                    <form action="?" method="post" class="md-ui-form" id="objectPropertyCreateForm">
                         <div class="md-object-property-create-modal__grid">
-                            <div class="md-object-property-create-modal__field">
-                                <label class="form-label" for="objectPropertyCreateName"><#LANG_PROPERTY#> <span class="text-danger">*</span></label>
-                                <input type="text" id="objectPropertyCreateName" name="new_property" placeholder="status" class="form-control" required>
-                                <div class="form-text">Короткое системное имя без пробелов. Используется в связке `Объект.Свойство`.</div>
+                            <div class="md-field md-object-property-create-modal__field">
+                                <label class="md-field__label" for="objectPropertyCreateName"><#LANG_PROPERTY#><span class="md-field__req" aria-hidden="true">*</span></label>
+                                <div class="md-field__control">
+                                    <input type="text" id="objectPropertyCreateName" name="new_property" placeholder="status" class="md-input" required>
+                                </div>
+                                <div class="md-field__hint">Короткое системное имя без пробелов. Используется в связке <code>Объект.Свойство</code>.</div>
                             </div>
-                            <div class="md-object-property-create-modal__field md-object-property-create-modal__field--wide">
-                                <label class="form-label" for="objectPropertyCreateDescription"><#LANG_DESCRIPTION#></label>
-                                <input type="text" id="objectPropertyCreateDescription" name="new_description" placeholder="Что хранит это свойство и откуда обновляется" class="form-control">
+                            <div class="md-field md-object-property-create-modal__field md-object-property-create-modal__field--wide">
+                                <label class="md-field__label" for="objectPropertyCreateDescription"><#LANG_DESCRIPTION#></label>
+                                <div class="md-field__control">
+                                    <input type="text" id="objectPropertyCreateDescription" name="new_description" placeholder="Что хранит это свойство и откуда обновляется" class="md-input">
+                                </div>
                             </div>
-                            <div class="md-object-property-create-modal__field">
-                                <label class="form-label" for="objectPropertyCreateHistory"><#LANG_KEEP_HISTORY_DAYS#></label>
-                                <input type="text" id="objectPropertyCreateHistory" name="new_history" placeholder="0" class="form-control">
-                                <div class="form-text">`0` или пусто: историю не хранить.</div>
+                            <div class="md-field md-object-property-create-modal__field">
+                                <label class="md-field__label" for="objectPropertyCreateHistory"><#LANG_KEEP_HISTORY_DAYS#></label>
+                                <div class="md-field__control">
+                                    <input type="number" id="objectPropertyCreateHistory" name="new_history" placeholder="0" min="0" class="md-input">
+                                </div>
+                                <div class="md-field__hint">0 или пусто — историю не хранить.</div>
                             </div>
-                            <div class="md-object-property-create-modal__field">
-                                <label class="form-label" for="objectPropertyCreateOnChange"><#LANG_ONCHANGE_METHOD#></label>
-                                <select name="onchange" id="objectPropertyCreateOnChange" class="form-control form-select">
-                                    <option value="" selected><#LANG_NO#></option>
-                                    [#begin METHODS#]
-                                    <option value="[#TITLE#]">[#TITLE#]</option>
-                                    [#end METHODS#]
-                                </select>
-                                <div class="form-text">Метод объекта, который будет вызван после изменения значения.</div>
+                            <div class="md-field md-object-property-create-modal__field">
+                                <label class="md-field__label" for="objectPropertyCreateOnChange"><#LANG_ONCHANGE_METHOD#></label>
+                                <div class="md-field__control">
+                                    <select name="onchange" id="objectPropertyCreateOnChange" class="md-select">
+                                        <option value="" selected><#LANG_NO#></option>
+                                        [#begin METHODS#]
+                                        <option value="[#TITLE#]">[#TITLE#]</option>
+                                        [#end METHODS#]
+                                    </select>
+                                </div>
+                                <div class="md-field__hint">Метод объекта, который будет вызван после изменения значения.</div>
                             </div>
                         </div>
 
-                        <div class="md-object-property-create-modal__field md-object-property-create-modal__field--stacked">
-                            <label class="form-label" for="objectPropertyCreateValue"><#LANG_VALUE#></label>
-                            <textarea id="objectPropertyCreateValue" placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_VALUE#>" name="new_value" rows="6" class="form-control md-admin-textarea"></textarea>
-                            <div class="form-text">Начальное значение можно оставить пустым и задать позже из карточки свойства.</div>
+                        <div class="md-field md-object-property-create-modal__field md-object-property-create-modal__field--stacked mt-3">
+                            <label class="md-field__label" for="objectPropertyCreateValue"><#LANG_VALUE#></label>
+                            <div class="md-field__control">
+                                <textarea id="objectPropertyCreateValue" placeholder="<#LANG_NEWDASH_OBJ_ADD_NEW_PROP_VALUE#>" name="new_value" rows="6" class="md-textarea"></textarea>
+                            </div>
+                            <div class="md-field__hint">Начальное значение можно оставить пустым и задать позже из карточки свойства.</div>
                         </div>
                         <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
                         <input type="hidden" name="id" value="<#ID#>">
@@ -65,8 +96,8 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal"><#LANG_CANCEL#></button>
-                    <button type="submit" form="objectPropertyCreateForm" name="submit" value="1" class="btn btn-primary"><#LANG_ADD#></button>
+                    <button type="button" class="md-btn md-btn--secondary" data-bs-dismiss="modal"><#LANG_CANCEL#></button>
+                    <button type="submit" form="objectPropertyCreateForm" name="submit" value="1" class="md-btn md-btn--primary"><#LANG_ADD#></button>
                 </div>
             </div>
         </div>
@@ -74,7 +105,14 @@
 
     <div class="md-admin-record-list md-object-properties-list" id="proplist">
         [#begin PROPERTIES#]
-        <div class="md-object-property-item" data-md-object-property data-md-prop-full-name="[#FULL_NAME#]" data-search="[#FULL_NAME#] [#DESCRIPTION#] [#SOURCE_HTML#] [#ONCHANGE#]">
+        <div class="md-object-property-item"
+             data-md-object-property
+             data-md-prop-full-name="[#FULL_NAME#]"
+             data-md-prop-scope="[#if CLASS_ID!="0"#]class[#else#]object[#endif#]"
+             data-md-prop-has-history="[#if KEEP_HISTORY!="0"#]1[#else#]0[#endif#]"
+             data-md-prop-has-source="[#if SOURCE!=""#]1[#else#]0[#endif#]"
+             data-md-prop-has-onchange="[#if ONCHANGE!=""#]1[#else#]0[#endif#]"
+             data-search="[#FULL_NAME#] [#DESCRIPTION#] [#SOURCE_TEXT#] [#ONCHANGE#]">
             <article class="md-admin-record-card md-object-property-card [#if CLASS_ID!="0"#]md-object-property-card--class[#endif#]">
                 <div class="md-admin-record-card__main">
                     <div class="md-admin-record-card__content">
@@ -82,29 +120,26 @@
                             <span class="md-object-property-card__copy-pair">
                                 <button type="button" class="md-object-property-card__copy-trigger md-admin-record-card__class" data-md-copy-value="[#FULL_NAME#]" data-md-copy-toast="Скопировано: [#FULL_NAME#]">[#OBJECT_TITLE#]</button><span class="md-admin-record-card__separator">.</span><button type="button" class="md-object-property-card__copy-trigger md-object-property-card__property-name" data-md-copy-value="[#TITLE#]" data-md-copy-toast="Скопировано: [#TITLE#]">[#TITLE#]</button>
                             </span>
-                            [#if KEEP_HISTORY!="0"#]
-                            <button
-                                type="button"
-                                class="md-object-property-card__history"
-                                data-md-prop-history-open
-                                data-history-url="admin.php?action=objects&md=objects&view_mode=edit_objects&tab=properties&ajax=1&id=<#ID#>&op=property_history&property_id=[#ID#]"
-                                data-property-name="[#FULL_NAME#]"
-                                data-property-title="[#TITLE#]"
-                                data-property-description="[#DESCRIPTION#]"
-                                data-property-history="[#KEEP_HISTORY#]">
-                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                    <path d="M5 19.25h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                    <path d="M7.5 16V10.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                    <path d="M12 16V7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                    <path d="M16.5 16v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                                </svg>
-                            </button>
-                            [#endif#]
                         </div>
                         <div class="md-admin-record-card__badges">
-                            [#if KEEP_HISTORY != 0#]<span class="badge md-admin-status-badge">История: [#KEEP_HISTORY#] дней</span>[#endif#]
-                            [#if VALIDATION_TYPE != 0#]<span class="badge md-admin-status-badge">Валидация</span>[#endif#]
-                            [#if ONCHANGE != ''#]<span class="badge md-admin-status-badge">Метод: [#ONCHANGE#]</span>[#endif#]
+                            [#if CLASS_ID!="0"#]
+                            <span class="md-badge md-badge--outline" title="Свойство класса"><i class="ti ti-hierarchy-2" aria-hidden="true"></i>[#CLASS_TITLE#]</span>
+                            [#else#]
+                            <span class="md-badge md-badge--neutral" title="Локальное свойство объекта"><i class="ti ti-box" aria-hidden="true"></i>Объект</span>
+                            [#endif#]
+                            [#if KEEP_HISTORY != 0#]
+                            <span class="md-badge md-badge--info"><i class="ti ti-history" aria-hidden="true"></i>История: [#KEEP_HISTORY#] дн.</span>
+                            [#else#]
+                            <span class="md-badge md-badge--outline"><i class="ti ti-history" aria-hidden="true"></i>История выкл.</span>
+                            [#endif#]
+                            [#if VALIDATION_TYPE != 0#]<span class="md-badge md-badge--warning"><i class="ti ti-shield-check" aria-hidden="true"></i>Валидация</span>[#endif#]
+                            [#if ONCHANGE != ''#]
+                            [#if CLASS_ID!="0"#]
+                            <a class="md-badge md-badge--primary" href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=methods" title="Метод, который вызывается при изменении"><i class="ti ti-bolt" aria-hidden="true"></i>[#ONCHANGE#]</a>
+                            [#else#]
+                            <a class="md-badge md-badge--primary" href="?view_mode=<#VIEW_MODE#>&id=[#OBJECT_ID#]&tab=methods" title="Метод, который вызывается при изменении"><i class="ti ti-bolt" aria-hidden="true"></i>[#ONCHANGE#]</a>
+                            [#endif#]
+                            [#endif#]
                         </div>
                         [#if DESCRIPTION!=""#]<div class="md-object-property-card__description">[#DESCRIPTION#]</div>[#endif#]
                         [#if LINKED_MODULES!=""#]<div class="md-object-property-card__links">[#LINKED_MODULES#]</div>[#endif#]
@@ -118,19 +153,35 @@
                         <a href="<#ROOTHTML#>cms/images/[#VALUE#]" target="_blank" data-md-prop-image-link>[full size]</a>
                         [#endif#]
                         [#endif#]
-                        [#if DATA_TYPE="0"#]<pre class="md-admin-code-sample [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]" data-md-prop-display>[#if VALUE == ''#]Property is empty[#else#][#VALUE_HTML#][#endif#]</pre>[#endif#]
-                        [#if DATA_TYPE!="0" && DATA_TYPE!="5"#]<div class="md-admin-record-card__field [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]" data-md-prop-display>[#if VALUE == ''#]Property is empty[#else#][#VALUE_HTML#][#endif#]</div>[#endif#]
+                        [#if DATA_TYPE="0"#]<pre class="md-admin-code-sample [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]" data-md-prop-display>[#if VALUE == ''#]Значение не задано[#else#][#VALUE_HTML#][#endif#]</pre>[#endif#]
+                        [#if DATA_TYPE!="0" && DATA_TYPE!="5"#]<div class="md-admin-record-card__field [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]" data-md-prop-display>[#if VALUE == ''#]Значение не задано[#else#][#VALUE_HTML#][#endif#]</div>[#endif#]
                         <div class="md-object-property-card__source">
-                            [#if SOURCE!="" && VALUE != ''#]<span class="md-object-property-card__source-author" data-md-prop-source>Источник: [#SOURCE_HTML#]</span>[#endif#]
-                            [#if VALUE !=''#]<span class="md-object-property-card__source-time" data-md-prop-updated>[#UPDATED#]</span>[#endif#]
+                            <span class="md-object-property-card__source-author">
+                                <i class="ti ti-arrow-down-left" aria-hidden="true"></i>
+                                <span class="md-object-property-card__source-label">Меняет:</span>
+                                [#if SOURCE!=""#]
+                                <span data-md-prop-source>[#SOURCE_HTML#]</span>
+                                [#else#]
+                                <span data-md-prop-source class="is-empty">не указан</span>
+                                [#endif#]
+                            </span>
+                            <span class="md-object-property-card__source-time">
+                                <i class="ti ti-clock" aria-hidden="true"></i>
+                                <span class="md-object-property-card__source-label">Обновлено:</span>
+                                [#if UPDATED!=""#]
+                                <time data-md-prop-updated>[#UPDATED#]</time>
+                                [#else#]
+                                <span data-md-prop-updated class="is-empty">ещё не обновлялось</span>
+                                [#endif#]
+                            </span>
                         </div>
                     </div>
                     <div class="md-object-property-card__value-editor" data-md-prop-editor="[#ID#]" hidden>
                         <form action="?" method="post" class="md-object-property-card__value-form">
-                            <input type="text" name="value[#ID#]" value="[#VALUE_HTML#]" class="form-control">
-                            <div class="md-admin-form-actions">
-                                <input type="submit" name="submit" value="<#LANG_UPDATE#>" class="btn btn-primary btn-sm">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-md-prop-cancel="[#ID#]"><#LANG_CANCEL#></button>
+                            <input type="text" name="value[#ID#]" value="[#VALUE_HTML#]" class="md-input md-input--sm">
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <button type="submit" name="submit" value="<#LANG_UPDATE#>" class="md-btn md-btn--primary md-btn--sm"><#LANG_UPDATE#></button>
+                                <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-prop-cancel="[#ID#]"><#LANG_CANCEL#></button>
                                 <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
                                 <input type="hidden" name="id" value="<#ID#>">
                                 <input type="hidden" name="tab" value="<#TAB#>">
@@ -140,60 +191,89 @@
                     </div>
                 </div>
                 <div class="md-admin-record-card__actions">
-                    [#if CLASS_ID=="0"#]
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><button type="button" class="dropdown-item" data-md-prop-config-toggle="[#ID#]"><#LANG_EDIT#></button></li>
-                            <li><a class="dropdown-item text-danger" href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_prop=[#ID#]" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
+                    [#if KEEP_HISTORY!="0"#]
+                    <button
+                        type="button"
+                        class="md-btn md-btn--secondary md-btn--sm"
+                        data-md-prop-history-open
+                        data-history-url="admin.php?action=objects&md=objects&view_mode=edit_objects&tab=properties&ajax=1&id=<#ID#>&op=property_history&property_id=[#ID#]"
+                        data-property-name="[#FULL_NAME#]"
+                        data-property-title="[#TITLE#]"
+                        data-property-description="[#DESCRIPTION#]"
+                        data-property-history="[#KEEP_HISTORY#]">
+                        <i class="ti ti-history" aria-hidden="true"></i><span>История</span>
+                    </button>
+                    [#endif#]
+                    [#if CLASS_ID!="0"#]
+                    <a class="md-btn md-btn--secondary md-btn--sm" href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=properties">
+                        <i class="ti ti-hierarchy-2" aria-hidden="true"></i><span>В классе</span>
+                    </a>
+                    [#else#]
+                    <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-prop-config-toggle="[#ID#]">
+                        <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span>Настроить</span>
+                    </button>
+                    [#endif#]
+                    <div class="dropdown">
+                        <button type="button" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<#LANG_ACTIONS#>"><i class="ti ti-dots" aria-hidden="true"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end md-menu">
+                            [#if CLASS_ID=="0"#]
+                            <li><a class="dropdown-item" href="?view_mode=<#VIEW_MODE#>&id=[#OBJECT_ID#]&tab=methods"><i class="ti ti-braces" aria-hidden="true"></i>Методы объекта</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_prop=[#ID#]" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#></a></li>
+                            [#else#]
+                            <li><a class="dropdown-item" href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=properties"><i class="ti ti-hierarchy-2" aria-hidden="true"></i>Открыть свойство класса</a></li>
+                            <li><a class="dropdown-item" href="?view_mode=<#VIEW_MODE#>&id=[#OBJECT_ID#]&tab=methods"><i class="ti ti-braces" aria-hidden="true"></i>Методы объекта</a></li>
+                            [#endif#]
                         </ul>
                     </div>
-                    [#endif#]
                 </div>
             </article>
 
             [#if CLASS_ID=="0"#]
-            <section class="md-admin-section-card md-object-property-config" data-md-prop-config="[#ID#]" hidden>
-                <div class="md-admin-section-card__body">
-                    <form action="?" method="post" class="md-admin-form-grid">
-                        <div class="row g-3 align-items-start">
-                            <div class="col-lg-4">
-                                <label class="form-label"><#LANG_PROPERTY#></label>
-                                <input type="text" name="new_property" value="[#TITLE#]" class="form-control">
+            <section class="md-card md-object-property-config" data-md-prop-config="[#ID#]" hidden>
+                <div class="md-card__body">
+                    <form action="?" method="post" class="md-ui-form">
+                        <div class="md-ui-form-grid">
+                            <div class="md-field">
+                                <label class="md-field__label" for="propConfigName[#ID#]"><#LANG_PROPERTY#></label>
+                                <div class="md-field__control">
+                                    <input type="text" id="propConfigName[#ID#]" name="new_property" value="[#TITLE#]" class="md-input">
+                                </div>
                             </div>
-                            <div class="col-lg-4">
-                                <label class="form-label"><#LANG_DESCRIPTION#></label>
-                                <input type="text" name="new_description" value="[#DESCRIPTION#]" class="form-control">
+                            <div class="md-field">
+                                <label class="md-field__label" for="propConfigDescription[#ID#]"><#LANG_DESCRIPTION#></label>
+                                <div class="md-field__control">
+                                    <input type="text" id="propConfigDescription[#ID#]" name="new_description" value="[#DESCRIPTION#]" class="md-input">
+                                </div>
                             </div>
-                            <div class="col-lg-4">
-                                <label class="form-label"><#LANG_KEEP_HISTORY_DAYS#></label>
-                                <input type="text" name="new_history" value="[#KEEP_HISTORY#]" class="form-control">
+                            <div class="md-field">
+                                <label class="md-field__label" for="propConfigHistory[#ID#]"><#LANG_KEEP_HISTORY_DAYS#></label>
+                                <div class="md-field__control">
+                                    <input type="number" id="propConfigHistory[#ID#]" name="new_history" value="[#KEEP_HISTORY#]" min="0" class="md-input">
+                                </div>
+                            </div>
+                            <div class="md-field">
+                                <label class="md-field__label" for="propConfigOnChange[#ID#]"><#LANG_ONCHANGE_METHOD#></label>
+                                <div class="md-field__control">
+                                    <select name="onchange" id="propConfigOnChange[#ID#]" class="md-select">
+                                        <option value="[#if ONCHANGE != ""#][#ONCHANGE#][#endif#]" selected>[#if ONCHANGE != ""#][#ONCHANGE#][#else#]<#LANG_NO#>[#endif#]</option>
+                                        [#begin METHODS#]
+                                        <option value="[#TITLE#]">[#TITLE#]</option>
+                                        [#end METHODS#]
+                                        [#if ONCHANGE != ""#]<option value=""><#LANG_NO#></option>[#endif#]
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        <div class="row g-3 align-items-start">
-                            <div class="col-lg-4">
-                                <label class="form-label"><#LANG_ONCHANGE_METHOD#></label>
-                                <select name="onchange" class="form-control form-select">
-                                    <option value="[#if ONCHANGE != ""#][#ONCHANGE#][#endif#]" selected>[#if ONCHANGE != ""#][#ONCHANGE#][#else#]<#LANG_NO#>[#endif#]</option>
-                                    [#begin METHODS#]
-                                    <option value="[#TITLE#]">[#TITLE#]</option>
-                                    [#end METHODS#]
-                                    [#if ONCHANGE != ""#]<option value=""><#LANG_NO#></option>[#endif#]
-                                </select>
-                            </div>
-                            <div class="col-lg-8">
-                                <label class="form-label"><#LANG_VALUE#></label>
-                                <textarea name="new_value" rows="3" class="form-control md-admin-textarea">[#VALUE_HTML#]</textarea>
+                        <div class="md-field mt-3">
+                            <label class="md-field__label" for="propConfigValue[#ID#]"><#LANG_VALUE#></label>
+                            <div class="md-field__control">
+                                <textarea name="new_value" id="propConfigValue[#ID#]" rows="3" class="md-textarea">[#VALUE_HTML#]</textarea>
                             </div>
                         </div>
-                        <div class="md-admin-form-actions">
-                            <input type="submit" name="submit" value="<#LANG_EDIT#>" class="btn btn-primary btn-sm">
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><button type="button" class="dropdown-item" data-md-prop-config-toggle="[#ID#]"><#LANG_CANCEL#></button></li>
-                                </ul>
-                            </div>
+                        <div class="md-ui-form-actions">
+                            <button type="submit" name="submit" value="<#LANG_EDIT#>" class="md-btn md-btn--primary md-btn--sm"><#LANG_EDIT#></button>
+                            <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-prop-config-toggle="[#ID#]"><#LANG_CANCEL#></button>
                             <input type="hidden" name="prop_id" value="[#ID#]">
                             <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
                             <input type="hidden" name="id" value="<#ID#>">
@@ -206,6 +286,15 @@
             [#endif#]
         </div>
         [#end PROPERTIES#]
+    </div>
+
+    <div class="md-empty md-empty--compact" id="propertyEmpty" hidden>
+        <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+        <div class="md-empty__title">Ничего не найдено</div>
+        <p class="md-empty__text">Измените запрос или сбросьте фильтр.</p>
+        <div class="md-empty__actions">
+            <button type="button" class="md-btn md-btn--secondary md-btn--sm" id="propertyFilterReset">Сбросить фильтры</button>
+        </div>
     </div>
 </section>
 
@@ -263,9 +352,9 @@
                     </table>
                 </div>
                 <div class="md-object-history-pagination" id="mdObjectHistoryPagination" hidden>
-                    <button type="button" class="btn btn-light btn-sm" data-md-history-page-nav="prev">Назад</button>
+                    <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-history-page-nav="prev">Назад</button>
                     <div class="md-object-history-pagination__pages" id="mdObjectHistoryPaginationPages"></div>
-                    <button type="button" class="btn btn-light btn-sm" data-md-history-page-nav="next">Дальше</button>
+                    <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-history-page-nav="next">Дальше</button>
                 </div>
             </section>
             <section class="md-object-history-chart-card" data-md-history-panel="chart" hidden>
@@ -287,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var propertiesPage = document.querySelector('[data-md-object-properties-page]');
     var objectTitle = propertiesPage ? (propertiesPage.getAttribute('data-md-object-title') || '').trim() : '';
     var propertyCards = Array.prototype.slice.call(document.querySelectorAll('[data-md-object-property]'));
+    var propertyGroups = [];
     var propertyList = document.getElementById('proplist');
     var wsSubscribed = false;
 
@@ -329,23 +419,48 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.removeChild(tempInput);
     }
 
-    function buildPropertySection(modifier, items) {
+    function buildPropertySection(modifier, items, title, hint, icon) {
         var section = document.createElement('section');
+        var head = document.createElement('div');
+        var heading = document.createElement('div');
+        var titleText = document.createElement('span');
+        var count = document.createElement('span');
+        var hintEl = document.createElement('p');
         var list = document.createElement('div');
+
         section.className = 'md-object-properties-group ' + modifier;
+        section.__cards = items;
+        section.__total = items.length;
+
+        head.className = 'md-object-properties-group__head';
+        heading.className = 'md-object-properties-group__heading';
+        hintEl.className = 'md-object-properties-group__hint';
+
+        var iconEl = document.createElement('i');
+        iconEl.className = 'ti ' + icon;
+        iconEl.setAttribute('aria-hidden', 'true');
+        heading.appendChild(iconEl);
+
+        titleText.textContent = title;
+        heading.appendChild(titleText);
+
+        count.className = 'md-badge md-badge--outline';
+        count.textContent = String(items.length);
+        heading.appendChild(count);
+        section.__countEl = count;
+
+        hintEl.textContent = hint;
+
+        head.appendChild(heading);
+        head.appendChild(hintEl);
+        section.appendChild(head);
+
         list.className = 'md-object-properties-group__list';
-        section.appendChild(list);
         items.forEach(function (item) {
             list.appendChild(item);
         });
+        section.appendChild(list);
         return section;
-    }
-
-    function buildPropertyDivider() {
-        var divider = document.createElement('hr');
-        divider.className = 'md-object-properties-divider';
-        divider.setAttribute('aria-hidden', 'true');
-        return divider;
     }
 
     function escapeHtml(value) {
@@ -406,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var hasValue = textValue !== '';
 
         if (display) {
-            display.textContent = hasValue ? textValue : 'Property is empty';
+            display.textContent = hasValue ? textValue : 'Значение не задано';
             display.classList.toggle('is-empty', !hasValue);
         }
 
@@ -441,10 +556,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (source) {
-            source.innerHTML = 'Источник: <span>WS</span>';
+            source.innerHTML = 'WS';
+            source.classList.remove('is-empty');
         }
         if (updated) {
             updated.textContent = formatWsDate();
+            updated.classList.remove('is-empty');
         }
 
         flashPropertyUpdate(card);
@@ -474,13 +591,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
         propertyList.innerHTML = '';
         if (classCards.length) {
-            propertyList.appendChild(buildPropertySection('md-object-properties-group--class', classCards));
-        }
-        if (classCards.length && objectCards.length) {
-            propertyList.appendChild(buildPropertyDivider());
+            var classGroup = buildPropertySection(
+                'md-object-properties-group--class',
+                classCards,
+                'Свойства класса',
+                'Унаследованы от класса и доступны всем его объектам.',
+                'ti-hierarchy-2'
+            );
+            propertyGroups.push(classGroup);
+            propertyList.appendChild(classGroup);
         }
         if (objectCards.length) {
-            propertyList.appendChild(buildPropertySection('md-object-properties-group--object', objectCards));
+            var objectGroup = buildPropertySection(
+                'md-object-properties-group--object',
+                objectCards,
+                'Свойства объекта',
+                'Локальные свойства: их можно переименовать, удалить и настроить историю.',
+                'ti-box'
+            );
+            propertyGroups.push(objectGroup);
+            propertyList.appendChild(objectGroup);
         }
     }
 
@@ -490,16 +620,81 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    var filterSelect = document.getElementById('propertyFilter');
+    var emptyState = document.getElementById('propertyEmpty');
+    var resetButton = document.getElementById('propertyFilterReset');
+
+    function applyPropertyFilter() {
+        var term = filterInput ? filterInput.value.toLowerCase().trim() : '';
+        var kind = filterSelect ? filterSelect.value : '';
+        var anyVisible = false;
+
+        propertyCards.forEach(function (card) {
+            var haystack = (card.getAttribute('data-search') || '').toLowerCase();
+            var visible = !term || haystack.indexOf(term) !== -1;
+            var scope = card.getAttribute('data-md-prop-scope');
+            var hasHistory = card.getAttribute('data-md-prop-has-history') === '1';
+            var hasSource = card.getAttribute('data-md-prop-has-source') === '1';
+            var hasOnchange = card.getAttribute('data-md-prop-has-onchange') === '1';
+
+            if (visible && kind === 'class' && scope !== 'class') {
+                visible = false;
+            }
+            if (visible && kind === 'object' && scope !== 'object') {
+                visible = false;
+            }
+            if (visible && kind === 'history' && !hasHistory) {
+                visible = false;
+            }
+            if (visible && kind === 'source' && !hasSource) {
+                visible = false;
+            }
+            if (visible && kind === 'onchange' && !hasOnchange) {
+                visible = false;
+            }
+
+            card.hidden = !visible;
+            if (visible) {
+                anyVisible = true;
+            }
+        });
+
+        propertyGroups.forEach(function (group) {
+            var visibleCount = group.__cards.filter(function (card) {
+                return !card.hidden;
+            }).length;
+            group.hidden = visibleCount === 0;
+            group.__countEl.textContent = visibleCount === group.__total
+                ? String(group.__total)
+                : visibleCount + ' / ' + group.__total;
+        });
+
+        if (emptyState) {
+            emptyState.hidden = anyVisible;
+        }
+        if (propertyList) {
+            propertyList.hidden = !anyVisible;
+        }
+    }
+
     if (filterInput) {
-        filterInput.addEventListener('input', function () {
-            var term = filterInput.value.toLowerCase().trim();
-            propertyCards.forEach(function (card) {
-                var haystack = (card.getAttribute('data-search') || '').toLowerCase();
-                var visible = !term || haystack.indexOf(term) !== -1;
-                card.hidden = !visible;
-            });
+        filterInput.addEventListener('input', applyPropertyFilter);
+    }
+    if (filterSelect) {
+        filterSelect.addEventListener('change', applyPropertyFilter);
+    }
+    if (resetButton) {
+        resetButton.addEventListener('click', function () {
+            if (filterInput) {
+                filterInput.value = '';
+            }
+            if (filterSelect) {
+                filterSelect.value = '';
+            }
+            applyPropertyFilter();
         });
     }
+    applyPropertyFilter();
 
     document.querySelectorAll('[data-md-prop-edit]').forEach(function (button) {
         button.addEventListener('click', function () {

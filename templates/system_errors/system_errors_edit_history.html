@@ -1,16 +1,174 @@
-[#if HISTORY#]
-[#begin HISTORY#]
-<div class="panel panel-danger">
-	<div class="panel-heading">
-		<h3 class="panel-title">[#ADDED#] <i class="glyphicon glyphicon-arrow-right"></i> [#CODE#]</h3>
-	</div>
-	<div class="panel-body">
-		<pre>[#COMMENTS#]</pre>
-	</div>
-</div>
- [#end HISTORY#]
+<!--#
+ @version 0.3 (auto-set)
+#-->
+[#if HAS_ORIGIN="1" || HAS_CONTEXT="1"#]
+<section class="md-card md-errors-source-card" aria-labelledby="mdErrorSourceTitle">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Источник</div>
+            <h2 class="md-card__title" id="mdErrorSourceTitle"><i class="ti ti-map-pin" aria-hidden="true"></i>Откуда пришла ошибка</h2>
+            <p class="md-card__subtitle">Последнее срабатывание: модуль, файл и контекст запроса.</p>
+        </div>
+    </header>
+    <div class="md-card__body">
+        <div class="md-errors-source">
+            [#if HAS_ORIGIN="1"#]
+            <div class="md-errors-source__item">
+                <span class="md-errors-source__label">Компонент</span>
+                <strong>[#ORIGIN_MODULE#]</strong>
+            </div>
+            <div class="md-errors-source__item md-errors-source__item--wide">
+                <span class="md-errors-source__label">Файл</span>
+                <code>[#ORIGIN_FILE#][#if ORIGIN_LINE!="0"#]:[#ORIGIN_LINE#][#endif#]</code>
+            </div>
+            <div class="md-errors-source__item md-errors-source__item--wide">
+                <span class="md-errors-source__label">Вызов</span>
+                <code>[#ORIGIN_CALL#]</code>
+            </div>
+            [#endif#]
+            [#if CONTEXT_URL!=""#]
+            <div class="md-errors-source__item md-errors-source__item--wide">
+                <span class="md-errors-source__label">URL запроса</span>
+                <code>[#CONTEXT_URL#]</code>
+            </div>
+            [#endif#]
+            [#if CONTEXT_METHOD!=""#]
+            <div class="md-errors-source__item">
+                <span class="md-errors-source__label">Метод</span>
+                <strong>[#CONTEXT_METHOD#]</strong>
+            </div>
+            [#endif#]
+            [#if CONTEXT_IP!=""#]
+            <div class="md-errors-source__item">
+                <span class="md-errors-source__label">IP</span>
+                <strong>[#CONTEXT_IP#]</strong>
+            </div>
+            [#endif#]
+            [#if CONTEXT_REFERER!=""#]
+            <div class="md-errors-source__item md-errors-source__item--wide">
+                <span class="md-errors-source__label">Referer</span>
+                <code>[#CONTEXT_REFERER#]</code>
+            </div>
+            [#endif#]
+        </div>
+    </div>
+</section>
+[#endif#]
 
+[#if DETAILS!=""#]
+<section class="md-card" aria-labelledby="mdErrorDetailsTitle">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Контекст</div>
+            <h2 class="md-card__title" id="mdErrorDetailsTitle"><i class="ti ti-info-circle" aria-hidden="true"></i>Описание ошибки</h2>
+        </div>
+    </header>
+    <div class="md-card__body">
+        <div class="md-errors-details">[#DETAILS#]</div>
+    </div>
+</section>
+[#endif#]
 
-[#else HISTORY#]
-No data
-[#endif HISTORY#]
+<section class="md-card" aria-labelledby="mdErrorHistoryTitle">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Журнал</div>
+            <h2 class="md-card__title" id="mdErrorHistoryTitle"><i class="ti ti-history" aria-hidden="true"></i>История срабатываний</h2>
+            <p class="md-card__subtitle">
+                [#if HISTORY_TOTAL>100#]Показаны последние 100 из [#HISTORY_TOTAL#] записей.[#else#]Всего записей: [#HISTORY_TOTAL#].[#endif#]
+            </p>
+        </div>
+        <div class="md-card__actions">
+            <span class="md-badge md-badge--outline">[#EVENTS_LABEL#]</span>
+            [#if HISTORY#]
+            <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-md-errors-expand-all>
+                <i class="ti ti-chevrons-down" aria-hidden="true"></i>Развернуть
+            </button>
+            <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-md-errors-collapse-all>
+                <i class="ti ti-chevrons-up" aria-hidden="true"></i>Свернуть
+            </button>
+            [#endif#]
+        </div>
+    </header>
+    <div class="md-card__body">
+        [#if HISTORY#]
+        <div class="md-errors-history" data-md-errors-history>
+            [#begin HISTORY#]
+            <details class="md-errors-event"[#if OPEN="1"#] open[#endif#]>
+                <summary class="md-errors-event__summary">
+                    <span class="md-errors-event__date"><i class="ti ti-alert-triangle" aria-hidden="true"></i>[#ADDED#]</span>
+                    <span class="md-errors-event__message">[#COMMENTS_PREVIEW#]</span>
+                    [#if ORIGIN_MODULE!=""#]<span class="md-badge md-badge--outline md-errors-event__module">[#ORIGIN_MODULE#]</span>[#endif#]
+                    <i class="ti ti-chevron-down md-errors-event__chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="md-errors-event__body">
+                    [#if HAS_ORIGIN="1" || HAS_CONTEXT="1"#]
+                    <div class="md-errors-event__origin">
+                        [#if HAS_ORIGIN="1"#]
+                        <span><i class="ti ti-file-code" aria-hidden="true"></i><code>[#ORIGIN_FILE#][#if ORIGIN_LINE!="0"#]:[#ORIGIN_LINE#][#endif#]</code></span>
+                        [#endif#]
+                        [#if CONTEXT_METHOD!=""#]
+                        <span><i class="ti ti-world" aria-hidden="true"></i><strong>[#CONTEXT_METHOD#]</strong>[#if CONTEXT_URL!=""#]<code>[#CONTEXT_URL#]</code>[#endif#]</span>
+                        [#endif#]
+                        [#if CONTEXT_IP!=""#]
+                        <span><i class="ti ti-network" aria-hidden="true"></i>IP: <code>[#CONTEXT_IP#]</code></span>
+                        [#endif#]
+                    </div>
+                    [#endif#]
+
+                    [#if FRAMES#]
+                    <div class="md-errors-frames">
+                        <div class="md-errors-frames__title"><i class="ti ti-binary-tree" aria-hidden="true"></i>Стек вызовов <span>[#FRAMES_LABEL#]</span></div>
+                        <ol class="md-errors-frames__list">
+                            [#begin FRAMES#]
+                            <li class="md-errors-frame[#if INDEX="#0"#] is-origin[#endif#]">
+                                <span class="md-errors-frame__index">[#INDEX#]</span>
+                                <div class="md-errors-frame__content">
+                                    <div class="md-errors-frame__call"><code>[#CALL#]</code></div>
+                                    [#if FILE!=""#]
+                                    <div class="md-errors-frame__file"><i class="ti ti-file-code" aria-hidden="true"></i><span class="md-errors-frame__path">[#FILE_WBR#][#if LINE!="0"#]<span class="md-errors-frame__line">:[#LINE#]</span>[#endif#]</span>[#if EVAL!="0"#]<span class="md-errors-frame__eval">eval:[#EVAL#]</span>[#endif#]</div>
+                                    [#endif#]
+                                </div>
+                            </li>
+                            [#end FRAMES#]
+                        </ol>
+                        [#if FRAMES_REST#]
+                        <details class="md-errors-more">
+                            <summary>Показать ещё [#FRAMES_REST_LABEL#]</summary>
+                            <ol class="md-errors-frames__list">
+                                [#begin FRAMES_REST#]
+                                <li class="md-errors-frame">
+                                    <span class="md-errors-frame__index">[#INDEX#]</span>
+                                    <div class="md-errors-frame__content">
+                                        <div class="md-errors-frame__call"><code>[#CALL#]</code></div>
+                                        [#if FILE!=""#]
+                                        <div class="md-errors-frame__file"><i class="ti ti-file-code" aria-hidden="true"></i><span class="md-errors-frame__path">[#FILE_WBR#][#if LINE!="0"#]<span class="md-errors-frame__line">:[#LINE#]</span>[#endif#]</span>[#if EVAL!="0"#]<span class="md-errors-frame__eval">eval:[#EVAL#]</span>[#endif#]</div>
+                                        [#endif#]
+                                    </div>
+                                </li>
+                                [#end FRAMES_REST#]
+                            </ol>
+                        </details>
+                        [#endif#]
+                    </div>
+
+                    <details class="md-errors-raw">
+                        <summary>Технические детали</summary>
+                        <pre class="md-errors-event__raw">[#COMMENTS#]</pre>
+                    </details>
+                    [#else#]
+                    <pre class="md-errors-event__raw">[#COMMENTS#]</pre>
+                    [#endif#]
+                </div>
+            </details>
+            [#end HISTORY#]
+        </div>
+        [#else#]
+        <div class="md-empty md-empty--compact">
+            <span class="md-empty__icon"><i class="ti ti-history" aria-hidden="true"></i></span>
+            <div class="md-empty__title">Истории пока нет</div>
+            <p class="md-empty__text">Срабатывания этой ошибки появятся здесь после следующей регистрации.</p>
+        </div>
+        [#endif#]
+    </div>
+</section>

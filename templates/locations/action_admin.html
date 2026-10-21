@@ -1,57 +1,110 @@
 <!--#
- @version 0.1 (auto-set)
+ @version 0.2 (auto-set)
 #-->
 
- <!-- action usual -->
- <!-- table locations search -->
- [#if VIEW_MODE="search_locations" || VIEW_MODE=""#]
-  [#inc locations_search_admin.html#]
- [#endif VIEW_MODE#]
- <!-- / table locations search -->
- <!-- table locations edit -->
- [#if VIEW_MODE="edit_locations"#]
+<link rel="stylesheet" href="<#ROOTHTML#>templates/locations/locations.css?v=2026-10-21-1">
 
-<ul class="breadcrumb">
-    <li>
-        <a href="?"><#LANG_HOME#></a>
-    </li>
-    <span class="divider">/</span>
-    <li class="active">
-        [#if ID=""#]
-        <#LANG_NEW_RECORD#>
-        [#else#]
-        <#LANG_EDIT_RECORD#>
-        [#endif#]
-    </li>
-</ul>
+[#if VIEW_MODE="search_locations" || VIEW_MODE=""#]
+<div class="md-ui-page md-ui-page--stack md-locations-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-map-pin" aria-hidden="true"></i><#LANG_MODULE_LOCATIONS#></div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_LOCATIONS#></h1>
+            <p class="md-ui-hero__lede">Помещения и зоны: порядок в списке, room-объекты класса Rooms и связанная логика.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-map-pin" aria-hidden="true"></i>Помещений: <strong>[#LOCATIONS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-box" aria-hidden="true"></i>Других объектов: <strong>[#LOCATIONS_OBJECTS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-home" aria-hidden="true"></i>С room-объектом: <strong>[#LOCATIONS_WITH_ROOM_TOTAL#]</strong></span>
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=edit_locations" class="md-btn md-btn--primary">
+                <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label">Добавить помещение</span>
+            </a>
+        </div>
+    </header>
 
-[#if ID!=""#]
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-map-pin" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Помещения</span>
+            </div>
+            <div class="md-kpi__value">[#LOCATIONS_TOTAL#]</div>
+            <div class="md-kpi__meta">В списке расположений</div>
+        </div>
+        <div class="md-kpi md-kpi--success">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-home" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Room-объекты</span>
+            </div>
+            <div class="md-kpi__value">[#LOCATIONS_WITH_ROOM_TOTAL#]</div>
+            <div class="md-kpi__meta">Класс Rooms создан</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-box" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Объекты</span>
+            </div>
+            <div class="md-kpi__value">[#LOCATIONS_OBJECTS_TOTAL#]</div>
+            <div class="md-kpi__meta">Кроме room-объектов</div>
+        </div>
+        <div class="md-kpi md-kpi--neutral">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-box-off" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Без room-объекта</span>
+            </div>
+            <div class="md-kpi__value">[#LOCATIONS_WITHOUT_ROOM_TOTAL#]</div>
+            <div class="md-kpi__meta">Создадутся при открытии</div>
+        </div>
+    </div>
 
-<h3>[#TITLE#] (<#LANG_OBJECT#>: [#LINKED_OBJECT#])</h3>
+    [#inc locations_search_admin.html#]
+</div>
+[#endif VIEW_MODE#]
 
-<ul class="nav nav-tabs">
-    <li[#if TAB=""#] class="active"[#endif#]>
-    <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_GENERAL#></a>
-    </li>
-    <li[#if TAB="logic"#] class="active"[#endif#]>
-    <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=logic"><#LANG_DEVICES_LOGIC_ACTION#></a>
-    </li>
-</ul>
-&nbsp;
-[#endif ID#]
+[#if VIEW_MODE="edit_locations"#]
+<div class="md-ui-page md-ui-page--stack md-locations-page md-locations-edit">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-map-pin" aria-hidden="true"></i><#LANG_MODULE_LOCATIONS#></div>
+            <h1 class="md-ui-hero__title">[#if ID!=""#][#TITLE#][#else#]Новое помещение[#endif#]</h1>
+            <p class="md-ui-hero__lede">Название, приоритет в списке и room-объект класса Rooms.</p>
+            [#if ID!=""#]
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-box" aria-hidden="true"></i>Room-объект: <strong>[#if LINKED_OBJECT!=""#][#LINKED_OBJECT#][#else#]не создан[#endif#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-cube" aria-hidden="true"></i>Других объектов: <strong>[#OBJECTS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-sort-ascending" aria-hidden="true"></i>Приоритет: <strong>[#PRIORITY#]</strong></span>
+                [#if TAB=="logic"#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-code" aria-hidden="true"></i>Метод: <strong>[#if METHOD!=""#][#METHOD#][#else#]—[#endif#]</strong></span>
+                [#endif#]
+            </div>
+            [#endif#]
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_locations" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+        </div>
+    </header>
 
-   [#if TAB=""#]
-   [#inc locations_edit.html#]
-   [#endif TAB#]
+    [#if ID!=""#]
+    <nav class="md-tabs" aria-label="Помещение">
+        <a class="nav-link [#if TAB==""#]active[#endif#]" [#if TAB==""#]aria-current="page"[#endif#] href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=">
+            <i class="ti ti-info-circle" aria-hidden="true"></i><span>Основное</span>
+        </a>
+        <a class="nav-link [#if TAB=="logic"#]active[#endif#]" [#if TAB=="logic"#]aria-current="page"[#endif#] href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=logic">
+            <i class="ti ti-code" aria-hidden="true"></i><span>Логика</span>
+        </a>
+    </nav>
+    [#endif ID#]
 
-[#if TAB="logic"#]
-[#inc locations_logic.html#]
-[#endif TAB#]
+    [#if TAB==""#]
+    [#inc locations_edit.html#]
+    [#endif TAB#]
 
- [#endif VIEW_MODE#]
- <!-- / table locations edit -->
- <!-- table locations view --> 
- [#if VIEW_MODE="view_locations"#]
-   [#inc locations_view.html#]
- [#endif VIEW_MODE#]
- <!-- / table locations view -->
+    [#if TAB=="logic"#]
+    [#inc locations_logic.html#]
+    [#endif TAB#]
+</div>
+[#endif VIEW_MODE#]

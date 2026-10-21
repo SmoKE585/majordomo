@@ -1,134 +1,124 @@
-<!--#
- @version 0.2 (auto-set)
-#-->
-<!-- Table 'history' edit -->
-<p align=center>
- <a href="?">&lt;&lt;&lt; <#LANG_BACK#></a>
-</p>
-<table border=0 align=center cellpadding=3>
-<form action="?" method="post" enctype="multipart/form-data" name="frmEdit">
 [#if OK#]
-<tr>
- <td colspan=2 align=center>
-  <font color="green"><#LANG_DATA_SAVED#></font>
- </td>
-</tr>
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
 [#endif OK#]
+
 [#if ERR#]
-<tr>
- <td colspan=2 align=center>
-  <font color="red"><#LANG_FILLOUT_REQURED#></font>
- </td>
-</tr>
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_FILLOUT_REQURED#></div></div>
+</div>
 [#endif ERR#]
-[#if ID=""#]
-<tr>
- <td colspan=2 align=center><b></b><#LANG_NEW_RECORD#></b></td>
-</tr>
-[#endif ID#]
-<!-- ADDED (datetime) -->
-<tr>
- <td align=right>
- [#if ERR_ADDED#]<b><font color="red">[#endif#]
- <#LANG_ADDED#>:
- </td>
- <td>
- <input type="date" name="added_date" value="[#ADDED_DATE#]" maxlength=10 size=12>
- &nbsp;&nbsp;&nbsp;
- <select name="added_hours">
- [#begin ADDED_HOURS#]
- <option[#if SELECTED#] selected[#endif SELECTED#]>[#TITLE#]
- [#end ADDED_HOURS#]
- </select>
- :
- <select name="added_minutes">
- [#begin ADDED_MINUTES#]
- <option[#if SELECTED#] selected[#endif SELECTED#]>[#TITLE#]
- [#end ADDED_MINUTES#]
- </select>
- </td>
-</tr>
-<!-- OBJECT_ID (int) -->
-[#if !IS_SET_OBJECT_ID#]
-<tr>
- <td align=right>
- [#if ERR_OBJECT_ID#]<b><font color="red">[#endif#]
- <#LANG_OBJECT#>:
- </td>
- <td>
-  <input type="text" name="object_id" value="[#OBJECT_ID#]">
- </td>
-</tr>
-[#endif IS_SET_OBJECT_ID#]
-<!-- METHOD_ID (int) -->
-[#if !IS_SET_METHOD_ID#]
-<tr>
- <td align=right>
- [#if ERR_METHOD_ID#]<b><font color="red">[#endif#]
- <#LANG_METHOD#>:
- </td>
- <td>
-  <input type="text" name="method_id" value="[#METHOD_ID#]">
- </td>
-</tr>
-[#endif IS_SET_METHOD_ID#]
-<!-- VALUE_ID (int) -->
-[#if !IS_SET_VALUE_ID#]
-<tr>
- <td align=right>
- [#if ERR_VALUE_ID#]<b><font color="red">[#endif#]
- <#LANG_VALUE#>:
- </td>
- <td>
-  <input type="text" name="value_id" value="[#VALUE_ID#]">
- </td>
-</tr>
-[#endif IS_SET_VALUE_ID#]
-<!-- OLD_VALUE (varchar) -->
-<tr>
- <td align=right>
- [#if ERR_OLD_VALUE#]<b><font color="red">[#endif#]
- <#LANG_OLD_VALUE#>:
- </td>
- <td>
-  <input type="text" name="old_value" value="[#OLD_VALUE#]">
- </td>
-</tr>
-<!-- NEW_VALUE (varchar) -->
-<tr>
- <td align=right>
- [#if ERR_NEW_VALUE#]<b><font color="red">[#endif#]
- <#LANG_NEW_VALUE#>:
- </td>
- <td>
-  <input type="text" name="new_value" value="[#NEW_VALUE#]">
- </td>
-</tr>
-<!-- DETAILS (text) -->
-<tr>
- <td valign=top align=right>
- [#if ERR_DETAILS#]<b><font color="red">[#endif#]
- <#LANG_DETAILS#>
- :
- </td>
- <td valign=top>
- <textarea name="details" rows=12 cols=100>[#DETAILS#]</textarea>
- </td>
-</tr>
-<tr>
- <td colspan=2 align=center>
- [#if ID!=""#]
- <input type="submit" name="subm" value="<#LANG_SUBMIT#>">
- [#else ID#]
- <input type="submit" name="subm" value="<#LANG_ADD#>">
- [#endif ID#]
- &nbsp;
- <a href="?"><#LANG_CANCEL#></a>
- </td>
-</tr>
-<input type="hidden" name="id" value="<#ID#>">
-<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-<input type="hidden" name="mode" value="update">
-</form>
-</table>
+
+<section class="md-card">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Запись журнала</div>
+            <h2 class="md-card__title"><i class="ti ti-history" aria-hidden="true"></i>[#if ID!=""#]<#LANG_EDIT#>[#else#]<#LANG_NEW_RECORD#>[#endif#]</h2>
+            <p class="md-card__subtitle">Дата, объект, метод, значения и подробности события.</p>
+        </div>
+    </header>
+    <div class="md-card__body">
+        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-ui-form">
+            <div class="md-ui-form-stack">
+                <div class="md-ui-form-grid">
+                    <div class="md-field">
+                        <label class="md-field__label" for="historyAddedDate"><#LANG_ADDED#></label>
+                        <div class="md-field__control">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <input type="date" id="historyAddedDate" name="added_date" value="[#ADDED_DATE#]" maxlength="10" class="md-input w-auto">
+                                <select name="added_hours" class="md-select md-select--sm w-auto" aria-label="Часы">
+                                    [#begin ADDED_HOURS#]
+                                    <option[#if SELECTED#] selected[#endif SELECTED#]>[#TITLE#]</option>
+                                    [#end ADDED_HOURS#]
+                                </select>
+                                <span aria-hidden="true">:</span>
+                                <select name="added_minutes" class="md-select md-select--sm w-auto" aria-label="Минуты">
+                                    [#begin ADDED_MINUTES#]
+                                    <option[#if SELECTED#] selected[#endif SELECTED#]>[#TITLE#]</option>
+                                    [#end ADDED_MINUTES#]
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    [#if !IS_SET_OBJECT_ID#]
+                    <div class="md-field">
+                        <label class="md-field__label" for="historyObjectId"><#LANG_OBJECT#></label>
+                        <div class="md-field__control">
+                            <input type="number" id="historyObjectId" name="object_id" value="[#OBJECT_ID#]" class="md-input" inputmode="numeric">
+                        </div>
+                        <div class="md-field__hint">ID объекта из таблицы объектов.</div>
+                    </div>
+                    [#endif IS_SET_OBJECT_ID#]
+                </div>
+
+                [#if !IS_SET_METHOD_ID#]
+                <div class="md-ui-form-grid">
+                    <div class="md-field">
+                        <label class="md-field__label" for="historyMethodId"><#LANG_METHOD#></label>
+                        <div class="md-field__control">
+                            <input type="number" id="historyMethodId" name="method_id" value="[#METHOD_ID#]" class="md-input" inputmode="numeric">
+                        </div>
+                    </div>
+
+                    [#if !IS_SET_VALUE_ID#]
+                    <div class="md-field">
+                        <label class="md-field__label" for="historyValueId"><#LANG_VALUE#></label>
+                        <div class="md-field__control">
+                            <input type="number" id="historyValueId" name="value_id" value="[#VALUE_ID#]" class="md-input" inputmode="numeric">
+                        </div>
+                    </div>
+                    [#endif IS_SET_VALUE_ID#]
+                </div>
+                [#endif IS_SET_METHOD_ID#]
+
+                <div class="md-ui-form-grid">
+                    <div class="md-field">
+                        <label class="md-field__label" for="historyOldValue"><#LANG_OLD_VALUE#></label>
+                        <div class="md-field__control">
+                            <input type="text" id="historyOldValue" name="old_value" value="[#OLD_VALUE#]" class="md-input">
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="historyNewValue"><#LANG_NEW_VALUE#></label>
+                        <div class="md-field__control">
+                            <input type="text" id="historyNewValue" name="new_value" value="[#NEW_VALUE#]" class="md-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md-field">
+                    <label class="md-field__label" for="historyDetails"><#LANG_DETAILS#></label>
+                    <div class="md-field__control">
+                        <textarea name="details" id="historyDetails" rows="12" class="md-textarea font-monospace">[#DETAILS#]</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md-ui-form-actions">
+                <button class="md-btn md-btn--primary" type="submit" name="subm">
+                    <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">[#if ID!=""#]<#LANG_SUBMIT#>[#else#]<#LANG_ADD#>[#endif#]</span>
+                </button>
+                <a class="md-btn md-btn--secondary" href="?view_mode=search_history"><#LANG_CANCEL#></a>
+                [#if ID!=""#]
+                <div class="dropdown ms-auto">
+                    <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                        <li><a class="dropdown-item text-danger" href="?view_mode=delete_history&id=[#ID#]" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#></a></li>
+                    </ul>
+                </div>
+                [#endif ID#]
+            </div>
+
+            <input type="hidden" name="id" value="<#ID#>">
+            <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
+            <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
+            <input type="hidden" name="mode" value="update">
+        </form>
+    </div>
+</section>

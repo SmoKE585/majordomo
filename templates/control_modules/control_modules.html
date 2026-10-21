@@ -1,92 +1,179 @@
+<!--#
+ @version 0.3 (redesigned admin UI)
+#-->
 
-
-[#if MODE="edit"#]
- [#inc module_edit.html#]
-[#endif MODE#]
+<link rel="stylesheet" href="<#ROOTHTML#>templates/control_modules/control_modules.css?v=2026-10-21-1">
+<script src="<#ROOTHTML#>templates/control_modules/control_modules.js?v=2026-10-21-1" defer></script>
 
 [#if MODE=""#]
-<div class="row" style="margin-right: -15px;margin-left: -15px;" id="moduleList">
-	[#begin MODULES#]
-	<div class="col-lg-4 col-md-6 col-sm-12 col-xs-12 text-right" style="margin-bottom: 15px;">
-        <div class="panel panel-default" [#if HIDDEN=="1"#]style="opacity: 0.2;"[#endif DAT#]>
-			<div class="panel-heading">
-				<div style="float: left"><h3 class="panel-title"><a href="?action=<#ACTION#>&mode=edit&name=[#FILENAME#]">[#TITLE#]</a></h3></div>
-				<div style="float: right">
-					<a href="?action=<#ACTION#>&mode=edit&name=[#FILENAME#]" class="btn btn-success btn-xs" onclick="return partLoad(this.href);"><i class="glyphicon glyphicon-pencil"></i></a>
-					<a href="?mode=edit&mode2=show&name=[#FILENAME#]" class="btn btn-[#if HIDDEN!="1"#]danger[#else#]warning[#endif#] btn-xs" onclick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-eye-close"></i> [#if HIDDEN="1"#]<#LANG_SHOW#>[#else#]<#LANG_HIDE#>[#endif#]</a>
-				</div>
-				<div class="clearfix"></div>
-			</div>
-			<div class="panel-collapse out in" style="height: auto;">
-				<div class="panel-body">
-					<div class="media">
-						<a class="pull-left" href="?action=<#ACTION#>&mode=edit&name=[#FILENAME#]">
-							<img class="media-object" onError="this.src='<#ROOTHTML#>img/logo.png'" style="width: 48px;height: 48px;" src="<#ROOTHTML#>img/modules/[#FILENAME#].png">
-						</a>
-						<div class="media-body">
-							<p class="media-heading" style="margin: 0px;">[#FILENAME#]</p>
-							<p style="margin: 0px;">[#CATEGORY#]</p>
-							<p style="margin: 0px;font-size: 1.2rem;color: gray;">[#if DAT!=""#][#DAT#][#else DAT#]not installed[#endif DAT#]</p>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-    </div>
-	[#end MODULES#]
-</div>
-
-<!---
-
-<table class="table">
-    <thead>
-        <tr>
-            <th><b>File</th>
-            <th><b>
-                    <#LANG_TITLE#>
-            </th>
-            <th><b>
-                    <#LANG_CATEGORY#>
-            </th>
-            <th><b>Installed</th>
-            <th>&nbsp;</th>
-            <th>&nbsp;</th>
-        </tr>
-    </thead>
-    [#begin MODULES#]
-    [#if (FILENAME!="control_access") && (FILENAME!="control_modules")#]
-    <tr>
-        <td><b><a href="?action=<#ACTION#>&mode=edit&name=[#FILENAME#]">[#FILENAME#]</a></b>
-        </td>
-        <td>[#TITLE#]
-            [#if "<#LOCAL_PROJECT#>"=="1"#]
-                [<a href="http://au.local/wiki/index.php/Doc/mdl[#FILENAME#]" target=_blank>details</a>]
-                [#endif#]
-
-        </td>
-        <td>[#if CATEGORY!=""#][#CATEGORY#][#else CATEGORY#]Unfiled[#endif CATEGORY#]</td>
-        <td>[#if DAT!=""#][#DAT#][#else DAT#]not installed[#endif DAT#]</td>
-        <td>
-            <a href="?action=<#ACTION#>&mode=edit&name=[#FILENAME#]" class="btn btn-default">
-                <#LANG_EDIT#>
+<div class="md-ui-page md-ui-page--stack md-modules-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-layout-grid" aria-hidden="true"></i><#LANG_MODULE_MODULES#></div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_MODULES#></h1>
+            <p class="md-ui-hero__lede">Установленные модули MajorDoMo: категории, видимость в меню, дата установки и быстрые действия.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-box" aria-hidden="true"></i>Всего: <strong>[#MODULES_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-eye" aria-hidden="true"></i>В меню: <strong>[#MODULES_VISIBLE#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-eye-off" aria-hidden="true"></i>Скрыто: <strong>[#MODULES_HIDDEN#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-category" aria-hidden="true"></i>Категорий: <strong>[#MODULES_CATEGORIES#]</strong></span>
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="/panel/market.html" class="md-btn md-btn--primary">
+                <i class="ti ti-shopping-cart" aria-hidden="true"></i><span class="md-btn__label">Маркет дополнений</span>
             </a>
-            <a href="?mode=edit&mode2=show&name=[#FILENAME#]" class="btn btn-default">[#if HIDDEN="1"#]<font color='red'>
-                    <#LANG_SHOW#>
-                </font>[#else#]<#LANG_HIDE#>[#endif#]</a>
-        </td>
-        <td>[#if IGNORED="1"#]<a href="?mode=edit&mode2=unignore&name=[#FILENAME#]">
-                <font color='red'>
-                    <#LANG_NOT_UPDATING#>
-                </font>
-            </a>[#else#]
-            <a href="?mode=edit&mode2=ignore&name=[#FILENAME#]">
-                <#LANG_UPDATING#>
-            </a>[#endif#]
-        </td>
-    </tr>
-    [#endif#]
-    [#end MODULES#]
-</table>
---->
+            <a href="/panel/control_modules.html" class="md-btn md-btn--secondary">
+                <i class="ti ti-refresh" aria-hidden="true"></i><span class="md-btn__label">Обновить</span>
+            </a>
+        </div>
+    </header>
 
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-layout-grid" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Всего модулей</span>
+            </div>
+            <div class="md-kpi__value">[#MODULES_TOTAL#]</div>
+            <div class="md-kpi__meta">Установлено в системе</div>
+        </div>
+        <div class="md-kpi md-kpi--success">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-eye" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Видимые в меню</span>
+            </div>
+            <div class="md-kpi__value">[#MODULES_VISIBLE#]</div>
+            <div class="md-kpi__meta">Доступны из навигации</div>
+        </div>
+        <div class="md-kpi md-kpi--neutral">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-eye-off" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Скрытые</span>
+            </div>
+            <div class="md-kpi__value">[#MODULES_HIDDEN#]</div>
+            <div class="md-kpi__meta">Служебные и неактивные</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-category" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Категории</span>
+            </div>
+            <div class="md-kpi__value">[#MODULES_CATEGORIES#]</div>
+            <div class="md-kpi__meta">Группы модулей</div>
+        </div>
+    </div>
+
+    [#if MODULES#]
+    <div class="md-modules-toolbar">
+        <div class="md-modules-toolbar__search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" data-md-module-search placeholder="Поиск по названию, имени или категории" aria-label="Поиск модулей" autocomplete="off">
+        </div>
+        <select class="md-table__filter" data-md-module-category aria-label="Фильтр по категории">
+            <option value="">Все категории</option>
+            [#begin CATEGORIES#]
+            <option value="[#KEY#]">[#TITLE_HTML#] ([#TOTAL#])</option>
+            [#end CATEGORIES#]
+        </select>
+        <select class="md-table__filter" data-md-module-state aria-label="Фильтр по видимости">
+            <option value="">Все модули</option>
+            <option value="visible">Видимые в меню</option>
+            <option value="hidden">Скрытые</option>
+        </select>
+        <div class="md-modules-toolbar__count" data-md-module-count>Модулей: [#MODULES_TOTAL#]</div>
+    </div>
+
+    <div class="md-modules-grid" data-md-module-grid>
+        [#begin MODULES#]
+        <article class="md-module-card [#if IS_HIDDEN="1"#]is-hidden[#endif#]"
+                 data-md-module-item
+                 data-category="[#CATEGORY_KEY#]"
+                 data-state="[#HIDDEN_STATE#]"
+                 data-search="[#SEARCH_TEXT_HTML#]">
+            <div class="md-module-card__main">
+                <span class="md-module-card__icon[#if HAS_ICON="1"#] has-image[#endif#]" aria-hidden="true">
+                    <i class="ti ti-puzzle"></i>
+                    [#if HAS_ICON="1"#]
+                    <img src="[#ICON_URL#]" alt="" loading="lazy" data-md-module-icon>
+                    [#endif#]
+                </span>
+                <div class="md-module-card__body">
+                    <div class="md-module-card__top">
+                        <a href="?mode=edit&amp;name=[#FILENAME_URL#]" class="md-module-card__title">[#TITLE_HTML#]</a>
+                        [#if IS_HIDDEN="1"#]
+                        <span class="md-badge"><i class="ti ti-eye-off" aria-hidden="true"></i>Скрыт</span>
+                        [#else#]
+                        <span class="md-badge md-badge--success"><i class="ti ti-eye" aria-hidden="true"></i>В меню</span>
+                        [#endif#]
+                    </div>
+                    <div class="md-module-card__meta">
+                        <code>[#NAME_HTML#]</code>
+                        <span class="md-badge md-badge--outline"><i class="ti ti-category" aria-hidden="true"></i>[#CATEGORY_HTML#]</span>
+                        [#if ADDED_FORMATTED!=""#]
+                        <span class="md-module-card__date" title="Установлен"><i class="ti ti-calendar" aria-hidden="true"></i>[#ADDED_FORMATTED#]</span>
+                        [#endif#]
+                    </div>
+                </div>
+            </div>
+            <div class="md-module-card__actions">
+                <a href="?mode=edit&amp;name=[#FILENAME_URL#]" class="md-btn md-btn--secondary md-btn--sm">
+                    <i class="ti ti-settings" aria-hidden="true"></i><span class="md-btn__label">Открыть</span>
+                </a>
+                <div class="dropdown">
+                    <button type="button" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Действия с модулем [#TITLE_HTML#]">
+                        <i class="ti ti-dots" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                        <li>
+                            <a class="dropdown-item" href="?mode=edit&amp;name=[#FILENAME_URL#]">
+                                <i class="ti ti-settings" aria-hidden="true"></i>Параметры модуля
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="?mode=edit&amp;mode2=download&amp;name=[#FILENAME_URL#]">
+                                <i class="ti ti-package-export" aria-hidden="true"></i>Скачать пакет
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            [#if IS_HIDDEN="1"#]
+                            <a class="dropdown-item" href="?mode=edit&amp;mode2=show&amp;name=[#FILENAME_URL#]" data-md-confirm="Показать модуль «[#TITLE_HTML#]» в меню?">
+                                <i class="ti ti-eye" aria-hidden="true"></i>Показать в меню
+                            </a>
+                            [#else#]
+                            <a class="dropdown-item text-danger" href="?mode=edit&amp;mode2=show&amp;name=[#FILENAME_URL#]" data-md-confirm="Скрыть модуль «[#TITLE_HTML#]» из меню?">
+                                <i class="ti ti-eye-off" aria-hidden="true"></i>Скрыть из меню
+                            </a>
+                            [#endif#]
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </article>
+        [#end MODULES#]
+    </div>
+
+    <div class="md-empty md-modules-empty" data-md-module-empty hidden>
+        <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+        <div class="md-empty__title">Модули не найдены</div>
+        <p class="md-empty__text">Измените запрос, категорию или фильтр видимости.</p>
+    </div>
+    [#else MODULES#]
+    <div class="md-empty md-modules-empty">
+        <span class="md-empty__icon"><i class="ti ti-puzzle-off" aria-hidden="true"></i></span>
+        <div class="md-empty__title">Модулей пока нет</div>
+        <p class="md-empty__text">Установите первый модуль из маркета дополнений или вручную.</p>
+        <div class="md-empty__actions">
+            <a href="/panel/market.html" class="md-btn md-btn--primary md-btn--sm">
+                <i class="ti ti-shopping-cart" aria-hidden="true"></i>Открыть маркет
+            </a>
+        </div>
+    </div>
+    [#endif MODULES#]
+</div>
+[#endif MODE#]
+
+[#if MODE="edit"#]
+[#inc module_edit.html#]
 [#endif MODE#]

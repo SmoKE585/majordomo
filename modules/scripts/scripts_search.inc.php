@@ -57,11 +57,20 @@ if ($res[0]['ID']) {
         if (!$res[$i]['CATEGORY']) {
             $res[$i]['CATEGORY'] = LANG_OTHER;
         }
+        $res[$i]['SEARCH_TEXT'] = htmlspecialchars(
+            $res[$i]['TITLE'] . ' ' . $res[$i]['DESCRIPTION'] . ' ' . $res[$i]['CATEGORY'],
+            ENT_QUOTES,
+            'UTF-8'
+        );
         $res[$i]['DESCRIPTION'] = nl2br(htmlspecialchars($res[$i]['DESCRIPTION']));
 
         $executed_tm = strtotime($res[$i]['EXECUTED']);
         if ($executed_tm > 0) {
             $res[$i]['EXECUTED_PASSED'] = getPassedText($executed_tm);
+        }
+        $updated_tm = strtotime($res[$i]['UPDATED']);
+        if ($updated_tm > 0) {
+            $res[$i]['UPDATED_PASSED'] = getPassedText($updated_tm);
         }
 
         if ($res[$i]['CATEGORY'] != $old_category) {
@@ -92,3 +101,23 @@ if ($recently_updated[0]['ID']) {
     }
     $out['RECENTLY_UPDATED'] = $recently_updated;
 }
+
+$out['CATEGORIES'] = SQLSelect("SELECT ID, TITLE FROM script_categories ORDER BY TITLE");
+
+if (!isset($out['RESULT_TOTAL'])) {
+    $out['RESULT_TOTAL'] = 0;
+}
+if (!isset($out['TOTAL_CATEGORIES'])) {
+    $out['TOTAL_CATEGORIES'] = 0;
+}
+
+$scripts_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts");
+$out['TOTAL_SCRIPTS'] = isset($scripts_total['TOTAL']) ? (int)$scripts_total['TOTAL'] : 0;
+$categories_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM script_categories");
+$out['TOTAL_CATEGORIES_ALL'] = isset($categories_total['TOTAL']) ? (int)$categories_total['TOTAL'] : 0;
+$scheduled_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE RUN_PERIODICALLY=1");
+$out['TOTAL_SCHEDULED'] = isset($scheduled_total['TOTAL']) ? (int)$scheduled_total['TOTAL'] : 0;
+$executed_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE EXECUTED IS NOT NULL AND EXECUTED<>'' AND EXECUTED<>'0000-00-00 00:00:00'");
+$out['TOTAL_EXECUTED'] = isset($executed_total['TOTAL']) ? (int)$executed_total['TOTAL'] : 0;
+$uncategorized_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE CATEGORY_ID=0 OR CATEGORY_ID IS NULL");
+$out['TOTAL_UNCATEGORIZED'] = isset($uncategorized_total['TOTAL']) ? (int)$uncategorized_total['TOTAL'] : 0;

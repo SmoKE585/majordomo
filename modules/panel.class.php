@@ -169,7 +169,31 @@ class panel extends module
 
             include_once(DIR_MODULES . "control_access/control_access.class.php");
             $acc = new control_access();
-            if (!$acc->checkAccess($this->action, 1)) {
+
+            $requestedAction = isset($this->action) && is_scalar($this->action) ? trim((string)$this->action) : '';
+            $requestedModuleValue = gr('md');
+            $requestedModule = is_scalar($requestedModuleValue) ? trim((string)$requestedModuleValue) : '';
+            $moduleMissing = false;
+            if (isset($this->action) && !is_scalar($this->action)) {
+                $moduleMissing = true;
+            }
+            if (isset($_REQUEST['md']) && !is_scalar($_REQUEST['md'])) {
+                $moduleMissing = true;
+            }
+            if ($requestedAction !== '' && !mdj_admin_module_exists($requestedAction)) {
+                $moduleMissing = true;
+            }
+            if ($requestedModule !== '' && $requestedModule !== 'panel' && !mdj_admin_module_exists($requestedModule)) {
+                $moduleMissing = true;
+            }
+
+            if ($moduleMissing) {
+                http_response_code(404);
+                $out['NOT_FOUND'] = 1;
+                $out['NOT_FOUND_PATH'] = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '';
+                $out['ACTION'] = '';
+                $this->action = '';
+            } elseif (!$acc->checkAccess($this->action, 1)) {
                 $this->redirect("?");
             }
 
@@ -188,6 +212,38 @@ class panel extends module
                           `PRIORITY`, `TITLE`";
 
             $modules = SQLSelect($sqlQuery);
+
+            $sidebarIcons = array(
+                'panel' => 'ti-home',
+                'objects' => 'ti-box-seam',
+                'classes' => 'ti-hierarchy',
+                'scripts' => 'ti-code',
+                'settings' => 'ti-adjustments-horizontal',
+                'locations' => 'ti-map-pin',
+                'users' => 'ti-users',
+                'market' => 'ti-shopping-bag',
+                'saverestore' => 'ti-repeat',
+                'xray' => 'ti-activity',
+                'system_errors' => 'ti-alert-triangle',
+                'actions_log' => 'ti-history',
+                'events' => 'ti-bell',
+                'control_modules' => 'ti-layout-grid',
+                'control_access' => 'ti-shield-lock',
+                'master' => 'ti-home-cog',
+                'methods' => 'ti-braces',
+                'properties' => 'ti-list-check',
+                'history' => 'ti-history',
+                'pvalues' => 'ti-chart-bar',
+                'jobs' => 'ti-calendar-check',
+                'linkedobject' => 'ti-link',
+                'mqtt' => 'ti-broadcast',
+                'pinghosts' => 'ti-server',
+                'duration_input' => 'ti-hourglass',
+                'blockly_code' => 'ti-puzzle',
+                'shoutbox' => 'ti-messages',
+                'ui_kit' => 'ti-palette'
+            );
+
             $old_cat = 'some_never_should_be_category_name';
             $modulesCnt = count($modules);
 
@@ -249,6 +305,9 @@ class panel extends module
                 } else {
                     $modules[$i]['ICON_SM'] = ROOTHTML . 'img/modules/default.png';
                 }
+                if (isset($sidebarIcons[$modules[$i]['NAME']])) {
+                    $modules[$i]['ICON_BI'] = $sidebarIcons[$modules[$i]['NAME']];
+                }
             }
             $modules[$last_allow]['LAST_IN_CATEGORY'] = 1;
             $out["SUB_MODULES"] = $modules;
@@ -284,6 +343,19 @@ class panel extends module
             foreach ($system_errors_detected as $body) {
                 $out['SYSTEM_ERRORS'][] = array('BODY' => $body);
             }
+        }
+
+        if (!empty($out['NOT_FOUND'])) {
+            require_once(ROOT . 'lib/ui/MDJUI.php');
+            $out['TITLE'] = 'Страница не найдена | ' . PROJECT_TITLE;
+            $out['NOT_FOUND_HTML'] = MDJUI::emptyState(array(
+                'icon' => 'error-404',
+                'title' => 'Страница не найдена',
+                'text' => 'Такого раздела нет или он был удалён. Проверьте ссылку или вернитесь в панель управления.',
+                'action' => MDJUI::button('На главную', array('href' => rtrim(ROOTHTML, '/') . '/panel/', 'icon' => 'home'))
+                    . MDJUI::button('К классам', array('href' => rtrim(ROOTHTML, '/') . '/panel/classes.html', 'variant' => 'secondary', 'icon' => 'hierarchy')),
+                'class' => 'md-error-state',
+            ));
         }
 
         $this->data = $out;
@@ -353,3 +425,4 @@ class panel extends module
 
 // --------------------------------------------------------------------
 }
+

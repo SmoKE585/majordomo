@@ -3,21 +3,37 @@
      data-scripts-edit-mode="[#if ID!=""#]edit[#else#]new[#endif#]"
      data-scripts-breadcrumb-edit="<#LANG_EDIT_RECORD#>"
      data-scripts-breadcrumb-new="<#LANG_NEW_RECORD#>">
- <div class="md-admin-module-list__toolbar md-admin-module-list__toolbar--embedded">
-  <div class="md-related-module-toolbar__stats">
-   <div class="md-related-module-toolbar__stat"><span><#LANG_MODULE_SCRIPTS#></span><strong>[#if ID!=""#][#TITLE#][#else#]<#LANG_ADD_NEW_SCRIPT#>[#endif#]</strong></div>
+ <header class="md-ui-hero">
+  <div>
+   <div class="md-ui-hero__eyebrow"><i class="ti ti-code" aria-hidden="true"></i><#LANG_MODULE_SCRIPTS#></div>
+   <h1 class="md-ui-hero__title">[#if ID!=""#][#TITLE#][#else#]<#LANG_ADD_NEW_SCRIPT#>[#endif#]</h1>
+   <p class="md-ui-hero__lede">[#if ID!=""#]Код сценария, расписание и параметры запуска.[#else#]Задайте название и категорию — код можно добавить после сохранения.[#endif#]</p>
+   <div class="md-ui-hero__meta">
+    <span class="md-ui-hero__meta-item"><i class="ti ti-code" aria-hidden="true"></i>PHP / Python</span>
+    [#if RUN_PERIODICALLY=="1"#]<span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>По расписанию: <strong>[#RUN_TIME#]</strong></span>[#endif#]
+    [#if UPDATED_PASSED!=""#]<span class="md-ui-hero__meta-item"><i class="ti ti-history" aria-hidden="true"></i>Обновлён: <strong>[#UPDATED_PASSED#]</strong></span>[#endif#]
+   </div>
   </div>
-  <div class="md-scripts-toolbar__actions">
-   <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
+  <div class="md-ui-hero__actions">
+   <a href="?data_source=<#DATA_SOURCE#>" class="md-btn md-btn--secondary">
+    <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+   </a>
   </div>
- </div>
- <div class="md-scripts-card md-scripts-edit-card">
+ </header>
+ <div class="md-card md-scripts-edit-card">
+  <div class="md-card__body">
  <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" id="frmEdit" class="md-scripts-form">
   [#if OK#]
-   <div class="alert alert-success" id="alert_msg" data-scripts-auto-hide><#LANG_DATA_SAVED#></div>
+   <div class="md-alert md-alert--success" role="status" id="alert_msg" data-scripts-auto-hide>
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+   </div>
   [#endif OK#]
   [#if ERR#]
-   <div class="alert alert-danger" id="alert_msg" data-scripts-auto-hide><#LANG_FILLOUT_REQURED#></div>
+   <div class="md-alert md-alert--danger" role="alert" id="alert_msg" data-scripts-auto-hide>
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_FILLOUT_REQURED#></div></div>
+   </div>
    <div class="md-scripts-code-error md-code-editor__error" id="error_noty" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]" data-scripts-error-line="[#ERR_LINE#]" data-scripts-error-text="[#ERRORS#]" data-scripts-error-up="[#SETTINGS_CODEEDITOR_UPTOLINE#]" data-scripts-error-enabled="[#SETTINGS_CODEEDITOR_SHOWERROR#]" data-scripts-error-settings="[#SETTINGS_CODEEDITOR_TURNONSETTINGS#]">
     <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
     <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
@@ -29,13 +45,13 @@
 
   <div class="md-scripts-form__grid">
    <label class="md-scripts-label" for="script-title"><#LANG_TITLE#>: <span class="md-scripts-required">*</span></label>
-   <input type="text" id="script-title" class="form-control [#if ERR_TITLE#]alert-danger[#endif#]" name="title" value="[#TITLE#]" required="true">
+   <input type="text" id="script-title" class="md-input [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required="true">
   </div>
 
   <div class="md-scripts-form__grid">
    <label class="md-scripts-label" for="script-category"><#LANG_CATEGORY#></label>
-   <select name="category_id" id="script-category" class="form-control">
-    <option value="0"></option>
+   <select name="category_id" id="script-category" class="md-select">
+    <option value="0">Без категории</option>
     [#begin CATEGORIES#]
     <option value="[#ID#]" [#if ID="<#CATEGORY_ID#>"#] selected[#endif#]>[#TITLE#]</option>
     [#end CATEGORIES#]
@@ -44,7 +60,7 @@
 
   <div class="md-scripts-form__grid">
    <label class="md-scripts-label" for="description"><#LANG_DESCRIPTION#></label>
-   <textarea name="description" id="description" rows="3" cols="100" class="form-control">[#DESCRIPTION#]</textarea>
+   <textarea name="description" id="description" rows="3" cols="100" class="md-textarea">[#DESCRIPTION#]</textarea>
   </div>
 
   <div class="md-scripts-form__grid">
@@ -82,19 +98,36 @@
           data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
       <div class="md-code-editor__toolbar" data-code-editor-toolbar>
        <label class="md-code-editor__mode-switch" data-mode="[#if CODE_EDITOR_MODE="python"#]python[#else#]php[#endif#]">
-        <input type="checkbox" data-code-editor-mode-toggle [#if CODE_EDITOR_MODE="python"#]checked[#endif#] aria-label="Code editor mode">
+        <input type="checkbox" data-code-editor-mode-toggle [#if CODE_EDITOR_MODE="python"#]checked[#endif#] aria-label="Режим редактора: PHP или Python">
         <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--php">PHP</span>
         <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--python">Python</span>
         <input type="hidden" name="code_editor_mode" value="[#if CODE_EDITOR_MODE="python"#]python[#else#]php[#endif#]" data-code-editor-mode-select>
        </label>
-       <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><span class="md-code-editor__action-content"><i class="bi bi-floppy" aria-hidden="true"></i><span><#LANG_SAVE#></span></span></button>
-       <button type="button" class="btn btn-outline-primary btn-sm" data-scripts-run-drawer-open><span class="md-code-editor__action-content"><i class="bi bi-play-circle" aria-hidden="true"></i><span><#LANG_RUN_SCRIPT_BTN#></span></span></button>
-       [#if CODE_EDITOR_VALIDATE="1"#]
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
-       [#endif CODE_EDITOR_VALIDATE#]
-       <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
-       <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
-       <span class="md-code-editor__status" data-code-editor-status></span>
+       <span class="md-code-editor__toolbar-divider" aria-hidden="true"></span>
+       <div class="md-code-editor__toolbar-group">
+        <button type="button" class="md-code-editor__action" data-code-editor-action="save" title="Сохранить версию (Ctrl+S)" aria-label="Сохранить версию">
+         <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_SUBMIT#></span>
+        </button>
+        <button type="button" class="md-code-editor__action md-code-editor__action--primary" data-scripts-run-drawer-open title="Выполнить текущий код" aria-label="Выполнить текущий код">
+         <i class="ti ti-player-play" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_RUN_SCRIPT_BTN#></span>
+        </button>
+        [#if CODE_EDITOR_VALIDATE="1"#]
+         <button type="button" class="md-code-editor__action" data-code-editor-action="validate" title="Проверить код (Ctrl+E)" aria-label="Проверить код">
+          <i class="ti ti-bug" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></span>
+         </button>
+        [#endif CODE_EDITOR_VALIDATE#]
+        <button type="button" class="md-code-editor__action" data-code-editor-action="restore" title="История версий (Ctrl+R)" aria-label="История версий">
+         <i class="ti ti-history" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_CODEEDITOR_RESTORE#></span>
+        </button>
+       </div>
+       <div class="md-code-editor__toolbar-spacer"></div>
+       <span class="md-code-editor__status" data-code-editor-status aria-live="polite"></span>
+       <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="search" title="Найти (Ctrl+F)" aria-label="Найти">
+        <i class="ti ti-search" aria-hidden="true"></i>
+       </button>
+       <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="fullscreen" title="Полный экран (F11)" aria-label="Полный экран">
+        <i class="ti ti-maximize" aria-hidden="true"></i>
+       </button>
       </div>
 
       [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS!=""#]
@@ -169,13 +202,13 @@
      <div id="periocidally" class="md-scripts-schedule [#if RUN_PERIODICALLY!="1"#]is-collapsed[#endif#]" data-scripts-schedule-panel>
       <div class="md-scripts-schedule__time">
        <span><#LANG_RUN_TIME#>:</span>
-       <select name="run_hours" class="form-control md-scripts-time-select">
+       <select name="run_hours" class="md-select md-scripts-time-select">
         [#begin HOURS#]
         <option value="[#TITLE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
         [#end HOURS#]
        </select>
        <span>:</span>
-       <select name="run_minutes" class="form-control md-scripts-time-select">
+       <select name="run_minutes" class="md-select md-scripts-time-select">
         [#begin MINUTES#]
         <option value="[#TITLE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
         [#end MINUTES#]
@@ -194,15 +227,15 @@
 
   <div class="md-scripts-actions">
    [#if ID!=""#]
-    <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_SUBMIT#>"><#LANG_SUBMIT#></button>
+    <button class="md-btn md-btn--primary" type="submit" name="subm" value="<#LANG_SUBMIT#>"><i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label"><#LANG_SUBMIT#></span></button>
    [#else ID#]
-    <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_ADD#>"><#LANG_ADD#></button>
+    <button class="md-btn md-btn--primary" type="submit" name="subm" value="<#LANG_ADD#>"><i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD#></span></button>
    [#endif ID#]
-   <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_CANCEL#></a>
+   <a href="?data_source=<#DATA_SOURCE#>" class="md-btn md-btn--secondary"><#LANG_CANCEL#></a>
    [#if ID!=""#]
-    <div class="btn-group">
-     <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-     <ul class="dropdown-menu dropdown-menu-end">
+    <div class="dropdown ms-auto">
+     <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false"><span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+     <ul class="dropdown-menu dropdown-menu-end md-menu">
       <li><a class="dropdown-item" href="?id=<#ID#>&view_mode=clone" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_MAKE_COPY#></a></li>
       <li><a class="dropdown-item" href="?ids[]=<#ID#>&view_mode=multiple"><#LANG_EXPORT#></a></li>
       <li><hr class="dropdown-divider"></li>
@@ -253,8 +286,9 @@
   </div>
  </div>
  <div class="md-scripts-run-drawer__footer" data-scripts-run-drawer-footer hidden>
-  <button type="button" class="btn btn-primary" data-scripts-run-submit><#LANG_RUN_SCRIPT_BTN#></button>
-  <button type="button" class="btn btn-outline-secondary" data-md-drawer-close><#LANG_CLOSE#></button>
+  <button type="button" class="md-btn md-btn--primary" data-scripts-run-submit><i class="ti ti-player-play" aria-hidden="true"></i><span class="md-btn__label"><#LANG_RUN_SCRIPT_BTN#></span></button>
+  <button type="button" class="md-btn md-btn--secondary" data-md-drawer-close><#LANG_CLOSE#></button>
+ </div>
  </div>
  </div>
 </div>

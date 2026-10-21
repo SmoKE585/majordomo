@@ -1,128 +1,111 @@
 <!--#
- @version 0.3 (auto-set)
+ @version 0.4 (auto-set)
 #-->
-<!-- Table 'locations' edit -->
-
-<form action="?" method="post" enctype="multipart/form-data" name="frmEdit"  class="form">
 [#if OK#]
-    <div class="alert alert-success"><#LANG_DATA_SAVED#></font></div>
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
 [#endif OK#]
+
 [#if ERR#]
-<div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body">
+        <div class="md-alert__title">Не удалось сохранить помещение</div>
+        <div class="md-alert__text">[#if ERR_TITLE#]Укажите название помещения.[#else#]Проверьте заполнение формы.[#endif#]</div>
+    </div>
+</div>
 [#endif ERR#]
 
-<div class="form-group ">
-        <label class="control-label" for="inputTitle"><#LANG_TITLE#>:<font color="red">*</font></label>
-        <input type="text"  class="form-control [#if ERR_TITLE#]alert-danger[#endif#]"  name="title" value="[#TITLE#]" required="true">
-</div>
+<form action="?" method="post" name="frmEdit" class="md-ui-form">
+    <div class="md-ui-form-stack">
+        <section class="md-card" aria-labelledby="mdLocationMainTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Расположение</div>
+                    <h2 class="md-card__title" id="mdLocationMainTitle"><i class="ti ti-map-pin" aria-hidden="true"></i>Основное</h2>
+                    <p class="md-card__subtitle">Название помещения и порядок в списке.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-ui-form-grid">
+                    <div class="md-field [#if ERR_TITLE#]is-invalid[#endif#]">
+                        <label class="md-field__label" for="mdLocationTitle"><#LANG_TITLE#><span class="md-field__req" aria-hidden="true">*</span></label>
+                        <div class="md-field__control">
+                            <input type="text" id="mdLocationTitle" class="md-input [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required maxlength="255" autocomplete="off">
+                        </div>
+                        [#if ERR_TITLE#]
+                        <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Укажите название помещения.</span></div>
+                        [#else#]
+                        <div class="md-field__hint">Например, «Кухня», «Гостиная» или «Офис».</div>
+                        [#endif#]
+                    </div>
 
-    <div class="form-group ">
-        <label class="control-label" for="inputPriority"><#LANG_PRIORITY#>:</label>
-        <input type="text"  class="form-control"  name="priority" value="[#PRIORITY#]">
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLocationPriority"><#LANG_PRIORITY#></label>
+                        <div class="md-field__control">
+                            <input type="number" id="mdLocationPriority" class="md-input" name="priority" value="[#PRIORITY#]" step="1" inputmode="numeric">
+                        </div>
+                        <div class="md-field__hint">Чем больше значение, тем выше помещение в списке. Кнопки ↑/↓ в списке пересчитывают порядок.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="md-card" aria-labelledby="mdLocationRoomTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Связь</div>
+                    <h2 class="md-card__title" id="mdLocationRoomTitle"><i class="ti ti-home" aria-hidden="true"></i>Room-объект</h2>
+                    <p class="md-card__subtitle">Объект класса Rooms, с которым связано помещение.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                [#if LINKED_OBJECT!=""#]
+                <div class="md-locations-room">
+                    <span class="md-locations-room__icon"><i class="ti ti-home" aria-hidden="true"></i></span>
+                    <div class="md-locations-room__body">
+                        <strong>[#LINKED_OBJECT#]</strong>
+                        <span>Других объектов: <b>[#OBJECTS_TOTAL#]</b></span>
+                    </div>
+                    <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-global-search="[#LINKED_OBJECT#]">
+                        <i class="ti ti-search" aria-hidden="true"></i><span class="md-btn__label">Найти объект</span>
+                    </button>
+                </div>
+                <div class="md-field__hint">Room-объект создаётся автоматически. Его методы доступны на вкладке «Логика».</div>
+                [#else#]
+                <div class="md-alert md-alert--info" role="status">
+                    <i class="ti ti-info-circle md-alert__icon" aria-hidden="true"></i>
+                    <div class="md-alert__body">
+                        <div class="md-alert__title">Room-объект будет создан автоматически</div>
+                        <div class="md-alert__text">После сохранения помещения появится объект класса Rooms с методами для логики.</div>
+                    </div>
+                </div>
+                [#endif#]
+            </div>
+        </section>
     </div>
 
-    [#begin PROPERTIES#]
-    <div class="form-group">
-        <label>
-            [#DESCRIPTION#]:
-            [#if CONFIG_HELP!=""#]<#LANG_HCB#>[#CONFIG_HELP#]<#LANG_HCE#>[#endif#]
-        </label>
-        <div>
-            [#if CONFIG_TYPE="readonly"#]
-            [#VALUE#]
-            [#endif#]
-            [#if CONFIG_TYPE="rgb"#]
-            <script src='<#ROOTHTML#>3rdparty/spectrum/spectrum.min.js'></script>
-            <link rel='stylesheet' href='<#ROOTHTML#>3rdparty/spectrum/spectrum.min.css' />
-            <input type="text" value="[#VALUE#]" name="[#NAME#]_value" id="[#NAME#]_value" class="form-control colorpicker">
-            <script>
-                $("#[#NAME#]_value").spectrum({
-                    preferredFormat: "hex",
-                    showInput: true,
-                    chooseText: "OK",
-                    cancelText: "<#LANG_CANCEL#>"
-                });
-            </script>
-            [#endif#]
-            [#if CONFIG_TYPE="duration"#]
-            <input type="text" value="[#VALUE#]" id="[#NAME#]_value" name="[#NAME#]_value" class="form-control">
-            [#module name="duration_input" input_id="<#PROPERTIES.NAME#>_value"#]
-            [#endif#]
-
-            [#if CONFIG_TYPE="num" || CONFIG_TYPE="text"#]
-            <input type="text" value="[#VALUE#]" name="[#NAME#]_value" class="form-control">
-            [#endif#]
-            [#if CONFIG_TYPE="yesno"#]
-            <input type="radio" value="1" name="[#NAME#]_value" [#if VALUE="1"#] checked[#endif#]> <#LANG_YES#>
-            <input type="radio" value="0" name="[#NAME#]_value" [#if VALUE!="1"#] checked[#endif#]> <#LANG_NO#>
-            [#endif#]
-
-            [#if CONFIG_TYPE="html"#]
-            <textarea name="[#NAME#]_value" id="data" rows="5" cols="50" class="form-control">[#VALUE#]</textarea>
-            [#module name="blockly_code" code_field="data" action="" type="html"#]
-
-            [#endif#]
-
-            [#if CONFIG_TYPE="select"#]
-            <select name="[#NAME#]_value" class="form-control">
-                <option value=""></option>
-                [#begin OPTIONS#]
-                <option value="[#VALUE#]"[#if VALUE="<#PROPERTIES.VALUE#>"#] selected[#endif#]>[#TITLE#]</option>
-                [#end OPTIONS#]
-            </select>
-            [#endif#]
-
-            [#if CONFIG_TYPE="multi_select"#]
-            [#begin OPTIONS#]
-            <input type="checkbox" name="<#PROPERTIES.NAME#>_value[]" value="[#VALUE#]"[#if SELECTED#] checked[#endif#]> [#TITLE#]<br/>
-            [#end OPTIONS#]
-            </select>
-            [#endif#]
-
-            [#if CONFIG_TYPE="style_image"#]
-            <div id="style_image_set_[#NAME#]">
-                [#if VALUE!=""#]
-                <img src="[#VALUE#]" id="style_image_preview">                [#endif#]
-            </div>
-            <input type="hidden" name="[#NAME#]_value" id="[#NAME#]_value" value="[#VALUE#]">
-            <script type="text/javascript">
-                function setStyleImage_[#NAME#](url) {
-                    $('#[#NAME#]_value').val(url);
-                    if (url!='') {
-                        $('#style_image_set_[#NAME#]').html('<img src="'+url+'"/>');
-                    } else {
-                        $('#style_image_set_[#NAME#]').html('');
-                    }
-                    return false;
-                }
-            </script>
-            [#begin FOLDERS#]
-            <a href="#" onclick="$('.style_images').hide();$('#style_[#TITLE#]').show();return false;">[#TITLE#]</a>
-            [#end FOLDERS#]
-            [#begin FOLDERS#]
-            <div id="style_[#TITLE#]" class="style_images" style="display:none">
-                [#begin STYLES#]                [#end STYLES#]
-            </div>
-            [#end FOLDERS#]
-            [#endif#]
+    <div class="md-ui-form-actions md-locations-form-actions">
+        <button class="md-btn md-btn--primary" type="submit" name="subm">
+            <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">[#if ID!=""#]<#LANG_SUBMIT#>[#else#]<#LANG_ADD#>[#endif#]</span>
+        </button>
+        <a href="?view_mode=search_locations" class="md-btn md-btn--secondary"><#LANG_CANCEL#></a>
+        [#if ID!=""#]
+        <div class="dropdown ms-auto">
+            <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end md-menu">
+                <li><a class="dropdown-item text-danger" href="?view_mode=delete_locations&id=[#ID#]" data-md-confirm="Удалить помещение [#TITLE#]?"><i class="ti ti-trash" aria-hidden="true"></i>Удалить помещение</a></li>
+            </ul>
         </div>
-
+        [#endif#]
     </div>
-    [#end PROPERTIES#]
 
-<div class="form-group">
- [#if ID!=""#]
- <input type="submit" name="subm" class="btn btn-default btn-primary"  value="<#LANG_UPDATE#>">
- [#else ID#]
- <input type="submit" name="subm" class="btn btn-default btn-primary"  value="<#LANG_ADD#>">
- [#endif ID#]
- &nbsp;
- <a href="?" class="btn btn-default" ><#LANG_CANCEL#></a>
-
-</div>
-<input type="hidden" name="id" value="<#ID#>">
-<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-<input type="hidden" name="mode" value="update">
+    <input type="hidden" name="id" value="[#ID#]">
+    <input type="hidden" name="view_mode" value="[#VIEW_MODE#]">
+    <input type="hidden" name="edit_mode" value="[#EDIT_MODE#]">
+    <input type="hidden" name="mode" value="update">
 </form>
-

@@ -1,0 +1,514 @@
+/*
+ * System errors module: grouped error list, history and settings.
+ * Loaded only from templates/system_errors/action_admin.html.
+ */
+
+body.md-admin-shell .md-errors-page .md-errors-cell__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-code {
+  display: block;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-code code {
+  padding: 0;
+  color: var(--md-ui-muted);
+  background: transparent;
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-origin {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 360px;
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-origin i {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-origin span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-cell__meta {
+  margin-top: 4px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-hint-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-hint-line i {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-hint-line span {
+  min-width: 0;
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-col-main {
+  min-width: 300px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-col-history {
+  min-width: 190px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-col-updated {
+  min-width: 150px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-col-keep {
+  min-width: 80px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-col-actions {
+  min-width: 110px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-history-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-history-cell small {
+  color: var(--md-ui-muted);
+  font-size: 11px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-keep-form {
+  display: inline-flex;
+  margin: 0;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-table-wrap .md-table__scroll {
+  contain: paint;
+}
+
+/* History page */
+
+body.md-admin-shell .md-errors-page .md-errors-source {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-source__item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-source__item--wide {
+  grid-column: 1 / -1;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-source__label {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-source__item strong {
+  color: var(--md-ui-text);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-source__item code {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 7px;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 6px;
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-details {
+  max-height: 260px;
+  padding: 12px 14px;
+  overflow: auto;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-size: var(--md-ui-fs-sm);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event {
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  overflow: hidden;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  color: var(--md-ui-text-soft);
+  cursor: pointer;
+  list-style: none;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__summary::-webkit-details-marker {
+  display: none;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__summary:hover {
+  background: var(--md-ui-surface-2);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__date {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__date i {
+  color: var(--md-ui-danger);
+  font-size: 13px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__message {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__module {
+  flex: 0 0 auto;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__chevron {
+  flex: 0 0 auto;
+  color: var(--md-ui-muted);
+  font-size: 14px;
+  transition: transform var(--md-ui-transition);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event[open] .md-errors-event__chevron {
+  transform: rotate(180deg);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--md-ui-surface-2);
+  border-top: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__origin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__origin > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__origin i {
+  font-size: 13px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__origin code {
+  padding: 0;
+  color: var(--md-ui-text-soft);
+  background: transparent;
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frames {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frames__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 600;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frames__title span {
+  color: var(--md-ui-muted);
+  font-weight: 400;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frames__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame {
+  display: flex;
+  gap: 9px;
+  padding: 8px 10px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame.is-origin {
+  background: var(--md-ui-danger-soft);
+  border-color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame__index {
+  flex: 0 0 auto;
+  min-width: 26px;
+  color: var(--md-ui-muted);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame__content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame__call code {
+  padding: 0;
+  color: var(--md-ui-text-soft);
+  background: transparent;
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame__file {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 3px;
+  color: var(--md-ui-muted);
+  font-size: 11px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame__path {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame__line {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-frame__eval {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-3);
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-more {
+  margin-top: 2px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-more > summary {
+  color: var(--md-ui-primary);
+  font-size: var(--md-ui-fs-xs);
+  cursor: pointer;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-more[open] > summary {
+  margin-bottom: 8px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-raw {
+  margin-top: 2px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-raw > summary {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  cursor: pointer;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-raw[open] > summary {
+  margin-bottom: 8px;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-event__raw {
+  max-height: 320px;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-errors-page .md-errors-form-actions {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  box-shadow: var(--md-ui-shadow-xs);
+}
+
+@media (max-width: 767.98px) {
+  body.md-admin-shell .md-errors-page .md-card__head {
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-errors-page .md-card__actions {
+    width: 100%;
+    margin-top: 8px;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-col-history,
+  body.md-admin-shell .md-errors-page .md-errors-col-updated,
+  body.md-admin-shell .md-errors-page .md-errors-col-keep {
+    display: none;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-table-wrap .md-table {
+    table-layout: fixed;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-col-main {
+    min-width: 0;
+    width: auto;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-col-actions {
+    width: 104px;
+    min-width: 104px;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-origin {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-origin span {
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-code code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .md-errors-page .md-errors-source {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-event__summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-event__message {
+    flex-basis: 100%;
+    white-space: normal;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-event__module {
+    margin-left: 0;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-form-actions .md-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-form-actions .dropdown {
+    flex: 1 1 100%;
+  }
+
+  body.md-admin-shell .md-errors-page .md-errors-form-actions .dropdown .md-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

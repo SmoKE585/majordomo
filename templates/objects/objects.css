@@ -1,0 +1,221 @@
+/*
+ * Objects module: property cards and object-method editor.
+ * Loaded only from templates/objects/action_admin.html.
+ */
+
+.md-object-properties-group {
+  gap: 10px;
+}
+
+.md-object-properties-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 4px 2px 0;
+}
+
+.md-object-properties-group__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--md-ui-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.md-object-properties-group__heading i {
+  color: var(--md-ui-muted);
+  font-size: 15px;
+}
+
+.md-object-properties-group__hint {
+  margin: 2px 0 0;
+  color: var(--md-ui-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.md-object-properties-group__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.md-object-property-card__source {
+  margin-top: 4px;
+  font-size: 12px;
+  gap: 4px 14px;
+}
+
+.md-object-property-card__source-time {
+  color: var(--md-ui-muted);
+}
+
+.md-object-properties-page .md-object-property-card__value {
+  padding: 0;
+}
+
+.md-object-property-card__value .md-admin-code-sample {
+  padding: 8px 10px;
+  line-height: 20px;
+}
+
+.md-object-property-card__source-label {
+  color: var(--md-ui-muted);
+  font-weight: 500;
+}
+
+.md-object-property-card__source .is-empty {
+  color: var(--md-ui-muted);
+  font-style: italic;
+}
+
+.md-object-property-card__source i {
+  color: var(--md-ui-muted);
+  font-size: 13px;
+}
+
+.md-object-properties-group[hidden],
+.md-object-properties-list[hidden] {
+  display: none;
+}
+
+.md-method-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 11px 14px;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-primary-soft);
+  border: 1px solid var(--md-ui-primary);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-method-context__main {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.md-method-context__eyebrow {
+  color: var(--md-ui-primary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.md-method-context__title {
+  display: block;
+  margin-top: 1px;
+  color: var(--md-ui-text);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.md-method-context__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.md-object-method-editor {
+  gap: 10px;
+}
+
+.md-method-bottom-row {
+  --bs-gutter-x: 8px;
+  --bs-gutter-y: 10px;
+}
+
+.md-object-method-editor > .row > [class*="col-"] {
+  display: flex;
+}
+
+.md-object-method-editor > .row .md-card {
+  flex: 1 1 auto;
+}
+
+pre.md-parent-method-code {
+  max-height: 320px;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-family: var(--md-ui-font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.md-parent-method-card__summary {
+  margin: -4px 0 10px;
+  color: var(--md-ui-muted);
+  font-size: 12px;
+}
+
+.md-object-properties-page .md-object-property-card > .md-admin-record-card__actions {
+  align-self: start;
+  align-items: flex-start;
+  margin-top: 4px;
+}
+
+@media (min-width: 1200px) {
+  .md-object-properties-page .md-object-property-card {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 320px) auto !important;
+    gap: 12px;
+    align-items: start;
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .md-object-properties-page .md-object-property-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .md-object-property-card .md-admin-record-card__main,
+  .md-object-property-card .md-admin-record-card__meta,
+  .md-object-property-card .md-admin-record-card__actions {
+    width: 100%;
+  }
+
+  .md-object-property-card__value,
+  .md-object-property-card__value-editor {
+    max-width: none;
+    margin-left: 0;
+  }
+
+  .md-object-property-card .md-admin-record-card__actions {
+    justify-content: flex-end;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .md-object-properties-group__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .md-object-property-card__source {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .md-method-context {
+    align-items: flex-start;
+  }
+}

@@ -88,8 +88,8 @@
    }
    for($i=0;$i<$total;$i++) {
     $res[$i]=$details_by_id[$res[$i]['ID']];
-    $tmp=explode(' ', $res[$i]['ADDED']);
-    $res[$i]['ADDED']=fromDBDate($tmp[0])." ".$tmp[1];
+    $added=(string)$res[$i]['ADDED'];
+    $res[$i]['ADDED']=$added!=='' ? date('d.m.Y H:i:s', strtotime($added)) : '';
    }
    $out['RESULT']=$res;
   }

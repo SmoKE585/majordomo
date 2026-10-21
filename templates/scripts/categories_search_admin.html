@@ -1,44 +1,77 @@
-<div class="md-scripts-card md-scripts-card--panel">
- <div class="md-scripts-toolbar">
-  <div class="md-related-module-toolbar__stats">
-   <div class="md-related-module-toolbar__stat"><span><#LANG_CATEGORIES#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
-  </div>
-  <div class="md-scripts-toolbar__actions">
-   <a href="?view_mode=edit_categories&data_source=categories" class="btn btn-primary">+ <#LANG_ADD_NEW_CATEGORY#></a>
-   <a href="?view_mode=edit_scripts" class="btn btn-outline-secondary">+ <#LANG_ADD_NEW_SCRIPT#></a>
-  </div>
- </div>
-
- [#if RESULT#]
-  <form action="?" method="post" name="frmList_scripts" class="md-admin-module-list__form">
-   <div class="md-admin-record-list">
-    [#begin RESULT#]
-     <article class="md-admin-record-card md-scripts-record md-scripts-category-record">
-      <div class="md-admin-record-card__main">
-       <span class="md-scripts-category-record__icon">#</span>
-       <div class="md-admin-record-card__content">
-        <div class="md-admin-record-card__title"><strong>[#TITLE#]</strong></div>
-       </div>
-      </div>
-      <div class="md-scripts-record__meta"></div>
-      <div class="md-admin-record-card__actions">
-       [#if "<#ACTION#>"=="admin"#]
-        <a href="?view_mode=edit_categories&id=[#ID#]&data_source=<#DATA_SOURCE#>" title="<#LANG_EDIT#>" class="btn btn-light btn-sm"><#LANG_EDIT#></a>
-        <div class="btn-group">
-         <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-         <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item text-danger" href="?view_mode=delete_categories&id=[#ID#]&data_source=<#DATA_SOURCE#>" title="<#LANG_DELETE#>" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
-         </ul>
+[#if RESULT#]
+<div class="md-table-wrap" data-md-table data-md-table-page-size="50" data-md-table-unit="категорий">
+    <div class="md-table__toolbar">
+        <div class="md-table__search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" data-md-table-search placeholder="Поиск категорий" aria-label="Поиск категорий" autocomplete="off">
         </div>
-       [#endif ACTION#]
-      </div>
-     </article>
-    [#end RESULT#]
-   </div>
-   <input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
-   <input type="hidden" name="view_mode" value="multiple_scripts">
-  </form>
- [#else RESULT#]
-  <div class="md-scripts-empty"><#LANG_NO_RECORDS_FOUND#></div>
- [#endif RESULT#]
+        <div class="md-table__meta" data-md-table-meta>[#RESULT_TOTAL#] категорий</div>
+    </div>
+
+    <div class="md-table__scroll">
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">
+                        <button type="button" class="md-table__sort" data-md-table-sort="name">Категория <i class="ti ti-arrows-up-down" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col">
+                        <button type="button" class="md-table__sort" data-md-table-sort="scripts">Сценариев <i class="ti ti-arrows-up-down" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" class="text-end"><span class="md-visually-hidden">Действия</span></th>
+                </tr>
+            </thead>
+            <tbody data-md-table-body>
+                [#begin RESULT#]
+                <tr data-md-row data-row-id="[#ID#]" data-search="[#TITLE#]" data-sort-name="[#TITLE#]" data-sort-scripts="[#SCRIPTS_TOTAL#]">
+                    <td>
+                        <div class="md-table__name">
+                            <span class="md-table__icon"><i class="ti ti-folder" aria-hidden="true"></i></span>
+                            <div><strong>[#TITLE#]</strong></div>
+                        </div>
+                    </td>
+                    <td><span class="md-badge md-badge--primary">[#SCRIPTS_TOTAL#]</span></td>
+                    <td>
+                        <div class="md-table__actions">
+                            <a class="md-icon-btn md-icon-btn--sm" href="?view_mode=edit_categories&id=[#ID#]&data_source=<#DATA_SOURCE#>" data-bs-toggle="tooltip" data-bs-title="<#LANG_EDIT#>" aria-label="<#LANG_EDIT#>">
+                                <i class="ti ti-pencil" aria-hidden="true"></i>
+                            </a>
+                            <div class="dropdown">
+                                <button type="button" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<#LANG_ACTIONS#>">
+                                    <i class="ti ti-dots" aria-hidden="true"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                                    <li><a class="dropdown-item" href="?data_source=scripts"><i class="ti ti-code" aria-hidden="true"></i>Открыть сценарии</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="?view_mode=delete_categories&id=[#ID#]&data_source=<#DATA_SOURCE#>" data-md-confirm="Удалить категорию? Сценарии останутся без категории."><i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#></a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                [#end RESULT#]
+            </tbody>
+        </table>
+    </div>
+
+    <div class="md-table__footer">
+        <span data-md-table-count>Показано [#RESULT_TOTAL#] из [#RESULT_TOTAL#]</span>
+        <ul class="pagination md-pagination" data-md-table-pagination></ul>
+    </div>
+
+    <div class="md-empty md-empty--compact" data-md-table-empty hidden>
+        <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+        <div class="md-empty__title">Категории не найдены</div>
+        <p class="md-empty__text">Измените поисковый запрос.</p>
+    </div>
 </div>
+[#else RESULT#]
+<div class="md-empty">
+    <span class="md-empty__icon"><i class="ti ti-folder" aria-hidden="true"></i></span>
+    <div class="md-empty__title">Категорий пока нет</div>
+    <p class="md-empty__text">Сгруппируйте сценарии по категориям для порядка.</p>
+    <div class="md-empty__actions">
+        <a href="?data_source=categories&view_mode=edit_categories" class="md-btn md-btn--primary">Добавить категорию</a>
+    </div>
+</div>
+[#endif RESULT#]

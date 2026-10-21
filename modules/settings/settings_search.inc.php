@@ -177,12 +177,19 @@ foreach ($settings_sections as $sectionId => $sectionData) {
     );
 }
 
+$settingsTotal = 0;
+foreach ($settings_sections as $sectionData) {
+    $settingsTotal += isset($sectionData['settings']) ? count($sectionData['settings']) : 0;
+}
+
 $out['SECTIONS'] = $sections;
 $out['FILTER_NAME'] = $activeSection;
 $out['ACTIVE_SECTION_TITLE'] = $activeSectionData['title'];
 $out['ACTIVE_SECTION_DESCRIPTION'] = $activeSectionData['description'];
 $out['ACTIVE_SECTION_COUNT'] = count($options);
 $out['SECTION_COUNT'] = count($sections);
+$out['SETTINGS_TOTAL'] = $settingsTotal;
+$out['CHANGED_IN_SECTION'] = 0;
 
 foreach ($options as $settingName => $meta) {
     $existing = SQLSelectOne("SELECT * FROM settings WHERE NAME='" . DBSafe($settingName) . "'");
@@ -231,6 +238,9 @@ if ($res) {
         if (isset($meta['type'])) {
             $res[$i]['TYPE'] = $meta['type'];
         }
+        if ($res[$i]['NAME'] === 'CODEEDITOR_THEME' && !in_array($res[$i]['VALUE'], array('auto', 'light', 'dark'), true)) {
+            $res[$i]['VALUE'] = 'auto';
+        }
         if (isset($meta['default'])) {
             $res[$i]['DEFAULTVALUE'] = $meta['default'];
         }
@@ -247,7 +257,10 @@ if ($res) {
         $res[$i]['USE_CODE_EDITOR'] = !empty($meta['use_code_editor']) ? 1 : 0;
         $res[$i]['CODE_EDITOR_KEY'] = 'settings_' . $res[$i]['NAME'];
         $res[$i]['CODE_EDITOR_MODE'] = 'php';
-        $res[$i]['CODE_EDITOR_THEME'] = defined('SETTINGS_CODEEDITOR_THEME') ? SETTINGS_CODEEDITOR_THEME : 'codemirror';
+        $res[$i]['CODE_EDITOR_THEME'] = defined('SETTINGS_CODEEDITOR_THEME') ? SETTINGS_CODEEDITOR_THEME : 'auto';
+        if (!in_array($res[$i]['CODE_EDITOR_THEME'], array('auto', 'light', 'dark'), true)) {
+            $res[$i]['CODE_EDITOR_THEME'] = 'auto';
+        }
         $res[$i]['CODE_EDITOR_AUTOCLOSEQUOTES'] = defined('SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES') ? SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES : 1;
         $res[$i]['CODE_EDITOR_WRAPLINES'] = defined('SETTINGS_CODEEDITOR_WRAPLINES') ? SETTINGS_CODEEDITOR_WRAPLINES : 0;
         $res[$i]['CODE_EDITOR_MIXLINE'] = defined('SETTINGS_CODEEDITOR_MIXLINE') ? SETTINGS_CODEEDITOR_MIXLINE : 8;
@@ -333,6 +346,8 @@ if ($res) {
         $defaultValue = isset($res[$i]['DEFAULTVALUE']) ? (string)$res[$i]['DEFAULTVALUE'] : '';
         if ($currentValue === $defaultValue) {
             $res[$i]['ISDEFAULT'] = '1';
+        } else {
+            $out['CHANGED_IN_SECTION']++;
         }
 
         $res[$i]['VALUE_RAW'] = $currentValue;

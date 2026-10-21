@@ -1,127 +1,172 @@
-<section class="md-admin-section-card md-admin-form-card md-property-edit-card">
-    <div class="md-admin-section-card__body">
-        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
-            [#if OK#]
-            <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
-            [#endif OK#]
-            [#if ERR#]
-            <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
-            [#endif ERR#]
+[#if OK#]
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
+[#endif OK#]
 
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="propertyTitle"><#LANG_TITLE#> <span class="text-danger">*</span></label>
-                <div class="col-lg-9">
-                    <input type="text" id="propertyTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" placeholder="<#LANG_TITLE#>" name="title" value="[#TITLE#]" required>
-                </div>
-            </div>
+[#if ERR#]
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_FILLOUT_REQURED#></div></div>
+</div>
+[#endif ERR#]
 
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="propertyDescription"><#LANG_DESCRIPTION#></label>
-                <div class="col-lg-9">
-                    <textarea name="description" id="propertyDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea>
-                </div>
-            </div>
+<section class="md-card">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Свойство класса</div>
+            <h2 class="md-card__title"><i class="ti ti-list-check" aria-hidden="true"></i>[#if ID!=""#][#TITLE#][#else#]<#LANG_ADD_NEW_PROPERTY#>[#endif#]</h2>
+            <p class="md-card__subtitle">Имя, тип данных, история и правила проверки значения.</p>
+        </div>
+    </header>
+    <div class="md-card__body">
+        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-ui-form">
+            <div class="md-ui-form-stack">
+                <div class="md-ui-form-grid">
+                    <div class="md-field [#if ERR_TITLE#]is-invalid[#endif#]">
+                        <label class="md-field__label" for="propertyTitle"><#LANG_TITLE#><span class="md-field__req" aria-hidden="true">*</span></label>
+                        <div class="md-field__control">
+                            <input type="text" id="propertyTitle" class="md-input [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required autocomplete="off">
+                        </div>
+                        [#if ERR_TITLE#]
+                        <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Укажите имя свойства.</span></div>
+                        [#else#]
+                        <div class="md-field__hint">Без пробелов, например <code>status</code> или <code>temperature</code>.</div>
+                        [#endif#]
+                    </div>
 
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="propertyOnchange"><#LANG_ONCHANGE_METHOD#></label>
-                <div class="col-lg-9">
-                    <select name="onchange" id="propertyOnchange" class="form-control form-select">
-                        <option value="" selected>Выберите связанный метод</option>
-                        [#begin METHODS#]
-                        <option value="[#TITLE#]"[#if TITLE=="<#ONCHANGE#>"#] selected[#endif#]>[#TITLE#]</option>
-                        [#end METHODS#]
-                    </select>
-                </div>
-            </div>
-
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="propertyKeepHistory"><#LANG_KEEP_HISTORY_DAYS#></label>
-                <div class="col-lg-9">
-                    <input type="number" id="propertyKeepHistory" name="keep_history" value="[#KEEP_HISTORY#]" size="10" placeholder="0 = <#LANG_DO_NOT_KEEP#>" class="form-control">
-                </div>
-            </div>
-
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="propertyDataType"><#LANG_DATA_TYPE#></label>
-                <div class="col-lg-9">
-                    <select name="data_type" id="propertyDataType" class="form-control form-select">
-                        <option value="0"[#if DATA_TYPE=="0"#] selected[#endif#]><#LANG_DATA_TYPE_GENERAL#></option>
-                        <option value="5"[#if DATA_TYPE=="5"#] selected[#endif#]><#LANG_DATA_TYPE_IMAGE#></option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="validation_type"><#LANG_VALIDATION_TYPE#></label>
-                <div class="col-lg-9">
-                    <select name="validation_type" id="validation_type" class="form-control form-select" data-md-property-validation>
-                        <option value="0"[#if VALIDATION_TYPE=="0"#] selected[#endif#]><#LANG_NO#></option>
-                        <option value="1"[#if VALIDATION_TYPE=="1"#] selected[#endif#]><#LANG_VALIDATION_TYPE_NUMBER#></option>
-                        <option value="2"[#if VALIDATION_TYPE=="2"#] selected[#endif#]><#LANG_VALIDATION_TYPE_BINARY#></option>
-                        <option value="3"[#if VALIDATION_TYPE=="3"#] selected[#endif#]><#LANG_VALIDATION_TYPE_DICTIONARY#></option>
-                        <option value="100"[#if VALIDATION_TYPE=="100"#] selected[#endif#]><#LANG_VALIDATION_TYPE_CUSTOM#></option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="validation_min_max" class="md-property-edit__group [#if VALIDATION_TYPE!="1"#]d-none[#endif#]" data-md-property-validation-block="1">
-                <div class="row g-3 align-items-start">
-                    <label class="col-lg-3 col-form-label" for="validationNumMin"><#LANG_MIN_VALUE#>:</label>
-                    <div class="col-lg-9">
-                        <input type="text" id="validationNumMin" name="validation_num_min" value="[#VALIDATION_NUM_MIN#]" class="form-control">
+                    <div class="md-field">
+                        <label class="md-field__label" for="propertyDataType"><#LANG_DATA_TYPE#></label>
+                        <div class="md-field__control">
+                            <select name="data_type" id="propertyDataType" class="md-select">
+                                <option value="0"[#if DATA_TYPE=="0"#] selected[#endif#]><#LANG_DATA_TYPE_GENERAL#></option>
+                                <option value="5"[#if DATA_TYPE=="5"#] selected[#endif#]><#LANG_DATA_TYPE_IMAGE#></option>
+                            </select>
+                        </div>
+                        <div class="md-field__hint">Изображение хранится как имя файла в <code>cms/images</code>.</div>
                     </div>
                 </div>
-                <div class="row g-3 align-items-start">
-                    <label class="col-lg-3 col-form-label" for="validationNumMax"><#LANG_MAX_VALUE#>:</label>
-                    <div class="col-lg-9">
-                        <input type="text" id="validationNumMax" name="validation_num_max" value="[#VALIDATION_NUM_MAX#]" class="form-control">
+
+                <div class="md-field">
+                    <label class="md-field__label" for="propertyDescription"><#LANG_DESCRIPTION#></label>
+                    <div class="md-field__control">
+                        <input type="text" id="propertyDescription" class="md-input" name="description" value="[#DESCRIPTION#]" autocomplete="off">
+                    </div>
+                    <div class="md-field__hint">Что хранит свойство и откуда обновляется значение.</div>
+                </div>
+
+                <div class="md-ui-form-grid">
+                    <div class="md-field">
+                        <label class="md-field__label" for="propertyKeepHistory"><#LANG_KEEP_HISTORY_DAYS#></label>
+                        <div class="md-field__control">
+                            <input type="number" id="propertyKeepHistory" name="keep_history" value="[#KEEP_HISTORY#]" min="0" placeholder="0" class="md-input">
+                        </div>
+                        <div class="md-field__hint">0 — не хранить историю значений.</div>
+                    </div>
+
+                    <div class="md-field">
+                        <label class="md-field__label" for="propertyOnchange"><#LANG_ONCHANGE_METHOD#></label>
+                        <div class="md-field__control">
+                            <select name="onchange" id="propertyOnchange" class="md-select" data-md-searchable>
+                                <option value="" selected><#LANG_NO#></option>
+                                [#begin METHODS#]
+                                <option value="[#TITLE#]"[#if TITLE=="<#ONCHANGE#>"#] selected[#endif#]>[#TITLE#]</option>
+                                [#end METHODS#]
+                            </select>
+                        </div>
+                        <div class="md-field__hint">Метод класса, который вызывается после изменения значения.</div>
+                    </div>
+                </div>
+
+                <div class="md-field">
+                    <label class="md-field__label" for="propertyValidationType"><#LANG_VALIDATION_TYPE#></label>
+                    <div class="md-field__control">
+                        <select name="validation_type" id="propertyValidationType" class="md-select" data-md-property-validation>
+                            <option value="0"[#if VALIDATION_TYPE=="0"#] selected[#endif#]><#LANG_NO#></option>
+                            <option value="1"[#if VALIDATION_TYPE=="1"#] selected[#endif#]><#LANG_VALIDATION_TYPE_NUMBER#></option>
+                            <option value="2"[#if VALIDATION_TYPE=="2"#] selected[#endif#]><#LANG_VALIDATION_TYPE_BINARY#></option>
+                            <option value="3"[#if VALIDATION_TYPE=="3"#] selected[#endif#]><#LANG_VALIDATION_TYPE_DICTIONARY#></option>
+                            <option value="100"[#if VALIDATION_TYPE=="100"#] selected[#endif#]><#LANG_VALIDATION_TYPE_CUSTOM#></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="md-ui-form-grid [#if VALIDATION_TYPE!="1"#]d-none[#endif#]" data-md-property-validation-block="1">
+                    <div class="md-field">
+                        <label class="md-field__label" for="validationNumMin"><#LANG_MIN_VALUE#></label>
+                        <div class="md-field__control">
+                            <input type="text" id="validationNumMin" name="validation_num_min" value="[#VALIDATION_NUM_MIN#]" class="md-input" inputmode="decimal">
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="validationNumMax"><#LANG_MAX_VALUE#></label>
+                        <div class="md-field__control">
+                            <input type="text" id="validationNumMax" name="validation_num_max" value="[#VALIDATION_NUM_MAX#]" class="md-input" inputmode="decimal">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md-field [#if VALIDATION_TYPE!="3"#]d-none[#endif#][#if ERR_VALIDATION_LIST=="1"#] is-invalid[#endif#]" data-md-property-validation-block="3">
+                    <label class="md-field__label" for="validationList"><#LANG_VALIDATION_TYPE_DICTIONARY#></label>
+                    <div class="md-field__control">
+                        <input type="text" id="validationList" name="validation_list" value="[#VALIDATION_LIST#]" class="md-input [#if ERR_VALIDATION_LIST=="1"#]is-invalid[#endif#]">
+                    </div>
+                    [#if ERR_VALIDATION_LIST=="1"#]
+                    <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Заполните список допустимых значений.</span></div>
+                    [#else#]
+                    <div class="md-field__hint">Значения через запятую или с новой строки.</div>
+                    [#endif#]
+                </div>
+
+                <div class="md-field [#if VALIDATION_TYPE!="100"#]d-none[#endif#][#if ERR_VALIDATION_CODE!=""#] is-invalid[#endif#]" data-md-property-validation-block="100">
+                    <label class="md-field__label" for="validationCode"><#LANG_CODE#></label>
+                    <div class="md-field__control">
+                        <textarea name="validation_code" id="validationCode" rows="5" class="md-textarea font-monospace [#if ERR_VALIDATION_CODE!=""#]is-invalid[#endif#]" placeholder="$value">[#VALIDATION_CODE#]</textarea>
+                    </div>
+                    [#if ERR_VALIDATION_CODE!=""#]
+                    <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>[#ERR_VALIDATION_CODE#]</span></div>
+                    [#else#]
+                    <div class="md-field__hint">PHP-выражение получает <code>$value</code> и возвращает результат проверки.</div>
+                    [#endif#]
+                </div>
+
+                <div class="md-field">
+                    <span class="md-field__label"><#LANG_DATA_KEY#></span>
+                    <div class="md-field__control">
+                        <div class="d-flex flex-wrap gap-3" role="radiogroup" aria-label="<#LANG_DATA_KEY#>">
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" name="data_key" value="1" data-md-raw-checkbox[#if DATA_KEY=="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text"><span class="md-check__label"><#LANG_YES#></span><span class="md-check__desc">Участвует в идентификации объекта</span></span>
+                            </label>
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" name="data_key" value="0" data-md-raw-checkbox[#if DATA_KEY!="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text"><span class="md-check__label"><#LANG_NO#></span></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div id="validation_dictionary" class="row g-3 align-items-start md-property-edit__group [#if VALIDATION_TYPE!="3"#]d-none[#endif#][#if ERR_VALIDATION_LIST=="1"#] has-error[#endif#]" data-md-property-validation-block="3">
-                <label class="col-lg-3 col-form-label" for="validationList"><#LANG_VALIDATION_TYPE_DICTIONARY#>:</label>
-                <div class="col-lg-9">
-                    <input type="text" id="validationList" name="validation_list" value="[#VALIDATION_LIST#]" class="form-control [#if ERR_VALIDATION_LIST=="1"#]is-invalid[#endif#]">
-                </div>
-            </div>
-
-            <div id="validation_code" class="row g-3 align-items-start md-property-edit__group [#if VALIDATION_TYPE!="100"#]d-none[#endif#][#if ERR_VALIDATION_CODE!=""#] has-error[#endif#]" data-md-property-validation-block="100">
-                <label class="col-lg-3 col-form-label" for="validationCode"><#LANG_CODE#>:</label>
-                <div class="col-lg-9">
-                    [#if ERR_VALIDATION_CODE!=""#]<div class="alert alert-danger py-2 px-3 mb-2">[#ERR_VALIDATION_CODE#]</div>[#endif#]
-                    <textarea name="validation_code" id="validationCode" rows="5" class="form-control md-admin-code-textarea [#if ERR_VALIDATION_CODE!=""#]is-invalid[#endif#]" placeholder="$value">[#VALIDATION_CODE#]</textarea>
-                </div>
-            </div>
-
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label"><#LANG_DATA_KEY#></label>
-                <div class="col-lg-9">
-                    <div class="md-property-edit__radio-group">
-                        <label class="md-property-edit__radio">
-                            <input type="radio" name="data_key" value="1"[#if DATA_KEY=="1"#] checked[#endif#]>
-                            <span><#LANG_YES#></span>
-                        </label>
-                        <label class="md-property-edit__radio">
-                            <input type="radio" name="data_key" value="0"[#if DATA_KEY!="1"#] checked[#endif#]>
-                            <span><#LANG_NO#></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="md-admin-form-actions">
+            <div class="md-ui-form-actions">
+                <button class="md-btn md-btn--primary" type="submit" name="subm">
+                    <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">[#if ID!=""#]<#LANG_SUBMIT#>[#else#]<#LANG_ADD#>[#endif#]</span>
+                </button>
+                <a class="md-btn md-btn--secondary" href="?view_mode=search_properties"><#LANG_CANCEL#></a>
                 [#if ID!=""#]
-                <button class="btn btn-primary" type="submit" name="subm"><#LANG_SUBMIT#></button>
-                [#else ID#]
-                <button class="btn btn-primary" type="submit" name="subm"><#LANG_ADD#></button>
-                [#endif ID#]
-                <div class="btn-group">
-                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="?data_source=<#DATA_SOURCE#>"><#LANG_CANCEL#></a></li>
+                <div class="dropdown ms-auto">
+                    <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                        <li><button type="button" class="dropdown-item" data-md-global-search="[#TITLE#]"><i class="ti ti-search" aria-hidden="true"></i><#LANG_SEARCH#></button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="?view_mode=delete_properties&id=[#ID#]" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#></a></li>
                     </ul>
                 </div>
+                [#endif ID#]
             </div>
 
             <input type="hidden" name="id" value="<#ID#>">
@@ -131,24 +176,3 @@
         </form>
     </div>
 </section>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var select = document.querySelector('[data-md-property-validation]');
-    if (!select || select.dataset.mdPropertyValidationBound === '1') {
-        return;
-    }
-
-    select.dataset.mdPropertyValidationBound = '1';
-
-    function syncValidationBlocks() {
-        var value = select.value;
-        document.querySelectorAll('[data-md-property-validation-block]').forEach(function (block) {
-            block.classList.toggle('d-none', block.getAttribute('data-md-property-validation-block') !== value);
-        });
-    }
-
-    select.addEventListener('change', syncValidationBlocks);
-    syncValidationBlocks();
-});
-</script>

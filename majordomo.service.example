@@ -1,6 +1,6 @@
 [Unit]
 Description=MajorDoMo
-# Do not use Requires=mysql.service/apache2.service here: systemd will stop
+# Do not use Requires=mysql.service/nginx.service here: systemd will stop
 # MajorDoMo when those services are restarted and will not automatically bring
 # it back after a dependency stop.
 After=network-online.target mysql.service mariadb.service

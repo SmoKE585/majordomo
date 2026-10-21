@@ -86,4 +86,7 @@ if ($rec['PASSWORD'] != '' && hash('sha512', '') == $rec['PASSWORD']) {
 }
 
 outHash($rec, $out);
+$out['PASSWORD_SET'] = ($rec['PASSWORD'] != '') ? 1 : 0;
+// Password hashes are never rendered; the template only needs the state flag.
+unset($out['PASSWORD']);
 

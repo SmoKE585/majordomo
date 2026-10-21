@@ -16,6 +16,15 @@
         };
     }
 
+    function escapeHtml(value) {
+        return String(value === null || value === undefined ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function setCustomRepositoryUrl(moduleName, currentUrlBase64) {
         var config = getMarketConfig();
         var currentUrl = currentUrlBase64 ? window.atob(currentUrlBase64) : '';
@@ -29,20 +38,37 @@
 
     function marketAfterListRender(root) {
         bindFallbackImages(root || document);
-        var activeLink = document.querySelector('#tab .md-admin-module-tabs__link.is-active, #tab > li.active > a');
+        var scope = root || document;
+        var items = scope.querySelectorAll('#market_application .market-item');
+        var catalogCount = document.getElementById('marketCatalogCount');
+        if (catalogCount) {
+            var n = items.length;
+            var mod10 = n % 10;
+            var mod100 = n % 100;
+            var word = 'модулей';
+            if (mod10 === 1 && mod100 !== 11) {
+                word = 'модуль';
+            } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+                word = 'модуля';
+            }
+            catalogCount.textContent = n + ' ' + word;
+        }
+
+        var activeLink = document.querySelector('#tab .nav-link.active, #tab .nav-link.is-active, #tab > li.active > a');
         if (!activeLink) {
             return;
         }
         if (activeLink.id !== 'panel_updates') {
             return;
         }
-        if (activeLink.querySelector('.market-plugin-count-badge')) {
+        var existingBadge = activeLink.querySelector('.market-plugin-count-badge');
+        if (existingBadge) {
+            existingBadge.textContent = items.length;
             return;
         }
-        var scope = root || document;
         var badge = document.createElement('span');
-        badge.className = 'market-plugin-count-badge';
-        badge.textContent = scope.querySelectorAll('#market_application .market-plugin-card').length;
+        badge.className = 'md-badge market-plugin-count-badge';
+        badge.textContent = items.length;
         activeLink.appendChild(badge);
     }
 
@@ -67,11 +93,12 @@
         }
         if (progress) {
             progress.style.width = percent + '%';
-            progress.style.background = state === 'error'
-                ? 'linear-gradient(90deg, #dc3545, #ef6a78)'
-                : state === 'success'
-                    ? 'linear-gradient(90deg, #198754, #54b47b)'
-                    : 'linear-gradient(90deg, #4792d1, #6ab1df)';
+            progress.classList.remove('is-error', 'is-success');
+            if (state === 'error') {
+                progress.classList.add('is-error');
+            } else if (state === 'success') {
+                progress.classList.add('is-success');
+            }
         }
         if (modal) {
             var normalizedPercent = Math.max(0, Math.min(100, percent));
@@ -97,23 +124,30 @@
 
     function marketFinishInstall(text, state) {
         window.onbeforeunload = null;
-        marketSetInstallStatus(text || 'Операция завершена, выполняется переход...', state || 'success', 100, 'finish');
+        marketSetInstallStatus(text || 'Готово. Обновляем страницу…', state || 'success', 100, 'finish');
     }
 
     function bindFallbackImages(root) {
+        function applyFallback(img) {
+            var fallback = img.getAttribute('data-market-fallback-src');
+            if (!fallback || img.getAttribute('data-market-fallback-applied') === '1') {
+                return;
+            }
+            img.setAttribute('data-market-fallback-applied', '1');
+            img.src = fallback;
+        }
+
         Array.prototype.forEach.call((root || document).querySelectorAll('img[data-market-fallback-src]'), function (img) {
             if (img.getAttribute('data-market-fallback-bound') === '1') {
                 return;
             }
             img.setAttribute('data-market-fallback-bound', '1');
-            img.addEventListener('error', function handleError() {
-                var fallback = img.getAttribute('data-market-fallback-src');
-                if (!fallback || img.getAttribute('data-market-fallback-applied') === '1') {
-                    return;
-                }
-                img.setAttribute('data-market-fallback-applied', '1');
-                img.src = fallback;
+            img.addEventListener('error', function () {
+                applyFallback(img);
             });
+            if (img.complete && img.naturalWidth === 0) {
+                applyFallback(img);
+            }
         });
     }
 
@@ -145,14 +179,139 @@
             if (!searchResult) {
                 return;
             }
-            searchResult.innerHTML = '<div class="market-results__loading"><i class="glyphicon glyphicon-refresh"></i><span>' + config.loadingText + '</span></div>';
+            searchResult.innerHTML = '<div class="market-results__loading"><span class="md-spinner" aria-hidden="true"></span><span>' + config.loadingText + '</span></div>';
         }
 
         function renderError(message) {
             if (!searchResult) {
                 return;
             }
-            searchResult.innerHTML = '<div class="market-results__error">' + message + '</div>';
+            searchResult.innerHTML = '<div class="md-alert md-alert--danger market-results__error" role="alert"><i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i><div class="md-alert__body"><div class="md-alert__text">' + message + '</div></div></div>';
+        }
+
+        function renderUpdateCommits(data) {
+            var list = document.getElementById('marketUpdateModalList');
+            var loading = document.getElementById('marketUpdateModalLoading');
+            if (loading) {
+                loading.hidden = true;
+            }
+            if (!list) {
+                return;
+            }
+
+            var commits = data && data.COMMITS ? data.COMMITS : [];
+            if (!commits.length) {
+                var fallback = data && data.LATEST_COMMENT ? data.LATEST_COMMENT : '';
+                list.innerHTML = fallback
+                    ? '<div class="market-update-entry"><div class="market-update-entry__head"><time>Последнее изменение</time></div><div class="market-update-entry__text">' + escapeHtml(fallback) + '</div></div>'
+                    : '<div class="md-empty md-empty--compact"><div class="md-empty__icon"><i class="ti ti-git-commit" aria-hidden="true"></i></div><div class="md-empty__title">Нет данных о коммитах</div><div class="md-empty__text">Репозиторий не вернул список обновлений.</div></div>';
+                return;
+            }
+
+            var rows = [];
+            for (var i = 0; i < commits.length; i++) {
+                var commit = commits[i] || {};
+                rows.push(
+                    '<div class="market-update-entry">'
+                    + '<div class="market-update-entry__head"><time>' + escapeHtml(commit.DATE || '') + '</time>'
+                    + (commit.URL ? '<a href="' + escapeHtml(commit.URL) + '" target="_blank" rel="noopener">Открыть <i class="ti ti-external-link" aria-hidden="true"></i></a>' : '')
+                    + '</div>'
+                    + '<div class="market-update-entry__text">' + escapeHtml(commit.TEXT || '') + '</div>'
+                    + '</div>'
+                );
+            }
+            list.innerHTML = rows.join('');
+        }
+
+        function openMarketUpdate(button) {
+            var modalElement = document.getElementById('marketUpdateModal');
+            if (!modalElement || !window.bootstrap || !bootstrap.Modal) {
+                return;
+            }
+            var card = button.closest ? button.closest('.market-item') : null;
+            var moduleName = button.getAttribute('data-module-name') || '';
+            var installed = button.getAttribute('data-installed') === '1';
+            var currentVersion = button.getAttribute('data-current-version') || '';
+            var latestVersion = button.getAttribute('data-latest-version') || '';
+            var installUrl = button.getAttribute('data-install-url') || '';
+            var titleNode = card ? card.querySelector('.market-item__title') : null;
+            var title = titleNode ? titleNode.textContent.trim() : moduleName;
+
+            var eyebrow = document.getElementById('marketUpdateModalEyebrow');
+            var titleElement = document.getElementById('marketUpdateModalTitle');
+            var versions = document.getElementById('marketUpdateModalVersions');
+            var confirm = document.getElementById('marketUpdateModalConfirm');
+            var repo = document.getElementById('marketUpdateModalRepo');
+            var list = document.getElementById('marketUpdateModalList');
+            var loading = document.getElementById('marketUpdateModalLoading');
+
+            if (eyebrow) {
+                eyebrow.textContent = installed ? 'Обновление модуля' : 'Установка модуля';
+            }
+            if (titleElement) {
+                titleElement.textContent = title;
+            }
+            if (versions) {
+                var parts = [];
+                if (installed && currentVersion) {
+                    parts.push('Установлено: ' + currentVersion);
+                }
+                if (latestVersion) {
+                    parts.push('Версия: ' + latestVersion);
+                }
+                versions.textContent = parts.join(' · ');
+            }
+            if (confirm) {
+                confirm.textContent = installed ? 'Обновить' : 'Установить';
+                confirm.setAttribute('href', installUrl);
+            }
+            if (repo) {
+                repo.innerHTML = '';
+            }
+            if (list) {
+                list.innerHTML = '';
+            }
+            if (loading) {
+                loading.hidden = false;
+            }
+
+            bootstrap.Modal.getOrCreateInstance(modalElement).show();
+
+            if (!moduleName) {
+                renderUpdateCommits({COMMITS: []});
+                return;
+            }
+
+            fetch(config.rootHtml + 'ajax/market.html?op=commits&name=' + encodeURIComponent(moduleName), {
+                credentials: 'same-origin'
+            }).then(function (response) {
+                return response.json();
+            }).then(function (data) {
+                if (data.STATUS !== 'OK') {
+                    throw new Error(data.MESSAGE || 'Не удалось загрузить обновления.');
+                }
+                if (repo) {
+                    repo.innerHTML = data.REPOSITORY
+                        ? '<i class="ti ti-brand-git" aria-hidden="true"></i><a href="' + escapeHtml(data.REPOSITORY) + '" target="_blank" rel="noopener">' + escapeHtml(data.REPOSITORY) + '</a>'
+                        : '';
+                }
+                if (versions && data.CURRENT_VERSION && installed) {
+                    var versionParts = [];
+                    versionParts.push('Установлено: ' + data.CURRENT_VERSION);
+                    if (data.LATEST_VERSION) {
+                        versionParts.push('Версия: ' + data.LATEST_VERSION);
+                    }
+                    versions.textContent = versionParts.join(' · ');
+                }
+                renderUpdateCommits(data);
+            }).catch(function (error) {
+                if (loading) {
+                    loading.hidden = true;
+                }
+                if (list) {
+                    list.innerHTML = '<div class="md-alert md-alert--danger" role="alert"><i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i><div class="md-alert__body"><div class="md-alert__text">' + escapeHtml(error && error.message ? error.message : 'Не удалось загрузить обновления.') + '</div></div></div>';
+                }
+            });
         }
 
         function getSearchTab() {
@@ -181,13 +340,14 @@
             var clearItem = document.createElement('a');
             clearItem.id = searchHintId;
             clearItem.href = '#';
-            clearItem.className = 'md-admin-module-tabs__link';
+            clearItem.className = 'nav-link market-tabs__clear';
             clearItem.setAttribute('data-market-action', 'clear-search');
-            clearItem.textContent = config.searchCloseLabel;
+            clearItem.setAttribute('aria-label', config.searchCloseLabel);
+            clearItem.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
             var searchItem = document.createElement('a');
             searchItem.id = searchTabId;
             searchItem.href = '#panel_installed';
-            searchItem.className = 'md-admin-module-tabs__link is-active';
+            searchItem.className = 'nav-link is-active';
             searchItem.textContent = config.searchLabel;
             tab.insertBefore(searchItem, tab.firstChild);
             tab.insertBefore(clearItem, searchItem.nextSibling);
@@ -198,11 +358,13 @@
                 return;
             }
             Array.prototype.forEach.call(tab.querySelectorAll('a'), function (item) {
+                item.classList.remove('active');
                 item.classList.remove('is-active');
                 if (item.parentNode && item.parentNode.tagName === 'LI') {
                     item.parentNode.classList.remove('active');
                 }
             });
+            link.classList.add('active');
             link.classList.add('is-active');
             if (link.parentNode && link.parentNode.tagName === 'LI') {
                 link.parentNode.classList.add('active');
@@ -327,10 +489,17 @@
                 return;
             }
             var action = actionTarget.getAttribute('data-market-action');
+            if (action === 'open-update') {
+                event.preventDefault();
+                openMarketUpdate(actionTarget);
+            }
             if (action === 'toggle-upload') {
                 event.preventDefault();
                 if (manualUpload) {
-                    manualUpload.classList.toggle('is-open');
+                    var isOpen = manualUpload.classList.toggle('is-open');
+                    Array.prototype.forEach.call(document.querySelectorAll('[data-market-action="toggle-upload"]'), function (button) {
+                        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                    });
                 }
             }
             if (action === 'scroll-to-catalog') {
@@ -350,19 +519,6 @@
         });
 
         document.addEventListener('click', function (event) {
-            Array.prototype.forEach.call(document.querySelectorAll('.market-actions-menu[open]'), function (menu) {
-                if (!menu.contains(event.target)) {
-                    menu.removeAttribute('open');
-                }
-            });
-            Array.prototype.forEach.call(document.querySelectorAll('.market-plugin-card__menu[open]'), function (menu) {
-                if (!menu.contains(event.target)) {
-                    menu.removeAttribute('open');
-                }
-            });
-        });
-
-        document.addEventListener('click', function (event) {
             var confirmTarget = event.target;
             while (confirmTarget && confirmTarget !== document) {
                 if (confirmTarget.nodeType === 1 && confirmTarget.hasAttribute('data-confirm')) {
@@ -375,15 +531,6 @@
             }
             if (!window.confirm(confirmTarget.getAttribute('data-confirm') || 'Are you sure?')) {
                 event.preventDefault();
-            } else {
-                var openMenu = confirmTarget.closest ? confirmTarget.closest('.market-actions-menu[open]') : null;
-                if (openMenu) {
-                    openMenu.removeAttribute('open');
-                }
-                openMenu = confirmTarget.closest ? confirmTarget.closest('.market-plugin-card__menu[open]') : null;
-                if (openMenu) {
-                    openMenu.removeAttribute('open');
-                }
             }
         });
 
@@ -396,7 +543,7 @@
 
         if (document.querySelector('[data-market-update-modal]')) {
             document.body.classList.add('md-market-modal-open');
-            marketSetInstallStatus('Подготовка операции. Подробный журнал появится ниже.', 'active', 15, 'prepare');
+            marketSetInstallStatus('Подготовка…', 'active', 15, 'prepare');
         }
 
         bindFallbackImages(document);

@@ -417,11 +417,23 @@ class scripts extends module
         if ($this->data_source == 'categories') {
             if ($this->view_mode == '' || $this->view_mode == 'search_categories') {
                 //$this->search_scripts($out);
-                $result = SQLSelect("SELECT * FROM script_categories ORDER BY TITLE");
+                $result = SQLSelect("SELECT sc.*, (SELECT COUNT(*) FROM scripts s WHERE s.CATEGORY_ID=sc.ID) AS SCRIPTS_TOTAL FROM script_categories sc ORDER BY sc.TITLE");
                 if ($result) {
                     $out['RESULT'] = $result;
                     $out['RESULT_TOTAL'] = count($result);
                 }
+                $out['TOTAL_SCRIPTS'] = 0;
+                $scripts_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts");
+                if (isset($scripts_total['TOTAL'])) {
+                    $out['TOTAL_SCRIPTS'] = (int)$scripts_total['TOTAL'];
+                }
+                $out['TOTAL_CATEGORIES_ALL'] = isset($out['RESULT_TOTAL']) ? (int)$out['RESULT_TOTAL'] : 0;
+                $scheduled_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE RUN_PERIODICALLY=1");
+                $out['TOTAL_SCHEDULED'] = isset($scheduled_total['TOTAL']) ? (int)$scheduled_total['TOTAL'] : 0;
+                $executed_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE EXECUTED IS NOT NULL AND EXECUTED<>'' AND EXECUTED<>'0000-00-00 00:00:00'");
+                $out['TOTAL_EXECUTED'] = isset($executed_total['TOTAL']) ? (int)$executed_total['TOTAL'] : 0;
+                $uncategorized_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE CATEGORY_ID=0 OR CATEGORY_ID IS NULL");
+                $out['TOTAL_UNCATEGORIZED'] = isset($uncategorized_total['TOTAL']) ? (int)$uncategorized_total['TOTAL'] : 0;
             }
             if ($this->view_mode == 'edit_categories') {
                 $this->edit_categories($out, $this->id);

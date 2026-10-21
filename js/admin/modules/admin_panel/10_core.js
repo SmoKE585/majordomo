@@ -103,7 +103,7 @@
 
     function initCheckboxToggles(root) {
         root.querySelectorAll('input[type="checkbox"]').forEach(function (input) {
-            if (input.dataset.mdToggleCheckboxBound === '1') {
+            if (input.dataset.mdToggleCheckboxBound === '1' || input.hasAttribute('data-md-raw-checkbox')) {
                 return;
             }
 

@@ -936,3 +936,799 @@
         }
     }
 
+
+/* --------------------------------------------------------------------------
+   Market v2
+   -------------------------------------------------------------------------- */
+body.md-admin-shell .market-v2 {
+  min-width: 0;
+}
+
+body.md-admin-shell .market-v2__hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 12px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .market-v2__hero-meta span,
+body.md-admin-shell .market-v2__hero-meta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+body.md-admin-shell .market-v2__hero-meta a {
+  color: var(--md-ui-primary);
+  text-decoration: none;
+}
+
+body.md-admin-shell .market-v2__hero-meta a:hover {
+  text-decoration: underline;
+}
+
+body.md-admin-shell .market-v2__search-card .md-card__body {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+body.md-admin-shell .market-v2__search-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+body.md-admin-shell .market-search-v2 {
+  flex: 1 1 360px;
+  max-width: 720px;
+}
+
+body.md-admin-shell .market-search-v2__icon,
+body.md-admin-shell .market-search-v2__spinner {
+  color: var(--md-ui-muted);
+  font-size: 16px;
+}
+
+body.md-admin-shell .market-search-v2__spinner {
+  display: none;
+  margin-left: auto;
+  animation: market-spin 1s linear infinite;
+}
+
+body.md-admin-shell .market-search-v2.is-loading .market-search-v2__icon {
+  display: none;
+}
+
+body.md-admin-shell .market-search-v2.is-loading .market-search-v2__spinner {
+  display: inline-block;
+}
+
+body.md-admin-shell .market-v2__search-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+body.md-admin-shell .market-v2__search-hint {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .market-manual {
+  display: none;
+  scroll-margin-top: 16px;
+}
+
+body.md-admin-shell .market-manual.is-open {
+  display: flex;
+}
+
+body.md-admin-shell .market-manual__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body.md-admin-shell .market-manual__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+body.md-admin-shell .market-manual__panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+body.md-admin-shell .market-manual__panel-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 9px;
+  font-size: 1rem;
+}
+
+body.md-admin-shell .market-manual__panel h3 {
+  margin: 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+}
+
+body.md-admin-shell .market-manual__panel p {
+  margin: 3px 0 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .market-manual__form {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+}
+
+body.md-admin-shell .market-manual__form .md-btn {
+  justify-self: start;
+}
+
+body.md-admin-shell .market-manual__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .market-catalog__head {
+  margin-top: 4px;
+}
+
+body.md-admin-shell .market-tabs {
+  margin-bottom: 12px;
+}
+
+body.md-admin-shell .market-tabs__clear {
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .market-tabs__clear:hover {
+  color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .market-results {
+  min-height: 220px;
+}
+
+body.md-admin-shell .market-results__body {
+  min-width: 0;
+}
+
+body.md-admin-shell .market-results__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 220px;
+  padding: 24px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .market-results__error {
+  margin: 0;
+}
+
+body.md-admin-shell .market-plugin-list {
+  display: grid;
+  gap: 10px;
+}
+
+body.md-admin-shell .market-item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(160px, 190px);
+  align-items: start;
+  gap: 14px;
+  padding: 15px 16px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+body.md-admin-shell .market-item:hover {
+  border-color: var(--md-ui-border-strong, var(--md-ui-border));
+  background: var(--md-ui-surface-1, var(--md-ui-surface));
+}
+
+body.md-admin-shell .market-item__media,
+body.md-admin-shell .market-item__icon-link,
+body.md-admin-shell .market-item__icon-placeholder {
+  display: block;
+  width: 64px;
+  height: 64px;
+}
+
+body.md-admin-shell .market-item__icon-link,
+body.md-admin-shell .market-item__icon-placeholder {
+  overflow: hidden;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 12px;
+}
+
+body.md-admin-shell .market-item__icon-link img,
+body.md-admin-shell .market-item__icon-placeholder img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body.md-admin-shell .market-item__main {
+  min-width: 0;
+}
+
+body.md-admin-shell .market-item__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+body.md-admin-shell .market-item__identity {
+  min-width: 0;
+}
+
+body.md-admin-shell .market-item__author {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+}
+
+body.md-admin-shell .market-item__author a {
+  color: inherit;
+}
+
+body.md-admin-shell .market-item__title {
+  margin: 1px 0 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-md);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+body.md-admin-shell .market-item__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+body.md-admin-shell .market-item__title a:hover {
+  color: var(--md-ui-primary);
+}
+
+body.md-admin-shell .market-item__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+body.md-admin-shell .market-item__description {
+  max-width: 78ch;
+  margin: 6px 0 0;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-sm);
+  line-height: 1.55;
+}
+
+body.md-admin-shell .market-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 8px;
+  margin-top: 8px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+}
+
+body.md-admin-shell .market-item__meta-icon {
+  color: var(--md-ui-muted-2);
+}
+
+body.md-admin-shell .market-item__meta-label {
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .market-item__meta-value {
+  color: var(--md-ui-text-soft);
+  font-family: var(--md-ui-font-mono);
+}
+
+body.md-admin-shell .market-item__meta-value a {
+  color: var(--md-ui-primary);
+}
+
+body.md-admin-shell .market-item__meta-note {
+  flex: 1 1 100%;
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .market-item__actions {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+body.md-admin-shell .market-item__install {
+  justify-content: center;
+}
+
+body.md-admin-shell .market-item__secondary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+body.md-admin-shell .market-item__repo {
+  justify-content: flex-start;
+  min-width: 0;
+  font-size: var(--md-ui-fs-caption);
+}
+
+body.md-admin-shell .market-item__repo .md-btn__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .market-item__repo.is-active-repo {
+  color: var(--md-ui-warning);
+  border-color: color-mix(in srgb, var(--md-ui-warning) 45%, var(--md-ui-border));
+}
+
+body.md-admin-shell .market-empty {
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+/* Details */
+
+body.md-admin-shell .market-details__section .md-card__body {
+  padding-top: 4px;
+}
+
+body.md-admin-shell .market-timeline {
+  display: grid;
+}
+
+body.md-admin-shell .market-commit {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+}
+
+body.md-admin-shell .market-commit__rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+body.md-admin-shell .market-commit__rail::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  content: "";
+  background: var(--md-ui-border);
+}
+
+body.md-admin-shell .market-commit:first-child .market-commit__rail::before {
+  top: 12px;
+}
+
+body.md-admin-shell .market-commit:last-child .market-commit__rail::before {
+  bottom: calc(100% - 24px);
+}
+
+body.md-admin-shell .market-commit__dot {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 50%;
+  font-size: 13px;
+}
+
+body.md-admin-shell .market-commit__body {
+  min-width: 0;
+  padding: 0 0 14px;
+}
+
+body.md-admin-shell .market-commit__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+body.md-admin-shell .market-commit__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+}
+
+body.md-admin-shell .market-commit__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.md-admin-shell .market-commit__text {
+  margin-top: 6px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .market-commit__text p {
+  margin: 0 0 6px;
+}
+
+body.md-admin-shell .market-commit__text p:last-child {
+  margin-bottom: 0;
+}
+
+body.md-admin-shell .market-commit__text code {
+  color: var(--md-ui-text);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 5px;
+  font-size: .92em;
+}
+
+@media (max-width: 991.98px) {
+  body.md-admin-shell .market-item {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .market-item__media,
+  body.md-admin-shell .market-item__icon-link,
+  body.md-admin-shell .market-item__icon-placeholder {
+    width: 56px;
+    height: 56px;
+  }
+
+  body.md-admin-shell .market-item__actions {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .market-manual__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .market-v2__search-row {
+    align-items: stretch;
+  }
+
+  body.md-admin-shell .market-search-v2 {
+    flex-basis: 100%;
+  }
+
+  body.md-admin-shell .market-v2__search-aside {
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  body.md-admin-shell .market-v2__search-hint {
+    flex: 1 1 100%;
+  }
+
+  body.md-admin-shell .market-item {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  body.md-admin-shell .market-item__media,
+  body.md-admin-shell .market-item__icon-link,
+  body.md-admin-shell .market-item__icon-placeholder {
+    width: 44px;
+    height: 44px;
+    border-radius: 9px;
+  }
+
+  body.md-admin-shell .market-item__title {
+    font-size: var(--md-ui-fs-sm);
+  }
+
+  body.md-admin-shell .market-item__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .market-item__secondary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  body.md-admin-shell .market-commit {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  body.md-admin-shell .market-commit__dot {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  body.md-admin-shell .market-commit__head {
+    align-items: flex-start;
+  }
+}
+body.md-admin-shell .market-tabs__clear {
+  justify-content: center;
+  width: 30px;
+  padding: 0;
+}
+
+/* Update/install modal */
+
+body.md-admin-shell .md-market-update-modal__dialog {
+  color: var(--md-ui-text);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-lg);
+  box-shadow: var(--md-ui-shadow-dialog);
+}
+
+body.md-admin-shell .md-market-update-modal__header {
+  padding: 18px 20px 14px;
+  background: transparent;
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-market-update-modal__body {
+  padding: 16px 20px 20px;
+  background: var(--md-ui-surface-2);
+}
+
+body.md-admin-shell .md-market-update-modal__eyebrow {
+  color: var(--md-ui-primary);
+  font-size: var(--md-ui-fs-caption);
+}
+
+body.md-admin-shell .md-market-update-modal__title {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-lg);
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+body.md-admin-shell .md-market-update-status {
+  padding: 14px 16px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+body.md-admin-shell .md-market-update-status__label {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+}
+
+body.md-admin-shell .md-market-update-status__text {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-market-update-status__icon {
+  background: var(--md-ui-primary);
+  box-shadow: 0 0 0 6px var(--md-ui-primary-soft);
+}
+
+body.md-admin-shell .md-market-update-status__icon.is-success {
+  background: var(--md-ui-success);
+  box-shadow: 0 0 0 6px var(--md-ui-success-soft, rgba(25, 135, 84, .14));
+}
+
+body.md-admin-shell .md-market-update-status__icon.is-error {
+  background: var(--md-ui-danger);
+  box-shadow: 0 0 0 6px var(--md-ui-danger-soft, rgba(220, 53, 69, .14));
+}
+
+body.md-admin-shell .md-market-progress {
+  height: 8px;
+  background: var(--md-ui-surface-3);
+}
+
+body.md-admin-shell .md-market-progress__bar {
+  background: var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-market-progress__bar.is-success {
+  background: var(--md-ui-success);
+}
+
+body.md-admin-shell .md-market-progress__bar.is-error {
+  background: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-market-step {
+  min-height: 30px;
+  padding: 5px 10px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 8px;
+  font-size: var(--md-ui-fs-caption);
+}
+
+body.md-admin-shell .md-market-step.is-active {
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-color: color-mix(in srgb, var(--md-ui-primary) 35%, var(--md-ui-border));
+}
+
+body.md-admin-shell .md-market-step.is-done {
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft, rgba(25, 135, 84, .12));
+  border-color: color-mix(in srgb, var(--md-ui-success) 35%, var(--md-ui-border));
+}
+
+body.md-admin-shell .md-market-inline-alert {
+  padding: 12px 14px;
+  color: var(--md-ui-warning);
+  background: var(--md-ui-warning-soft, rgba(244, 183, 64, .12));
+  border: 1px solid color-mix(in srgb, var(--md-ui-warning) 30%, var(--md-ui-border));
+  border-radius: var(--md-ui-radius-sm);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-market-console {
+  min-height: 420px;
+  background: #0e1d33;
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}body.md-admin-shell .market-plugin-count-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 5px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--md-ui-primary) 24%, var(--md-ui-border));
+  font-size: 10px;
+  font-weight: 600;
+}
+body.md-admin-shell .market-item__actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.market-update-modal__versions {
+  margin-top: 3px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+.market-update-modal__repo {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  overflow-wrap: anywhere;
+}
+
+.market-update-modal__repo a {
+  color: var(--md-ui-primary);
+  text-decoration: none;
+}
+
+.market-update-modal__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 12px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-sm);
+}
+
+.market-update-modal__loading[hidden] {
+  display: none;
+}
+
+.market-update-list {
+  max-height: min(42vh, 360px);
+  overflow: auto;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+}
+
+.market-update-entry {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+.market-update-entry:last-child {
+  border-bottom: 0;
+}
+
+.market-update-entry__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+}
+
+.market-update-entry__head time {
+  font-family: var(--md-ui-font-mono);
+}
+
+.market-update-entry__head a {
+  color: var(--md-ui-primary);
+  text-decoration: none;
+}
+
+.market-update-entry__text {
+  margin-top: 4px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 991.98px) {
+  body.md-admin-shell .market-item__actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .market-item__actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

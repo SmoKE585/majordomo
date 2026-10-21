@@ -1,90 +1,113 @@
 [#if PLUGINS#]
 <div class="market-plugin-list" id="market_application">
     [#begin PLUGINS#]
-    <article class="market-plugin-card">
-        [#if EXISTS#]
-        <a class="market-plugin-card__icon-link" href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]">
-            <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
-        </a>
-        [#else#]
-        <span class="market-plugin-card__icon-placeholder">
-            <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
-        </span>
-        [#endif#]
-        <div class="market-plugin-card__content">
-            <div class="market-plugin-card__header">
-                [#if AUTHOR!=""#]
-                <div class="market-plugin-card__author">
-                    [#if AUTHOR_URL!=""#]<a href="[#AUTHOR_URL#]" target="_blank">[#endif#][#AUTHOR#][#if AUTHOR_URL!=""#]</a>[#endif#]
+    <article class="market-item">
+        <div class="market-item__media">
+            [#if EXISTS#]
+            <a class="market-item__icon-link" href="<#ROOTHTML#>panel/market.html?op=details&amp;plugin=[#MODULE_NAME#]" aria-label="История модуля [#TITLE#]">
+                <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" loading="lazy" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
+            </a>
+            [#else#]
+            <span class="market-item__icon-placeholder">
+                <img src="https://connect.smartliving.ru/cms/addons/[#ID#]_icon.png" alt="[#TITLE#]" loading="lazy" data-market-fallback-src="<#ROOTHTML#>img/modules/default.png">
+            </span>
+            [#endif#]
+        </div>
+        <div class="market-item__main">
+            <div class="market-item__top">
+                <div class="market-item__identity">
+                    [#if AUTHOR!=""#]
+                    <div class="market-item__author">
+                        [#if AUTHOR_URL!=""#]<a href="[#AUTHOR_URL#]" target="_blank" rel="noopener">[#endif#][#AUTHOR#][#if AUTHOR_URL!=""#]</a>[#endif#]
+                    </div>
+                    [#endif#]
+                    <h3 class="market-item__title" id="row[#ID#]_title">
+                        [#if URL!=""#]<a href="[#URL#]" target="_blank" rel="noopener">[#endif#][#TITLE#][#if URL!=""#]</a>[#endif#]
+                    </h3>
                 </div>
-                [#endif#]
-                [#if EXISTS#]
-                <span class="market-plugin-card__badge"><#LANG_MARKET_CATEGORY_INSTALLED#></span>
-                [#endif EXISTS#]
-                [#if CUSTOM_REPOSITORY_ACTIVE="1"#]
-                <span class="market-plugin-card__repo-badge is-custom">Git URL</span>
-                [#else#]
-                <span class="market-plugin-card__repo-badge">Connect</span>
-                [#endif#]
+                <div class="market-item__badges">
+                    [#if EXISTS#]
+                    <span class="md-badge md-badge--outline"><i class="ti ti-circle-check" aria-hidden="true"></i> <#LANG_MARKET_CATEGORY_INSTALLED#></span>
+                    [#endif EXISTS#]
+                </div>
             </div>
-            <h3 class="market-plugin-card__title" id="row[#ID#]_title">
-                [#if URL!=""#]<a href="[#URL#]" target="_blank">[#endif#][#TITLE#][#if URL!=""#]</a>[#endif#]
-            </h3>
             [#if "<#SETTINGS_SITE_LANGUAGE#>"=="ru"#]
                 [#if DESCRIPTION_RU!=""#]
-                <div class="market-plugin-card__description" id="row[#ID#]_description">[#DESCRIPTION_RU#]</div>
+                <p class="market-item__description" id="row[#ID#]_description">[#DESCRIPTION_RU#]</p>
                 [#endif#]
             [#else#]
                 [#if DESCRIPTION_EN!=""#]
-                <div class="market-plugin-card__description" id="row[#ID#]_description">[#DESCRIPTION_EN#]</div>
+                <p class="market-item__description" id="row[#ID#]_description">[#DESCRIPTION_EN#]</p>
                 [#else#]
                     [#if DESCRIPTION_RU!=""#]
-                    <div class="market-plugin-card__description" id="row[#ID#]_description">[#DESCRIPTION_RU#]</div>
+                    <p class="market-item__description" id="row[#ID#]_description">[#DESCRIPTION_RU#]</p>
                     [#endif#]
                 [#endif#]
             [#endif#]
             [#if LATEST_VERSION!=""#]
-            <div class="market-plugin-card__meta">
-                <span class="market-plugin-card__meta-label"><#LANG_LATEST_UPDATES#></span>
-                <span class="market-plugin-card__meta-main">
-                    [#if LATEST_VERSION_URL!=""#]<a href="[#LATEST_VERSION_URL#]" target="_blank">[#LATEST_VERSION#]</a>[#else#][#LATEST_VERSION#][#endif#]
+            <div class="market-item__meta">
+                <span class="market-item__meta-icon"><i class="ti ti-clock" aria-hidden="true"></i></span>
+                <span class="market-item__meta-label"><#LANG_LATEST_UPDATES#></span>
+                <span class="market-item__meta-value">
+                    [#if LATEST_VERSION_URL!=""#]<a href="[#LATEST_VERSION_URL#]" target="_blank" rel="noopener">[#LATEST_VERSION#]</a>[#else#][#LATEST_VERSION#][#endif#]
                 </span>
                 [#if LATEST_VERSION_COMMENT!=""#]
-                <span class="market-plugin-card__meta-note">[#LATEST_VERSION_COMMENT#]</span>
+                <span class="market-item__meta-note">[#LATEST_VERSION_COMMENT#]</span>
                 [#endif#]
             </div>
             [#endif#]
         </div>
-        <div class="market-plugin-card__actions-shell">
-            <div class="market-plugin-card__primary-actions">
-                <a
-                    class="btn btn-default market-plugin-card__link-btn [#if CUSTOM_REPOSITORY_ACTIVE="1"#]is-active-repo[#endif#]"
-                    href="#"
-                    data-market-action="custom-repo"
+        <div class="market-item__actions">
+            <button type="button"
+                    class="md-btn [#if EXISTS#]md-btn--success[#else#]md-btn--primary[#endif#] md-btn--sm market-item__install"
+                    data-market-action="open-update"
                     data-module-name="[#MODULE_NAME#]"
-                    data-current-url="[#CUSTOM_REPOSITORY_URL_BASE64#]"
-                    title="[#if CUSTOM_REPOSITORY_ACTIVE="1"#]Используется пользовательский Git/архив URL[#else#]Указать свой Git/архив URL[#endif#]"
-                ><i class="glyphicon glyphicon-link"></i> [#if CUSTOM_REPOSITORY_ACTIVE="1"#]Свой GIT подключен[#else#]Свой GIT[#endif#]</a>
-                [#if EXISTS#]
-                <a class="btn btn-success market-plugin-card__main-btn" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]"><i class="glyphicon glyphicon-refresh"></i> <#LANG_UPDATE#></a>
-                [#else#]
-                <a class="btn btn-primary market-plugin-card__main-btn" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]"><i class="glyphicon glyphicon-download"></i> <#LANG_ADD#></a>
-                [#endif#]
+                    data-installed="[#if EXISTS#]1[#else#]0[#endif#]"
+                    data-current-version="[#INSTALLED_VERSION#]"
+                    data-latest-version="[#LATEST_VERSION#]"
+                    data-install-url="<#ROOTHTML#>panel/market.html?mode=iframe&amp;mode2=install&amp;name=[#MODULE_NAME_ENCODED#]&amp;url=[#REPOSITORY_URL_ENCODED#]&amp;version=[#LATEST_VERSION_ENCODED#]">
+                <i class="ti [#if EXISTS#]ti-refresh[#else#]ti-download[#endif#]" aria-hidden="true"></i>
+                <span class="md-btn__label">[#if EXISTS#]<#LANG_UPDATE#>[#else#]<#LANG_ADD#>[#endif#]</span>
+            </button>
+            <div class="dropdown">
+                <button type="button" class="md-icon-btn md-icon-btn--sm market-item__menu-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Действия с модулем [#TITLE#]">
+                    <i class="ti ti-dots" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    [#if EXISTS#]
+                    <li>
+                        <a href="<#ROOTHTML#>panel/market.html?op=details&amp;plugin=[#MODULE_NAME#]" class="dropdown-item">
+                            <i class="ti ti-history" aria-hidden="true"></i>
+                            <#LANG_HISTORY#>
+                        </a>
+                    </li>
+                    [#endif#]
+                    <li>
+                        <button type="button" class="dropdown-item" data-market-action="custom-repo" data-module-name="[#MODULE_NAME#]" data-current-url="[#CUSTOM_REPOSITORY_URL_BASE64#]">
+                            <i class="ti ti-link" aria-hidden="true"></i>
+                            [#if CUSTOM_REPOSITORY_ACTIVE="1"#]Свой Git подключён[#else#]Свой Git[#endif#]
+                        </button>
+                    </li>
+                    [#if EXISTS#]
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="<#ROOTHTML#>panel/market.html?mode=iframe&amp;mode2=uninstall&amp;name=[#MODULE_NAME#]" data-confirm="<#LANG_ARE_YOU_SURE#>">
+                            <i class="ti ti-trash" aria-hidden="true"></i>
+                            <#LANG_DELETE#>
+                        </a>
+                    </li>
+                    [#endif#]
+                </ul>
             </div>
-            [#if EXISTS#]
-            <details class="market-plugin-card__menu">
-                <summary class="btn btn-default market-plugin-card__menu-summary">Ещё <span class="caret"></span></summary>
-                <div class="market-plugin-card__menu-dropdown">
-                    <a href="<#ROOTHTML#>panel/market.html?op=details&plugin=[#MODULE_NAME#]" class="market-plugin-card__menu-item"><i class="glyphicon glyphicon-info-sign"></i> <#LANG_HISTORY#></a>
-                    <a class="market-plugin-card__menu-item is-danger" href="<#ROOTHTML#>panel/market.html?mode=iframe&mode2=uninstall&name=[#MODULE_NAME#]" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#></a>
-                </div>
-            </details>
-            [#endif#]
         </div>
     </article>
     [#end PLUGINS#]
 </div>
 [#else PLUGINS#]
-<div class="market-plugin-empty"><#LANG_NO_RECORDS_FOUND#></div>
+<div class="md-empty market-empty">
+    <div class="md-empty__icon"><i class="ti ti-package-off" aria-hidden="true"></i></div>
+    <div class="md-empty__title"><#LANG_NO_RECORDS_FOUND#></div>
+    <div class="md-empty__text">В этой категории пока нет модулей.</div>
+</div>
 [#endif PLUGINS#]
 

@@ -1,38 +1,67 @@
-<div class="market-details">
-    <section class="market-details__panel">
-        <div class="market-details__hero">
-            <div class="market-details__topbar">
-                <a href="?" class="btn btn-default market-details__back"><i class="glyphicon glyphicon-chevron-left"></i> <#LANG_BACK#></a>
-                <div class="market-details__actions">
-                    <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&url=[#REPOSITORY_URL_ENCODED#]&version=[#LATEST_VERSION_ENCODED#]" class="btn btn-success" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-download"></i> <#LANG_UPDATE#></a>
-                    [#if URL!=""#]
-                    <a href="[#URL#]" target="_blank" class="btn btn-default"><i class="glyphicon glyphicon-globe"></i> <#LANG_URL#></a>
-                    [#endif#]
-                </div>
-            </div>
-            <div class="market-details__eyebrow">История модуля</div>
-            <h1 class="market-details__title">[#MODULE_NAME#]</h1>
-            <p class="market-details__subtitle">Последние коммиты и быстрый откат на конкретную ревизию, если нужно вернуть модуль к предыдущему состоянию.</p>
+<div class="md-ui-page md-ui-page--stack market-v2 market-details-v2">
+    <section class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-history" aria-hidden="true"></i> История модуля</div>
+            <h1 class="md-ui-hero__title">[#MODULE_NAME#]</h1>
+            <p class="md-ui-hero__lede">История коммитов и откат на нужную ревизию.</p>
         </div>
-        <div class="market-details__section">
-            <h2 class="market-details__section-title"><#LANG_UPDATES#></h2>
+        <div class="md-ui-hero__actions">
+            <a href="<#ROOTHTML#>panel/market.html" class="md-btn md-btn--ghost">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i>
+                <span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+            [#if URL!=""#]
+            <a href="[#URL#]" target="_blank" rel="noopener" class="md-btn md-btn--secondary">
+                <i class="ti ti-world" aria-hidden="true"></i>
+                <span class="md-btn__label"><#LANG_URL#></span>
+            </a>
+            [#endif#]
+            <a href="?mode=iframe&amp;mode2=install&amp;name=[#MODULE_NAME_ENCODED#]&amp;url=[#REPOSITORY_URL_ENCODED#]&amp;version=[#LATEST_VERSION_ENCODED#]" class="md-btn md-btn--success" data-confirm="<#LANG_ARE_YOU_SURE#>">
+                <i class="ti ti-refresh" aria-hidden="true"></i>
+                <span class="md-btn__label"><#LANG_UPDATE#></span>
+            </a>
+        </div>
+    </section>
+
+    <section class="md-card market-details__section">
+        <div class="md-card__head">
+            <div class="md-card__titles">
+                <div class="md-card__eyebrow">Коммиты</div>
+                <h2 class="md-card__title"><#LANG_UPDATES#></h2>
+            </div>
+        </div>
+        <div class="md-card__body">
             [#if COMMITS#]
-            <div class="market-details__timeline">
+            <div class="market-timeline">
                 [#begin COMMITS#]
-                <article class="market-details__commit">
-                    <div class="market-details__commit-head">
-                        <div class="market-details__commit-date">[#UPDATED#]</div>
-                        <div class="market-details__commit-actions">
-                            <a href="?mode=iframe&mode2=install&name=[#MODULE_NAME_ENCODED#]&link=[#LINK_URL#]" class="btn btn-default btn-sm" data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-download"></i> <#LANG_RESTORE#></a>
-                            <a href="[#LINK#]" target="_blank" class="btn btn-default btn-sm"><i class="glyphicon glyphicon-globe"></i> <#LANG_DETAILS#></a>
-                        </div>
+                <article class="market-commit">
+                    <div class="market-commit__rail">
+                        <span class="market-commit__dot"><i class="ti ti-git-commit" aria-hidden="true"></i></span>
                     </div>
-                    <div class="market-details__commit-text">[#CONTENT#]</div>
+                    <div class="market-commit__body">
+                        <div class="market-commit__head">
+                            <time class="market-commit__date"><i class="ti ti-calendar" aria-hidden="true"></i> [#UPDATED#]</time>
+                            <div class="market-commit__actions">
+                                <a href="?mode=iframe&amp;mode2=install&amp;name=[#MODULE_NAME_ENCODED#]&amp;link=[#LINK_URL#]" class="md-btn md-btn--secondary md-btn--sm" data-confirm="<#LANG_ARE_YOU_SURE#>">
+                                    <i class="ti ti-restore" aria-hidden="true"></i>
+                                    <span class="md-btn__label"><#LANG_RESTORE#></span>
+                                </a>
+                                <a href="[#LINK#]" target="_blank" rel="noopener" class="md-icon-btn md-icon-btn--sm" title="<#LANG_DETAILS#>" aria-label="<#LANG_DETAILS#>">
+                                    <i class="ti ti-external-link" aria-hidden="true"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="market-commit__text">[#CONTENT#]</div>
+                    </div>
                 </article>
                 [#end COMMITS#]
             </div>
             [#else#]
-            <div class="market-details__empty">История коммитов для этого модуля сейчас недоступна.</div>
+            <div class="md-empty">
+                <div class="md-empty__icon"><i class="ti ti-history-off" aria-hidden="true"></i></div>
+                <div class="md-empty__title">История недоступна</div>
+                <div class="md-empty__text">Коммиты для этого модуля недоступны.</div>
+            </div>
             [#endif COMMITS#]
         </div>
     </section>

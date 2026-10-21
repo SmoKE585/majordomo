@@ -193,6 +193,7 @@ if ($this->tab == 'properties') {
             $props[$i]['KEEP_HISTORY'] = $rec['KEEP_HISTORY'];
         }
         $props[$i]['OBJECT_TITLE'] = $rec['TITLE'];
+        $props[$i]['OBJECT_ID'] = $rec['ID'];
         $props[$i]['FULL_NAME'] = $rec['TITLE'] . '.' . $props[$i]['TITLE'];
         $value = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID='" . $props[$i]['ID'] . "' AND OBJECT_ID='" . $rec['ID'] . "'");
         if ($this->mode == 'update') {
@@ -204,7 +205,11 @@ if ($this->tab == 'properties') {
         $props[$i]['VALUE'] = isset($value['VALUE']) ? $value['VALUE'] : '';
         $props[$i]['VALUE_HTML'] = htmlspecialchars($props[$i]['VALUE']);
         $props[$i]['SOURCE'] = isset($value['SOURCE']) ? $value['SOURCE'] : '';
-        $props[$i]['SOURCE_HTML'] = htmlspecialchars($props[$i]['SOURCE']);
+        $props[$i]['SOURCE_TEXT'] = htmlspecialchars($props[$i]['SOURCE']);
+        $props[$i]['SOURCE_HTML'] = $props[$i]['SOURCE_TEXT'];
+        if ($props[$i]['SOURCE'] !== '' && (preg_match('~^https?://~i', $props[$i]['SOURCE']) || str_starts_with($props[$i]['SOURCE'], '/'))) {
+            $props[$i]['SOURCE_HTML'] = '<a href="' . htmlspecialchars($props[$i]['SOURCE'], ENT_QUOTES) . '" target="_blank" rel="noopener">' . $props[$i]['SOURCE_TEXT'] . '</a>';
+        }
         $props[$i]['UPDATED'] = isset($value['UPDATED']) ? date('d.m.Y H:i:s', strtotime($value['UPDATED'])) : '';
 
         $value['LINKED_MODULES'] = isset($value['LINKED_MODULES']) ? explode(',', $value['LINKED_MODULES']) : false;
@@ -236,6 +241,25 @@ if ($this->tab == 'properties') {
 
     $propsCount = is_array($props) ? count($props) : 0;
     $customPropsCount = is_array($my_props) ? count($my_props) : 0;
+    $historyPropsCount = 0;
+    $sourcePropsCount = 0;
+    $onchangePropsCount = 0;
+    if (is_array($props)) {
+        foreach ($props as $propertyItem) {
+            if ((int)$propertyItem['KEEP_HISTORY'] > 0) {
+                $historyPropsCount++;
+            }
+            if ((string)$propertyItem['SOURCE'] !== '') {
+                $sourcePropsCount++;
+            }
+            if ((string)$propertyItem['ONCHANGE'] !== '') {
+                $onchangePropsCount++;
+            }
+        }
+    }
+    $out['HISTORY_PROPERTIES_TOTAL'] = $historyPropsCount;
+    $out['SOURCE_PROPERTIES_TOTAL'] = $sourcePropsCount;
+    $out['ONCHANGE_PROPERTIES_TOTAL'] = $onchangePropsCount;
     $out['PROPERTIES'] = $props;
     $out['CLASS_PROPERTIES'] = array();
     $out['OBJECT_PROPERTIES'] = array();
@@ -264,7 +288,7 @@ if ($this->tab == 'methods') {
         'WRAPLINES' => 0,
         'SHOWERROR' => 0,
         'UPTOLINE' => 0,
-        'THEME' => 'codemirror',
+        'THEME' => 'auto',
         'MIXLINE' => 20,
         'SHOWLINE' => 20,
         'TURNONSETTINGS' => 0,
@@ -300,6 +324,18 @@ if ($this->tab == 'methods') {
         $out['OBJECT_TITLE_URL'] = urlencode($rec['TITLE']);
         $out['METHOD_ID'] = $method['ID'];
         $my_meth = SQLSelectOne("SELECT * FROM methods WHERE OBJECT_ID='" . $rec['ID'] . "' AND TITLE LIKE '" . DBSafe($method['TITLE']) . "'");
+
+        $parentScriptTitle = '';
+        if (!empty($method['SCRIPT_ID'])) {
+            $parentScript = SQLSelectOne("SELECT TITLE FROM scripts WHERE ID='" . (int)$method['SCRIPT_ID'] . "'");
+            if (isset($parentScript['TITLE'])) {
+                $parentScriptTitle = $parentScript['TITLE'];
+            }
+        }
+        $out['PARENT_METHOD_SCRIPT_TITLE'] = htmlspecialchars($parentScriptTitle);
+        $out['PARENT_METHOD_HAS_IMPLEMENTATION'] = (trim((string)$method['CODE']) !== '' || (int)$method['SCRIPT_ID'] > 0) ? 1 : 0;
+        $out['PARENT_METHOD_CODE'] = htmlspecialchars((string)$method['CODE']);
+        $out['PARENT_METHOD_DESCRIPTION'] = htmlspecialchars(isset($method['DESCRIPTION']) ? (string)$method['DESCRIPTION'] : '');
 
         if ($this->mode == 'update') {
             $ok = 1;

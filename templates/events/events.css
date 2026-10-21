@@ -1,0 +1,518 @@
+/*
+ * Events module: live feed, registry table, settings modal and event card.
+ * Loaded only from templates/events/action_admin.html.
+ */
+
+body.md-admin-shell .md-events-page .md-events-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed-card .md-card__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+body.md-admin-shell .md-events-page .md-events-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-events-page .md-events-live__dot {
+  width: 7px;
+  height: 7px;
+  background: var(--md-ui-success);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--md-ui-success-soft);
+  transition: background-color var(--md-ui-transition), box-shadow var(--md-ui-transition);
+}
+
+body.md-admin-shell .md-events-page .md-events-live.is-paused .md-events-live__dot {
+  background: var(--md-ui-muted);
+  box-shadow: 0 0 0 3px var(--md-ui-surface-3);
+}
+
+body.md-admin-shell .md-events-page .md-events-live.is-error .md-events-live__dot {
+  background: var(--md-ui-danger);
+  box-shadow: 0 0 0 3px var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-events-page .md-events-feed {
+  min-width: 0;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__item:last-child {
+  border-bottom: 0;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__item:hover {
+  background: var(--md-ui-surface-2);
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__marker {
+  display: inline-flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 1px;
+  border-radius: 9px;
+  font-size: 14px;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__marker--primary {
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__marker--info {
+  color: var(--md-ui-info);
+  background: var(--md-ui-info-soft);
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__marker--danger {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__marker--neutral {
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-3);
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__name {
+  min-width: 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 500;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__name:hover {
+  color: var(--md-ui-primary);
+  text-decoration: underline;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__time {
+  flex: 0 0 auto;
+  color: var(--md-ui-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__desc {
+  margin: 3px 0 0;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__payload {
+  margin-top: 5px;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__details {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 6px;
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 5px;
+  font-family: var(--md-ui-font-mono);
+  font-size: 10px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-events-page .md-events-feed__empty {
+  padding: 30px 16px;
+}
+
+body.md-admin-shell .md-events-page .md-events-quickstart .md-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+body.md-admin-shell .md-events-page .md-events-snippet__label {
+  margin-bottom: 4px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .md-events-page .md-events-code {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+body.md-admin-shell .md-events-page .md-events-code code {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+}
+
+body.md-admin-shell .md-events-page .md-events-quickstart__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-events-page .md-events-quickstart__hint i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  font-size: 13px;
+}
+
+body.md-admin-shell .md-events-page .md-events-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+body.md-admin-shell .md-events-page .md-events-section-title {
+  margin: 2px 0 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-lg);
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+body.md-admin-shell .md-events-page .md-events-section-subtitle {
+  max-width: 70ch;
+  margin: 3px 0 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-sm);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-events-page .md-events-section-subtitle code {
+  padding: 1px 5px;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 4px;
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+}
+
+body.md-admin-shell .md-events-page .md-events-table-wrap .md-table__scroll {
+  contain: paint;
+}
+
+body.md-admin-shell .md-events-page .md-events-table {
+  min-width: 1060px;
+}
+
+body.md-admin-shell .md-events-page .md-events-name {
+  align-items: flex-start;
+  min-width: 240px;
+}
+
+body.md-admin-shell .md-events-page .md-events-name .md-table__icon {
+  flex: 0 0 28px;
+  margin-top: 1px;
+}
+
+body.md-admin-shell .md-events-page .md-events-name__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-events-page .md-events-name__body a {
+  color: var(--md-ui-text);
+  font-weight: 500;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-events-page .md-events-name__body a:hover {
+  color: var(--md-ui-primary);
+  text-decoration: underline;
+}
+
+body.md-admin-shell .md-events-page .md-events-name__body .md-badge {
+  font-size: 10px;
+}
+
+body.md-admin-shell .md-events-page .md-events-description {
+  display: -webkit-box;
+  max-width: 320px;
+  overflow: hidden;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-events-page .md-events-objects {
+  display: inline-block;
+  max-width: 240px;
+  overflow: hidden;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-events-page .md-events-params {
+  display: block;
+  max-width: 200px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-events-page .md-events-updated {
+  color: var(--md-ui-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-events-page .md-events-empty {
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+/* Event card */
+
+body.md-admin-shell .md-events-page .md-events-param-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body.md-admin-shell .md-events-page .md-events-param {
+  padding: 12px 14px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+body.md-admin-shell .md-events-page .md-events-param__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+body.md-admin-shell .md-events-page .md-events-param__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-events-page .md-events-param__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 7px;
+  font-size: 13px;
+}
+
+body.md-admin-shell .md-events-page .md-events-param__title strong {
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-events-page .md-events-param__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body.md-admin-shell .md-events-page .md-events-param__linked {
+  margin-top: 10px;
+}
+
+body.md-admin-shell .md-events-page .md-events-param__meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+}
+
+body.md-admin-shell .md-events-page .md-events-related {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.md-admin-shell .md-events-page .md-events-related__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-events-page .md-events-related__item:last-child {
+  border-bottom: 0;
+}
+
+body.md-admin-shell .md-events-page .md-events-related__item a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-events-page .md-events-related__item a:hover {
+  color: var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-events-page .md-events-related__item time {
+  flex: 0 0 auto;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-events-page .md-events-form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1199.98px) {
+  body.md-admin-shell .md-events-page .md-events-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 991.98px) {
+  body.md-admin-shell .md-events-page .md-events-param__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  body.md-admin-shell .md-events-page .md-events-feed-card .md-card__head {
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-events-page .md-events-feed-card .md-card__actions {
+    width: 100%;
+    margin-top: 8px;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  body.md-admin-shell .md-events-page .md-events-table {
+    min-width: 900px;
+  }
+
+  body.md-admin-shell .md-events-page .md-events-description,
+  body.md-admin-shell .md-events-page .md-events-objects {
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .md-events-page .md-events-feed__time {
+    flex-basis: 100%;
+    margin-top: 2px;
+  }
+
+  body.md-admin-shell .md-events-page .md-events-param__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-events-page .md-events-param__head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-events-page .md-events-form-actions {
+    align-items: stretch;
+  }
+
+  body.md-admin-shell .md-events-page .md-events-form-actions .md-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

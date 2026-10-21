@@ -1,256 +1,289 @@
 <!--#
- @version 0.3 (ux refresh)
+ @version 0.4 (design system)
 #-->
 
-<div class="md-settings-page">
-    <section class="md-settings-hero">
-        <div class="md-settings-hero__body">
-            <div>
-                <div class="md-settings-hero__eyebrow">Настройки MajorDoMo</div>
-                <h1 class="md-settings-hero__title"><#LANG_MODULE_SETTINGS#></h1>
-                <p class="md-settings-hero__lead">
-                    Все параметры собраны по понятным разделам, без служебного шума. Для каждой настройки есть короткая подсказка, а лишние и устаревшие пункты убраны из рабочего интерфейса.
-                </p>
-            </div>
-            <div class="md-settings-hero__stats">
-                <div class="md-settings-stat">
-                    <span class="md-settings-stat__label">Раздел</span>
-                    <span class="md-settings-stat__value">[#ACTIVE_SECTION_TITLE#]</span>
-                </div>
-                <div class="md-settings-stat">
-                    <span class="md-settings-stat__label">Настроек</span>
-                    <span class="md-settings-stat__value">[#ACTIVE_SECTION_COUNT#]</span>
-                </div>
-                <div class="md-settings-stat">
-                    <span class="md-settings-stat__label">Секций</span>
-                    <span class="md-settings-stat__value">[#SECTION_COUNT#]</span>
-                </div>
-                <div class="md-settings-stat">
-                    <span class="md-settings-stat__label">Режим</span>
-                    <span class="md-settings-stat__value">Контрольная панель</span>
-                </div>
-            </div>
+<div class="md-ui-page md-ui-page--stack md-settings-page">
+    [#if ERR_MSG!=""#]
+    <div class="md-alert md-alert--danger" role="alert">
+        <i class="ti ti-alert-circle md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">[#ERR_MSG#]</div></div>
+    </div>
+    [#endif ERR_MSG#]
+
+    <section class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i> Настройки MajorDoMo</div>
+            <h1 class="md-ui-hero__title">Общие настройки</h1>
+            <p class="md-ui-hero__lede">Параметры системы собраны по разделам. Активный раздел открывается сразу, а локальный поиск помогает найти нужную настройку без перезагрузки страницы.</p>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a class="md-btn md-btn--secondary" href="?mode=reset&amp;filter_name=<#FILTER_NAME#>" data-md-confirm="Вернуть значения по умолчанию для этого раздела?">
+                <i class="ti ti-rotate-clockwise" aria-hidden="true"></i>
+                <span class="md-btn__label">Сбросить раздел</span>
+            </a>
         </div>
     </section>
 
-    <section class="md-settings-tabs-card">
-        <div class="md-settings-tabs-card__body">
-            <nav class="md-settings-tabs" aria-label="Разделы настроек">
-                [#begin SECTIONS#]
-                <a href="?filter_name=[#FILTER#]" class="md-settings-tab [#if SELECTED="1"#]is-active[#endif#]">[#TITLE#]</a>
-                [#end SECTIONS#]
-            </nav>
-        </div>
-    </section>
+    <div class="md-ui-kpi-grid">
+        <article class="md-kpi md-kpi--info">
+            <span class="md-kpi__icon"><i class="ti ti-layout-grid" aria-hidden="true"></i></span>
+            <span class="md-kpi__label">Разделов</span>
+            <span class="md-kpi__value">[#SECTION_COUNT#]</span>
+            <span class="md-kpi__meta">Группы параметров в панели</span>
+        </article>
+        <article class="md-kpi">
+            <span class="md-kpi__icon"><i class="ti ti-adjustments" aria-hidden="true"></i></span>
+            <span class="md-kpi__label">В разделе</span>
+            <span class="md-kpi__value">[#ACTIVE_SECTION_COUNT#]</span>
+            <span class="md-kpi__meta">[#ACTIVE_SECTION_TITLE#]</span>
+        </article>
+        <article class="md-kpi md-kpi--neutral">
+            <span class="md-kpi__icon"><i class="ti ti-list-details" aria-hidden="true"></i></span>
+            <span class="md-kpi__label">Всего настроек</span>
+            <span class="md-kpi__value">[#SETTINGS_TOTAL#]</span>
+            <span class="md-kpi__meta">Во всех разделах системы</span>
+        </article>
+        <article class="md-kpi [#if CHANGED_IN_SECTION#]md-kpi--warning[#else#]md-kpi--success[#endif#]">
+            <span class="md-kpi__icon"><i class="ti ti-pencil" aria-hidden="true"></i></span>
+            <span class="md-kpi__label">Изменено в разделе</span>
+            <span class="md-kpi__value">[#CHANGED_IN_SECTION#]</span>
+            <span class="md-kpi__meta">Отличаются от значений по умолчанию</span>
+        </article>
+    </div>
+
+    <nav class="md-tabs md-settings-tabs" aria-label="Разделы настроек">
+        [#begin SECTIONS#]
+        <a href="?filter_name=[#FILTER#]" class="nav-link [#if SELECTED="1"#]active[#endif#]"[#if SELECTED="1"#] aria-current="page"[#endif#]>[#TITLE#]</a>
+        [#end SECTIONS#]
+    </nav>
 
     [#if UPDATED#]
-    <div class="md-admin-inline-note md-admin-inline-note--success">
-        <i class="glyphicon glyphicon-ok"></i>
-        <span>Изменения сохранены.</span>
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">Изменения сохранены.</div></div>
     </div>
     [#endif UPDATED#]
 
-    <section class="md-settings-form-card">
-        <div class="md-settings-form-card__body">
-            <div class="md-settings-toolbar">
-                <div class="md-settings-toolbar__meta">
-                    <h2 class="md-settings-toolbar__title">[#ACTIVE_SECTION_TITLE#]</h2>
-                    <p class="md-settings-toolbar__description">[#ACTIVE_SECTION_DESCRIPTION#]</p>
-                </div>
-                <div class="md-settings-toolbar__actions">
-                    <input type="search" class="form-control md-settings-search" placeholder="Быстрый поиск по текущему разделу" data-settings-search-input>
-                    <a class="btn btn-light" href="?mode=reset&filter_name=<#FILTER_NAME#>" onClick="return confirm('Вернуть значения по умолчанию для этого раздела?')">Сбросить раздел</a>
-                </div>
-            </div>
-
-            [#if RESULT#]
-            <form action="?" method="post" name="frmList_settings" autocomplete="off">
-                <div class="md-settings-grid">
-                    [#begin RESULT#]
-                    <article class="md-settings-card [#if IS_WIDE="1"#]is-wide[#endif#]" data-settings-card data-settings-search="[#SEARCH_TEXT#]">
-                        <div class="md-settings-card__header">
-                            <h3 class="md-settings-card__title">
-                                <span>[#TITLE#]</span>
-                                [#if NOTES!=""#]
-                                <button type="button" class="md-settings-help" data-bs-toggle="tooltip" data-bs-placement="top" title="[#NOTES_SAFE#]" aria-label="Подсказка">
-                                    <i class="glyphicon glyphicon-question-sign"></i>
-                                </button>
-                                [#endif#]
-                            </h3>
-                        </div>
-
-                        [#if NOTES!=""#]
-                        <p class="md-settings-card__note">[#NOTES#]</p>
-                        [#endif#]
-
-                        <div class="md-settings-control">
-                            [#if TYPE="text"#]
-                            <input type="text" class="form-control" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false">
-                            [#endif TYPE#]
-
-                            [#if TYPE="password"#]
-                            <div class="md-settings-secret">
-                                <input type="password" class="form-control" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="new-password" spellcheck="false">
-                                <button type="button" class="btn btn-light" data-settings-toggle-secret="value_[#ID#]">Показать</button>
-                            </div>
-                            [#endif TYPE#]
-
-                            [#if TYPE="textarea"#]
-                            [#if USE_CODE_EDITOR="1"#]
-                            <div class="md-code-editor md-settings-code-editor"
-                                 data-code-editor
-                                 data-code-editor-key="[#CODE_EDITOR_KEY#]"
-                                 data-code-editor-mode="[#CODE_EDITOR_MODE#]"
-                                 data-code-editor-theme="[#CODE_EDITOR_THEME#]"
-                                 data-code-editor-autosave="0"
-                                 data-code-editor-autoclose="[#CODE_EDITOR_AUTOCLOSEQUOTES#]"
-                                 data-code-editor-wraplines="[#CODE_EDITOR_WRAPLINES#]"
-                                 data-code-editor-min-lines="[#CODE_EDITOR_MIXLINE#]"
-                                 data-code-editor-max-lines="[#CODE_EDITOR_SHOWLINE#]"
-                                 data-code-editor-autofocus="0"
-                                 data-code-editor-validate-url=""
-                                 data-code-editor-autosave-url=""
-                                 data-code-editor-id="[#ID#]"
-                                 data-code-editor-md="settings_[#NAME#]"
-                                 data-code-editor-hide-errors-on-edit="1">
-                                <div class="md-code-editor__toolbar" data-code-editor-toolbar>
-                                    <span class="md-settings-code-editor__label">PHP</span>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
-                                    <span class="md-code-editor__status" data-code-editor-status></span>
-                                </div>
-                                <textarea class="form-control" name="value_[#ID#]" rows="[#ROWS#]" autocomplete="off" spellcheck="false">[#VALUE#]</textarea>
-                            </div>
-                            [#else#]
-                            <textarea class="form-control" name="value_[#ID#]" rows="[#ROWS#]" autocomplete="off" spellcheck="false">[#VALUE#]</textarea>
-                            [#endif#]
-                            [#endif TYPE#]
-
-                            [#if TYPE="path"#]
-                            <div class="md-settings-path">
-                                <input type="text" class="form-control" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false">
-                                <button type="button" class="btn btn-light" data-settings-browse="value_[#ID#]">Выбрать</button>
-                            </div>
-                            [#endif TYPE#]
-
-                            [#if TYPE="onoff"#]
-                            <div class="md-settings-choice-group">
-                                <label class="md-settings-choice">
-                                    <input type="radio" name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
-                                    <span>Включено</span>
-                                </label>
-                                <label class="md-settings-choice">
-                                    <input type="radio" name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
-                                    <span>Выключено</span>
-                                </label>
-                            </div>
-                            [#endif TYPE#]
-
-                            [#if TYPE="yesno"#]
-                            <div class="md-settings-choice-group">
-                                <label class="md-settings-choice">
-                                    <input type="radio" name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
-                                    <span>Да</span>
-                                </label>
-                                <label class="md-settings-choice">
-                                    <input type="radio" name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
-                                    <span>Нет</span>
-                                </label>
-                            </div>
-                            [#endif TYPE#]
-
-                            [#if TYPE="enable"#]
-                            <div class="md-settings-choice-group">
-                                <label class="md-settings-choice">
-                                    <input type="radio" name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
-                                    <span>Включено</span>
-                                </label>
-                                <label class="md-settings-choice">
-                                    <input type="radio" name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
-                                    <span>Выключено</span>
-                                </label>
-                            </div>
-                            [#endif TYPE#]
-
-                            [#if TYPE="select"#][#if IS_SELECT_DROPDOWN="1"#]
-                            <select class="form-control form-select" name="value_[#ID#]" autocomplete="off">
-                                [#begin OPTIONS#]
-                                <option value="[#OPTION_VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#OPTION_TITLE#]</option>
-                                [#end OPTIONS#]
-                            </select>
-                            [#endif#][#endif TYPE#]
-
-                            [#if TYPE="select"#][#if IS_SELECT_CHOICES="1"#]
-                            <div class="md-settings-choice-group">
-                                [#begin OPTIONS#]
-                                <label class="md-settings-choice">
-                                    <input type="radio" name="value_<#RESULT.ID#>" value="[#OPTION_VALUE#]"[#if SELECTED="1"#] checked[#endif#]>
-                                    <span>[#OPTION_TITLE#]</span>
-                                </label>
-                                [#end OPTIONS#]
-                            </div>
-                            [#endif#][#endif TYPE#]
-
-                            [#if TYPE="json"#]
-                            [#if OPTIONS#]
-                            <div class="md-settings-hook-list">
-                                [#begin OPTIONS#]
-                                <div class="md-settings-hook-card">
-                                    <div class="md-settings-hook-card__header">
-                                        <div class="md-settings-hook-card__title">[#OPTION_LABEL#]</div>
-                                        <div class="md-settings-hook-card__system">[#OPTION_TITLE#]</div>
-                                    </div>
-                                    <div class="md-settings-hook-card__grid">
-                                        <label class="md-settings-hook-card__field">
-                                            <span>Приоритет</span>
-                                            <input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_priority" value="[#PRIORITY#]" autocomplete="off" spellcheck="false">
-                                        </label>
-                                        <label class="md-settings-hook-card__field">
-                                            <span>Фильтр</span>
-                                            <input type="text" class="form-control" name="[#OPTION_TITLE#]_<#RESULT.ID#>_filter" value="[#FILTER#]" autocomplete="off" spellcheck="false">
-                                        </label>
-                                    </div>
-                                </div>
-                                [#end OPTIONS#]
-                            </div>
-                            [#else#]
-                            <div class="md-admin-empty-state">Для этой настройки пока нет маршрутов.</div>
-                            [#endif#]
-                            [#endif TYPE#]
-                        </div>
-
-                        [#if DEFAULT_DISPLAY!=""#]
-                        <div class="md-settings-card__footer">
-                            <span class="md-settings-badge">По умолчанию: [#DEFAULT_DISPLAY#]</span>
-                            [#if ISDEFAULT="1"#]<span>Используется значение по умолчанию</span>[#endif#]
-                        </div>
-                        [#endif#]
-                    </article>
-                    [#end RESULT#]
-                </div>
-
-                <div class="md-settings-empty" data-settings-empty>
-                    По текущему запросу настройки не найдены.
-                </div>
-
-                <div class="md-settings-actions">
-                    <div class="md-settings-actions__primary">
-                        <button class="btn btn-primary" type="submit" name="submit">
-                            <i class="glyphicon glyphicon-floppy-saved"></i> Сохранить изменения
-                        </button>
-                    </div>
-                    <div class="md-settings-actions__secondary">
-                        <a class="btn btn-light" href="?filter_name=<#FILTER_NAME#>">Отменить локальный поиск</a>
-                    </div>
-                </div>
-
-                <input type="hidden" name="mode" value="update">
-                <input type="hidden" name="filter_name" value="<#FILTER_NAME#>">
-            </form>
-            [#else RESULT#]
-            <div class="md-admin-empty-state">
-                <#LANG_NO_RECORDS_FOUND#>
-            </div>
-            [#endif RESULT#]
+    <div class="md-section-head md-settings-section-head">
+        <div class="md-section-head__text">
+            <div class="md-section-head__eyebrow">Раздел настроек</div>
+            <h2 class="md-section-head__title">[#ACTIVE_SECTION_TITLE#]</h2>
+            <p class="md-section-head__description">[#ACTIVE_SECTION_DESCRIPTION#]</p>
         </div>
-    </section>
+        <div class="md-section-head__actions">
+            <div class="md-input-shell md-input-shell--sm md-settings-search">
+                <i class="ti ti-search md-input-icon" aria-hidden="true"></i>
+                <input class="md-input" type="search" placeholder="Поиск по разделу" data-settings-search-input aria-label="Поиск по текущему разделу">
+            </div>
+        </div>
+    </div>
+
+    [#if RESULT#]
+    <form action="?" method="post" name="frmList_settings" id="mdSettingsForm" autocomplete="off">
+        <div class="md-settings-grid">
+            [#begin RESULT#]
+            <article class="md-card md-card--compact md-settings-card [#if IS_WIDE="1"#]is-wide[#endif#]" data-settings-card data-settings-search="[#SEARCH_TEXT#]">
+                <div class="md-card__head">
+                    <div class="md-card__titles">
+                        <h3 class="md-card__title" id="settingsTitle_[#ID#]">[#TITLE#]</h3>
+                        [#if NOTES!=""#]
+                        <div class="md-card__subtitle">[#NOTES#]</div>
+                        [#endif#]
+                    </div>
+                </div>
+
+                <div class="md-card__body">
+                    <div class="md-settings-control">
+                        [#if TYPE="text"#]
+                        <input type="text" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">
+                        [#endif TYPE#]
+
+                        [#if TYPE="password"#]
+                        <div class="md-settings-secret">
+                            <input type="password" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="new-password" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">
+                            <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-settings-toggle-secret="value_[#ID#]">Показать</button>
+                        </div>
+                        [#endif TYPE#]
+
+                        [#if TYPE="textarea"#]
+                        [#if USE_CODE_EDITOR="1"#]
+                        <div class="md-code-editor md-settings-code-editor"
+                             data-code-editor
+                             data-code-editor-key="[#CODE_EDITOR_KEY#]"
+                             data-code-editor-mode="[#CODE_EDITOR_MODE#]"
+                             data-code-editor-theme="[#CODE_EDITOR_THEME#]"
+                             data-code-editor-autosave="0"
+                             data-code-editor-autoclose="[#CODE_EDITOR_AUTOCLOSEQUOTES#]"
+                             data-code-editor-wraplines="[#CODE_EDITOR_WRAPLINES#]"
+                             data-code-editor-min-lines="[#CODE_EDITOR_MIXLINE#]"
+                             data-code-editor-max-lines="[#CODE_EDITOR_SHOWLINE#]"
+                             data-code-editor-autofocus="0"
+                             data-code-editor-validate-url=""
+                             data-code-editor-autosave-url=""
+                             data-code-editor-id="[#ID#]"
+                             data-code-editor-md="settings_[#NAME#]"
+                             data-code-editor-hide-errors-on-edit="1">
+                            <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+                                <span class="md-code-editor__lang-badge">PHP</span>
+                                <span class="md-code-editor__toolbar-divider" aria-hidden="true"></span>
+                                <span class="md-code-editor__toolbar-spacer"></span>
+                                <span class="md-code-editor__status" data-code-editor-status aria-live="polite"></span>
+                                <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="search" title="Найти (Ctrl+F)" aria-label="Найти">
+                                    <i class="ti ti-search" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="fullscreen" title="Полный экран (F11)" aria-label="Полный экран">
+                                    <i class="ti ti-maximize" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <textarea class="md-textarea" name="value_[#ID#]" rows="[#ROWS#]" autocomplete="off" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">[#VALUE#]</textarea>
+                        </div>
+                        [#else#]
+                        <textarea class="md-textarea" id="value_[#ID#]" name="value_[#ID#]" rows="[#ROWS#]" autocomplete="off" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">[#VALUE#]</textarea>
+                        [#endif#]
+                        [#endif TYPE#]
+
+                        [#if TYPE="path"#]
+                        <div class="md-settings-path">
+                            <input type="text" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">
+                            <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-settings-browse="value_[#ID#]">
+                                <i class="ti ti-folder-open" aria-hidden="true"></i>
+                                <span class="md-btn__label">Выбрать</span>
+                            </button>
+                        </div>
+                        [#endif TYPE#]
+
+                        [#if TYPE="onoff"#]
+                        <div class="md-settings-choices" role="radiogroup" aria-labelledby="settingsTitle_[#ID#]">
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" data-md-raw-checkbox name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">Включено</span>
+                            </label>
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" data-md-raw-checkbox name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">Выключено</span>
+                            </label>
+                        </div>
+                        [#endif TYPE#]
+
+                        [#if TYPE="yesno"#]
+                        <div class="md-settings-choices" role="radiogroup" aria-labelledby="settingsTitle_[#ID#]">
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" data-md-raw-checkbox name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">Да</span>
+                            </label>
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" data-md-raw-checkbox name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">Нет</span>
+                            </label>
+                        </div>
+                        [#endif TYPE#]
+
+                        [#if TYPE="enable"#]
+                        <div class="md-settings-choices" role="radiogroup" aria-labelledby="settingsTitle_[#ID#]">
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" data-md-raw-checkbox name="value_[#ID#]" value="1"[#if VALUE_RAW="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">Включено</span>
+                            </label>
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" data-md-raw-checkbox name="value_[#ID#]" value="0"[#if VALUE_RAW!="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">Выключено</span>
+                            </label>
+                        </div>
+                        [#endif TYPE#]
+
+                        [#if TYPE="select"#][#if IS_SELECT_DROPDOWN="1"#]
+                        <select class="md-select" id="value_[#ID#]" name="value_[#ID#]" autocomplete="off" aria-labelledby="settingsTitle_[#ID#]"[#if NAME="SITE_TIMEZONE" || NAME="SITE_LANGUAGE" || NAME="VOICE_LANGUAGE"#] data-md-searchable[#endif#]>
+                            [#begin OPTIONS#]
+                            <option value="[#OPTION_VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#OPTION_TITLE#]</option>
+                            [#end OPTIONS#]
+                        </select>
+                        [#endif#][#endif TYPE#]
+
+                        [#if TYPE="select"#][#if IS_SELECT_CHOICES="1"#]
+                        <div class="md-settings-choices" role="radiogroup" aria-labelledby="settingsTitle_[#ID#]">
+                            [#begin OPTIONS#]
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" data-md-raw-checkbox name="value_<#RESULT.ID#>" value="[#OPTION_VALUE#]"[#if SELECTED="1"#] checked[#endif#]>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">[#OPTION_TITLE#]</span>
+                            </label>
+                            [#end OPTIONS#]
+                        </div>
+                        [#endif#][#endif TYPE#]
+
+                        [#if TYPE="json"#]
+                        [#if OPTIONS#]
+                        <div class="md-settings-hook-list">
+                            [#begin OPTIONS#]
+                            <div class="md-settings-hook-card">
+                                <div class="md-settings-hook-card__header">
+                                    <div class="md-settings-hook-card__title">[#OPTION_LABEL#]</div>
+                                    <span class="md-badge md-badge--outline">[#OPTION_TITLE#]</span>
+                                </div>
+                                <div class="md-settings-hook-card__grid">
+                                    <div class="md-field">
+                                        <label class="md-field__label" for="hook_[#OPTION_TITLE#]_<#RESULT.ID#>_priority">Приоритет</label>
+                                        <input type="text" class="md-input" id="hook_[#OPTION_TITLE#]_<#RESULT.ID#>_priority" name="[#OPTION_TITLE#]_<#RESULT.ID#>_priority" value="[#PRIORITY#]" autocomplete="off" spellcheck="false">
+                                    </div>
+                                    <div class="md-field">
+                                        <label class="md-field__label" for="hook_[#OPTION_TITLE#]_<#RESULT.ID#>_filter">Фильтр</label>
+                                        <input type="text" class="md-input" id="hook_[#OPTION_TITLE#]_<#RESULT.ID#>_filter" name="[#OPTION_TITLE#]_<#RESULT.ID#>_filter" value="[#FILTER#]" autocomplete="off" spellcheck="false">
+                                    </div>
+                                </div>
+                            </div>
+                            [#end OPTIONS#]
+                        </div>
+                        [#else#]
+                        <div class="md-empty md-empty--compact">
+                            <div class="md-empty__icon"><i class="ti ti-route" aria-hidden="true"></i></div>
+                            <div class="md-empty__title">Маршрутов пока нет</div>
+                            <div class="md-empty__text">Для этой настройки ещё не зарегистрировано ни одного обработчика.</div>
+                        </div>
+                        [#endif#]
+                        [#endif TYPE#]
+                    </div>
+                </div>
+
+                [#if DEFAULT_DISPLAY!=""#]
+                <div class="md-card__footer">
+                    <span class="md-badge md-badge--outline">По умолчанию: [#DEFAULT_DISPLAY#]</span>
+                    [#if ISDEFAULT="1"#]<span>Используется значение по умолчанию</span>[#endif#]
+                </div>
+                [#endif#]
+            </article>
+            [#end RESULT#]
+        </div>
+
+        <div class="md-empty md-empty--compact md-settings-empty" data-settings-empty>
+            <div class="md-empty__icon"><i class="ti ti-search-off" aria-hidden="true"></i></div>
+            <div class="md-empty__title">Ничего не найдено</div>
+            <div class="md-empty__text">Измените запрос или очистите локальный поиск.</div>
+        </div>
+
+        <div class="md-settings-actions">
+            <button class="md-btn md-btn--primary" type="submit" name="submit">
+                <i class="ti ti-device-floppy" aria-hidden="true"></i>
+                <span class="md-btn__label">Сохранить изменения</span>
+            </button>
+            <a class="md-btn md-btn--ghost" href="?filter_name=<#FILTER_NAME#>">
+                <span class="md-btn__label">Очистить локальный поиск</span>
+            </a>
+        </div>
+
+        <input type="hidden" name="mode" value="update">
+        <input type="hidden" name="filter_name" value="<#FILTER_NAME#>">
+    </form>
+    [#else RESULT#]
+    <div class="md-empty">
+        <div class="md-empty__icon"><i class="ti ti-adjustments-off" aria-hidden="true"></i></div>
+        <div class="md-empty__title">В разделе нет настроек</div>
+        <div class="md-empty__text">Выберите другой раздел или проверьте конфигурацию модуля.</div>
+    </div>
+    [#endif RESULT#]
 </div>

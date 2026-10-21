@@ -1,53 +1,54 @@
 <!--#
- @version 0.1 (auto-set)
+ @version 0.2 (auto-set)
 #-->
+<script src="<#ROOTHTML#>templates/properties/properties.js?v=2026-10-21-1" defer></script>
 
 [#if VIEW_MODE=="search_properties" || VIEW_MODE==""#]
-<div class="md-admin-module-page md-related-module-page md-related-module-page--properties">
-    [#if "<#IS_SET_CLASS_ID#>"!="1"#]
-    <section class="md-admin-section-card md-related-module-hero">
-        <div class="md-admin-section-card__body">
-            <div class="md-related-module-hero__layout">
-                <div class="md-related-module-hero__main">
-                    <div class="md-related-module-hero__eyebrow"><#LANG_PROPERTIES#></div>
-                    <h1 class="md-related-module-hero__title"><#LANG_PROPERTIES#></h1>
-                    <div class="md-related-module-hero__summary">Список классовых свойств с историей, валидацией и привязкой обработчиков.</div>
-                    <div class="md-related-module-hero__stats">
-                        <div class="md-related-module-hero__stat"><span><#LANG_PROPERTIES#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
-                    </div>
-                </div>
-                <div class="md-related-module-hero__actions">
-                    <a href="?view_mode=edit_properties" class="btn btn-primary"><#LANG_ADD_NEW_PROPERTY#></a>
-                </div>
+[#if "<#IS_SET_CLASS_ID#>"!="1"#]
+<div class="md-ui-page md-ui-page--stack">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-list-check" aria-hidden="true"></i><#LANG_PROPERTIES#></div>
+            <h1 class="md-ui-hero__title"><#LANG_PROPERTIES#></h1>
+            <p class="md-ui-hero__lede">Свойства классов: значения, история, валидация и обработчики изменений.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-list-check" aria-hidden="true"></i><#LANG_PROPERTIES#>: <strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></span>
+                [#if PARENT_PROPERTIES_TOTAL!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-git-branch" aria-hidden="true"></i><#LANG_PARENT_PROPERTIES#>: <strong>[#PARENT_PROPERTIES_TOTAL#]</strong></span>
+                [#endif#]
             </div>
         </div>
-    </section>
-    [#endif#]
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=edit_properties" class="md-btn md-btn--primary">
+                <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD_NEW_PROPERTY#></span>
+            </a>
+        </div>
+    </header>
     [#inc properties_search_admin.html#]
 </div>
+[#else#]
+[#inc properties_search_admin.html#]
+[#endif#]
 [#endif VIEW_MODE#]
 
 [#if VIEW_MODE=="edit_properties"#]
-<div class="md-admin-module-page md-related-module-page md-related-module-page--properties">
-    [#if "<#IS_SET_CLASS_ID#>"!="1"#]
-    <section class="md-admin-section-card md-related-module-hero md-related-module-hero--compact">
-        <div class="md-admin-section-card__body">
-            <div class="md-related-module-hero__layout">
-                <div class="md-related-module-hero__main">
-                    <div class="md-related-module-hero__eyebrow"><#LANG_PROPERTIES#></div>
-                    <h1 class="md-related-module-hero__title">[#if ID!=""#][#TITLE#][#else#]<#LANG_ADD_NEW_PROPERTY#>[#endif#]</h1>
-                </div>
-                <div class="md-related-module-hero__actions">
-                    <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
-                </div>
-            </div>
+[#if "<#IS_SET_CLASS_ID#>"!="1"#]
+<div class="md-ui-page md-ui-page--stack">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-list-check" aria-hidden="true"></i><#LANG_PROPERTIES#></div>
+            <h1 class="md-ui-hero__title">[#if ID!=""#][#TITLE#][#else#]<#LANG_ADD_NEW_PROPERTY#>[#endif#]</h1>
+            <p class="md-ui-hero__lede">Имя, тип данных, история и правила валидации значения.</p>
         </div>
-    </section>
-    [#endif#]
+        <div class="md-ui-hero__actions">
+            <a href="?data_source=<#DATA_SOURCE#>" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+        </div>
+    </header>
     [#inc properties_edit.html#]
 </div>
-[#endif VIEW_MODE#]
-
-[#if VIEW_MODE=="view_properties"#]
- [#inc properties_view.html#]
+[#else#]
+[#inc properties_edit.html#]
+[#endif#]
 [#endif VIEW_MODE#]

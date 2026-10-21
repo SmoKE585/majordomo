@@ -1,66 +1,88 @@
-<section class="md-admin-section-card md-admin-form-card md-object-edit-card">
-    <div class="md-admin-section-card__body">
+<section class="md-card" aria-labelledby="mdObjFormTitle">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Объект</div>
+            <h2 class="md-card__title" id="mdObjFormTitle"><i class="ti ti-box" aria-hidden="true"></i>[#if ID!=""#]Данные объекта[#else#]Новый объект[#endif#]</h2>
+            <p class="md-card__subtitle">Название, класс и расположение. Свойства и методы доступны на соседних вкладках.</p>
+        </div>
+    </header>
+
+    <div class="md-card__body">
         [#if OK#]
-        <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
+        <div class="md-alert md-alert--success" role="status">
+            <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+            <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+        </div>
         [#endif OK#]
         [#if ERR#]
-        <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
+        <div class="md-alert md-alert--danger" role="alert">
+            <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+            <div class="md-alert__body"><div class="md-alert__title"><#LANG_FILLOUT_REQURED#></div></div>
+        </div>
         [#endif ERR#]
 
-        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="objectTitle"><#LANG_TITLE#> <span class="text-danger">*</span></label>
-                <div class="col-lg-9">
-                    <input type="text" id="objectTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required>
+        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-ui-form">
+            <div class="md-ui-form-stack">
+                <div class="md-ui-form-grid">
+                    <div class="md-field [#if ERR_TITLE#]is-invalid[#endif#]">
+                        <label class="md-field__label" for="objectTitle"><#LANG_TITLE#><span class="md-field__req" aria-hidden="true">*</span></label>
+                        <div class="md-field__control">
+                            <input type="text" id="objectTitle" class="md-input [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required autocomplete="off">
+                        </div>
+                        <div class="md-field__hint">Системное имя объекта, например <code>KitchenLight</code>.</div>
+                    </div>
+
+                    <div class="md-field [#if ERR_CLASS_ID#]is-invalid[#endif#]">
+                        <label class="md-field__label" for="objectClass"><#LANG_CLASS#><span class="md-field__req" aria-hidden="true">*</span></label>
+                        <div class="md-field__control">
+                            <select name="class_id" id="objectClass" class="md-select [#if ERR_CLASS_ID#]is-invalid[#endif#]" required data-md-searchable>
+                                <option value="">Выберите класс</option>
+                                [#begin CLASS_ID_OPTIONS#]
+                                <option value="[#ID#]"[#if ID=="<#CLASS_ID#>"#] selected[#endif#]>[#TITLE#]</option>
+                                [#end CLASS_ID_OPTIONS#]
+                            </select>
+                        </div>
+                        <div class="md-field__hint">Класс задаёт свойства и методы объекта.</div>
+                    </div>
+                </div>
+
+                <div class="md-field">
+                    <label class="md-field__label" for="objectLocation"><#LANG_LOCATION#></label>
+                    <div class="md-field__control">
+                        <select name="location_id" id="objectLocation" class="md-select" data-md-searchable>
+                            <option value="">Не указано</option>
+                            [#begin LOCATION_ID_OPTIONS#]
+                            <option value="[#ID#]"[#if SELECTED#] selected[#endif#]>[#TITLE#]</option>
+                            [#end LOCATION_ID_OPTIONS#]
+                        </select>
+                    </div>
+                    <div class="md-field__hint">Используется для группировки объектов по комнатам и зонам.</div>
+                </div>
+
+                <div class="md-field">
+                    <label class="md-field__label" for="objectDescription"><#LANG_DESCRIPTION#></label>
+                    <div class="md-field__control">
+                        <textarea name="description" id="objectDescription" rows="4" class="md-textarea" placeholder="Например: датчик движения в прихожей">[#DESCRIPTION#]</textarea>
+                    </div>
+                    <div class="md-field__hint">Короткое описание помогает быстрее находить объект в списке.</div>
                 </div>
             </div>
 
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="objectClass"><#LANG_CLASS#> <span class="text-danger">*</span></label>
-                <div class="col-lg-9">
-                    <select name="class_id" id="objectClass" class="form-control form-select [#if ERR_CLASS_ID#]is-invalid[#endif#]" required>
-                        <option value="">select</option>
-                        [#begin CLASS_ID_OPTIONS#]
-                        <option value="[#ID#]"[#if ID=="<#CLASS_ID#>"#] selected[#endif#]>[#TITLE#]</option>
-                        [#end CLASS_ID_OPTIONS#]
-                    </select>
-                </div>
-            </div>
-
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="objectDescription"><#LANG_DESCRIPTION#></label>
-                <div class="col-lg-9">
-                    <textarea name="description" id="objectDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea>
-                </div>
-            </div>
-
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="objectLocation"><#LANG_LOCATION#></label>
-                <div class="col-lg-9">
-                    <select name="location_id" id="objectLocation" class="form-control form-select">
-                        <option value="">-</option>
-                        [#begin LOCATION_ID_OPTIONS#]
-                        <option value="[#ID#]"[#if SELECTED#] selected[#endif#]>[#TITLE#]</option>
-                        [#end LOCATION_ID_OPTIONS#]
-                    </select>
-                </div>
-            </div>
-
-            <div class="md-admin-form-actions">
+            <div class="md-ui-form-actions">
+                <button class="md-btn md-btn--primary" type="submit" name="subm">
+                    <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">[#if ID!=""#]<#LANG_SUBMIT#>[#else#]<#LANG_ADD#>[#endif#]</span>
+                </button>
+                <a href="?data_source=<#DATA_SOURCE#>" class="md-btn md-btn--secondary"><#LANG_CANCEL#></a>
                 [#if ID!=""#]
-                <button class="btn btn-primary" type="submit" name="subm"><#LANG_SUBMIT#></button>
-                [#else ID#]
-                <button class="btn btn-primary" type="submit" name="subm"><#LANG_ADD#></button>
-                [#endif ID#]
-                <div class="btn-group">
-                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="?data_source=<#DATA_SOURCE#>"><#LANG_CANCEL#></a></li>
-                        [#if ID!=""#]
-                        <li><a class="dropdown-item" href="?id=<#ID#>&view_mode=clone" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_MAKE_COPY#></a></li>
-                        [#endif#]
+                <div class="dropdown ms-auto">
+                    <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                        <li><a class="dropdown-item" href="?id=<#ID#>&view_mode=clone" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-copy" aria-hidden="true"></i><#LANG_MAKE_COPY#></a></li>
                     </ul>
                 </div>
+                [#endif ID#]
             </div>
 
             <input type="hidden" name="id" value="<#ID#>">

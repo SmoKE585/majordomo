@@ -1,128 +1,318 @@
-[#if OK_MSG!=""#]
-<div class="alert alert-success"><#OK_MSG#></div>
-[#endif#]
-
-<div class="row">
- <div class="col-md-6">
-  <pre>
-Code example:
-registerEvent('path/to/event'[,array('param1'=>'value1')]);
-API example:
-/api/events/path/to/event?param1=value1
-</pre>
-
- </div>
- <div class="col-md-6">
-  <a href="#" id="settings_button" class="btn btn-default" onclick="$('#settings_form').show();$('#settings_button').hide();return false;"><#LANG_SECTION_SETTINGS#></a>
-  <form action="?" method="post" class="form form-horizontal" id="settings_form" style="display:none">
-   <div class="form-group">
-    <label for="clean_up" class="col-lg-5">Keep events for latest days (0 for all):</label>
-    <div class="col-lg-4">
-    <input id="clean_up" type="text" name="keep_history" value="<#SETTINGS_EVENTS_KEEP_HISTORY#>" placeholder="0" class="form-control">
-    </div>
-   </div>
-   <div class="form-group">
-    <label class="col-lg-5">Forward events to MQTT:</label>
-    <div class="col-lg-4">
-     <input type="radio" value="1" name="mqtt_forward"[#if "<#SETTINGS_EVENTS_MQTT_FORWARD#>"=="1"#] checked[#endif#]> <#LANG_YES#>
-     <input type="radio" value="0" name="mqtt_forward"[#if "<#SETTINGS_EVENTS_MQTT_FORWARD#>"!="1"#] checked[#endif#]> <#LANG_NO#>
-    </div>
-   </div>
-   <div class="form-group">
-    <label for="mqtt_root" class="col-lg-5">MQTT root path:</label>
-    <div class="col-lg-4">
-     <input id="mqtt_root" type="text" name="mqtt_root" value="<#SETTINGS_EVENTS_MQTT_ROOT#>" placeholder="/events/" class="form-control">
-    </div>
-   </div>
-   <div class="form-group">
-    <div class="col-lg-5">&nbsp;</div>
-    <div class="col-lg-4">
-     <input type="submit" value="<#LANG_SUBMIT#>" class="btn btn-default btn-primary">
-     <a href="#" class="btn btn-default" onclick="$('#settings_form').hide();$('#settings_button').show();return false;"><#LANG_CANCEL#></a>
-    </div>
-   </div>
-   <input type="hidden" name="mode" value="update_settings">
-  </form>
- </div>
-</div>
-
-<script type="text/javascript">
- var updateTimer = 0;
- function updateRecentEvents() {
-  var url = "/ajax/events.html?getlatest=1";
-  $.ajax({
-   url: url
-  }).done(function(data) {
-   $('#recentEvents').html(data);
-   updateTimer = setTimeout('updateRecentEvents();',1000);
-  });
- }
- updateTimer = setTimeout('updateRecentEvents();',2000);
-</script>
-
-<div id="recentEvents">...</div>
-
-[#if ITEMS#]
-<p>
- <a href="?clear_notlinked=1" class="btn btn-default" onclick="return confirm('<#LANG_ARE_YOU_SURE#>');">Remove not linked events</a>
-</p>
-
-
-<ul>
- [#begin ITEMS#]
- <li>
-  [#if ID!=""#]
-  <a href="?view_mode=edit_events&id=[#ID#]">[#TITLE#]</a> ([#ADDED#])
-  [#if DESCRIPTION!=""#]<i>[#DESCRIPTION#]</i>[#endif#]
-  [#if OBJECTS!=""#]([#OBJECTS#])[#endif OBJECTS#]
-
-  [#else#][#TITLE#][#endif#]
-
-  [#if ITEMS#]<ul>[#tree ITEMS#]</ul>[#endif ITEMS#]
- </li>
- [#end ITEMS#]
-</ul>
-[#endif ITEMS#]
 <!--#
-[#if RESULT#]
-<form action="?" method="post" name="frmList_events" style="padding:0px">
-<table class="table">
-[#begin RESULT#]
-<tr>
- <td>
-   [#EVENT_NAME#]
- </td>
- <td>
-  [#if DETAILS!=""#]
-   [#DETAILS#]
-  [#else#]
-   &nbsp;
-  [#endif#]
- </td>
- <td>
-  [#if ADDED!=""#]
-   [#ADDED#]
-  [#else#]
-   &nbsp;
-  [#endif#]
- </td>
- <td>
-  [#if "<#ACTION#>"=="admin"#]
-    <b><a href="?view_mode=edit_events&id=[#ID#]" class="btn btn-default"><#LANG_EDIT#></a></b>
-    <a href="?view_mode=delete_events&id=[#ID#]" onClick="return confirm('Delete record?')" class="btn btn-default"><#LANG_DELETE#></a>
-  [#endif ACTION#]
- </td>
-</tr>
-[#end RESULT#]
-</table>
-<input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
-<input type="hidden" name="view_mode" value="multiple_events">
-</form>
-[#else RESULT#]
-<p align=center>
-<font color="red"><#LANG_NO_RECORDS_FOUND#></font>
-</p>
-[#endif RESULT#]
+ @version 0.3 (redesigned admin UI)
 #-->
 
+[#if OK_MSG!=""#]
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__text">[#OK_MSG#]</div></div>
+</div>
+[#endif#]
 
+<div class="md-ui-page md-ui-page--stack md-events-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-bell" aria-hidden="true"></i><#LANG_MODULE_EVENTS#></div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_EVENTS#></h1>
+            <p class="md-ui-hero__lede">Системные события, зарегистрированные сценариями и API, и живая лента последних срабатываний.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-bolt" aria-hidden="true"></i>Системных: <strong>[#SYSTEM_EVENTS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-list-details" aria-hidden="true"></i>Параметров: <strong>[#EVENTS_PARAMS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-history" aria-hidden="true"></i>Записей: <strong>[#EVENTS_TOTAL#]</strong></span>
+                [#if LAST_EVENT_FORMATTED!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>Последнее: <strong>[#LAST_EVENT_FORMATTED#]</strong></span>
+                [#endif#]
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_events" class="md-btn md-btn--secondary">
+                <i class="ti ti-refresh" aria-hidden="true"></i><span class="md-btn__label">Обновить</span>
+            </a>
+            <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="modal" data-bs-target="#mdEventsSettingsModal">
+                <i class="ti ti-settings" aria-hidden="true"></i><span class="md-btn__label"><#LANG_SECTION_SETTINGS#></span>
+            </button>
+            <div class="dropdown">
+                <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Дополнительные действия">
+                    <i class="ti ti-dots" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    <li>
+                        <a class="dropdown-item text-danger" href="?clear_notlinked=1" data-md-confirm="Удалить события без привязки к объектам и без описания?">
+                            <i class="ti ti-eraser" aria-hidden="true"></i>Удалить несвязанные
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-bolt" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Системные события</span>
+            </div>
+            <div class="md-kpi__value">[#SYSTEM_EVENTS_TOTAL#]</div>
+            <div class="md-kpi__meta">Зарегистрированные пути</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-list-details" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Параметры</span>
+            </div>
+            <div class="md-kpi__value">[#EVENTS_PARAMS_TOTAL#]</div>
+            <div class="md-kpi__meta">Значения событий</div>
+        </div>
+        <div class="md-kpi md-kpi--neutral">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-history" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Всего записей</span>
+            </div>
+            <div class="md-kpi__value">[#EVENTS_TOTAL#]</div>
+            <div class="md-kpi__meta">Включая разовые события</div>
+        </div>
+        <div class="md-kpi md-kpi--[#if SETTINGS_EVENTS_MQTT_FORWARD="1"#]success[#else#]neutral[#endif#]">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-broadcast" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">MQTT</span>
+            </div>
+            <div class="md-kpi__value">[#if SETTINGS_EVENTS_MQTT_FORWARD="1"#]Вкл[#else#]Выкл[#endif#]</div>
+            <div class="md-kpi__meta">Форвардинг событий</div>
+        </div>
+    </div>
+
+    <div class="md-events-overview">
+        <section class="md-card md-events-feed-card" aria-labelledby="mdEventsFeedTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Live</div>
+                    <h2 class="md-card__title" id="mdEventsFeedTitle"><i class="ti ti-activity" aria-hidden="true"></i>Последние срабатывания</h2>
+                    <p class="md-card__subtitle">Лента обновляется автоматически. Нажмите «Пауза», чтобы остановить обновление.</p>
+                </div>
+                <div class="md-card__actions">
+                    <span class="md-events-live" data-md-events-status>
+                        <span class="md-events-live__dot" aria-hidden="true"></span>
+                        <span data-md-events-status-label>Автообновление</span>
+                    </span>
+                    <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-md-events-pause aria-pressed="false" aria-label="Приостановить автообновление">
+                        <i class="ti ti-pause" aria-hidden="true" data-md-events-pause-icon></i>
+                        <span class="md-btn__label" data-md-events-pause-label>Пауза</span>
+                    </button>
+                </div>
+            </header>
+            <div class="md-card__body md-card__body--flush">
+                <div class="md-events-feed" data-md-events-feed data-md-events-feed-url="<#ROOTHTML#>ajax/events.html?getlatest=1" data-md-events-feed-interval="5000">
+                    [#RECENT_EVENTS_HTML#]
+                </div>
+            </div>
+        </section>
+
+        <section class="md-card md-events-quickstart" aria-labelledby="mdEventsQuickstartTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">API</div>
+                    <h2 class="md-card__title" id="mdEventsQuickstartTitle"><i class="ti ti-code" aria-hidden="true"></i>Как вызвать событие</h2>
+                    <p class="md-card__subtitle">Из сценария, метода объекта или внешнего запроса.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-events-snippet">
+                    <div class="md-events-snippet__label">PHP</div>
+                    <pre class="md-events-code"><code>registerEvent('path/to/event', array(
+    'param1' =&gt; 'value1'
+));</code></pre>
+                </div>
+                <div class="md-events-snippet">
+                    <div class="md-events-snippet__label">HTTP API</div>
+                    <pre class="md-events-code"><code>GET /api/events/path/to/event
+    ?param1=value1</code></pre>
+                </div>
+                <p class="md-events-quickstart__hint">
+                    <i class="ti ti-info-circle" aria-hidden="true"></i>
+                    Повторный вызов обновляет запись события и его параметры, поэтому в таблице один путь = одна строка.
+                </p>
+            </div>
+        </section>
+    </div>
+
+    <div class="md-events-section-head">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-bolt" aria-hidden="true"></i>Реестр</div>
+            <h2 class="md-events-section-title">Системные события</h2>
+            <p class="md-events-section-subtitle">Пути, зарегистрированные через <code>registerEvent()</code>, их параметры и привязанные объекты.</p>
+        </div>
+        <span class="md-badge md-badge--primary"><i class="ti ti-list-details" aria-hidden="true"></i>Событий: [#SYSTEM_EVENTS_TOTAL#]</span>
+    </div>
+
+    [#if SYSTEM_EVENTS#]
+    <div class="md-table-wrap md-events-table-wrap" data-md-table data-md-table-page-size="25" data-md-table-unit-one="событие" data-md-table-unit-few="события" data-md-table-unit-many="событий">
+        <div class="md-table__toolbar">
+            <div class="md-table__search">
+                <i class="ti ti-search" aria-hidden="true"></i>
+                <input type="search" data-md-table-search placeholder="Поиск по пути, описанию, объекту и параметрам" aria-label="Поиск событий" autocomplete="off">
+            </div>
+            <select class="md-table__filter" data-md-table-filter="linked" aria-label="Фильтр по привязке к объектам">
+                <option value="">Все события</option>
+                <option value="1">Со связанными объектами</option>
+                <option value="0">Без привязки</option>
+            </select>
+            <div class="md-table__meta" data-md-table-meta>Событий: [#SYSTEM_EVENTS_TOTAL#]</div>
+        </div>
+        <div class="md-table__scroll">
+            <table class="md-table md-events-table">
+                <thead>
+                    <tr>
+                        <th scope="col">
+                            <button type="button" class="md-table__sort" data-md-table-sort="name">Событие <i class="ti ti-arrows-up-down" aria-hidden="true"></i></button>
+                        </th>
+                        <th scope="col">Описание</th>
+                        <th scope="col">Объекты</th>
+                        <th scope="col">Параметры</th>
+                        <th scope="col">Обновлено</th>
+                        <th scope="col" class="text-end"><span class="md-visually-hidden"><#LANG_ACTIONS#></span></th>
+                    </tr>
+                </thead>
+                <tbody data-md-table-body>
+                    [#begin SYSTEM_EVENTS#]
+                    <tr data-md-row data-row-id="[#ID#]" data-linked="[#HAS_OBJECTS#]" data-sort-name="[#EVENT_NAME_HTML#]" data-search="[#EVENT_NAME_HTML#] [#DESCRIPTION_HTML#] [#OBJECTS_TITLE_HTML#] [#PARAMS_PREVIEW_HTML#]">
+                        <td>
+                            <div class="md-table__name md-events-name">
+                                <span class="md-table__icon"><i class="ti ti-bolt" aria-hidden="true"></i></span>
+                                <div class="md-events-name__body">
+                                    <a href="?view_mode=edit_events&amp;id=[#ID#]"><strong>[#EVENT_NAME_HTML#]</strong></a>
+                                    <small><span class="md-badge md-badge--outline">[#EVENT_TYPE#]</span></small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            [#if DESCRIPTION_HTML!=""#]
+                            <span class="md-events-description">[#DESCRIPTION_HTML#]</span>
+                            [#else#]
+                            <span class="md-tree-empty">—</span>
+                            [#endif#]
+                        </td>
+                        <td>
+                            [#if HAS_OBJECTS="1"#]
+                            <span class="md-events-objects" title="[#OBJECTS_TITLE_HTML#]">[#OBJECTS_TITLE_HTML#]</span>
+                            [#else#]
+                            <span class="md-tree-empty">—</span>
+                            [#endif#]
+                        </td>
+                        <td>
+                            [#if PARAMS_TOTAL!="0"#]
+                            <span class="md-badge md-badge--info">[#PARAMS_TOTAL#]</span>
+                            [#if PARAMS_PREVIEW_HTML!=""#]
+                            <small class="md-events-params" title="[#PARAMS_PREVIEW_HTML#]">[#PARAMS_PREVIEW_HTML#][#if HAS_MORE_PARAMS="1"#]…[#endif#]</small>
+                            [#endif#]
+                            [#else#]
+                            <span class="md-tree-empty">—</span>
+                            [#endif#]
+                        </td>
+                        <td>
+                            <time class="md-events-updated" datetime="[#ADDED_ISO#]">[#ADDED_FORMATTED#]</time>
+                        </td>
+                        <td>
+                            <div class="md-table__actions">
+                                <a href="?view_mode=edit_events&amp;id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="<#LANG_EDIT#>" aria-label="Редактировать событие [#EVENT_NAME_HTML#]">
+                                    <i class="ti ti-pencil" aria-hidden="true"></i>
+                                </a>
+                                <a href="?view_mode=delete_events&amp;id=[#ID#]" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить событие [#EVENT_NAME_HTML#]" data-md-confirm="Удалить событие [#EVENT_NAME_HTML#] и его параметры?">
+                                    <i class="ti ti-trash" aria-hidden="true"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    [#end SYSTEM_EVENTS#]
+                </tbody>
+            </table>
+        </div>
+        <div class="md-table__empty" data-md-table-empty>
+            <div class="md-empty md-empty--compact">
+                <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+                <div class="md-empty__title">Ничего не найдено</div>
+                <p class="md-empty__text">Измените запрос или фильтр по привязке к объектам.</p>
+            </div>
+        </div>
+        <div class="md-table__footer">
+            <span data-md-table-count>Показано [#SYSTEM_EVENTS_TOTAL#] из [#SYSTEM_EVENTS_TOTAL#]</span>
+            <ul class="pagination md-pagination mb-0" data-md-table-pagination></ul>
+        </div>
+    </div>
+    [#else SYSTEM_EVENTS#]
+    <div class="md-empty md-events-empty">
+        <span class="md-empty__icon"><i class="ti ti-bolt-off" aria-hidden="true"></i></span>
+        <div class="md-empty__title">Системных событий пока нет</div>
+        <p class="md-empty__text">Зарегистрируйте первое событие из сценария: <code>registerEvent('path/to/event')</code>. Оно появится в этой таблице и в live-ленте.</p>
+        <div class="md-empty__actions">
+            <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-bs-toggle="modal" data-bs-target="#mdEventsSettingsModal">
+                <i class="ti ti-settings" aria-hidden="true"></i>Настроить события
+            </button>
+        </div>
+    </div>
+    [#endif SYSTEM_EVENTS#]
+</div>
+
+<div class="modal fade md-modal" id="mdEventsSettingsModal" tabindex="-1" aria-labelledby="mdEventsSettingsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="?" method="post">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="mdEventsSettingsTitle">Настройки событий</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="md-ui-form-stack">
+                        <div class="md-field">
+                            <label class="md-field__label" for="mdEventsKeepHistory">Хранить события, дней</label>
+                            <div class="md-field__control">
+                                <input type="number" id="mdEventsKeepHistory" class="md-input" name="keep_history" value="[#SETTINGS_EVENTS_KEEP_HISTORY#]" min="0" step="1" inputmode="numeric" placeholder="0">
+                            </div>
+                            <div class="md-field__hint">Очищать параметры событий старше указанного числа дней. 0 — хранить без ограничения.</div>
+                        </div>
+
+                        <div class="md-field">
+                            <span class="md-field__label">Передавать события в MQTT</span>
+                            <div class="md-choice-group" role="radiogroup" aria-label="Передавать события в MQTT">
+                                <label class="md-choice">
+                                    <input class="md-choice__input" type="radio" name="mqtt_forward" value="1"[#if SETTINGS_EVENTS_MQTT_FORWARD="1"#] checked[#endif#]>
+                                    <span class="md-choice__surface">
+                                        <span class="md-choice__icon"><i class="ti ti-broadcast" aria-hidden="true"></i></span>
+                                        <span class="md-choice__body">
+                                            <span class="md-choice__title">Включено</span>
+                                            <span class="md-choice__desc">Публиковать события в MQTT-брокер</span>
+                                        </span>
+                                        <span class="md-choice__marker" aria-hidden="true"></span>
+                                    </span>
+                                </label>
+                                <label class="md-choice">
+                                    <input class="md-choice__input" type="radio" name="mqtt_forward" value="0"[#if SETTINGS_EVENTS_MQTT_FORWARD!="1"#] checked[#endif#]>
+                                    <span class="md-choice__surface">
+                                        <span class="md-choice__icon"><i class="ti ti-circle-off" aria-hidden="true"></i></span>
+                                        <span class="md-choice__body">
+                                            <span class="md-choice__title">Выключено</span>
+                                            <span class="md-choice__desc">Не отправлять события наружу</span>
+                                        </span>
+                                        <span class="md-choice__marker" aria-hidden="true"></span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="md-field">
+                            <label class="md-field__label" for="mdEventsMqttRoot">Корневой путь MQTT</label>
+                            <div class="md-field__control">
+                                <input type="text" id="mdEventsMqttRoot" class="md-input" name="mqtt_root" value="[#SETTINGS_EVENTS_MQTT_ROOT#]" placeholder="/events/" autocomplete="off">
+                            </div>
+                            <div class="md-field__hint">Например, <code>/events/</code>. К пути события добавится его имя.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="md-btn md-btn--secondary" data-bs-dismiss="modal"><#LANG_CANCEL#></button>
+                    <button type="submit" class="md-btn md-btn--primary"><i class="ti ti-device-floppy" aria-hidden="true"></i><#LANG_SUBMIT#></button>
+                </div>
+                <input type="hidden" name="mode" value="update_settings">
+            </form>
+        </div>
+    </div>
+</div>

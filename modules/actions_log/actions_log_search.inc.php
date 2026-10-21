@@ -1,6 +1,6 @@
 <?php
 /*
-* @version 0.1 (wizard)
+* @version 0.2 (redesigned admin UI)
 */
 global $session;
 if ($this->owner->name == 'panel') {
@@ -36,13 +36,18 @@ if ($period != 'custom') {
     }
 }
 
+$from = $this->normalizeDateInput($from, false);
+$to = $this->normalizeDateInput($to, true);
+
 if ($from != '') {
     $out['FROM'] = $from;
+    $out['FROM_DATE'] = date('Y-m-d', strtotime($from));
     $qry .= " AND actions_log.ADDED>='" . DBSafe($from) . "'";
 }
 
 if ($to != '') {
     $out['TO'] = $to;
+    $out['TO_DATE'] = date('Y-m-d', strtotime($to));
     $qry .= " AND actions_log.ADDED<='" . DBSafe($to) . "'";
 }
 
@@ -113,6 +118,20 @@ if ($search != '') {
     $out['SEARCH'] = htmlspecialchars($search, ENT_QUOTES);
 }
 
+$filters_active = ($period != 'custom'
+    || $from != ''
+    || $to != ''
+    || $action_type != ''
+    || $source != ''
+    || $module_name != ''
+    || $result != ''
+    || $request_method != ''
+    || $user_name != ''
+    || $terminal != ''
+    || $ip != ''
+    || $search != '');
+$out['FILTERS_ACTIVE'] = $filters_active ? 1 : 0;
+
 // QUERY READY
 global $save_qry;
 if ($save_qry) {
@@ -129,6 +148,18 @@ $out['SORTBY'] = $sortby_actions_log;
 
 // SEARCH RESULTS
 $res_total = SQLSelectOne("SELECT count(*) as TOTAL FROM actions_log WHERE $qry");
+$stats = SQLSelectOne("SELECT COUNT(*) AS TOTAL,
+        SUM(CASE WHEN RESULT='ok' THEN 1 ELSE 0 END) AS OK_TOTAL,
+        SUM(CASE WHEN RESULT='error' THEN 1 ELSE 0 END) AS ERROR_TOTAL,
+        COUNT(DISTINCT USER) AS USER_TOTAL,
+        COUNT(DISTINCT SOURCE) AS SOURCE_TOTAL
+    FROM actions_log WHERE $qry");
+$out['LOG_TOTAL'] = isset($res_total['TOTAL']) ? (int)$res_total['TOTAL'] : 0;
+$out['LOG_OK_TOTAL'] = isset($stats['OK_TOTAL']) ? (int)$stats['OK_TOTAL'] : 0;
+$out['LOG_ERROR_TOTAL'] = isset($stats['ERROR_TOTAL']) ? (int)$stats['ERROR_TOTAL'] : 0;
+$out['LOG_USER_TOTAL'] = isset($stats['USER_TOTAL']) ? (int)$stats['USER_TOTAL'] : 0;
+$out['LOG_SOURCE_TOTAL'] = isset($stats['SOURCE_TOTAL']) ? (int)$stats['SOURCE_TOTAL'] : 0;
+
 $page = gr('page', 'int');
 if (!$page) {
     $page = 1;
@@ -153,7 +184,24 @@ $urlPattern = '?page=(:num)'
 
 require(ROOT . '3rdparty/Paginator/Paginator.php');
 $paginator = new JasonGrimes\Paginator($res_total['TOTAL'], $on_page, $page, $urlPattern);
-$out['PAGINATOR'] = $paginator;
+$paginator->setMaxPagesToShow(7);
+
+$pages = array();
+foreach ($paginator->getPages() as $paginator_page) {
+    $pages[] = array(
+        'NUM' => $paginator_page['num'],
+        'URL' => $paginator_page['url'] !== null ? htmlspecialchars($paginator_page['url'], ENT_QUOTES) : '',
+        'SELECTED' => !empty($paginator_page['isCurrent']) ? 1 : 0,
+        'IS_ELLIPSIS' => $paginator_page['url'] === null ? 1 : 0,
+    );
+}
+$out['PAGES'] = $pages;
+$out['PREV_URL'] = $paginator->getPrevUrl() !== null ? htmlspecialchars($paginator->getPrevUrl(), ENT_QUOTES) : '';
+$out['NEXT_URL'] = $paginator->getNextUrl() !== null ? htmlspecialchars($paginator->getNextUrl(), ENT_QUOTES) : '';
+$out['PAGE_FROM'] = (int)$paginator->getCurrentPageFirstItem();
+$out['PAGE_TO'] = (int)$paginator->getCurrentPageLastItem();
+$out['PAGE_CURRENT'] = (int)$paginator->getCurrentPage();
+$out['PAGE_TOTAL'] = (int)$paginator->getNumPages();
 
 $res = SQLSelect("SELECT actions_log.* FROM actions_log WHERE $qry ORDER BY " . $sortby_actions_log . " LIMIT $limit");
 
@@ -163,23 +211,64 @@ if (isset($res[0]['ID'])) {
         $res[$i]['ACTION_TYPE_TITLE'] = $this->getActionLabel($res[$i]['ACTION_TYPE']);
         $res[$i]['SOURCE_TITLE'] = $this->getSourceLabel($res[$i]['SOURCE']);
         $res[$i]['RESULT_TITLE'] = $this->getResultLabel($res[$i]['RESULT']);
-        $res[$i]['SOURCE_BADGE_CLASS'] = 'label-default';
-        if ($res[$i]['SOURCE'] == 'admin') {
-            $res[$i]['SOURCE_BADGE_CLASS'] = 'label-primary';
-        } elseif ($res[$i]['SOURCE'] == 'api') {
-            $res[$i]['SOURCE_BADGE_CLASS'] = 'label-info';
-        } elseif ($res[$i]['SOURCE'] == 'cli') {
-            $res[$i]['SOURCE_BADGE_CLASS'] = 'label-warning';
-        }
 
-        $res[$i]['RESULT_BADGE_CLASS'] = 'label-default';
-        if ($res[$i]['RESULT'] == 'ok') {
-            $res[$i]['RESULT_BADGE_CLASS'] = 'label-success';
-        } elseif ($res[$i]['RESULT'] == 'error') {
-            $res[$i]['RESULT_BADGE_CLASS'] = 'label-danger';
-        } elseif ($res[$i]['RESULT'] == 'skipped') {
-            $res[$i]['RESULT_BADGE_CLASS'] = 'label-warning';
+        $source_key = strtolower(trim((string)$res[$i]['SOURCE']));
+        $source_presets = array(
+            'admin' => array('tone' => 'primary', 'icon' => 'layout-dashboard'),
+            'api' => array('tone' => 'info', 'icon' => 'api'),
+            'web' => array('tone' => 'success', 'icon' => 'world'),
+            'objects' => array('tone' => 'info', 'icon' => 'box'),
+            'command' => array('tone' => 'warning', 'icon' => 'terminal-2'),
+            'cli' => array('tone' => 'warning', 'icon' => 'terminal'),
+        );
+        $source_preset = isset($source_presets[$source_key])
+            ? $source_presets[$source_key]
+            : array('tone' => 'neutral', 'icon' => 'world');
+        $res[$i]['SOURCE_TONE'] = $source_preset['tone'];
+        $res[$i]['SOURCE_ICON'] = $source_preset['icon'];
+
+        $result_key = strtolower(trim((string)$res[$i]['RESULT']));
+        $result_presets = array(
+            'ok' => array('tone' => 'success', 'icon' => 'circle-check'),
+            'error' => array('tone' => 'danger', 'icon' => 'alert-triangle'),
+            'skipped' => array('tone' => 'warning', 'icon' => 'minus'),
+        );
+        $result_preset = isset($result_presets[$result_key])
+            ? $result_presets[$result_key]
+            : array('tone' => 'neutral', 'icon' => 'info-circle');
+        $res[$i]['RESULT_TONE'] = $result_preset['tone'];
+        $res[$i]['RESULT_ICON'] = $result_preset['icon'];
+
+        $action_key = strtolower(trim((string)$res[$i]['ACTION_TYPE']));
+        $action_icon = 'activity';
+        if (strpos($action_key, 'control_panel_enter') !== false) {
+            $action_icon = 'login';
+        } elseif (strpos($action_key, 'control_panel_navigation') !== false) {
+            $action_icon = 'arrow-right';
+        } elseif (strpos($action_key, 'control_panel_submit') !== false) {
+            $action_icon = 'device-floppy';
+        } elseif (strpos($action_key, 'market_') === 0) {
+            $action_icon = 'plug';
+        } elseif (strpos($action_key, 'system_') === 0) {
+            $action_icon = 'settings';
+        } elseif (strpos($action_key, 'menu_') !== false || strpos($action_key, 'scene_') !== false) {
+            $action_icon = 'click';
+        } elseif (strpos($action_key, 'device_') !== false) {
+            $action_icon = 'device-desktop';
         }
+        $res[$i]['ACTION_ICON'] = $action_icon;
+
+        $user_display = trim((string)$res[$i]['USER']);
+        if ($user_display === '') {
+            $user_display = 'Система';
+        }
+        $res[$i]['USER_DISPLAY'] = $user_display;
+        $res[$i]['USER_INITIAL'] = mb_strtoupper(mb_substr($user_display, 0, 1, 'UTF-8'), 'UTF-8');
+
+        $added_ts = strtotime((string)$res[$i]['ADDED']);
+        $res[$i]['ADDED_DATE'] = $added_ts ? date('d.m.Y', $added_ts) : (string)$res[$i]['ADDED'];
+        $res[$i]['ADDED_TIME'] = $added_ts ? date('H:i:s', $added_ts) : '';
+        $res[$i]['ADDED_ISO'] = $added_ts ? date('c', $added_ts) : '';
 
         $target_parts = array();
         if ($res[$i]['OBJECT_TYPE'] != '') {
@@ -193,8 +282,9 @@ if (isset($res[0]['ID'])) {
         if (isset($target_parts[0])) {
             $res[$i]['TARGET_TITLE'] = implode(': ', $target_parts);
         } else {
-            $res[$i]['TARGET_TITLE'] = '-';
+            $res[$i]['TARGET_TITLE'] = '';
         }
+        $res[$i]['HAS_TARGET'] = $res[$i]['TARGET_TITLE'] !== '' ? 1 : 0;
 
         $location_parts = array();
         if ($res[$i]['MODULE'] != '') {
@@ -206,11 +296,7 @@ if (isset($res[0]['ID'])) {
         if ($res[$i]['REQUEST_METHOD'] != '') {
             $location_parts[] = strtoupper($res[$i]['REQUEST_METHOD']);
         }
-        if (isset($location_parts[0])) {
-            $res[$i]['LOCATION_TITLE'] = implode(' / ', $location_parts);
-        } else {
-            $res[$i]['LOCATION_TITLE'] = '-';
-        }
+        $res[$i]['LOCATION_TITLE'] = isset($location_parts[0]) ? implode(' / ', $location_parts) : '';
 
         $details_rows = array();
         if ($res[$i]['TITLE'] != '') {
@@ -248,8 +334,10 @@ if (isset($res[0]['ID'])) {
         $res[$i]['ROW_UID'] = 'log_' . $res[$i]['ID'];
 
         $safe_fields = array(
-            'ADDED', 'IP', 'USER', 'TERMINAL', 'ACTION_TYPE_TITLE', 'SOURCE_TITLE', 'RESULT_TITLE',
-            'TARGET_TITLE', 'LOCATION_TITLE', 'URL', 'DETAILS_BODY'
+            'ADDED', 'ADDED_DATE', 'ADDED_TIME', 'ADDED_ISO', 'IP', 'USER', 'USER_DISPLAY', 'USER_INITIAL',
+            'TERMINAL', 'ACTION_TYPE_TITLE', 'SOURCE_TITLE', 'RESULT_TITLE', 'TARGET_TITLE', 'LOCATION_TITLE',
+            'MODULE', 'VIEW_MODE', 'REQUEST_METHOD', 'URL', 'DETAILS_BODY', 'TITLE',
+            'ACTION_ICON', 'SOURCE_TONE', 'SOURCE_ICON', 'RESULT_TONE', 'RESULT_ICON',
         );
         foreach ($safe_fields as $field_name) {
             if (!isset($res[$i][$field_name])) {

@@ -27,12 +27,12 @@ function php_syntax_error($code)
 		SaveFile($filePath, $code);
 		if (substr(php_uname(), 0, 7) == "Windows") {
 			if (defined('PATH_TO_PHP')) {
-				$cmd = PATH_TO_PHP . ' -l ' . $filePath;
+				$cmd = escapeshellarg(PATH_TO_PHP) . ' -l ' . escapeshellarg($filePath);
 			} else {
-				$cmd = DOC_ROOT . '/../server/php/php -l ' . $filePath;
+				$cmd = escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($filePath);
 			}
 		} else {
-			$cmd = 'php -d display_errors=1 -l ' . $filePath.' 2>&1';
+			$cmd = 'php -d display_errors=1 -l ' . escapeshellarg($filePath) . ' 2>&1';
 		}
 		exec($cmd, $out);
 		unlink($filePath);
@@ -44,6 +44,9 @@ function php_syntax_error($code)
 			return trim($res) . "\n";
 		if (preg_match("/welldone\b/i", $res)) {
 			return false;
+		}
+		if (preg_match("/(Could not open input file|No such file|not found)/i", $res)) {
+			return trim($res) . "\n";
 		}
 	}
 }

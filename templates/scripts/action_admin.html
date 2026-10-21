@@ -2,13 +2,77 @@
  @version 0.1 (auto-set)
 #-->
 
-<link rel="stylesheet" href="<#ROOTHTML#>templates/scripts/scripts.css?v=2026-06-05-2" type="text/css">
-<script src="<#ROOTHTML#>templates/scripts/scripts.js?v=2026-06-05-2"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/scripts/scripts.css?v=2026-10-21-1" type="text/css">
+<script src="<#ROOTHTML#>templates/scripts/scripts.js?v=2026-10-21-1"></script>
 
-<div class="md-scripts-page" data-scripts-page>
- <nav class="md-admin-module-tabs" aria-label="<#LANG_MODULE_SCRIPTS#>">
-  <a class="md-admin-module-tabs__link [#if DATA_SOURCE="scripts" || DATA_SOURCE=""#]is-active[#endif#]" href="?data_source=scripts"><#LANG_MODULE_SCRIPTS#></a>
-  <a class="md-admin-module-tabs__link [#if DATA_SOURCE="categories"#]is-active[#endif#]" href="?data_source=categories"><#LANG_CATEGORIES#></a>
+<div class="md-ui-page md-ui-page--stack md-scripts-page" data-scripts-page>
+ [#if VIEW_MODE=="" || VIEW_MODE="search_scripts" || VIEW_MODE="search_categories"#]
+ <header class="md-ui-hero">
+  <div>
+   <div class="md-ui-hero__eyebrow"><i class="ti ti-code" aria-hidden="true"></i><#LANG_MODULE_SCRIPTS#></div>
+   <h1 class="md-ui-hero__title">[#if DATA_SOURCE=="categories"#]<#LANG_CATEGORIES#>[#else#]<#LANG_MODULE_SCRIPTS#>[#endif#]</h1>
+   <p class="md-ui-hero__lede">[#if DATA_SOURCE=="categories"#]Группы сценариев для навигации и порядка в списке.[#else#]PHP-сценарии автоматизации: код, расписание, запуск и история изменений.[#endif#]</p>
+   <div class="md-ui-hero__meta">
+    <span class="md-ui-hero__meta-item"><i class="ti ti-code" aria-hidden="true"></i>Сценариев: <strong>[#if TOTAL_SCRIPTS!=""#][#TOTAL_SCRIPTS#][#else#]0[#endif#]</strong></span>
+    <span class="md-ui-hero__meta-item"><i class="ti ti-folder" aria-hidden="true"></i>Категорий: <strong>[#if TOTAL_CATEGORIES_ALL!=""#][#TOTAL_CATEGORIES_ALL#][#else#]0[#endif#]</strong></span>
+    <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>По расписанию: <strong>[#if TOTAL_SCHEDULED!=""#][#TOTAL_SCHEDULED#][#else#]0[#endif#]</strong></span>
+   </div>
+  </div>
+  <div class="md-ui-hero__actions">
+   [#if DATA_SOURCE=="categories"#]
+   <a href="?data_source=categories&view_mode=edit_categories" class="md-btn md-btn--primary">
+    <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD_NEW_CATEGORY#></span>
+   </a>
+   <a href="?data_source=scripts" class="md-btn md-btn--secondary">
+    <i class="ti ti-code" aria-hidden="true"></i><span class="md-btn__label"><#LANG_MODULE_SCRIPTS#></span>
+   </a>
+   [#else#]
+   <a href="?view_mode=edit_scripts" class="md-btn md-btn--primary">
+    <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD_NEW_SCRIPT#></span>
+   </a>
+   <a href="?data_source=categories&view_mode=edit_categories" class="md-btn md-btn--secondary">
+    <i class="ti ti-folder" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD_NEW_CATEGORY#></span>
+   </a>
+   <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="modal" data-bs-target="#mdScriptsImportModal">
+    <i class="ti ti-upload" aria-hidden="true"></i><span class="md-btn__label"><#LANG_IMPORT#></span>
+   </button>
+   [#endif#]
+  </div>
+ </header>
+
+ <div class="md-ui-kpi-grid">
+  <div class="md-kpi md-kpi--primary">
+   <div class="md-kpi__top"><span class="md-kpi__icon"><i class="ti ti-code" aria-hidden="true"></i></span><span class="md-kpi__label">Сценарии</span></div>
+   <div class="md-kpi__value">[#if TOTAL_SCRIPTS!=""#][#TOTAL_SCRIPTS#][#else#]0[#endif#]</div>
+   <div class="md-kpi__meta">Всего в системе</div>
+  </div>
+  <div class="md-kpi md-kpi--info">
+   <div class="md-kpi__top"><span class="md-kpi__icon"><i class="ti ti-folder" aria-hidden="true"></i></span><span class="md-kpi__label">Категории</span></div>
+   <div class="md-kpi__value">[#if TOTAL_CATEGORIES_ALL!=""#][#TOTAL_CATEGORIES_ALL#][#else#]0[#endif#]</div>
+   <div class="md-kpi__meta">Без категории: [#if TOTAL_UNCATEGORIZED!=""#][#TOTAL_UNCATEGORIZED#][#else#]0[#endif#]</div>
+  </div>
+  <div class="md-kpi md-kpi--warning">
+   <div class="md-kpi__top"><span class="md-kpi__icon"><i class="ti ti-clock" aria-hidden="true"></i></span><span class="md-kpi__label">По расписанию</span></div>
+   <div class="md-kpi__value">[#if TOTAL_SCHEDULED!=""#][#TOTAL_SCHEDULED#][#else#]0[#endif#]</div>
+   <div class="md-kpi__meta">Запускаются автоматически</div>
+  </div>
+  <div class="md-kpi md-kpi--success">
+   <div class="md-kpi__top"><span class="md-kpi__icon"><i class="ti ti-player-play" aria-hidden="true"></i></span><span class="md-kpi__label">Запускались</span></div>
+   <div class="md-kpi__value">[#if TOTAL_EXECUTED!=""#][#TOTAL_EXECUTED#][#else#]0[#endif#]</div>
+   <div class="md-kpi__meta">Есть история запуска</div>
+  </div>
+ </div>
+ [#endif#]
+
+ <nav class="md-tabs" aria-label="<#LANG_MODULE_SCRIPTS#>">
+  <a class="nav-link [#if DATA_SOURCE="scripts" || DATA_SOURCE=""#]active[#endif#]" href="?data_source=scripts">
+   <i class="ti ti-code" aria-hidden="true"></i><#LANG_MODULE_SCRIPTS#>
+   [#if TOTAL_SCRIPTS!=""#]<span class="md-badge md-badge--outline">[#TOTAL_SCRIPTS#]</span>[#endif#]
+  </a>
+  <a class="nav-link [#if DATA_SOURCE="categories"#]active[#endif#]" href="?data_source=categories">
+   <i class="ti ti-folder" aria-hidden="true"></i><#LANG_CATEGORIES#>
+   [#if TOTAL_CATEGORIES_ALL!=""#]<span class="md-badge md-badge--outline">[#TOTAL_CATEGORIES_ALL#]</span>[#endif#]
+  </a>
  </nav>
 
  [#if DATA_SOURCE=="" || DATA_SOURCE=="scripts"#]

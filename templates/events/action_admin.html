@@ -1,20 +1,14 @@
 <!--#
- @version 0.1 (auto-set)
+ @version 0.3 (redesigned admin UI)
 #-->
 
- <!-- action usual -->
- <!-- table events search -->
- [#if VIEW_MODE="search_events" || VIEW_MODE=""#]
-  [#inc events_search_admin.html#]
- [#endif VIEW_MODE#]
- <!-- / table events search -->
- <!-- table events edit -->
- [#if VIEW_MODE="edit_events"#]
-   [#inc events_edit.html#]
- [#endif VIEW_MODE#]
- <!-- / table events edit -->
- <!-- table events view --> 
- [#if VIEW_MODE="view_events"#]
-   [#inc events_view.html#]
- [#endif VIEW_MODE#]
- <!-- / table events view -->
+<link rel="stylesheet" href="<#ROOTHTML#>templates/events/events.css?v=2026-10-21-1">
+<script src="<#ROOTHTML#>templates/events/events.js?v=2026-10-21-1" defer></script>
+
+[#if VIEW_MODE="search_events" || VIEW_MODE=""#]
+[#inc events_search_admin.html#]
+[#endif VIEW_MODE#]
+
+[#if VIEW_MODE="edit_events"#]
+[#inc events_edit.html#]
+[#endif VIEW_MODE#]

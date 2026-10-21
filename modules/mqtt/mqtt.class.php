@@ -770,19 +770,59 @@ class mqtt extends module
     function admin(&$out)
     {
 
+        require_once(__DIR__ . '/mqtt_helpers.inc.php');
+
         if (gr('ajax')) {
             $op = gr('op');
+            if ($op == 'values') {
+                $ids = gr('ids');
+                if (!is_array($ids)) {
+                    $ids = $ids === '' ? array() : explode(',', (string)$ids);
+                }
+                $clean_ids = array();
+                foreach ($ids as $item_id) {
+                    $item_id = (int)$item_id;
+                    if ($item_id > 0 && !in_array($item_id, $clean_ids, true)) {
+                        $clean_ids[] = $item_id;
+                    }
+                }
+                $data = array();
+                if ($clean_ids) {
+                    $rows = SQLSelect("SELECT ID, VALUE, UPDATED FROM mqtt WHERE ID IN (" . implode(',', array_slice($clean_ids, 0, 200)) . ")");
+                    foreach ($rows as $row) {
+                        $data[] = array(
+                            'ID' => (int)$row['ID'],
+                            'VALUE' => (string)$row['VALUE'],
+                            'UPDATED' => (string)$row['UPDATED'],
+                            'UPDATED_HUMAN' => md_mqtt_relative_time((string)$row['UPDATED']),
+                            'FRESHNESS' => md_mqtt_freshness((string)$row['UPDATED']),
+                        );
+                    }
+                }
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(array('DATA' => $data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
             if ($op == 'branch_status') {
                 global $session;
-                $status = gr('status');
-                $branch = gr('branch');
-                if (!$status) {
-                    unset($session->data['branches'][$branch]);
-                } else {
-                    $session->data['branches'][$branch] = 1;
+                $status = (int)gr('status');
+                $branch = $this->normalizeMqttTreePath(gr('branch'));
+                if ($branch != '') {
+                    if (!isset($session->data['mqtt_tree_branches']) || !is_array($session->data['mqtt_tree_branches'])) {
+                        $session->data['mqtt_tree_branches'] = array();
+                    }
+                    if (!$status) {
+                        unset($session->data['mqtt_tree_branches'][$branch]);
+                        if (isset($session->data['branches'][$branch])) {
+                            unset($session->data['branches'][$branch]);
+                        }
+                    } else {
+                        $session->data['mqtt_tree_branches'][$branch] = 1;
+                    }
+                    $session->save();
                 }
-                dprint($session, false);
-                $session->save();
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(array('OK' => 1));
             }
             if ($op == 'tree_children') {
                 $root = gr('root');
@@ -802,34 +842,39 @@ class mqtt extends module
         }
 
         $this->getConfig();
-        $out['MQTT_CLIENT'] = $this->config['MQTT_CLIENT'];
-        $out['MQTT_HOST'] = $this->config['MQTT_HOST'];
-        $out['MQTT_PORT'] = $this->config['MQTT_PORT'];
-        $out['MQTT_QUERY'] = $this->config['MQTT_QUERY'];
-        $out['MQTT_DELAY'] = $this->config['MQTT_DELAY'];
+        if (empty($this->config['MQTT_HOST'])) {
+            $this->config['MQTT_HOST'] = 'localhost';
+        }
+        if (empty($this->config['MQTT_PORT'])) {
+            $this->config['MQTT_PORT'] = '1883';
+        }
+        if (empty($this->config['MQTT_QUERY'])) {
+            $this->config['MQTT_QUERY'] = '/var/now/#';
+        }
+
+        $out['MQTT_CLIENT'] = md_mqtt_h($this->config['MQTT_CLIENT']);
+        $out['MQTT_HOST'] = md_mqtt_h($this->config['MQTT_HOST']);
+        $out['MQTT_PORT'] = md_mqtt_h($this->config['MQTT_PORT']);
+        $out['MQTT_QUERY'] = md_mqtt_h($this->config['MQTT_QUERY']);
+        $out['MQTT_DELAY'] = md_mqtt_h(isset($this->config['MQTT_DELAY']) ? $this->config['MQTT_DELAY'] : '');
         $out['MQTT_WRITE_METHOD'] = isset($this->config['MQTT_WRITE_METHOD']) ? (int)$this->config['MQTT_WRITE_METHOD'] : 0;
-        $out['MQTT_STRIPMODE'] = isset($this->config['MQTT_STRIPMODE']) ? $this->config['MQTT_STRIPMODE'] : 0;
+        $out['MQTT_STRIPMODE'] = isset($this->config['MQTT_STRIPMODE']) ? (int)$this->config['MQTT_STRIPMODE'] : 0;
         $out['MQTT_UNLINKED_UPDATE_INTERVAL'] = isset($this->config['MQTT_UNLINKED_UPDATE_INTERVAL']) ? (int)$this->config['MQTT_UNLINKED_UPDATE_INTERVAL'] : 3600;
-        $out['DEBUG_MODE'] = $this->config['DEBUG_MODE'];
-        
+        $out['DEBUG_MODE'] = isset($this->config['DEBUG_MODE']) ? (int)$this->config['DEBUG_MODE'] : 0;
+
         // TLS/SSL configuration output
         $out['MQTT_TLS_ENABLE'] = isset($this->config['MQTT_TLS_ENABLE']) ? (int)$this->config['MQTT_TLS_ENABLE'] : 0;
-        $out['MQTT_TLS_CERTPATH'] = isset($this->config['MQTT_TLS_CERTPATH']) ? $this->config['MQTT_TLS_CERTPATH'] : '';
+        $out['MQTT_TLS_CERTPATH'] = md_mqtt_h(isset($this->config['MQTT_TLS_CERTPATH']) ? $this->config['MQTT_TLS_CERTPATH'] : '');
         $out['MQTT_TLS_IGNORE_CERT'] = isset($this->config['MQTT_TLS_IGNORE_CERT']) ? (int)$this->config['MQTT_TLS_IGNORE_CERT'] : 0;
 
-        if (!$out['MQTT_HOST']) {
-            $out['MQTT_HOST'] = 'localhost';
-        }
-        if (!$out['MQTT_PORT']) {
-            $out['MQTT_PORT'] = '1883';
-        }
-        if (!$out['MQTT_QUERY']) {
-            $out['MQTT_QUERY'] = '/var/now/#';
-        }
+        $out['MQTT_USERNAME'] = md_mqtt_h(isset($this->config['MQTT_USERNAME']) ? $this->config['MQTT_USERNAME'] : '');
+        $out['MQTT_PASSWORD'] = md_mqtt_h(isset($this->config['MQTT_PASSWORD']) ? $this->config['MQTT_PASSWORD'] : '');
+        $out['MQTT_AUTH'] = !empty($this->config['MQTT_AUTH']) ? 1 : 0;
 
-        $out['MQTT_USERNAME'] = $this->config['MQTT_USERNAME'];
-        $out['MQTT_PASSWORD'] = $this->config['MQTT_PASSWORD'];
-        $out['MQTT_AUTH'] = $this->config['MQTT_AUTH'];
+        $ok_msg = gr('ok_msg');
+        if ($ok_msg !== '') {
+            $out['OK_MSG'] = md_mqtt_h($ok_msg);
+        }
 
         if ($this->view_mode == 'update_settings') {
 
@@ -865,7 +910,7 @@ class mqtt extends module
 
             setGlobal('cycle_mqttControl', 'restart');
 
-            $this->redirect("?");
+            $this->redirect("?view_mode=settings&ok_msg=" . urlencode(LANG_DATA_SAVED));
         }
 
         if (!$this->config['MQTT_HOST']) {
@@ -882,29 +927,31 @@ class mqtt extends module
         }
 
 
-        if ($this->data_source == 'mqtt' || $this->data_source == '') {
-            if ($this->view_mode == '' || $this->view_mode == 'search_mqtt' || $this->view_mode == 'edit_mqtt') {
-                $this->search_mqtt($out);
-            }
+        if ($this->view_mode == 'settings' || $this->view_mode == 'update_settings') {
+            $out['SETTINGS_VIEW'] = 1;
+        } elseif ($this->data_source == 'mqtt' || $this->data_source == '') {
             if ($this->view_mode == 'edit_mqtt') {
                 $this->edit_mqtt($out, $this->id);
+            } elseif ($this->view_mode == '' || $this->view_mode == 'search_mqtt') {
+                $this->search_mqtt($out);
             }
+
             if ($this->view_mode == 'delete_path') {
                 $this->delete_mqtt_path(gr('path'));
-                $this->redirect(ROOTHTML . "panel/mqtt.html");
+                $this->redirect(ROOTHTML . "panel/mqtt.html?ok_msg=" . urlencode('Ветка топиков удалена'));
             }
             if ($this->view_mode == 'delete_mqtt') {
                 $this->delete_mqtt($this->id);
-                $this->redirect(ROOTHTML . "panel/mqtt.html");
+                $this->redirect(ROOTHTML . "panel/mqtt.html?ok_msg=" . urlencode('Топик удалён'));
             }
             if ($this->view_mode == 'clear_trash') {
                 $this->clear_trash();
-                $this->redirect(ROOTHTML . "panel/mqtt.html");
+                $this->redirect(ROOTHTML . "panel/mqtt.html?ok_msg=" . urlencode('Неиспользуемые топики удалены'));
             }
 
             if ($this->view_mode == 'optimize') {
                 $this->optimize();
-                $this->redirect(ROOTHTML . "panel/mqtt.html");
+                $this->redirect(ROOTHTML . "panel/mqtt.html?ok_msg=" . urlencode('История MQTT оптимизирована'));
             }
 
         }
@@ -941,6 +988,21 @@ class mqtt extends module
         $path = trim($path, '/');
         $path = preg_replace('/\/+/', '/', $path);
         return $path;
+    }
+
+    function isMqttTreeBranchOpen($path)
+    {
+        global $session;
+        $path = $this->normalizeMqttTreePath($path);
+        if ($path == '' || !isset($session) || !isset($session->data) || !is_array($session->data)) {
+            return false;
+        }
+
+        if (isset($session->data['mqtt_tree_branches']) && is_array($session->data['mqtt_tree_branches']) && isset($session->data['mqtt_tree_branches'][$path])) {
+            return true;
+        }
+
+        return isset($session->data['branches']) && is_array($session->data['branches']) && isset($session->data['branches'][$path]);
     }
 
     function getMqttTreeChildren($root = '', $limit = 200)
@@ -1009,7 +1071,8 @@ class mqtt extends module
                 'LINKED_OBJECT' => isset($rec['LINKED_OBJECT']) ? $rec['LINKED_OBJECT'] : '',
                 'LINKED_PROPERTY' => isset($rec['LINKED_PROPERTY']) ? $rec['LINKED_PROPERTY'] : '',
                 'LINKED_METHOD' => isset($rec['LINKED_METHOD']) ? $rec['LINKED_METHOD'] : '',
-                'HAS_CHILDREN' => $is_branch
+                'HAS_CHILDREN' => $is_branch,
+                'IS_VISIBLE' => $is_branch && $this->isMqttTreeBranchOpen($path) ? 1 : 0
             );
             $nodes[] = $node;
         }
@@ -1045,11 +1108,20 @@ class mqtt extends module
             $path_url = $this->mqttTreeHtml($node['PATH_URL']);
             $id = isset($node['ID']) ? (int)$node['ID'] : 0;
             $has_children = !empty($node['HAS_CHILDREN']);
+            $is_open = !empty($node['IS_VISIBLE']);
 
             if ($has_children) {
-                $html .= '<section class="md-mqtt-tree__branch" title="' . $path . '" data-md-mqtt-tree-branch data-md-mqtt-tree-path="' . $tree_path . '" data-md-mqtt-tree-loaded="0">';
+                $expanded = $is_open ? 'true' : 'false';
+                $toggle_title = $is_open ? 'Свернуть ветку' : 'Развернуть ветку';
+                $children_hidden = $is_open ? '' : ' hidden';
+                $children_html = '';
+                if ($is_open) {
+                    $children_html = $this->renderMqttTreeNodes($this->getMqttTreeChildren($node['TREE_PATH']));
+                }
+
+                $html .= '<section class="md-mqtt-tree__branch" title="' . $path . '" data-md-mqtt-tree-branch data-md-mqtt-tree-path="' . $tree_path . '" data-md-mqtt-tree-loaded="' . ($is_open ? '1' : '0') . '">';
                 $html .= '<div class="md-mqtt-tree__row">';
-                $html .= '<button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="false" aria-label="Развернуть ветку"><i class="glyphicon glyphicon-chevron-right"></i></button>';
+                $html .= '<button type="button" class="md-mqtt-tree__toggle" data-md-mqtt-tree-toggle aria-expanded="' . $expanded . '" aria-label="' . $this->mqttTreeHtml($toggle_title) . '" title="' . $this->mqttTreeHtml($toggle_title) . '"><i class="glyphicon glyphicon-chevron-right"></i></button>';
                 $html .= '<div class="md-mqtt-tree__content">';
                 if ($id) {
                     $html .= '<a href="?view_mode=edit_mqtt&id=' . $id . '" data-md-mqtt-tree-edit="' . $id . '" title="' . $path . '" class="md-mqtt-tree__title">' . $title . '</a>';
@@ -1062,7 +1134,7 @@ class mqtt extends module
                     $html .= '<a href="#" class="md-mqtt-tree__delete" data-md-mqtt-tree-delete="' . $path_url . '" aria-label="' . $this->mqttTreeHtml($delete_label) . '"><i class="glyphicon glyphicon-remove"></i></a>';
                 }
                 $html .= '</div>';
-                $html .= '<div class="md-mqtt-tree__children" hidden></div>';
+                $html .= '<div class="md-mqtt-tree__children"' . $children_hidden . '>' . $children_html . '</div>';
                 $html .= '</section>';
             } else {
                 $html .= '<article class="md-mqtt-tree__node is-leaf" title="' . $path . '">';

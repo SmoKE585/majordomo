@@ -1,66 +1,100 @@
-
-<!-- Table 'system_errors' edit -->
-<form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="form-horizontal">
+<!--#
+ @version 0.2 (auto-set)
+#-->
 [#if OK#]
-<div class="alert alert-success"><#LANG_DATA_SAVED#></div>
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
 [#endif OK#]
+
 [#if ERR#]
-<div class="alert alert-error"><#LANG_FILLOUT_REQURED#></div>
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body">
+        <div class="md-alert__title">Не удалось сохранить группу ошибок</div>
+        <div class="md-alert__text">[#if ERR_CODE#]Укажите код ошибки.[#else#]Проверьте заполнение формы.[#endif#]</div>
+    </div>
+</div>
 [#endif ERR#]
-<fieldset>
-[#if ID=""#]
-<legend><#LANG_NEW_RECORD#></legend>
-[#endif ID#]
-<!-- CODE (varchar) -->
-<div class="form-group">
- <label class="col-lg-3 control-label"[#if ERR_CODE#] style="color:red;font-weight:bold"[#endif#]>
- <#LANG_CODE#>:12
- (*)
- </label>
- <div class="col-lg-4"><input type="text" class="form-control" name="code" value="[#CODE#]" ></div>
-</div>
-<!-- TITLE (varchar) -->
-<div class="form-group">
- <label class="col-lg-3 control-label"[#if ERR_TITLE#] style="color:red;font-weight:bold"[#endif#]>
- <#LANG_TITLE#>:
- (*)
- </label>
- <div class="col-lg-4"><input type="text" class="form-control" name="title" value="[#TITLE#]" ></div>
-</div>
-<!-- DETAILS (text) -->
-<div class="form-group">
- <label class="col-lg-3 control-label"[#if ERR_DETAILS#] style="color:red;font-weight:bold"[#endif#]>
- <#LANG_DETAILS#>
- :
- </label>
- <div class="col-lg-4">
- <textarea name="details" rows=12 cols=100 class="form-control">[#DETAILS#]</textarea>
- </div>
-</div>
-<!-- KEEP_HISTORY (int) -->
-<div class="form-group">
- <label class="col-lg-3 control-label"[#if ERR_KEEP_HISTORY#] style="color:red;font-weight:bold"[#endif#]>
- &nbsp;
- </label>
- <div class="col-lg-4">
- <input type="checkbox" name="keep_history" value="1"[#if KEEP_HISTORY="1"#] checked[#endif#]> <#LANG_KEEP_HISTORY#>
- </div>
-</div>
-<div class="form-group">
-        <div class="col-lg-offset-3 col-lg-4">
- [#if ID!=""#]
- <button type="submit" name="subm" value="Submit" class="btn btn-primary"><#LANG_SUBMIT#></button>
- [#else ID#]
- <button type="submit" name="subm" value="Add" class="btn btn-primary"><#LANG_ADD#></button>
- [#endif ID#]
- <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-default "><#LANG_CANCEL#></a>
-<input type="hidden" name="id" value="<#ID#>">
-<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-<input type="hidden" name="mode" value="update">
-<input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
-<input type="hidden" name="tab" value="<#TAB#>">
-        </div>
-</div>
-</fieldset>
+
+<form action="?" method="post" name="frmEdit" class="md-ui-form">
+    <div class="md-ui-form-stack">
+        <section class="md-card" aria-labelledby="mdErrorMainTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Группа ошибок</div>
+                    <h2 class="md-card__title" id="mdErrorMainTitle"><i class="ti ti-alert-triangle" aria-hidden="true"></i>Параметры</h2>
+                    <p class="md-card__subtitle">Код, название и описание ошибки, которую собирает журнал.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-ui-form-stack">
+                    <div class="md-ui-form-grid">
+                        <div class="md-field [#if ERR_CODE#]is-invalid[#endif#]">
+                            <label class="md-field__label" for="mdErrorCode"><#LANG_CODE#><span class="md-field__req" aria-hidden="true">*</span></label>
+                            <div class="md-field__control">
+                                <input type="text" id="mdErrorCode" class="md-input [#if ERR_CODE#]is-invalid[#endif#]" name="code" value="[#CODE#]" required maxlength="50" autocomplete="off">
+                            </div>
+                            [#if ERR_CODE#]
+                            <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Укажите код ошибки.</span></div>
+                            [#else#]
+                            <div class="md-field__hint">Короткий идентификатор, например <code>module_error</code>.</div>
+                            [#endif#]
+                        </div>
+
+                        <div class="md-field">
+                            <label class="md-field__label" for="mdErrorTitle"><#LANG_TITLE#></label>
+                            <div class="md-field__control">
+                                <input type="text" id="mdErrorTitle" class="md-input" name="title" value="[#TITLE#]" maxlength="255" autocomplete="off" placeholder="[#TITLE_DISPLAY#]">
+                            </div>
+                            <div class="md-field__hint">Необязательно. Если пусто, в списке показывается сообщение ошибки или её код.</div>
+                        </div>
+                    </div>
+
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdErrorDetails"><#LANG_DETAILS#></label>
+                        <div class="md-field__control">
+                            <textarea id="mdErrorDetails" name="details" rows="6" class="md-textarea" spellcheck="false">[#DETAILS#]</textarea>
+                        </div>
+                        <div class="md-field__hint">Дополнительный контекст, который увидят при просмотре ошибки.</div>
+                    </div>
+
+                    <div class="md-ui-form-grid">
+                        <label class="md-check" for="mdErrorActive">
+                            <input class="md-check__input" id="mdErrorActive" type="checkbox" name="active" value="1" data-md-raw-checkbox[#if ACTIVE!="0"#] checked[#endif#]>
+                            <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                            <span class="md-check__text">
+                                <span class="md-check__label">Активная ошибка</span>
+                                <span class="md-check__desc">Показывать как требующую внимания</span>
+                            </span>
+                        </label>
+
+                        <label class="md-check" for="mdErrorKeepHistory">
+                            <input class="md-check__input" id="mdErrorKeepHistory" type="checkbox" name="keep_history" value="1" data-md-raw-checkbox[#if KEEP_HISTORY="1"#] checked[#endif#]>
+                            <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                            <span class="md-check__text">
+                                <span class="md-check__label">Хранить историю</span>
+                                <span class="md-check__desc">Не удалять старые срабатывания этой ошибки</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="md-ui-form-actions md-errors-form-actions">
+        <button class="md-btn md-btn--primary" type="submit" name="subm">
+            <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">[#if ID!=""#]<#LANG_SUBMIT#>[#else#]<#LANG_ADD#>[#endif#]</span>
+        </button>
+        <a href="?view_mode=search_system_errors" class="md-btn md-btn--secondary"><#LANG_CANCEL#></a>
+    </div>
+
+    <input type="hidden" name="id" value="[#ID#]">
+    <input type="hidden" name="view_mode" value="[#VIEW_MODE#]">
+    <input type="hidden" name="edit_mode" value="[#EDIT_MODE#]">
+    <input type="hidden" name="mode" value="update">
+    <input type="hidden" name="data_source" value="[#DATA_SOURCE#]">
+    <input type="hidden" name="tab" value="[#TAB#]">
 </form>

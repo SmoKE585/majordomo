@@ -1,160 +1,249 @@
 <!--#
- @version 0.3 (auto-set)
+ @version 0.4 (auto-set)
 #-->
-<!-- Table 'users' edit -->
-<ul class="breadcrumb">
-<li> 
-<a href="?"><#LANG_HOME#></a>
-</li>
-<span class="divider">/</span>
-<li class="active">
-[#if ID=""#]
-<#LANG_NEW_RECORD#>
-[#else#]
-<#LANG_EDIT_RECORD#>
-[#endif#]
-</li>
-</ul>
-
-<form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="form-horizontal">
 [#if OK#]
-
-    <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
-
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
 [#endif OK#]
+
 [#if ERR#]
-
-  <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
-
-[#endif ERR#]
-
-
-<!-- USERNAME (varchar) -->
-
-
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"><#LANG_USERNAME#>:<font color="red">*</font></label>
-        <div class="col-lg-5"><input type="text"  class="form-control [#if ERR_USERNAME#]alert-danger[#endif#]"  name="username" value="[#USERNAME#]" required="true"></div>
-</div>
-
-[#if PASSWORD!=""#]
-        <div class="form-group ">
-                <label class="col-lg-4 control-label" for="inputTitle"><#LANG_PASSWORD#>:</label>
-                <div class="col-lg-5">
-                        <input type="radio" name="use_password" value="1" checked> <#LANG_YES#>
-                        <input type="radio" name="use_password" value="0"> <#LANG_NO#>
-                </div>
-        </div>
-        [#endif PASSWORD#]
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"><#LANG_PASSWORD#> (<#LANG_OPTIONAL#>):</label>
-        <div class="col-lg-5"><input type="password"  class="form-control"  name="passwordnew" ></div>
-</div>
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle">Повторите <#LANG_PASSWORD#>:</label>
-        <div class="col-lg-5"><input type="password"  class="form-control"  name="passwordrepeat" ></div>
-</div>
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"><#LANG_NAME#>:<font color="red">*</font></label>
-        <div class="col-lg-5"><input type="text"  class="form-control [#if ERR_NAME#]alert-danger[#endif#]"  name="name" value="[#NAME#]"></div>
-</div>
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"><#LANG_COLOR#>:</label>
-        <div class="col-lg-5"><input type="text"  class="form-control"  name="color" value="[#COLOR#]"></div>
-</div>
-
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"><#LANG_EMAIL#>:</label>
-        <div class="col-lg-5"><input type="text"  class="form-control [#if ERR_EMAIL#]alert-danger[#endif#]"  name="email" value="[#EMAIL#]" required="true"></div>
-</div>
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"><#LANG_MOBILE_PHONE#>:</label>
-        <div class="col-lg-5"><input type="text"  class="form-control"  name="mobile" value="[#MOBILE#]"></div>
-</div>
-
-
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"><#LANG_PHOTO#>:</label>
-        <div class="col-lg-5">
-                [#if AVATAR!=""#]<img src="<#ROOTHTML#>cms/avatars/[#AVATAR#]" border="0" height="50"><br>[#endif#]
-                <input type="file" class="form-control" name="avatar">
-        
-        </div>
-</div>
-
-
-
-
-
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"><#LANG_LINKED_OBJECT#>:</label>
-        <div class="col-lg-5"><input type="text" class="form-control"  name="linked_object" id="linked_object" value="[#LINKED_OBJECT#]"></div>
-</div>
-
-[#module name="linkedobject" object_field="linked_object" method_field="onchange_method"#]
-<div class="form-group ">
-        <label class="col-lg-4 control-label" for="inputTitle"> <#LANG_HOSTNAME#> (<#LANG_OPTIONAL#>):</label>
-        <div class="col-lg-5"><input type="text"  class="form-control [#if ERR_HOST#]alert-danger[#endif#]"  name="host" value="[#HOST#]"></div>
-</div>
-
-
-
-
-
-<div class="form-group">
-        <div class="col-lg-offset-1 col-lg-5 ">
-                <div class="checkbox">
-                        <label>
-                                <input type="checkbox" value="1" name="is_default" [#if IS_DEFAULT="1"#] checked[#endif#]> <#LANG_DEFAULT_USER#>
-                        </label>
-                </div>
-        </div>
-</div>
-
-
-<div class="form-group">
-        <div class="col-lg-offset-1 col-lg-5 ">
-                <div class="checkbox">
-                        <label>
-                                <input type="checkbox" value="1" name="is_admin" [#if IS_ADMIN="1"#] checked[#endif#]> <#LANG_IS_ADMIN#>
-                        </label>
-                </div>
-        </div>
-</div>
-
-
-
-
-
-
-<div class="form-group">
-     <div class="col-lg-offset-1 col-lg-5">
-        
-         [#if ID!=""#]
-                 <input class="btn btn-default btn-primary" type="submit" name="subm" value="<#LANG_SUBMIT#>">
-                 [#else ID#]
-                 <input class="btn btn-default btn-primary" type="submit" name="subm" value="<#LANG_ADD#>">
-                 [#endif ID#]
-                 &nbsp;
-                 <a href="?" class="btn btn-default"><#LANG_CANCEL#></a>
-
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body">
+        <div class="md-alert__title">Не удалось сохранить пользователя</div>
+        <div class="md-alert__text">[#if ERR_PASSWORD#]Пароли не совпадают. Проверьте оба поля.[#else#]<#LANG_FILLOUT_REQURED#>[#endif#]</div>
     </div>
 </div>
+[#endif ERR#]
 
+<form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-ui-form">
+    <div class="md-ui-form-stack">
+        <section class="md-card" aria-labelledby="mdUserProfileTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Учётная запись</div>
+                    <h2 class="md-card__title" id="mdUserProfileTitle"><i class="ti ti-user" aria-hidden="true"></i>Профиль</h2>
+                    <p class="md-card__subtitle">Как пользователь отображается в системе и как с ним связаться.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-ui-form-stack">
+                    <div class="md-ui-form-grid">
+                        <div class="md-field [#if ERR_USERNAME#]is-invalid[#endif#]">
+                            <label class="md-field__label" for="mdUserName"><#LANG_USERNAME#><span class="md-field__req" aria-hidden="true">*</span></label>
+                            <div class="md-field__control">
+                                <input type="text" id="mdUserName" class="md-input [#if ERR_USERNAME#]is-invalid[#endif#]" name="username" value="[#USERNAME#]" required maxlength="255" autocomplete="username">
+                            </div>
+                            [#if ERR_USERNAME#]
+                            <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Укажите логин пользователя.</span></div>
+                            [#else#]
+                            <div class="md-field__hint">Используется для входа. Без пробелов.</div>
+                            [#endif#]
+                        </div>
 
+                        <div class="md-field [#if ERR_NAME#]is-invalid[#endif#]">
+                            <label class="md-field__label" for="mdUserFullName"><#LANG_NAME#><span class="md-field__req" aria-hidden="true">*</span></label>
+                            <div class="md-field__control">
+                                <input type="text" id="mdUserFullName" class="md-input [#if ERR_NAME#]is-invalid[#endif#]" name="name" value="[#NAME#]" required maxlength="255" autocomplete="name">
+                            </div>
+                            [#if ERR_NAME#]
+                            <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Укажите имя пользователя.</span></div>
+                            [#else#]
+                            <div class="md-field__hint">Отображается в списках, истории и сценариях.</div>
+                            [#endif#]
+                        </div>
+                    </div>
 
+                    <div class="md-ui-form-grid">
+                        <div class="md-field">
+                            <label class="md-field__label" for="mdUserEmail"><#LANG_EMAIL#></label>
+                            <div class="md-field__control">
+                                <input type="email" id="mdUserEmail" class="md-input" name="email" value="[#EMAIL#]" maxlength="255" autocomplete="email" inputmode="email">
+                            </div>
+                            <div class="md-field__hint">Для уведомлений и восстановления доступа.</div>
+                        </div>
 
-<input type="hidden" name="id" value="<#ID#>">
-<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-<input type="hidden" name="mode" value="update">
+                        <div class="md-field">
+                            <label class="md-field__label" for="mdUserMobile"><#LANG_MOBILE_PHONE#></label>
+                            <div class="md-field__control">
+                                <input type="text" id="mdUserMobile" class="md-input" name="mobile" value="[#MOBILE#]" maxlength="255" autocomplete="tel" inputmode="tel">
+                            </div>
+                            <div class="md-field__hint">Для SMS и мессенджеров.</div>
+                        </div>
+                    </div>
+
+                    <div class="md-ui-form-grid">
+                        <div class="md-field">
+                            <label class="md-field__label" for="mdUserHost"><#LANG_HOSTNAME#></label>
+                            <div class="md-field__control">
+                                <input type="text" id="mdUserHost" class="md-input" name="host" value="[#HOST#]" maxlength="255" autocomplete="off" placeholder="192.168.1.20">
+                            </div>
+                            <div class="md-field__hint">IP-адрес, с которого пользователь определяется автоматически.</div>
+                        </div>
+
+                        <div class="md-field">
+                            <label class="md-field__label" for="mdUserColor"><#LANG_COLOR#></label>
+                            <div class="md-field__control md-users-color">
+                                <input type="text" id="mdUserColor" class="md-input" name="color" value="[#COLOR#]" maxlength="20" autocomplete="off" placeholder="#2f7fbd или red">
+                                <span class="md-color-sample md-users-color__sample"[#if COLOR!=""#] style="--md-color:[#COLOR#]"[#else#] hidden[#endif#] aria-hidden="true"></span>
+                            </div>
+                            <div class="md-field__hint">HEX-цвет или CSS-имя для акцента в интерфейсе.</div>
+                        </div>
+                    </div>
+
+                    <div class="md-field">
+                        <span class="md-field__label"><#LANG_PHOTO#></span>
+                        <div class="md-field__control md-users-avatar-field">
+                            <span class="md-avatar md-users-avatar" aria-hidden="true">
+                                [#if AVATAR!=""#]
+                                <img src="<#ROOTHTML#>cms/avatars/[#AVATAR#]" alt="">
+                                [#else#]
+                                <i class="ti ti-user"></i>
+                                [#endif#]
+                            </span>
+                            <div class="md-users-avatar-field__input">
+                                <input type="file" class="md-input" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif" aria-label="<#LANG_PHOTO#>">
+                                <div class="md-field__hint">PNG, JPG или WebP. Новый файл заменяет текущее фото.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="md-card" aria-labelledby="mdUserAccessTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Доступ</div>
+                    <h2 class="md-card__title" id="mdUserAccessTitle"><i class="ti ti-shield-lock" aria-hidden="true"></i>Пароль и права</h2>
+                    <p class="md-card__subtitle">Пароль для входа и уровень доступа к панели управления.</p>
+                </div>
+                <div class="md-card__actions">
+                    [#if PASSWORD_SET="1"#]
+                    <span class="md-badge md-badge--success"><i class="ti ti-key" aria-hidden="true"></i>Пароль установлен</span>
+                    [#else#]
+                    <span class="md-badge md-badge--warning"><i class="ti ti-key-off" aria-hidden="true"></i>Вход без пароля</span>
+                    [#endif#]
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-ui-form-stack">
+                    [#if PASSWORD_SET="1"#]
+                    <div class="md-field">
+                        <span class="md-field__label">Текущий пароль</span>
+                        <div class="md-field__control md-users-radio-row" role="radiogroup" aria-label="Текущий пароль">
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" name="use_password" value="1" checked data-md-raw-checkbox>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">
+                                    <span class="md-check__label">Оставить текущий пароль</span>
+                                    <span class="md-check__desc">Новые поля ниже можно не заполнять</span>
+                                </span>
+                            </label>
+                            <label class="md-check md-radio">
+                                <input class="md-check__input md-radio__input" type="radio" name="use_password" value="0" data-md-raw-checkbox>
+                                <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
+                                <span class="md-check__text">
+                                    <span class="md-check__label">Убрать пароль</span>
+                                    <span class="md-check__desc">Вход для пользователя будет без пароля</span>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="md-field__hint">Если задать новый пароль, он будет установлен независимо от этого выбора.</div>
+                    </div>
+                    [#endif#]
+
+                    <div class="md-ui-form-grid">
+                        <div class="md-field [#if ERR_PASSWORD#]is-invalid[#endif#]">
+                            <label class="md-field__label" for="mdUserPasswordNew">[#if PASSWORD_SET="1"#]Новый пароль[#else#]<#LANG_PASSWORD#>[#endif#]</label>
+                            <div class="md-field__control">
+                                <div class="md-input-shell [#if ERR_PASSWORD#]is-invalid[#endif#]">
+                                    <input type="password" id="mdUserPasswordNew" class="md-input" name="passwordnew" autocomplete="new-password">
+                                    <button type="button" class="md-input-action" data-md-password-toggle="mdUserPasswordNew" aria-label="Показать пароль" aria-pressed="false"><i class="ti ti-eye" aria-hidden="true"></i></button>
+                                </div>
+                            </div>
+                            <div class="md-field__hint">Оставьте пустым, чтобы не менять.</div>
+                        </div>
+
+                        <div class="md-field [#if ERR_PASSWORD#]is-invalid[#endif#]">
+                            <label class="md-field__label" for="mdUserPasswordRepeat">Повторите пароль</label>
+                            <div class="md-field__control">
+                                <div class="md-input-shell [#if ERR_PASSWORD#]is-invalid[#endif#]">
+                                    <input type="password" id="mdUserPasswordRepeat" class="md-input" name="passwordrepeat" autocomplete="new-password">
+                                    <button type="button" class="md-input-action" data-md-password-toggle="mdUserPasswordRepeat" aria-label="Показать пароль" aria-pressed="false"><i class="ti ti-eye" aria-hidden="true"></i></button>
+                                </div>
+                            </div>
+                            [#if ERR_PASSWORD#]
+                            <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Пароли не совпадают.</span></div>
+                            [#else#]
+                            <div class="md-field__hint">Повторите новый пароль, если задаёте его.</div>
+                            [#endif#]
+                        </div>
+                    </div>
+
+                    <div class="md-ui-form-grid md-users-checks">
+                        <label class="md-check" for="mdUserIsAdmin">
+                            <input class="md-check__input" id="mdUserIsAdmin" type="checkbox" name="is_admin" value="1" data-md-raw-checkbox[#if IS_ADMIN="1"#] checked[#endif#]>
+                            <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                            <span class="md-check__text">
+                                <span class="md-check__label">Администратор</span>
+                                <span class="md-check__desc">Полный доступ к панели управления и настройкам</span>
+                            </span>
+                        </label>
+
+                        <label class="md-check" for="mdUserIsDefault">
+                            <input class="md-check__input" id="mdUserIsDefault" type="checkbox" name="is_default" value="1" data-md-raw-checkbox[#if IS_DEFAULT="1"#] checked[#endif#]>
+                            <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                            <span class="md-check__text">
+                                <span class="md-check__label">Пользователь по умолчанию</span>
+                                <span class="md-check__desc">Применяется, если пользователь не определён по IP</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="md-card" aria-labelledby="mdUserLinkedObjectTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Связь</div>
+                    <h2 class="md-card__title" id="mdUserLinkedObjectTitle"><i class="ti ti-box" aria-hidden="true"></i>Привязка к объекту</h2>
+                    <p class="md-card__subtitle">Объект для персональных сценариев, истории и уведомлений.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-users-linkedobject">
+                    <input type="text" class="md-input" name="linked_object" id="linked_object" value="[#LINKED_OBJECT#]" autocomplete="off" placeholder="Например, User_Anna" aria-label="<#LANG_LINKED_OBJECT#>">
+                    [#module name="linkedobject" object_field="linked_object"#]
+                </div>
+                <div class="md-field__hint">Если оставить поле пустым, объект с именем пользователя будет создан автоматически при сохранении.</div>
+            </div>
+        </section>
+    </div>
+
+    <div class="md-ui-form-actions md-users-form-actions">
+        <button class="md-btn md-btn--primary" type="submit" name="subm">
+            <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">[#if ID!=""#]<#LANG_SUBMIT#>[#else#]<#LANG_ADD#>[#endif#]</span>
+        </button>
+        <a href="?view_mode=search_users" class="md-btn md-btn--secondary"><#LANG_CANCEL#></a>
+        [#if ID!=""#]
+        <div class="dropdown ms-auto">
+            <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end md-menu">
+                <li><a class="dropdown-item text-danger" href="?view_mode=delete_users&id=[#ID#]" data-md-confirm="Удалить пользователя [#USERNAME#]?"><i class="ti ti-trash" aria-hidden="true"></i>Удалить пользователя</a></li>
+            </ul>
+        </div>
+        [#endif#]
+    </div>
+
+    <input type="hidden" name="id" value="[#ID#]">
+    <input type="hidden" name="view_mode" value="[#VIEW_MODE#]">
+    <input type="hidden" name="edit_mode" value="[#EDIT_MODE#]">
+    <input type="hidden" name="mode" value="update">
 </form>
 

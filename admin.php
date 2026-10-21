@@ -9,6 +9,19 @@
 Define('ALLOW_RUNNING_WITH_ERRORS', 1);
 
 include_once("./config.php");
+require_once("./lib/admin_router.php");
+
+// Legacy admin URLs carry the whole navigation state in `pd`. Redirect GET
+// requests to the equivalent pretty URL when the round-trip is lossless.
+if (mdj_admin_should_canonicalize_request()) {
+    $requestUri = (string)$_SERVER['REQUEST_URI'];
+    $prettyUrl = mdj_admin_pretty_url($requestUri);
+    if ($prettyUrl !== $requestUri) {
+        header('Location: ' . $prettyUrl, true, 302);
+        exit;
+    }
+}
+
 include_once("./lib/perfmonitor.class.php");
 startMeasure('TOTAL');
 
@@ -108,8 +121,7 @@ if (isset($_GET['part_load'])) {
         $res['NEED_RELOAD'] = 0;
         if (headers_sent()
             || is_integer(mb_strpos($res['CONTENT'], '$(document).ready'))
-            || is_integer(mb_strpos($res['CONTENT'], '$(function('))
-            || is_integer(mb_strpos($res['CONTENT'], 'codemirror/'))) {
+            || is_integer(mb_strpos($res['CONTENT'], '$(function('))) {
             $res['CONTENT'] = '';
             $res['NEED_RELOAD'] = 1;
         }
@@ -159,7 +171,9 @@ if (isset($_GET['dynids']) and is_array($_GET['dynids'])) {
 
 
 if (!headers_sent()) {
-    header("HTTP/1.0 200 OK\n");
+    if (http_response_code() !== 404) {
+        header("HTTP/1.0 200 OK\n");
+    }
     header('Content-Type: text/html; charset=utf-8');
     if (!ob_get_length()) {
         if (!ob_start("ob_gzhandler")) ob_start();

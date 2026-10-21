@@ -1,100 +1,151 @@
-<div class="md-scripts-card md-scripts-card--panel">
- <div class="md-scripts-toolbar">
-  <form action="?" method="get" class="md-scripts-toolbar__filters md-scripts-searchbar" data-scripts-search-form>
-   <input type="text" name="title" value="<#TITLE#>" class="form-control md-scripts-searchbar__input" placeholder="<#LANG_SEARCH#>" autocomplete="off" data-scripts-filter>
-   <button type="submit" class="btn btn-primary"><#LANG_SEARCH#></button>
-   <select name="recently_updated" id="recently_updated" class="form-control md-scripts-select" data-scripts-recently-updated>
-    <option value=""><#LANG_UPDATED#></option>
-    [#begin RECENTLY_UPDATED#]
-    <option value="[#ID#]">[#TITLE#] ([#PASSED#])</option>
-    [#end RECENTLY_UPDATED#]
-   </select>
-  </form>
-  <div class="md-scripts-toolbar__meta">
-   <div class="md-related-module-toolbar__stats">
-    <div class="md-related-module-toolbar__stat"><span><#LANG_MODULE_SCRIPTS#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
-    <div class="md-related-module-toolbar__stat"><span><#LANG_CATEGORIES#></span><strong>[#if TOTAL_CATEGORIES!=""#][#TOTAL_CATEGORIES#][#else#]0[#endif#]</strong></div>
-   </div>
-   <div class="md-scripts-toolbar__actions">
-    <a href="?view_mode=edit_scripts" class="btn btn-primary">+ <#LANG_ADD_NEW_SCRIPT#></a>
-    <a href="?view_mode=edit_categories&data_source=categories" class="btn btn-outline-secondary">+ <#LANG_ADD_NEW_CATEGORY#></a>
-   </div>
-  </div>
- </div>
-
- [#if RESULT#]
-  <form action="?" method="post" class="md-admin-module-list__form md-scripts-export-form" data-scripts-export-form>
-   <div class="md-scripts-category-list">
-    [#begin RESULT#]
-     [#if NEW_CATEGORY#]
-      [#if FIRST != 1#]
-       </div>
-      </details>
-      [#endif#]
-      <details class="md-scripts-category" data-scripts-category data-category-id="[#CATEGORY_ID#]">
-       <summary class="md-scripts-category__header">
-        <span class="md-scripts-category__title">[#CATEGORY#]</span>
-        <span class="md-scripts-category__toggle" aria-hidden="true">▾</span>
-       </summary>
-       <div class="md-scripts-category__body">
-        <div class="md-admin-record-list">
-     [#endif#]
-          <article class="md-admin-record-card md-scripts-record">
-           <div class="md-admin-record-card__main">
-            <button type="button" class="md-admin-record-card__search md-scripts-record__search" title="<#LANG_SEARCH#>" data-scripts-search-open data-scripts-search-term="[#TITLE#]">?</button>
-            <div class="md-admin-record-card__content">
-             <div class="md-admin-record-card__title">
-              <a href="?view_mode=edit_scripts&id=[#ID#]">[#TITLE#]</a>
-              [#if EXECUTED_PASSED != ''#]<span class="md-scripts-record__time">[#EXECUTED_PASSED#]</span>[#endif#]
-             </div>
-             [#if DESCRIPTION != ''#]<div class="md-admin-record-card__field">[#DESCRIPTION#]</div>[#endif#]
-            </div>
-           </div>
-           <input type="checkbox" class="md-scripts-export-input" data-scripts-export-checkbox name="ids[]" value="[#ID#]" hidden>
-           <div class="md-admin-record-card__actions md-scripts-record__actions">
-            [#if "<#ACTION#>"=="admin"#]
-              <a href="?view_mode=edit_scripts&id=[#ID#]" class="btn btn-light btn-sm"><#LANG_EDIT#></a>
-              <div class="btn-group">
-               <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-               <ul class="dropdown-menu dropdown-menu-end">
-                <li><button type="button" class="dropdown-item" data-scripts-export-toggle aria-pressed="false"><#LANG_EXPORT#></button></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="?view_mode=run_script&id=[#ID#]" target="_blank" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_RUN_SCRIPT_BTN#></a></li>
-                <li><a class="dropdown-item" href="?id=[#ID#]&view_mode=clone"><#LANG_MAKE_COPY#></a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger" href="?view_mode=delete_scripts&id=[#ID#]" data-scripts-confirm="<#LANG_ARE_YOU_SURE#>"><#LANG_DELETE#></a></li>
-               </ul>
-             </div>
-            [#endif ACTION#]
-           </div>
-          </article>
-     [#if LAST == 1#]
+[#if RESULT#]
+<div class="md-table-wrap" data-md-table data-md-table-page-size="50" data-md-table-unit="сценариев">
+    <div class="md-table__toolbar">
+        <div class="md-table__search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" value="[#TITLE#]" data-md-table-search data-scripts-filter placeholder="Поиск по названию и описанию" aria-label="Поиск сценариев" autocomplete="off">
         </div>
-       </div>
-      </details>
-     [#endif#]
-   [#end RESULT#]
-   </div>
-   <div class="md-scripts-export-bar">
-    <input type="hidden" name="view_mode" value="multiple">
-    <button type="submit" class="btn btn-outline-secondary" name="export" value="<#LANG_EXPORT#>" data-scripts-export-submit data-scripts-export-label="<#LANG_EXPORT#>"><#LANG_EXPORT#></button>
-   </div>
-  </form>
- [#else RESULT#]
-  <div class="md-scripts-empty"><#LANG_NO_RECORDS_FOUND#></div>
- [#endif RESULT#]
-</div>
+        <select class="md-table__filter" data-md-table-filter="category" aria-label="Фильтр по категории">
+            <option value="">Все категории</option>
+            [#begin CATEGORIES#]
+            <option value="[#ID#]">[#TITLE#]</option>
+            [#end CATEGORIES#]
+            <option value="0">Без категории</option>
+        </select>
+        <div class="md-table__meta" data-md-table-meta>[#RESULT_TOTAL#] сценариев</div>
+    </div>
 
-<details class="md-scripts-card md-scripts-import" data-scripts-import>
- <summary class="md-scripts-import__header">
-  <span><#LANG_IMPORT#></span>
-  <span class="md-scripts-category__toggle" aria-hidden="true">▾</span>
- </summary>
- <div class="md-scripts-import__body">
- <form action="?" enctype="multipart/form-data" method="post" class="md-scripts-import__form">
-  <input type="file" name="file" enctype="multipart/form-data" class="form-control">
-   <input type="submit" name="submit" value="<#LANG_IMPORT#>" class="btn btn-outline-secondary">
-   <input type="hidden" name="view_mode" value="import">
-  </form>
- </div>
-</details>
+    <form action="?" method="post" class="md-scripts-export-form" data-scripts-export-form>
+        <div class="md-table__scroll">
+            <table class="md-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="md-table__check">
+                            <label class="md-check">
+                                <input class="md-check__input" type="checkbox" data-md-raw-checkbox data-md-table-check-all aria-label="Выбрать все сценарии">
+                                <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                            </label>
+                        </th>
+                        <th scope="col">
+                            <button type="button" class="md-table__sort" data-md-table-sort="name">Сценарий <i class="ti ti-arrows-up-down" aria-hidden="true"></i></button>
+                        </th>
+                        <th scope="col">Категория</th>
+                        <th scope="col">
+                            <button type="button" class="md-table__sort" data-md-table-sort="updated">Последний запуск <i class="ti ti-arrows-up-down" aria-hidden="true"></i></button>
+                        </th>
+                        <th scope="col" class="text-end"><span class="md-visually-hidden">Действия</span></th>
+                    </tr>
+                </thead>
+                <tbody data-md-table-body>
+                    [#begin RESULT#]
+                    <tr class="md-scripts-record" data-md-row data-row-id="[#ID#]" data-search="[#SEARCH_TEXT#]" data-category="[#CATEGORY_ID#]" data-sort-name="[#TITLE#]" data-sort-updated="[#EXECUTED#]">
+                        <td class="md-table__check">
+                            <label class="md-check">
+                                <input class="md-check__input" type="checkbox" data-md-raw-checkbox data-md-row-check data-scripts-export-checkbox name="ids[]" value="[#ID#]" aria-label="Выбрать сценарий [#TITLE#]">
+                                <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                            </label>
+                        </td>
+                        <td>
+                            <div class="md-table__name">
+                                <span class="md-table__icon"><i class="ti ti-code" aria-hidden="true"></i></span>
+                                <div>
+                                    <a href="?view_mode=edit_scripts&id=[#ID#]"><strong>[#TITLE#]</strong></a>
+                                    [#if DESCRIPTION != ''#]<small>[#DESCRIPTION#]</small>[#endif#]
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="md-badge md-badge--outline">[#CATEGORY#]</span>
+                            [#if RUN_PERIODICALLY == '1'#]<span class="md-badge md-badge--warning"><i class="ti ti-clock" aria-hidden="true"></i>расписание</span>[#endif#]
+                        </td>
+                        <td>
+                            [#if EXECUTED_PASSED != ''#]
+                            <span class="md-badge md-badge--success">[#EXECUTED_PASSED#]</span>
+                            [#else#]
+                            <span class="md-tree-empty">Не запускался</span>
+                            [#endif#]
+                        </td>
+                        <td>
+                            <div class="md-table__actions">
+                                <a class="md-icon-btn md-icon-btn--sm" href="?view_mode=run_script&id=[#ID#]" target="_blank" data-bs-toggle="tooltip" data-bs-title="Выполнить" aria-label="Выполнить сценарий">
+                                    <i class="ti ti-player-play" aria-hidden="true"></i>
+                                </a>
+                                <a class="md-icon-btn md-icon-btn--sm" href="?view_mode=edit_scripts&id=[#ID#]" data-bs-toggle="tooltip" data-bs-title="Редактировать" aria-label="Редактировать сценарий">
+                                    <i class="ti ti-pencil" aria-hidden="true"></i>
+                                </a>
+                                <div class="dropdown">
+                                    <button type="button" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Действия">
+                                        <i class="ti ti-dots" aria-hidden="true"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                                        <li><a class="dropdown-item" href="?view_mode=run_script&id=[#ID#]" target="_blank" data-md-confirm="Выполнить сценарий?"><i class="ti ti-player-play" aria-hidden="true"></i>Выполнить</a></li>
+                                        <li><a class="dropdown-item" href="?id=[#ID#]&view_mode=clone" data-md-confirm="Создать копию сценария?"><i class="ti ti-copy" aria-hidden="true"></i>Сделать копию</a></li>
+                                        <li><a class="dropdown-item" href="?ids[]=[#ID#]&view_mode=multiple"><i class="ti ti-download" aria-hidden="true"></i>Экспорт</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="?view_mode=delete_scripts&id=[#ID#]" data-md-confirm="Удалить сценарий?"><i class="ti ti-trash" aria-hidden="true"></i>Удалить</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    [#end RESULT#]
+                </tbody>
+            </table>
+        </div>
+
+        <div class="md-scripts-export-bar" hidden>
+            <button type="submit" class="md-btn md-btn--secondary" name="export" value="Экспорт" data-scripts-export-submit data-scripts-export-label="Экспорт" disabled>
+                <i class="ti ti-download" aria-hidden="true"></i><span class="md-btn__label">Экспорт</span>
+            </button>
+            <input type="hidden" name="view_mode" value="multiple">
+        </div>
+    </form>
+
+    <div class="md-table__footer">
+        <span data-md-table-count>Показано [#RESULT_TOTAL#] из [#RESULT_TOTAL#]</span>
+        <ul class="pagination md-pagination" data-md-table-pagination></ul>
+    </div>
+
+    <div class="md-empty md-empty--compact" data-md-table-empty hidden>
+        <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+        <div class="md-empty__title">Сценарии не найдены</div>
+        <p class="md-empty__text">Измените запрос или сбросьте фильтр категории.</p>
+    </div>
+</div>
+[#else RESULT#]
+<div class="md-empty">
+    <span class="md-empty__icon"><i class="ti ti-code" aria-hidden="true"></i></span>
+    <div class="md-empty__title">Сценариев пока нет</div>
+    <p class="md-empty__text">Создайте первый сценарий автоматизации.</p>
+    <div class="md-empty__actions">
+        <a href="?view_mode=edit_scripts" class="md-btn md-btn--primary">Добавить сценарий</a>
+    </div>
+</div>
+[#endif RESULT#]
+
+<div class="modal fade md-modal" id="mdScriptsImportModal" tabindex="-1" aria-labelledby="mdScriptsImportTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="?" enctype="multipart/form-data" method="post">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="mdScriptsImportTitle"><#LANG_IMPORT#></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="md-field">
+                        <label class="md-field__label" for="scriptsImportFile">Файл экспорта сценариев</label>
+                        <div class="md-field__control">
+                            <input class="md-input" id="scriptsImportFile" type="file" name="file" enctype="multipart/form-data" required>
+                        </div>
+                        <div class="md-field__hint">JSON-файл, полученный при экспорте сценариев.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="md-btn md-btn--secondary" data-bs-dismiss="modal"><#LANG_CANCEL#></button>
+                    <button type="submit" name="submit" class="md-btn md-btn--primary"><#LANG_IMPORT#></button>
+                </div>
+                <input type="hidden" name="view_mode" value="import">
+            </form>
+        </div>
+    </div>
+</div>

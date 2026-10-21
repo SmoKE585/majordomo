@@ -7,6 +7,18 @@ if (!headers_sent()) {
     header('Content-Type: text/html; charset=utf-8');
 }
 
+if ($op == 'dashboard') {
+    require_once(ROOT . 'lib/dashboard_data.php');
+    $payload = mdj_dashboard_collect((string)gr('fresh') === '1');
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, max-age=0');
+        header('X-Content-Type-Options: nosniff');
+    }
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 function evalConsole($code, $print = 0)
 {
     if ($print == 1) {
@@ -81,7 +93,8 @@ if ($op == 'filter') {
     $seen = [];
 
     $makeUrl = static function ($url) {
-        return (string)$url;
+        $url = (string)$url;
+        return function_exists('mdj_admin_pretty_url') ? mdj_admin_pretty_url($url) : $url;
     };
 
     $normalizeSearchText = static function ($value) {

@@ -1,0 +1,218 @@
+<!--#
+ @version 0.5 (auto-set)
+#-->
+<div class="md-ui-page md-ui-page--stack md-mqtt-page md-mqtt-settings-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-settings" aria-hidden="true"></i>MQTT</div>
+            <h1 class="md-ui-hero__title">Настройки MQTT</h1>
+            <p class="md-ui-hero__lede">Подключение к брокеру, авторизация, TLS и поведение записи. После сохранения цикл mqtt перезапустится.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-router" aria-hidden="true"></i>Текущий брокер: <strong>[#MQTT_HOST#]:[#MQTT_PORT#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-filter" aria-hidden="true"></i>Запрос: <strong>[#MQTT_QUERY#]</strong></span>
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_mqtt" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label">К топикам</span>
+            </a>
+        </div>
+    </header>
+
+    [#if OK_MSG!=""#]
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">[#OK_MSG#]</div></div>
+    </div>
+    [#endif#]
+
+    <form action="<#ROOTHTML#>panel/mqtt.html" method="post" name="frmEdit" class="md-ui-form">
+        <div class="md-ui-form-stack">
+            <section class="md-card" aria-labelledby="mdMqttConnectionTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Подключение</div>
+                        <h2 class="md-card__title" id="mdMqttConnectionTitle"><i class="ti ti-router" aria-hidden="true"></i>Брокер</h2>
+                        <p class="md-card__subtitle">Адрес, порт и подписка, из которой модуль получает сообщения.</p>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    <div class="md-ui-form-stack">
+                        <div class="md-ui-form-grid">
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttClient">Имя клиента</label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttClient" class="md-input" name="mqtt_client" value="[#MQTT_CLIENT#]" autocomplete="off" placeholder="MajorDoMo MQTT">
+                                </div>
+                                <div class="md-field__hint">Имя, под которым модуль подключается к брокеру.</div>
+                            </div>
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttHost">Хост<span class="md-field__req" aria-hidden="true">*</span></label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttHost" class="md-input" name="mqtt_host" value="[#MQTT_HOST#]" required autocomplete="off" placeholder="localhost">
+                                </div>
+                                <div class="md-field__hint">IP-адрес или DNS-имя MQTT-брокера.</div>
+                            </div>
+                        </div>
+
+                        <div class="md-ui-form-grid">
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttPort">Порт</label>
+                                <div class="md-field__control">
+                                    <input type="number" id="mdMqttPort" class="md-input" name="mqtt_port" value="[#MQTT_PORT#]" min="1" max="65535" step="1" inputmode="numeric">
+                                </div>
+                                <div class="md-field__hint">Обычно 1883, для TLS — 8883.</div>
+                            </div>
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttQuery">Запрос подписки</label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttQuery" class="md-input" name="mqtt_query" value="[#MQTT_QUERY#]" autocomplete="off" placeholder="/var/now/#">
+                                </div>
+                                <div class="md-field__hint">MQTT wildcard, например <code>/var/now/#</code> или <code>home/+/state</code>.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="md-card" aria-labelledby="mdMqttSecurityTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Безопасность</div>
+                        <h2 class="md-card__title" id="mdMqttSecurityTitle"><i class="ti ti-shield-lock" aria-hidden="true"></i>Авторизация и TLS</h2>
+                        <p class="md-card__subtitle">Логин и пароль брокера, а также параметры защищённого соединения.</p>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    <div class="md-ui-form-stack">
+                        <label class="md-check" for="mdMqttAuth">
+                            <input class="md-check__input" id="mdMqttAuth" type="checkbox" name="mqtt_auth" value="1" data-md-raw-checkbox data-md-mqtt-auth[#if MQTT_AUTH="1"#] checked[#endif#]>
+                            <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                            <span class="md-check__text">
+                                <span class="md-check__label">Требуется авторизация</span>
+                                <span class="md-check__desc">Передавать логин и пароль при подключении</span>
+                            </span>
+                        </label>
+
+                        <div class="md-ui-form-grid" data-md-mqtt-auth-panel [#if MQTT_AUTH!="1"#]hidden[#endif#]>
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttUsername">Логин</label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttUsername" class="md-input" name="mqtt_username" value="[#MQTT_USERNAME#]" autocomplete="username">
+                                </div>
+                            </div>
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttPassword">Пароль</label>
+                                <div class="md-field__control md-mqtt-input-with-action">
+                                    <input type="password" id="mdMqttPassword" class="md-input" name="mqtt_password" value="[#MQTT_PASSWORD#]" autocomplete="current-password" data-md-mqtt-password>
+                                    <button type="button" class="md-icon-btn md-icon-btn--sm" data-md-mqtt-password-toggle aria-label="Показать пароль" title="Показать пароль">
+                                        <i class="ti ti-eye" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <label class="md-check" for="mdMqttTls">
+                            <input class="md-check__input" id="mdMqttTls" type="checkbox" name="mqtt_tls_enable" value="1" data-md-raw-checkbox data-md-mqtt-tls[#if MQTT_TLS_ENABLE="1"#] checked[#endif#]>
+                            <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                            <span class="md-check__text">
+                                <span class="md-check__label">TLS/SSL</span>
+                                <span class="md-check__desc">Шифрованное соединение с брокером</span>
+                            </span>
+                        </label>
+
+                        <div class="md-ui-form-grid" data-md-mqtt-tls-panel [#if MQTT_TLS_ENABLE!="1"#]hidden[#endif#]>
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttTlsCert">Путь к сертификату</label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttTlsCert" class="md-input" name="mqtt_tls_certpath" value="[#MQTT_TLS_CERTPATH#]" autocomplete="off" placeholder="/etc/mqtt/ca.crt">
+                                </div>
+                                <div class="md-field__hint">CA-сертификат для проверки соединения. Можно оставить пустым.</div>
+                            </div>
+                            <div class="md-field">
+                                <span class="md-field__label">Проверка сертификата</span>
+                                <label class="md-check" for="mdMqttTlsIgnore">
+                                    <input class="md-check__input" id="mdMqttTlsIgnore" type="checkbox" name="mqtt_tls_ignore_cert" value="1" data-md-raw-checkbox[#if MQTT_TLS_IGNORE_CERT="1"#] checked[#endif#]>
+                                    <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                                    <span class="md-check__text">
+                                        <span class="md-check__label">Игнорировать проверку</span>
+                                        <span class="md-check__desc">Только для self-signed сертификатов</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="md-card" aria-labelledby="mdMqttProcessingTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Обработка</div>
+                        <h2 class="md-card__title" id="mdMqttProcessingTitle"><i class="ti ti-bolt" aria-hidden="true"></i>Запись и фильтрация</h2>
+                        <p class="md-card__subtitle">Как публиковать значения и какие топики сохранять в журнал.</p>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    <div class="md-ui-form-stack">
+                        <div class="md-ui-form-grid">
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttWriteMethod">Способ записи</label>
+                                <div class="md-field__control">
+                                    <select id="mdMqttWriteMethod" class="md-select" name="mqtt_write_method">
+                                        <option value="0" [#if MQTT_WRITE_METHOD="0"#]selected[#endif#]>Новое соединение для каждой публикации</option>
+                                        <option value="2" [#if MQTT_WRITE_METHOD="2"#]selected[#endif#]>Через очередь операций</option>
+                                    </select>
+                                </div>
+                                <div class="md-field__hint">Очередь снижает нагрузку при частых публикациях.</div>
+                            </div>
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttDelay">Задержка повторов, сек</label>
+                                <div class="md-field__control">
+                                    <input type="number" id="mdMqttDelay" class="md-input" name="mqtt_delay" value="[#MQTT_DELAY#]" min="0" step="1" inputmode="numeric" placeholder="5">
+                                </div>
+                                <div class="md-field__hint">Пусто — значение по умолчанию.</div>
+                            </div>
+                        </div>
+
+                        <div class="md-ui-form-grid">
+                            <label class="md-check" for="mdMqttStrip">
+                                <input class="md-check__input" id="mdMqttStrip" type="checkbox" name="mqtt_stripmode" value="1" data-md-raw-checkbox[#if MQTT_STRIPMODE="1"#] checked[#endif#]>
+                                <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                                <span class="md-check__text">
+                                    <span class="md-check__label">Только известные топики</span>
+                                    <span class="md-check__desc">Не создавать записи для новых путей</span>
+                                </span>
+                            </label>
+
+                            <label class="md-check" for="mdMqttDebug">
+                                <input class="md-check__input" id="mdMqttDebug" type="checkbox" name="debug_mode" value="1" data-md-raw-checkbox[#if DEBUG_MODE="1"#] checked[#endif#]>
+                                <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                                <span class="md-check__text">
+                                    <span class="md-check__label">Режим отладки</span>
+                                    <span class="md-check__desc">Писать историю всех сообщений</span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="md-field">
+                            <label class="md-field__label" for="mdMqttUnlinkedInterval">Обновлять непривязанные топики, сек</label>
+                            <div class="md-field__control">
+                                <input type="number" id="mdMqttUnlinkedInterval" class="md-input" name="mqtt_unlinked_update_interval" value="[#MQTT_UNLINKED_UPDATE_INTERVAL#]" min="0" step="1" inputmode="numeric">
+                            </div>
+                            <div class="md-field__hint">Работает с режимом «Только известные топики». 0 отключает фоновые обновления.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="md-ui-form-actions md-mqtt-form-actions">
+            <button type="submit" class="md-btn md-btn--primary"><i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">Сохранить настройки</span></button>
+            <a href="?view_mode=search_mqtt" class="md-btn md-btn--secondary">Отмена</a>
+        </div>
+
+        <input type="hidden" name="view_mode" value="update_settings">
+        <input type="hidden" name="mode" value="update">
+    </form>
+</div>

@@ -1265,7 +1265,7 @@ $dictionary = array (
     'AUTO_UPDATE_DELAY' => 'Затримка автоматичного оновлення (днів)',
     'AUTO_UPDATE_TIME' => 'Час перевірки та встановлення оновлень',
 
-    'CODEEDITOR_NOTY_TURNOFF' => 'Розширте можливості редактора коду в налаштуваннях системи , <a href="/admin.php?pd=pz_&md=panel&inst=&action=settings&filter_name=codeeditor" target="_blank">перейти в налаштування</a>',
+    'CODEEDITOR_NOTY_TURNOFF' => 'Розширте можливості редактора коду в налаштуваннях системи , <a href="/panel/settings.html?filter_name=codeeditor" target="_blank">перейти в налаштування</a>',
     'RUN_SCRIPT_BTN' => 'Виконати',
     'SCRIPT_HOW_TO_RUN' => 'Як виконати?',
     'SCRIPT_RUN_IN_METHOD' => 'Через метод (PHP)',

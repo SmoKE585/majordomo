@@ -1,69 +1,67 @@
- [#if VIEW_MODE=="search_classes" || VIEW_MODE==""#]
+<script src="<#ROOTHTML#>templates/classes/classes.js?v=2026-10-21-1"></script>
+
+[#if VIEW_MODE=="search_classes" || VIEW_MODE==""#]
   [#inc classes_search_admin.html#]
- [#endif VIEW_MODE#]
+[#endif VIEW_MODE#]
 
- [#if VIEW_MODE=="edit_classes"#]
-   [#if ID!=""#]
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var breadcrumb = document.querySelector('.breadcrumb');
-    if (!breadcrumb) {
-        return;
-    }
-    [#begin HISTORY_LIST#]
-    breadcrumb.insertAdjacentHTML('beforeend', '<li class="breadcrumb-item"><a href="?view_mode=<#VIEW_MODE#>&id=[#ID#]&tab=<#TAB#>">[#TITLE#]</a></li>');
-    [#end HISTORY_LIST#]
-    breadcrumb.insertAdjacentHTML('beforeend', '<li class="breadcrumb-item"><a href="?md=classes&action=classes&inst=adm&data_source=&view_mode=edit_classes&id=[#ID#]&tab=objects">[#TITLE#]</a></li>');
-});
-</script>
-
-<div class="md-admin-module-page md-classes-page">
-    <section class="md-admin-section-card md-classes-page__hero">
-        <div class="md-admin-section-card__body">
-            <div class="md-classes-page__hero-layout">
-                <div class="md-classes-page__hero-main">
-                    <div class="md-classes-page__eyebrow"><#LANG_CLASSES#></div>
-                    <h1 class="md-classes-page__title">[#TITLE#]</h1>
-                    <div class="md-classes-page__summary">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Класс без описания. Добавьте назначение, ограничения и контракт поведения, чтобы структура была читаемой.[#endif#]</div>
-                    <div class="md-classes-page__meta">
-                        [#if PARENT_ID!="0"#]
-                        <a class="md-classes-page__meta-item" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#PARENT_ID#>&tab=methods">
-                            <span><#LANG_PARENT_CLASS#></span>
-                            <strong>[#PARENT_CLASS_TITLE#]</strong>
-                        </a>
-                        [#endif#]
-                        <div class="md-classes-page__meta-item">
-                            <span><#LANG_METHODS#></span>
-                            <strong>[#METHODS_TOTAL#]</strong>
-                        </div>
-                        <div class="md-classes-page__meta-item">
-                            <span><#LANG_PROPERTIES#></span>
-                            <strong>[#PROPERTIES_TOTAL#]</strong>
-                        </div>
-                        <div class="md-classes-page__meta-item">
-                            <span><#LANG_OBJECTS#></span>
-                            <strong>[#OBJECTS_TOTAL#]</strong>
-                        </div>
-                        <div class="md-classes-page__meta-item">
-                            <span><#LANG_CHILD_ITEMS#></span>
-                            <strong>[#SUB_CLASSES_TOTAL#]</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="md-classes-page__hero-actions">
-                    <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
-                </div>
+[#if VIEW_MODE=="edit_classes"#]
+<div class="md-ui-page md-ui-page--stack md-classes-page">
+    [#if ID!=""#]
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-hierarchy" aria-hidden="true"></i>Классы</div>
+            <h1 class="md-ui-hero__title">[#TITLE#]</h1>
+            <p class="md-ui-hero__lede">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Класс без описания. Добавьте назначение и контракт поведения, чтобы структура была читаемой.[#endif#]</p>
+            <div class="md-ui-hero__meta">
+                [#if PARENT_ID!="0"#]
+                <a class="md-ui-hero__meta-item" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#PARENT_ID#>&tab=methods">
+                    <i class="ti ti-arrow-up" aria-hidden="true"></i><#LANG_PARENT_CLASS#>: <strong>[#PARENT_CLASS_TITLE#]</strong>
+                </a>
+                [#endif#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-braces" aria-hidden="true"></i><#LANG_METHODS#>: <strong>[#METHODS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-list-check" aria-hidden="true"></i><#LANG_PROPERTIES#>: <strong>[#PROPERTIES_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-box" aria-hidden="true"></i><#LANG_OBJECTS#>: <strong>[#OBJECTS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-git-branch" aria-hidden="true"></i>Дочерние классы: <strong>[#SUB_CLASSES_TOTAL#]</strong></span>
             </div>
         </div>
-    </section>
+        <div class="md-ui-hero__actions">
+            <a href="?data_source=<#DATA_SOURCE#>" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+        </div>
+    </header>
 
-    <nav class="md-admin-module-tabs" aria-label="<#LANG_CLASSES#>">
-        <a class="md-admin-module-tabs__link [#if TAB==""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_MAIN#></a>
-        <a class="md-admin-module-tabs__link [#if TAB=="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>
-        <a class="md-admin-module-tabs__link [#if TAB=="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>
-        <a class="md-admin-module-tabs__link [#if TAB=="objects"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=objects"><#LANG_OBJECTS#></a>
+    <nav class="md-tabs" aria-label="<#LANG_CLASSES#>">
+        <a class="nav-link [#if TAB==""#]active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=">
+            <i class="ti ti-settings" aria-hidden="true"></i><#LANG_MAIN#>
+        </a>
+        <a class="nav-link [#if TAB=="properties"#]active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties">
+            <i class="ti ti-list-check" aria-hidden="true"></i><#LANG_PROPERTIES#>
+            [#if PROPERTIES_TOTAL!=""#]<span class="md-badge md-badge--outline">[#PROPERTIES_TOTAL#]</span>[#endif#]
+        </a>
+        <a class="nav-link [#if TAB=="methods"#]active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods">
+            <i class="ti ti-braces" aria-hidden="true"></i><#LANG_METHODS#>
+            [#if METHODS_TOTAL!=""#]<span class="md-badge md-badge--outline">[#METHODS_TOTAL#]</span>[#endif#]
+        </a>
+        <a class="nav-link [#if TAB=="objects"#]active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=objects">
+            <i class="ti ti-box" aria-hidden="true"></i><#LANG_OBJECTS#>
+            [#if OBJECTS_TOTAL!=""#]<span class="md-badge md-badge--outline">[#OBJECTS_TOTAL#]</span>[#endif#]
+        </a>
     </nav>
-[#endif ID#]
+    [#else ID#]
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-hierarchy" aria-hidden="true"></i>Классы</div>
+            <h1 class="md-ui-hero__title"><#LANG_ADD_NEW_CLASS#></h1>
+            <p class="md-ui-hero__lede">Задайте имя, родительский класс и описание. Свойства и методы добавятся после сохранения.</p>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?data_source=<#DATA_SOURCE#>" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+        </div>
+    </header>
+    [#endif ID#]
 
    [#if TAB==""#]
     [#inc classes_edit_default.html#]
@@ -80,14 +78,5 @@ document.addEventListener('DOMContentLoaded', function () {
    [#if TAB=="objects"#]
     [#module name="objects" action="admin" class_id="<#ID#>"#]
    [#endif TAB#]
-
-[#if ID!=""#]
 </div>
-[#endif ID#]
- [#endif VIEW_MODE#]
-
- [#if VIEW_MODE=="view_classes"#]
-   [#if TAB==""#]
-    [#inc classes_view_default.html#]
-   [#endif TAB#]
- [#endif VIEW_MODE#]
+[#endif VIEW_MODE#]

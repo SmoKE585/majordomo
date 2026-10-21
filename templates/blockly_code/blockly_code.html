@@ -23,18 +23,33 @@
 
    <div class="md-code-editor__toolbar" data-code-editor-toolbar>
     <label class="md-code-editor__mode-switch" data-mode="[#if CODE_EDITOR_MODE="python"#]python[#else#]php[#endif#]">
-     <input type="checkbox" data-code-editor-mode-toggle [#if CODE_EDITOR_MODE="python"#]checked[#endif#] aria-label="Code editor mode">
+     <input type="checkbox" data-code-editor-mode-toggle [#if CODE_EDITOR_MODE="python"#]checked[#endif#] aria-label="Режим редактора: PHP или Python">
      <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--php">PHP</span>
      <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--python">Python</span>
      <input type="hidden" name="code_editor_mode" value="[#if CODE_EDITOR_MODE="python"#]python[#else#]php[#endif#]" data-code-editor-mode-select>
     </label>
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><span class="md-code-editor__action-content"><i class="bi bi-floppy" aria-hidden="true"></i><span><#LANG_SAVE#></span></span></button>
-    [#if CODE_EDITOR_VALIDATE="1"#]
-     <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="validate"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></button>
-    [#endif CODE_EDITOR_VALIDATE#]
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
-    <span class="md-code-editor__status" data-code-editor-status></span>
+    <span class="md-code-editor__toolbar-divider" aria-hidden="true"></span>
+    <div class="md-code-editor__toolbar-group">
+     <button type="button" class="md-code-editor__action" data-code-editor-action="save" title="Сохранить версию (Ctrl+S)" aria-label="Сохранить версию">
+      <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_SUBMIT#></span>
+     </button>
+     [#if CODE_EDITOR_VALIDATE="1"#]
+      <button type="button" class="md-code-editor__action" data-code-editor-action="validate" title="Проверить код (Ctrl+E)" aria-label="Проверить код">
+       <i class="ti ti-bug" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_CODEEDITOR_CHECK_ON_ERROR_BTN#></span>
+      </button>
+     [#endif CODE_EDITOR_VALIDATE#]
+     <button type="button" class="md-code-editor__action" data-code-editor-action="restore" title="История версий (Ctrl+R)" aria-label="История версий">
+      <i class="ti ti-history" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_CODEEDITOR_RESTORE#></span>
+     </button>
+    </div>
+    <div class="md-code-editor__toolbar-spacer"></div>
+    <span class="md-code-editor__status" data-code-editor-status aria-live="polite"></span>
+    <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="search" title="Найти (Ctrl+F)" aria-label="Найти">
+     <i class="ti ti-search" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="fullscreen" title="Полный экран (F11)" aria-label="Полный экран">
+     <i class="ti ti-maximize" aria-hidden="true"></i>
+    </button>
    </div>
 
    [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS!=""#]
@@ -87,3 +102,4 @@
   </div>
  [#endif ID#]
 </div>
+

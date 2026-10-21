@@ -1,59 +1,176 @@
 <!--#
- @version 0.2 (auto-set)
+ @version 0.3 (redesigned admin UI)
 #-->
-<!-- Table 'events' edit -->
-<p>
- <a href="?">&lt;&lt;&lt; <#LANG_BACK#></a>
-</p>
-<form action="?" method="post">
- <h3>[#EVENT_NAME#]</h3>
- <p><#LANG_UPDATED#>: [#ADDED#]</p>
+[#if OK#]
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
+[#endif OK#]
 
- [#if OK#]
- <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
- [#endif OK#]
- [#if ERR#]
- <div class="alert alert-error"><#LANG_FILLOUT_REQURED#></div>
- [#endif ERR#]
-  <div>
-   <label for="description"><#LANG_DESCRIPTION#>:</label>
-   <input type="text" name="description" id="description" value="[#DESCRIPTION#]" class="form-control"/>
-  </div>
+[#if ERR#]
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body">
+        <div class="md-alert__title">Не удалось сохранить событие</div>
+        <div class="md-alert__text"><#LANG_FILLOUT_REQURED#></div>
+    </div>
+</div>
+[#endif ERR#]
 
+<div class="md-ui-page md-ui-page--stack md-events-page md-events-edit">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-bolt" aria-hidden="true"></i><#LANG_MODULE_EVENTS#></div>
+            <h1 class="md-ui-hero__title">[#EVENT_NAME#]</h1>
+            <p class="md-ui-hero__lede">Описание события, его параметры и привязка к свойствам или методам объектов.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>Обновлено: <strong>[#ADDED_FORMATTED#]</strong></span>
+                [#if EXPIRE_FORMATTED!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-hourglass" aria-hidden="true"></i>Истекает: <strong>[#EXPIRE_FORMATTED#]</strong></span>
+                [#endif#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-list-details" aria-hidden="true"></i>Параметров: <strong>[#PARAMS_TOTAL#]</strong></span>
+                <span class="md-badge md-badge--outline"><i class="ti ti-bolt" aria-hidden="true"></i>[#EVENT_TYPE#]</span>
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_events" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+            <div class="dropdown">
+                <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    <li>
+                        <a class="dropdown-item text-danger" href="?view_mode=delete_events&amp;id=[#ID#]" data-md-confirm="Удалить событие [#EVENT_NAME#] и его параметры?">
+                            <i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
 
- <table class="table">
-  [#begin PARAMS#]
-  <tr>
-   <td>[#TITLE#]</td>
-   <td>[#VALUE#]</td>
-   <td><input type="text" name="linked_object[#ID#]" id="linked_object[#ID#]" value="[#LINKED_OBJECT#]"></td>
-   <td><input type="text" name="linked_property[#ID#]" id="linked_property[#ID#]" value="[#LINKED_PROPERTY#]"></td>
-   <td><input type="text" name="linked_method[#ID#]" id="linked_method[#ID#]" value="[#LINKED_METHOD#]"></td>
-   [#module name="linkedobject" object_field="linked_object<#PARAMS.ID#>" property_field="linked_property<#PARAMS.ID#>" method_field="linked_method<#PARAMS.ID#>" width="200"#]
-   <td>[#UPDATED#]</td>
-  </tr>
-  [#end PARAMS#]
- </table>
+    <form action="?" method="post" class="md-ui-form" name="eventEditForm">
+        <div class="md-ui-form-stack">
+            <section class="md-card" aria-labelledby="mdEventDetailsTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Событие</div>
+                        <h2 class="md-card__title" id="mdEventDetailsTitle"><i class="ti ti-info-circle" aria-hidden="true"></i>Основное</h2>
+                        <p class="md-card__subtitle">Человекочитаемое описание помогает найти событие в реестре.</p>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdEventDescription"><#LANG_DESCRIPTION#></label>
+                        <div class="md-field__control">
+                            <input type="text" name="description" id="mdEventDescription" value="[#DESCRIPTION#]" class="md-input" maxlength="255" placeholder="Например: датчик протечки сообщил о воде" autocomplete="off">
+                        </div>
+                        <div class="md-field__hint">Отображается в live-ленте и таблице системных событий.</div>
+                    </div>
+                </div>
+            </section>
 
- <input type="submit" class="btn btn-default btn-primary" value="<#LANG_SUBMIT#>">
- <a href="?" class="btn btn-default"><#LANG_CANCEL#></a>
- <a href="?view_mode=delete_events&id=[#ID#]" onClick="return confirm('Delete record?')" class="btn btn-default btn-danger"><#LANG_DELETE#></a>
+            <section class="md-card" aria-labelledby="mdEventParamsTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Параметры</div>
+                        <h2 class="md-card__title" id="mdEventParamsTitle"><i class="ti ti-list-details" aria-hidden="true"></i>Значения и привязка</h2>
+                        <p class="md-card__subtitle">Каждый параметр может писать значение в свойство объекта или вызывать его метод.</p>
+                    </div>
+                    <div class="md-card__actions">
+                        <span class="md-badge">[#PARAMS_TOTAL#]</span>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    [#if PARAMS#]
+                    <div class="md-events-param-list">
+                        [#begin PARAMS#]
+                        <div class="md-events-param">
+                            <div class="md-events-param__head">
+                                <div class="md-events-param__title">
+                                    <span class="md-events-param__icon"><i class="ti ti-list-details" aria-hidden="true"></i></span>
+                                    <strong>[#TITLE#]</strong>
+                                </div>
+                                <span class="md-badge md-badge--outline">[#VALUE#]</span>
+                            </div>
+                            <div class="md-events-param__grid">
+                                <div class="md-field">
+                                    <label class="md-field__label" for="linked_object[#ID#]">Объект</label>
+                                    <div class="md-field__control">
+                                        <input type="text" name="linked_object[#ID#]" id="linked_object[#ID#]" value="[#LINKED_OBJECT#]" class="md-input" placeholder="Объект" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="md-field">
+                                    <label class="md-field__label" for="linked_property[#ID#]">Свойство</label>
+                                    <div class="md-field__control">
+                                        <input type="text" name="linked_property[#ID#]" id="linked_property[#ID#]" value="[#LINKED_PROPERTY#]" class="md-input" placeholder="Свойство" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="md-field">
+                                    <label class="md-field__label" for="linked_method[#ID#]">Метод</label>
+                                    <div class="md-field__control">
+                                        <input type="text" name="linked_method[#ID#]" id="linked_method[#ID#]" value="[#LINKED_METHOD#]" class="md-input" placeholder="Метод" autocomplete="off">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="md-events-param__linked">
+                                [#module name="linkedobject" object_field="linked_object<#PARAMS.ID#>" property_field="linked_property<#PARAMS.ID#>" method_field="linked_method<#PARAMS.ID#>" width="100%"#]
+                            </div>
+                            [#if UPDATED!=""#]
+                            <div class="md-events-param__meta"><i class="ti ti-clock" aria-hidden="true"></i>Обновлено: [#UPDATED#]</div>
+                            [#endif#]
+                        </div>
+                        [#end PARAMS#]
+                    </div>
+                    [#else PARAMS#]
+                    <div class="md-empty md-empty--compact">
+                        <span class="md-empty__icon"><i class="ti ti-list-details" aria-hidden="true"></i></span>
+                        <div class="md-empty__title">У события нет параметров</div>
+                        <p class="md-empty__text">Передайте параметры при вызове <code>registerEvent()</code> — они появятся здесь автоматически.</p>
+                    </div>
+                    [#endif PARAMS#]
+                </div>
+            </section>
 
-<input type="hidden" name="id" value="<#ID#>">
-<input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-<input type="hidden" name="mode" value="update">
-</form>
+            [#if RELEVANT#]
+            <section class="md-card" aria-labelledby="mdEventRelatedTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Рядом по времени</div>
+                        <h2 class="md-card__title" id="mdEventRelatedTitle"><i class="ti ti-history" aria-hidden="true"></i>Похожие события</h2>
+                        <p class="md-card__subtitle">Записи, созданные в пределах пяти секунд.</p>
+                    </div>
+                </header>
+                <div class="md-card__body md-card__body--flush">
+                    <ul class="md-events-related">
+                        [#begin RELEVANT#]
+                        <li class="md-events-related__item">
+                            <a href="?view_mode=edit_events&amp;id=[#ID#]"><i class="ti ti-bolt" aria-hidden="true"></i>[#EVENT_NAME#]</a>
+                            <time>[#ADDED#]</time>
+                        </li>
+                        [#end RELEVANT#]
+                    </ul>
+                </div>
+            </section>
+            [#endif#]
+        </div>
 
-[#if RELEVANT#]
-&nbsp;<Br/>
-<#LANG_SIMILAR_ITEMS#>
-<table class="table">
- [#begin RELEVANT#]
- <tr>
-  <td><a href="?view_mode=edit_events&id=[#ID#]">[#EVENT_NAME#]</a></td>
-  <td>[#ADDED#]</td>
- </tr>
- [#end RELEVANT#]
-</table>
-[#endif#]
+        <div class="md-ui-form-actions md-events-form-actions">
+            <button type="submit" class="md-btn md-btn--primary">
+                <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label"><#LANG_SUBMIT#></span>
+            </button>
+            <a href="?view_mode=search_events" class="md-btn md-btn--secondary"><#LANG_CANCEL#></a>
+            <a href="?view_mode=delete_events&amp;id=[#ID#]" class="md-btn md-btn--danger" data-md-confirm="Удалить событие [#EVENT_NAME#] и его параметры?">
+                <i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#>
+            </a>
+        </div>
+
+        <input type="hidden" name="id" value="[#ID#]">
+        <input type="hidden" name="view_mode" value="[#VIEW_MODE#]">
+        <input type="hidden" name="edit_mode" value="[#EDIT_MODE#]">
+        <input type="hidden" name="mode" value="update">
+    </form>
+</div>

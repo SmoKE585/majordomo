@@ -1,104 +1,142 @@
-<script>
-    $(window).load(function() {
-        setTimeout(
-            function () {
-                $('#alert_msg').hide('slow');
-            }, 5000);
-    });
-</script>
-
+<!--#
+ @version 0.5 (auto-set)
+#-->
 [#if OK#]
-<div class="alert alert-success" id="alert_msg"><#LANG_DATA_SAVED#></div>
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
 [#endif OK#]
+
 [#if ERR#]
-<div class="alert alert-danger" id="alert_msg"><#LANG_FILLOUT_REQURED#></div>
-<script>
-    $(window).load(function() {
-        [#if SETTINGS_CODEEDITOR_SHOWERROR == '1' AND SETTINGS_CODEEDITOR_TURNONSETTINGS == '1'#]
-        error_line = Number('[#ERR_LINE#]');
-        error_line_find = error_line;
-        if(error_line == 0) error_line = 1;
-        find = $('div pre.CodeMirror-line:eq('+error_line_find+')');
-        find.attr('id', 'errorline_'+error_line);
-
-        var newElems = $("<div class='cm-error' style='border-top: 1px solid red;font-weight: bold;font-style: italic;'>Ошибка компилятора -> [#ERRORS#]</div>");
-        $('div pre.CodeMirror-line:eq('+error_line_find+')').append(newElems);
-        [#endif#]
-
-            [#if SETTINGS_CODEEDITOR_UPTOLINE == '1' AND SETTINGS_CODEEDITOR_TURNONSETTINGS == '1'#]
-        location.href='#errorline_'+error_line;
-        [#endif#]
-    });
-
-</script>
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body">
+        <div class="md-alert__title">Не удалось сохранить код</div>
+        <div class="md-alert__text">[#if ERR_CODE#]Проверьте код метода — ниже показана ошибка.[#else#]Проверьте заполнение формы.[#endif#]</div>
+    </div>
+</div>
 [#endif ERR#]
-<style>
-    .CodeMirror {
-        border-radius: 5px;
-        border: 2px solid #f7f7f7;
-    }
-</style>
 
-<form action="?" method="get" class="form">
-    <select name="method" onchange="this.form.submit();" class="form-control">
-        [#begin METHODS#]
-        <option value="[#TITLE#]" [#if SELECTED="1"#] selected[#endif#]><#LANG_METHOD#>: [#DESCRIPTION#]</option>
-        [#end METHODS#]
-    </select>
-    <input type="hidden" name="id" value="<#ID#>">
-    <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-    <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-    <input type="hidden" name="tab" value="<#TAB#>">
-</form>
+[#if NO_METHODS#]
+<div class="md-empty">
+    <span class="md-empty__icon"><i class="ti ti-code-off" aria-hidden="true"></i></span>
+    <div class="md-empty__title">У room-объекта нет методов</div>
+    <p class="md-empty__text">Добавьте методы в класс <code>Rooms</code>, чтобы настраивать логику помещения.</p>
+    <div class="md-empty__actions">
+        <a href="<#ROOTHTML#>panel/classes.html" class="md-btn md-btn--secondary md-btn--sm">
+            <i class="ti ti-hierarchy" aria-hidden="true"></i>Открыть классы
+        </a>
+    </div>
+</div>
+[#else#]
+<section class="md-card" aria-labelledby="mdLocationMethodTitle">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Метод</div>
+            <h2 class="md-card__title" id="mdLocationMethodTitle"><i class="ti ti-braces" aria-hidden="true"></i>Выбор метода</h2>
+            <p class="md-card__subtitle">Методы room-объекта «[#LINKED_OBJECT#]».</p>
+        </div>
+    </header>
+    <div class="md-card__body">
+        <form action="?" method="get" class="md-ui-form">
+            <div class="md-field">
+                <label class="md-field__label" for="mdLocationMethod"><#LANG_METHOD#></label>
+                <div class="md-field__control md-locations-method-row">
+                    <select name="method" id="mdLocationMethod" class="md-select" data-md-searchable>
+                        [#begin METHODS#]
+                        <option value="[#TITLE#]"[#if SELECTED="1"#] selected[#endif#]>[#DESCRIPTION#]</option>
+                        [#end METHODS#]
+                    </select>
+                    <button type="submit" class="md-btn md-btn--secondary md-btn--sm">
+                        <i class="ti ti-arrow-right" aria-hidden="true"></i><span class="md-btn__label">Открыть</span>
+                    </button>
+                </div>
+                <div class="md-field__hint">Выберите метод и нажмите «Открыть», чтобы перейти к его коду.</div>
+            </div>
+            <input type="hidden" name="id" value="[#ID#]">
+            <input type="hidden" name="view_mode" value="[#VIEW_MODE#]">
+            <input type="hidden" name="edit_mode" value="[#EDIT_MODE#]">
+            <input type="hidden" name="tab" value="logic">
+        </form>
+    </div>
+</section>
 
+<section class="md-card" aria-labelledby="mdLocationCodeTitle">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Логика помещения</div>
+            <h2 class="md-card__title" id="mdLocationCodeTitle"><i class="ti ti-code" aria-hidden="true"></i>[#METHOD#]</h2>
+            <p class="md-card__subtitle">Код выполняется в контексте room-объекта «[#LINKED_OBJECT#]».</p>
+        </div>
+    </header>
+    <div class="md-card__body">
+        <form action="?" method="post" name="frmEdit" class="md-ui-form">
+            [#if SETTINGS_CODEEDITOR_TURNONSETTINGS != 1#]
+            <div class="md-alert md-alert--warning" role="status">
+                <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+                <div class="md-alert__body"><div class="md-alert__text"><#LANG_CODEEDITOR_NOTY_TURNOFF#></div></div>
+            </div>
+            [#endif SETTINGS_CODEEDITOR_TURNONSETTINGS#]
 
-<form action="?" method="post" enctype="multipart/form-data" name="frmEdit" id="frmEdit" class="form">
-    <fieldset>
-        <div class="form-group">
-            <div>
-                [#if ERRORS#]
-                <div id="error_noty" style="margin-top: 10px;color: #ff574b;border: 1px solid;border-radius: 5px;padding: 5px;background: #ffffff;width: 100%;">
+            <div class="md-code-editor md-locations-code-editor"
+                 data-code-editor
+                 data-code-editor-key="[#CODE_EDITOR_KEY#]"
+                 data-code-editor-mode="php"
+                 data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
+                 data-code-editor-autosave="0"
+                 data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
+                 data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
+                 data-code-editor-min-lines="[#SETTINGS_CODEEDITOR_MIXLINE#]"
+                 data-code-editor-max-lines="[#SETTINGS_CODEEDITOR_SHOWLINE#]"
+                 data-code-editor-autofocus="0"
+                 data-code-editor-validate-url=""
+                 data-code-editor-autosave-url=""
+                 data-code-editor-id="[#METHOD_ID#]"
+                 data-code-editor-md="location_logic_[#ID#]"
+                 data-code-editor-hide-errors-on-edit="1">
+                <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+                    <span class="md-code-editor__lang-badge">PHP</span>
+                    <span class="md-code-editor__toolbar-divider" aria-hidden="true"></span>
+                    <span class="md-code-editor__toolbar-spacer"></span>
+                    <span class="md-code-editor__status" data-code-editor-status aria-live="polite"></span>
+                    <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="search" title="Найти (Ctrl+F)" aria-label="Найти">
+                        <i class="ti ti-search" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="fullscreen" title="Полный экран (F11)" aria-label="Полный экран">
+                        <i class="ti ti-maximize" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                [#if ERR_FULL!=""#]
+                <div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
                     <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
+                    [#if ERR_OLD_CODE_B64!=""#]
                     <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
-                </div>
-                <textarea id="error_old_code" style="display:none;">[#ERR_OLD_CODE#]</textarea>
-                [#endif ERRORS#]
-
-                [#module name="blockly_code" system_name="object<#OBJECT_ID#>_method<#METHOD_ID#>" code_field="code" action=""#]
-                <div id="code_area" style="padding-top: 10px">
-                    [#if SETTINGS_CODEEDITOR_TURNONSETTINGS != 1#]
-                    <div style="border: 1px solid #dddddd;border-radius: 5px;padding: 5px;margin-top: 10px;margin-bottom: 10px;background: #fffdc7;">
-                        <#LANG_CODEEDITOR_NOTY_TURNOFF#>
+                    <div class="md-code-editor__error-actions">
+                        <button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
                     </div>
-                    [#endif SETTINGS_CODEEDITOR_TURNONSETTINGS#]
-
-                    <div id="autosave_code_in_time_div" style="color: gray;font-style: italic;font-size: 1rem;display:none;margin-left: 5px;margin-bottom: 4px;">
-                        <i class="glyphicon glyphicon-floppy-saved" style="vertical-align: top;"></i> <#LANG_CODEEDITOR_AUTOSAVE_CODE#> <span id="autosave_code_in_time"></span>. <#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#>
-                    </div>
-                    <textarea name="code" id="code" rows=30 cols=100 class="form-control">[#CODE#]</textarea>
+                    [#endif#]
                 </div>
-            </div>
-        </div>
+                [#endif#]
 
-
-        <div class="form-group">
-            <label class="control-label">
-                &nbsp;
-            </label>
-            <div>
-                [#if ID!=""#]
-                <button type="submit" name="subm" value="Submit" class="btn btn-primary"><#LANG_SUBMIT#></button>
-                [#else ID#]
-                <button type="submit" name="subm" value="Add" class="btn btn-primary"><#LANG_ADD#></button>
-                [#endif ID#]
-                <a href="?" class="btn btn-default " onclick="if (window.self !== window.top) {parent.$.fancybox.close();return false;}"><#LANG_CANCEL#></a>
-                <input type="hidden" name="id" value="<#ID#>">
-                <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-                <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-                <input type="hidden" name="mode" value="update">
-                <input type="hidden" name="tab" value="<#TAB#>">
-                <input type="hidden" name="method" value="<#METHOD#>">
+                <textarea name="code" id="code" rows="20" class="md-textarea" spellcheck="false">[#CODE#]</textarea>
             </div>
-        </div>
-    </fieldset>
-</form>
+
+            <div class="md-ui-form-actions md-locations-form-actions">
+                <button class="md-btn md-btn--primary" type="submit" name="subm">
+                    <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label"><#LANG_SUBMIT#></span>
+                </button>
+                <a href="?view_mode=search_locations" class="md-btn md-btn--secondary"><#LANG_CANCEL#></a>
+            </div>
+
+            <input type="hidden" name="id" value="[#ID#]">
+            <input type="hidden" name="view_mode" value="[#VIEW_MODE#]">
+            <input type="hidden" name="edit_mode" value="[#EDIT_MODE#]">
+            <input type="hidden" name="mode" value="update">
+            <input type="hidden" name="tab" value="logic">
+            <input type="hidden" name="method" value="[#METHOD#]">
+        </form>
+    </div>
+</section>
+[#endif NO_METHODS#]

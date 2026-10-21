@@ -1,99 +1,125 @@
-<div class="md-admin-module-list md-objects-admin-list">
+<div class="md-ui-page md-ui-page--stack md-obj-page [#if EMBEDDED_IN_CLASS=="1"#]md-obj-page--embedded[#endif#]" data-md-objects-list data-md-objects-total="[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]">
     [#if EMBEDDED_IN_CLASS!="1"#]
-    <section class="md-admin-section-card md-objects-list-hero">
-        <div class="md-admin-section-card__body">
-            <div class="md-objects-list-hero__layout">
-                <div class="md-objects-list-hero__main">
-                    <div class="md-objects-list-hero__eyebrow"><#LANG_OBJECTS#></div>
-                    <h1 class="md-objects-list-hero__title"><#LANG_OBJECTS#></h1>
-                    <div class="md-objects-list-hero__summary">Каталог объектов с быстрым переходом к свойствам, методам и связи с классом.</div>
-                    <div class="md-objects-list-hero__stats">
-                        <div class="md-objects-list-hero__stat"><span><#LANG_OBJECTS#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
-                    </div>
-                </div>
-                <div class="md-objects-list-hero__actions">
-                    <a href="?view_mode=edit_objects" class="btn btn-primary"><#LANG_ADD_NEW_OBJECT#></a>
-                </div>
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-box" aria-hidden="true"></i><#LANG_OBJECTS#></div>
+            <h1 class="md-ui-hero__title"><#LANG_OBJECTS#></h1>
+            <p class="md-ui-hero__lede">Каталог объектов: класс, расположение, свойства и методы в одном месте.</p>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=edit_objects" class="md-btn md-btn--primary">
+                <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD_NEW_OBJECT#></span>
+            </a>
+        </div>
+    </header>
+    [#endif#]
+
+    <div class="md-table-wrap" aria-label="<#LANG_OBJECTS#>">
+        <div class="md-table__toolbar">
+            <div class="md-table__search">
+                <i class="ti ti-search" aria-hidden="true"></i>
+                <input type="search" data-md-objects-search placeholder="Поиск объектов" autocomplete="off" aria-label="Поиск объектов">
+            </div>
+
+            <select class="md-table__filter" data-md-objects-class-filter aria-label="Фильтр по классу">
+                <option value="">Все классы</option>
+            </select>
+
+            <div class="md-table__meta" data-md-objects-count></div>
+
+            [#if EMBEDDED_IN_CLASS=="1"#]
+            <a href="?view_mode=edit_objects" class="md-btn md-btn--primary md-btn--sm">
+                <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD_NEW_OBJECT#></span>
+            </a>
+            [#endif#]
+        </div>
+
+        [#if RESULT#]
+        <div class="md-table__scroll">
+            <table class="md-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Объект</th>
+                        <th scope="col">Класс</th>
+                        <th scope="col">Расположение</th>
+                        <th scope="col">Описание</th>
+                        <th scope="col" class="text-end"><span class="md-visually-hidden">Действия</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    [#begin RESULT#]
+                    <tr data-md-object-row data-class-id="[#CLASS_ID#]">
+                        <td>
+                            <div class="md-table__name">
+                                <span class="md-table__icon"><i class="ti ti-box" aria-hidden="true"></i></span>
+                                <div>
+                                    <a href="?view_mode=edit_objects&id=[#ID#]"><strong>[#TITLE#]</strong></a>
+                                    [#if ADD_DESCRIPTION!=""#]<small>[#ADD_DESCRIPTION#]</small>[#endif#]
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <a class="md-obj-class md-badge md-badge--outline" href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=objects">[#CLASS_TITLE#]</a>
+                        </td>
+                        <td>
+                            [#if LOCATION_ID==0#]<span class="md-tree-empty">—</span>[#else#]<span class="md-obj-location">[#LOCATION_TITLE#]</span>[#endif#]
+                        </td>
+                        <td class="md-obj-cell-desc">
+                            [#if DESCRIPTION!=""#]<span title="[#DESCRIPTION#]">[#DESCRIPTION#]</span>[#else#]<span class="md-tree-empty">Без описания</span>[#endif#]
+                        </td>
+                        <td>
+                            <div class="md-table__actions">
+                                <a href="?view_mode=edit_objects&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="<#LANG_EDIT#>" aria-label="<#LANG_EDIT#>">
+                                    <i class="ti ti-pencil" aria-hidden="true"></i>
+                                </a>
+                                <div class="dropdown">
+                                    <button type="button" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<#LANG_ACTIONS#>">
+                                        <i class="ti ti-dots" aria-hidden="true"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                                        <li><a class="dropdown-item" href="?view_mode=edit_objects&id=[#ID#]&tab=properties"><i class="ti ti-list-check" aria-hidden="true"></i><#LANG_PROPERTIES#></a></li>
+                                        <li><a class="dropdown-item" href="?view_mode=edit_objects&id=[#ID#]&tab=methods"><i class="ti ti-braces" aria-hidden="true"></i><#LANG_METHODS#></a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="?view_mode=delete_objects&id=[#ID#]" data-md-confirm="Удалить объект?"><i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    [#end RESULT#]
+                </tbody>
+            </table>
+        </div>
+
+        <div class="md-empty md-empty--compact" data-md-objects-empty hidden>
+            <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+            <div class="md-empty__title">Ничего не найдено</div>
+            <p class="md-empty__text">Измените запрос или фильтр по классу.</p>
+        </div>
+
+        <div class="md-table__footer">
+            <span data-md-objects-shown></span>
+            <div class="md-obj-pagination">
+                [#if PAGES#]
+                <ul class="pagination md-pagination mb-0">
+                    [#begin PREVPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]" aria-label="Предыдущая страница">&laquo;</a></li>[#end PREVPAGE#]
+                    [#begin PAGES#]
+                    <li class="page-item [#if SELECTED =='1'#]active[#endif#]"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
+                    [#end PAGES#]
+                    [#begin NEXTPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]" aria-label="Следующая страница">&raquo;</a></li>[#end NEXTPAGE#]
+                </ul>
+                [#endif PAGES#]
             </div>
         </div>
-    </section>
-    [#endif#]
-
-    [#if RESULT#]
-    <div class="md-admin-module-list__toolbar [#if EMBEDDED_IN_CLASS=="1"#]md-admin-module-list__toolbar--embedded md-objects-admin-list__toolbar--embedded[#endif#]">
-        [#if EMBEDDED_IN_CLASS=="1"#]
-        <div class="md-related-module-toolbar__stats">
-            <div class="md-related-module-toolbar__stat"><span><#LANG_OBJECTS#></span><strong>[#if RESULT_TOTAL!=""#][#RESULT_TOTAL#][#else#]0[#endif#]</strong></div>
+        [#else#]
+        <div class="md-empty">
+            <span class="md-empty__icon"><i class="ti ti-box" aria-hidden="true"></i></span>
+            <div class="md-empty__title">Объектов пока нет</div>
+            <p class="md-empty__text">Создайте первый объект, чтобы управлять его свойствами и методами.</p>
+            <div class="md-empty__actions">
+                <a href="?view_mode=edit_objects" class="md-btn md-btn--primary md-btn--sm"><#LANG_ADD_NEW_OBJECT#></a>
+            </div>
         </div>
-        [#endif#]
-        <div class="md-admin-module-list__pagination">
-            [#if PAGES#]
-            <ul class="pagination">
-                [#begin PREVPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
-                [#begin PAGES#]
-                <li class="page-item [#if SELECTED =='1'#]active[#endif#]"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
-                [#end PAGES#]
-                [#begin NEXTPAGE#]<li class="page-item"><a class="page-link" href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
-            </ul>
-            [#endif PAGES#]
-        </div>
-        [#if EMBEDDED_IN_CLASS=="1"#]
-        <div class="md-objects-admin-list__embedded-actions">
-            <a href="?view_mode=edit_objects" class="btn btn-primary"><#LANG_ADD_NEW_OBJECT#></a>
-        </div>
-        [#endif#]
+        [#endif RESULT#]
     </div>
-
-    <form action="?" method="post" name="frmList_objects" class="md-admin-module-list__form">
-        <div class="md-admin-record-list" id="proplist">
-            [#begin RESULT#]
-            <article class="md-admin-record-card md-admin-record-card--object">
-                <div class="md-admin-record-card__main">
-                    <button type="button" class="md-admin-record-card__search" data-md-global-search="[#TITLE#]" aria-label="<#LANG_SEARCH#>">?</button>
-                    <div class="md-admin-record-card__content">
-                        <div class="md-admin-record-card__title">
-                            <a href="?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=[#CLASS_ID#]&tab=objects" class="md-admin-record-card__class">[#CLASS_TITLE#]</a>
-                            <span class="md-admin-record-card__separator">/</span>
-                            <a href="?view_mode=edit_objects&id=[#ID#]&tab=properties" title="<#LANG_EDIT#>">[#TITLE#]</a>
-                        </div>
-                        <div class="md-admin-record-card__badges">
-                            [#if ADD_DESCRIPTION != ''#]<span class="label label-default">[#ADD_DESCRIPTION#]</span>[#endif#]
-                        </div>
-                    </div>
-                </div>
-                <div class="md-admin-record-card__meta">
-                    <div class="md-admin-record-card__field [#if DESCRIPTION==""#]is-empty[#endif#]">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Description is empty[#endif#]</div>
-                    <div class="md-admin-record-card__field [#if LOCATION_ID==0#]is-empty[#endif#]">[#if LOCATION_ID == 0#]-[#else#][#LOCATION_TITLE#][#endif#]</div>
-                </div>
-                <div class="md-admin-record-card__actions">
-                    <a href="?view_mode=edit_objects&id=[#ID#]" class="btn btn-light btn-sm" title="<#LANG_EDIT#>"><span><#LANG_EDIT#></span></a>
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="?view_mode=edit_objects&id=[#ID#]&tab=properties"><#LANG_PROPERTIES#></a></li>
-                            <li><a class="dropdown-item" href="?view_mode=edit_objects&id=[#ID#]&tab=methods"><#LANG_METHODS#></a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="?view_mode=delete_objects&id=[#ID#]" data-md-confirm="Delete record?"><#LANG_DELETE#></a></li>
-                        </ul>
-                    </div>
-                    <input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
-                    <input type="hidden" name="view_mode" value="multiple_objects">
-                </div>
-            </article>
-            [#end RESULT#]
-        </div>
-    </form>
-    [#else#]
-    [#if EMBEDDED_IN_CLASS=="1"#]
-    <div class="md-admin-module-list__toolbar md-admin-module-list__toolbar--embedded md-objects-admin-list__toolbar--embedded">
-        <div class="md-related-module-toolbar__stats">
-            <div class="md-related-module-toolbar__stat"><span><#LANG_OBJECTS#></span><strong>0</strong></div>
-        </div>
-        <div class="md-objects-admin-list__embedded-actions">
-            <a href="?view_mode=edit_objects" class="btn btn-primary"><#LANG_ADD_NEW_OBJECT#></a>
-        </div>
-    </div>
-    [#endif#]
-    <div class="md-admin-empty-state"><#LANG_NO_OBJECTS_DEFINED#></div>
-    [#endif RESULT#]
 </div>

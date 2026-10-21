@@ -1,20 +1,93 @@
 <!--#
- @version 0.1 (auto-set)
+ @version 0.2 (auto-set)
 #-->
 
- <!-- action usual -->
- <!-- table pinghosts search -->
- [#if VIEW_MODE="search_pinghosts" || VIEW_MODE=""#]
-  [#inc pinghosts_search_admin.html#]
- [#endif VIEW_MODE#]
- <!-- / table pinghosts search -->
- <!-- table pinghosts edit -->
- [#if VIEW_MODE="edit_pinghosts"#]
-   [#inc pinghosts_edit.html#]
- [#endif VIEW_MODE#]
- <!-- / table pinghosts edit -->
- <!-- table pinghosts view --> 
- [#if VIEW_MODE="view_pinghosts"#]
-   [#inc pinghosts_view.html#]
- [#endif VIEW_MODE#]
- <!-- / table pinghosts view -->
+<link rel="stylesheet" href="<#ROOTHTML#>templates/pinghosts/pinghosts.css?v=2026-10-21-1">
+<script src="<#ROOTHTML#>templates/pinghosts/pinghosts.js?v=2026-10-21-1" defer></script>
+
+[#if VIEW_MODE="search_pinghosts" || VIEW_MODE=""#]
+<div class="md-ui-page md-ui-page--stack md-ping-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-wifi" aria-hidden="true"></i><#LANG_MODULE_PINGHOSTS#></div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_PINGHOSTS#></h1>
+            <p class="md-ui-hero__lede">Мониторинг доступности хостов, веб-страниц и портов с реакцией на смену статуса.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-world" aria-hidden="true"></i>Всего: <strong>[#HOSTS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-wifi" aria-hidden="true"></i>Онлайн: <strong>[#HOSTS_ONLINE_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-wifi-off" aria-hidden="true"></i>Офлайн: <strong>[#HOSTS_OFFLINE_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-route" aria-hidden="true"></i>PING / WEB / PORT: <strong>[#HOSTS_PING_TOTAL#] / [#HOSTS_WEB_TOTAL#] / [#HOSTS_PORT_TOTAL#]</strong></span>
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=edit_pinghosts" class="md-btn md-btn--primary">
+                <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label">Добавить хост</span>
+            </a>
+        </div>
+    </header>
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-server" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Всего хостов</span>
+            </div>
+            <div class="md-kpi__value">[#HOSTS_TOTAL#]</div>
+            <div class="md-kpi__meta">В мониторинге</div>
+        </div>
+        <div class="md-kpi md-kpi--success">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-wifi" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Онлайн</span>
+            </div>
+            <div class="md-kpi__value">[#HOSTS_ONLINE_TOTAL#]</div>
+            <div class="md-kpi__meta">Отвечают на проверки</div>
+        </div>
+        <div class="md-kpi md-kpi--danger">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-wifi-off" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Офлайн</span>
+            </div>
+            <div class="md-kpi__value">[#HOSTS_OFFLINE_TOTAL#]</div>
+            <div class="md-kpi__meta">Не отвечают</div>
+        </div>
+        <div class="md-kpi md-kpi--neutral">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-clock-question" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Не проверялись</span>
+            </div>
+            <div class="md-kpi__value">[#HOSTS_UNKNOWN_TOTAL#]</div>
+            <div class="md-kpi__meta">Ожидают первой проверки</div>
+        </div>
+    </div>
+
+    [#inc pinghosts_search_admin.html#]
+</div>
+[#endif VIEW_MODE#]
+
+[#if VIEW_MODE="edit_pinghosts"#]
+<div class="md-ui-page md-ui-page--stack md-ping-page md-ping-edit">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-wifi" aria-hidden="true"></i><#LANG_MODULE_PINGHOSTS#></div>
+            <h1 class="md-ui-hero__title">[#if ID!=""#][#if TITLE!=""#][#TITLE#][#else#][#HOSTNAME#][#endif#][#else#]Новый хост[#endif#]</h1>
+            <p class="md-ui-hero__lede">Параметры проверки доступности и действия при переходе между Online и Offline.</p>
+            [#if ID!=""#]
+            <div class="md-ui-hero__meta">
+                <span class="md-status md-status--[#STATUS_STATE#]"><span class="md-status__dot" aria-hidden="true"></span><span class="md-status__label">[#STATUS_LABEL#]</span></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-[#TYPE_ICON#]" aria-hidden="true"></i><strong>[#HOSTNAME#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-route" aria-hidden="true"></i>[#TYPE_TITLE#]</span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>Последняя проверка: <strong>[#CHECK_LATEST_HUMAN#]</strong></span>
+            </div>
+            [#endif#]
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_pinghosts" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+        </div>
+    </header>
+
+    [#inc pinghosts_edit.html#]
+</div>
+[#endif VIEW_MODE#]

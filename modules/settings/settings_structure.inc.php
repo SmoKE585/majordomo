@@ -247,10 +247,10 @@ $settings_sections = array(
             ),
             'CODEEDITOR_THEME' => array(
                 'title' => LANG_CODEEDITOR_THEME,
-                'notes' => 'Тема оформления встроенного редактора кода.',
+                'notes' => 'Редактор по умолчанию следует теме админки. Можно принудительно включить светлую или тёмную тему.',
                 'type' => 'select',
-                'data' => 'codemirror=' . LANG_DEFAULT . '|smoke_theme=SmoKE xD Theme|ambiance=Ambiance|base16-light=base16-light|dracula=Dracula|icecoder=Icecoder|material=Material|moxer=Moxer|neat=Neat',
-                'default' => 'codemirror',
+                'data' => 'auto=' . LANG_DEFAULT . '|light=Светлая|dark=Тёмная',
+                'default' => 'auto',
                 'priority' => 4,
             ),
             'CODEEDITOR_AUTOSAVE' => array(

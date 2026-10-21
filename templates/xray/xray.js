@@ -8,6 +8,11 @@
 		playing: false,
 		cycleLogTimer: 0,
 		cycleLogCurrent: '',
+		cycleLogPaused: false,
+		cycleLogFilter: '',
+		cycleLogLines: [],
+		cycleLogResponse: null,
+		cycleLogAutoScroll: true,
 		filesTomSelect: null
 	};
 
@@ -51,6 +56,9 @@
 	function setHtml(node, html) {
 		if (node) {
 			node.innerHTML = html;
+			if (window.MDJCycleWidgets && typeof window.MDJCycleWidgets.init === 'function') {
+				window.MDJCycleWidgets.init(node);
+			}
 		}
 	}
 
@@ -76,19 +84,43 @@
 	}
 
 	function createTag(text, klass) {
-		return '<span class="xray-tag ' + escapeHtml(klass || '') + '">' + escapeHtml(text) + '</span>';
+		var tone = '';
+		if (klass && klass.indexOf('success') !== -1) {
+			tone = ' md-badge--success';
+		} else if (klass && klass.indexOf('warning') !== -1) {
+			tone = ' md-badge--warning';
+		} else if (klass && klass.indexOf('danger') !== -1) {
+			tone = ' md-badge--danger';
+		} else if (klass && klass.indexOf('info') !== -1) {
+			tone = ' md-badge--info';
+		}
+		return '<span class="md-badge' + tone + '">' + escapeHtml(text) + '</span>';
+	}
+
+	function buttonClass(klass) {
+		if (klass && klass.indexOf('primary') !== -1) {
+			return 'md-btn md-btn--primary md-btn--sm';
+		}
+		if (klass && klass.indexOf('danger') !== -1) {
+			return 'md-btn md-btn--danger md-btn--sm';
+		}
+		return 'md-btn md-btn--secondary md-btn--sm';
 	}
 
 	function createButton(href, label, klass) {
-		return '<a href="' + escapeHtml(href) + '" class="btn btn-sm ' + escapeHtml(klass || 'btn-default') + '">' + escapeHtml(label) + '</a>';
+		return '<a href="' + escapeHtml(href) + '" class="' + buttonClass(klass) + '">' + escapeHtml(label) + '</a>';
 	}
 
 	function createActionButton(type, label, klass, attrs) {
-		return '<button type="button" class="btn btn-sm ' + escapeHtml(klass || 'btn-default') + '" ' + (attrs || '') + '>' + escapeHtml(label) + '</button>';
+		var extra = String(klass || '').split(/\s+/).filter(function (name) {
+			return name.indexOf('js-') === 0;
+		}).join(' ');
+		return '<button type="button" class="' + buttonClass(klass) + (extra ? ' ' + extra : '') + '" ' + (attrs || '') + '>' + escapeHtml(label) + '</button>';
 	}
 
 	function createEmptyState(title, text) {
-		return '<div class="xray-empty-state"><div><div class="xray-spinner"></div><strong>' + escapeHtml(title) + '</strong><div>' + escapeHtml(text) + '</div></div></div>';
+		var icon = /ошиб|error|некоррект|failed/i.test(String(title)) ? 'ti-alert-triangle' : 'ti-search-off';
+		return '<div class="md-empty"><div class="md-empty__icon"><i class="ti ' + icon + '" aria-hidden="true"></i></div><div class="md-empty__title">' + escapeHtml(title) + '</div><div class="md-empty__text">' + escapeHtml(text) + '</div></div>';
 	}
 
 	function formatNumber(value) {
@@ -106,7 +138,7 @@
 	}
 
 	function createTable(head, body) {
-		return '<div class="table-responsive xray-table-wrap"><table class="table table-striped table-hover xray-table">' + head + '<tbody>' + body + '</tbody></table></div>';
+		return '<div class="md-table__scroll xray-table-wrap"><table class="md-table xray-table">' + head + '<tbody>' + body + '</tbody></table></div>';
 	}
 
 	function createRows(items) {
@@ -115,7 +147,7 @@
 			if (!items[i] || items[i].value === '' || items[i].value === null || items[i].value === undefined) {
 				continue;
 			}
-			html += '<div class="xray-data-card__row"><span>' + escapeHtml(items[i].label) + '</span><strong>' + items[i].value + '</strong></div>';
+			html += '<div class="xray-service-card__row"><span>' + escapeHtml(items[i].label) + '</span><strong>' + items[i].value + '</strong></div>';
 		}
 		return html;
 	}
@@ -123,14 +155,13 @@
 	function createCard(options) {
 		var title = options.title || '';
 		var titleHtml = options.href ? '<a href="' + escapeHtml(options.href) + '">' + escapeHtml(title) + '</a>' : escapeHtml(title);
-		var subtitleHtml = options.subtitle ? '<div class="xray-data-card__subtitle">' + escapeHtml(options.subtitle) + '</div>' : '';
-		var tagsHtml = options.tags && options.tags.length ? '<div class="xray-data-card__tags">' + options.tags.join('') + '</div>' : '';
-		var rowsHtml = options.rows && options.rows.length ? '<div class="xray-data-card__rows">' + createRows(options.rows) + '</div>' : '';
-		var actionsHtml = options.actions && options.actions.length ? '<div class="xray-data-card__actions">' + options.actions.join('') + '</div>' : '';
-		return '<article class="xray-data-card ' + escapeHtml(options.klass || '') + '">' +
-			'<div class="xray-data-card__head"><div class="xray-data-card__title">' + titleHtml + '</div>' + tagsHtml + '</div>' +
-			subtitleHtml +
-			rowsHtml +
+		var subtitleHtml = options.subtitle ? '<div class="md-card__subtitle">' + escapeHtml(options.subtitle) + '</div>' : '';
+		var tagsHtml = options.tags && options.tags.length ? '<div class="md-card__actions">' + options.tags.join('') + '</div>' : '';
+		var rowsHtml = options.rows && options.rows.length ? '<div class="xray-service-card__rows">' + createRows(options.rows) + '</div>' : '';
+		var actionsHtml = options.actions && options.actions.length ? '<div class="md-card__footer"><div class="xray-service-card__actions">' + options.actions.join('') + '</div></div>' : '';
+		return '<article class="md-card md-card--compact xray-service-card ' + escapeHtml(options.klass || '') + '">' +
+			'<div class="md-card__head"><div class="md-card__titles"><div class="md-card__title">' + titleHtml + '</div>' + subtitleHtml + '</div>' + tagsHtml + '</div>' +
+			'<div class="md-card__body">' + rowsHtml + '</div>' +
 			actionsHtml +
 		'</article>';
 	}
@@ -139,7 +170,7 @@
 		if (!cards.length) {
 			return createEmptyState(config.noDataTitle || 'Нет данных', config.noDataText || 'Для выбранного режима ничего не найдено.');
 		}
-		return '<div class="xray-data-grid ' + escapeHtml(extraClass || '') + '">' + cards.join('') + '</div>';
+		return '<div class="xray-service-grid ' + escapeHtml(extraClass || '') + '">' + cards.join('') + '</div>';
 	}
 
 	function renderProperties(list) {
@@ -180,7 +211,7 @@
 				'<td>' + escapeHtml(list[i].PARAMS || '') + '</td>' +
 				'<td>' + escapeHtml(list[i].EXECUTED || '') + '</td>' +
 				'<td>' + escapeHtml(list[i].SOURCE || '') + '</td>' +
-				'<td class="text-right">' + openLink + '</td>' +
+				'<td class="text-end">' + openLink + '</td>' +
 			'</tr>';
 		}
 		return createTable('<thead><tr><th style="width:24%">' + escapeHtml(config.langScript || 'Script') + '</th><th style="width:32%">' + escapeHtml(config.langParams || 'Params') + '</th><th style="width:16%">' + escapeHtml(config.langExecuted || 'Executed') + '</th><th style="width:18%">' + escapeHtml(config.langSource || 'Source') + '</th><th style="width:10%"></th></tr></thead>', rows);
@@ -206,7 +237,7 @@
 				'<td>' + escapeHtml(list[i].TITLE || '') + '</td>' +
 				'<td><code>' + escapeHtml(list[i].COMMAND || '') + '</code></td>' +
 				'<td>' + escapeHtml(list[i].SCHEDULED || '') + '</td>' +
-				'<td class="text-right">' + createButton(list[i].STOP_LINK || '#', config.langCancel || 'Cancel', 'btn-outline-danger') + '</td>' +
+				'<td class="text-end">' + createButton(list[i].STOP_LINK || '#', config.langCancel || 'Cancel', 'btn-outline-danger') + '</td>' +
 			'</tr>';
 		}
 		return createTable('<thead><tr><th style="width:24%">Title</th><th>Command</th><th style="width:20%">Scheduled</th><th style="width:1%"></th></tr></thead>', rows);
@@ -250,7 +281,7 @@
 				'<td>' + escapeHtml(list[i].ENGINE || '') + '</td>' +
 				'<td>' + escapeHtml(list[i].ROWS || '') + '</td>' +
 				'<td>' + escapeHtml(list[i].UPDATE_TIME || '') + '</td>' +
-				'<td class="text-right">' + actions + '</td>' +
+				'<td class="text-end">' + actions + '</td>' +
 			'</tr>';
 		}
 		return createTable('<thead><tr><th>Name</th><th>Engine</th><th>Rows</th><th>Update</th><th></th></tr></thead>', rows);
@@ -291,54 +322,116 @@
 		'</div>';
 	}
 
-	function renderServices(list) {
-		var cards = [];
-		for (var i = 0; i < list.length; i++) {
-			var statusClass = 'xray-tag--muted';
-			var statusText = config.statusUnknown || 'Неизвестно';
-			if (list[i].STATUS === 'running') {
-				statusClass = 'xray-tag--success';
-				statusText = config.statusRunning || 'Работает';
-			} else if (list[i].STATUS === 'hang') {
-				statusClass = 'xray-tag--warning';
-				statusText = config.statusHang || 'Завис';
-			} else if (list[i].STATUS === 'starting') {
-				statusClass = 'xray-tag--info';
-				statusText = config.statusStarting || 'Запускается';
-			} else if (list[i].STATUS === 'stopping') {
-				statusClass = 'xray-tag--warning';
-				statusText = config.statusStopping || 'Выключается';
-			} else if (list[i].STATUS === 'stopped') {
-				statusClass = 'xray-tag--danger';
-				statusText = config.statusStopped || 'Остановлен';
-			}
-			var tags = [createTag(statusText, statusClass)];
-			if (list[i].WAIT == 1) {
-				tags.push(createTag(config.statusNoResponse || 'Не отвечает', 'xray-tag--warning'));
-			}
-			if (list[i].UPDATE) {
-				tags.push(createTag(list[i].UPDATE, 'xray-tag--muted'));
-			}
-			var actions = [createActionButton('button', config.langLog || 'Лог', 'btn-outline-secondary js-cycle-log', 'data-cycle="' + escapeHtml(list[i].LOG_LINK || '') + '"')];
-			if (list[i].ALIVE == 1) {
-				actions.push(createActionButton('button', config.langRestart || 'Рестарт', 'btn-outline-secondary js-service-command', 'data-href="' + escapeHtml(list[i].CNT_RESTART || '#') + '"'));
-				actions.push(createActionButton('button', config.langStop || 'Остановить', 'btn-outline-danger js-service-command', 'data-href="' + escapeHtml(list[i].CNT_STOP || '#') + '"'));
-			} else {
-				actions.push(createActionButton('button', config.langStart || 'Запуск', 'btn-primary js-service-command', 'data-href="' + escapeHtml(list[i].CNT_START || '#') + '"'));
-			}
-			cards.push(createCard({
-				title: list[i].TITLE || '',
-				subtitle: list[i].STATUS_DETAILS || '',
-				tags: tags,
-				rows: list[i].UPDATE ? [{label: 'Updated', value: escapeHtml(list[i].UPDATE || '')}] : [],
-				actions: actions,
-				klass: list[i].ALIVE == 1 ? 'xray-data-card--alive' : 'xray-data-card--dead'
-			}));
+	function cycleStatus(status) {
+		if (status === 'running') {
+			return { state: 'running', text: config.statusRunning || 'Работает', tone: 'success' };
 		}
-		return createCardList(cards, 'xray-data-grid--services');
+		if (status === 'hang') {
+			return { state: 'hang', text: config.statusHang || 'Завис', tone: 'warning' };
+		}
+		if (status === 'starting') {
+			return { state: 'starting', text: config.statusStarting || 'Запускается', tone: 'info' };
+		}
+		if (status === 'stopping') {
+			return { state: 'stopping', text: config.statusStopping || 'Выключается', tone: 'warning' };
+		}
+		if (status === 'stopped') {
+			return { state: 'stopped', text: config.statusStopped || 'Остановлен', tone: 'danger' };
+		}
+		return { state: 'unknown', text: config.statusUnknown || 'Неизвестно', tone: 'neutral' };
 	}
 
-	function renderLogs(content) {
+	function cycleIconButton(label, icon, command, hidden, extraClass) {
+		return '<button type="button" class="md-icon-btn md-icon-btn--sm ' + (extraClass || '') + '"' +
+			(command ? ' data-md-cycle-command="' + command + '"' : '') +
+			' title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '"' +
+			(hidden ? ' hidden' : '') + '>' +
+			'<i class="ti ' + icon + '" aria-hidden="true"></i>' +
+		'</button>';
+	}
+
+	function createCycleRow(item, view) {
+		var alive = item.ALIVE == 1;
+		var title = item.TITLE || '';
+		var endpoint = (window.XRayConfig && window.XRayConfig.rootHtml ? window.XRayConfig.rootHtml : '/') + 'ajax/xray.html?action=service';
+		var badges = '<span class="md-badge' + (view.tone !== 'neutral' ? ' md-badge--' + view.tone : '') + '" data-md-cycle-status>' + escapeHtml(view.text) + '</span>' +
+			'<span class="md-cycle-card__link ' + (alive ? 'is-online' : 'is-offline') + '" data-md-cycle-online>' + (alive ? 'ONLINE' : 'OFFLINE') + '</span>';
+		if (item.WAIT == 1) {
+			badges += '<span class="md-badge md-badge--warning">' + escapeHtml(config.statusNoResponse || 'Не отвечает') + '</span>';
+		}
+		var actions =
+			'<button type="button" class="md-icon-btn md-icon-btn--sm md-icon-btn--ghost js-cycle-log" data-cycle="' + escapeHtml(item.LOG_LINK || '') + '" title="' + escapeHtml(config.langLog || 'Лог') + '" aria-label="' + escapeHtml(config.langLog || 'Лог') + '">' +
+				'<i class="ti ti-file-text" aria-hidden="true"></i>' +
+			'</button>' +
+			cycleIconButton(config.langStart || 'Запуск', 'ti-player-play', 'start', alive, 'md-icon-btn--primary') +
+			cycleIconButton(config.langRestart || 'Рестарт', 'ti-refresh', 'restart', !alive, 'md-icon-btn--secondary') +
+			cycleIconButton(config.langStop || 'Остановить', 'ti-player-stop', 'stop', !alive, 'md-icon-btn--danger');
+		return '<div class="md-cycle-table__row is-' + view.state + '"' +
+			' data-md-cycle data-md-cycle-name="' + escapeHtml(title) + '"' +
+			' data-md-cycle-state="' + view.state + '"' +
+			' data-md-cycle-endpoint="' + escapeHtml(endpoint) + '"' +
+			' data-md-cycle-poll="0" role="row">' +
+			'<div class="md-cycle-table__cell md-cycle-table__identity" role="cell">' +
+				'<span class="md-cycle-card__signal" aria-hidden="true"></span>' +
+				'<div class="md-cycle-table__titles">' +
+					'<span class="md-cycle-card__name">' + escapeHtml(title) + '</span>' +
+					(item.STATUS_DETAILS ? '<span class="md-cycle-card__desc">' + escapeHtml(item.STATUS_DETAILS) + '</span>' : '') +
+				'</div>' +
+			'</div>' +
+			'<div class="md-cycle-table__cell md-cycle-table__status" role="cell">' + badges + '</div>' +
+			'<div class="md-cycle-table__cell md-cycle-table__updated" role="cell"><span class="md-cycle-table__updated-label">Обновлено</span><strong data-md-cycle-updated>' + escapeHtml(item.UPDATE || '—') + '</strong></div>' +
+			'<div class="md-cycle-table__cell md-cycle-table__actions" role="cell">' + actions + '</div>' +
+		'</div>';
+	}
+
+	function renderServices(list) {
+		if (!list || !list.length) {
+			return createEmptyState(config.noDataTitle || 'Нет данных', config.noDataText || 'Для выбранного режима ничего не найдено.');
+		}
+		var rows = [];
+		for (var i = 0; i < list.length; i++) {
+			rows.push(createCycleRow(list[i], cycleStatus(list[i].STATUS)));
+		}
+		return '<div class="md-cycle-table" role="table">' +
+			'<div class="md-cycle-table__head" role="row">' +
+				'<span role="columnheader">Цикл</span>' +
+				'<span role="columnheader">Состояние</span>' +
+				'<span role="columnheader">Обновлено</span>' +
+				'<span role="columnheader"></span>' +
+			'</div>' +
+			'<div class="md-cycle-table__body" role="rowgroup">' + rows.join('') + '</div>' +
+		'</div>';
+	}
+
+	function renderLogs(content, lines) {
+		if (lines && lines.length) {
+			var entries = [];
+			for (var i = 0; i < lines.length; i++) {
+				var entry = lines[i] || {};
+				var level = entry.LEVEL || 'info';
+				var tone = level === 'error' ? 'danger' : (level === 'warning' ? 'warning' : 'info');
+				var levelLabel = level === 'error' ? 'Ошибка' : (level === 'warning' ? 'Предупреждение' : 'Сообщение');
+				var summary = entry.SUMMARY || entry.MESSAGE || '';
+				var message = entry.MESSAGE || '';
+				var meta = '<div class="xray-log-entry__meta">';
+				if (entry.DATE_LABEL) {
+					meta += '<span class="xray-log-entry__date">' + escapeHtml(entry.DATE_LABEL) + '</span>';
+				}
+				if (entry.TIME) {
+					meta += '<span class="xray-log-entry__time">' + escapeHtml(entry.TIME) + '</span>';
+				}
+				if (entry.FILE) {
+					meta += '<span class="xray-log-entry__file"><i class="ti ti-file-text" aria-hidden="true"></i>' + escapeHtml(entry.FILE) + '</span>';
+				}
+				meta += '<span class="md-badge md-badge--' + tone + '">' + levelLabel + '</span></div>';
+				var details = '';
+				if (message && message !== summary) {
+					details = '<details class="xray-log-entry__details"><summary>Показать полностью</summary><pre>' + escapeHtml(message) + '</pre></details>';
+				}
+				entries.push('<article class="xray-log-entry xray-log-entry--' + escapeHtml(level) + '">' + meta + '<div class="xray-log-entry__summary">' + escapeHtml(summary) + '</div>' + details + '</article>');
+			}
+			return '<div class="xray-log-list">' + entries.join('') + '</div>';
+		}
 		if (!content) {
 			return createEmptyState(config.consoleEmptyTitle || 'Console is empty', config.consoleEmptyText || 'Wait for new data or adjust the filter.');
 		}
@@ -365,16 +458,14 @@
 			return;
 		}
 		if (active) {
-			button.classList.remove('btn-warning');
-			button.classList.add('btn-outline-secondary');
-			button.innerHTML = '<span class="glyphicon glyphicon-pause"></span> ' + escapeHtml(config.pauseLabel || 'Pause');
+			button.classList.remove('is-paused');
+			button.innerHTML = '<i class="ti ti-player-pause" aria-hidden="true"></i> <span class="md-btn__label">' + escapeHtml(config.pauseLabel || 'Pause') + '</span>';
 			if (badge) {
 				badge.textContent = Math.round(state.checkTimeout / 1000) + ' c';
 			}
 		} else {
-			button.classList.remove('btn-outline-secondary');
-			button.classList.add('btn-warning');
-			button.innerHTML = '<span class="glyphicon glyphicon-play"></span> ' + escapeHtml(config.continueLabel || 'Continue');
+			button.classList.add('is-paused');
+			button.innerHTML = '<i class="ti ti-player-play" aria-hidden="true"></i> <span class="md-btn__label">' + escapeHtml(config.continueLabel || 'Continue') + '</span>';
 			if (badge) {
 				badge.textContent = 'Пауза';
 			}
@@ -396,6 +487,7 @@
 		var tabInput = toolbarForm.querySelector('[name="tab"]');
 		var filterInput = el('filter');
 		var limitInput = el('limit');
+		var dateFilter = el('xrayDateFilter');
 		var files = getSelectedFiles();
 
 		if (viewModeInput) {
@@ -403,6 +495,11 @@
 		}
 		if (tabInput && tabInput.value) {
 			url.searchParams.set('tab', tabInput.value);
+		}
+		if (dateFilter && dateFilter.value) {
+			url.searchParams.set('date', dateFilter.value);
+		} else {
+			url.searchParams.delete('date');
 		}
 		if (filterInput && filterInput.value.trim()) {
 			url.searchParams.set('filter', filterInput.value.trim());
@@ -474,7 +571,7 @@
 			} else if (data.MODE === 'services') {
 				setHtml(el('xrayContent'), renderServices(data.LIST || []));
 			} else if (data.MODE === 'logs') {
-				setHtml(el('xrayContent'), renderLogs(data.CONTENT || ''));
+				setHtml(el('xrayContent'), renderLogs(data.CONTENT || '', data.LINES || []));
 			} else {
 				setHtml(el('xrayContent'), createEmptyState(config.noDataTitle || 'No data', config.noDataText || 'The selected view did not return any content.'));
 			}
@@ -581,13 +678,22 @@
 		}).then(function (response) {
 			return response.json();
 		}).then(function (data) {
+			var list = el('xrayCycleLogList');
 			if (data.STATUS === 'OK') {
-				setText(el('cycleLogBody'), (config.cycleLogCleared || 'Лог цикла очищен.') + '\n');
-			} else {
-				setText(el('cycleLogBody'), (data.MESSAGE || config.cycleLogClearFailed || 'Не удалось очистить лог цикла.') + '\n');
+				state.cycleLogLines = [];
+				state.cycleLogResponse = {STATUS: 'OK', LINES: []};
+				if (list) {
+					list.innerHTML = cycleLogEmpty('ti-check', 'Лог цикла очищен', 'Новые записи появятся здесь автоматически.');
+				}
+				setText(el('xrayCycleCount'), '0 записей');
+			} else if (list) {
+				list.innerHTML = cycleLogEmpty('ti-alert-triangle', 'Не удалось очистить лог', data.MESSAGE || config.cycleLogClearFailed || 'Не удалось очистить лог цикла.');
 			}
 		}).catch(function () {
-			setText(el('cycleLogBody'), (config.cycleLogClearFailed || 'Не удалось очистить лог цикла.') + '\n');
+			var list = el('xrayCycleLogList');
+			if (list) {
+				list.innerHTML = cycleLogEmpty('ti-alert-triangle', 'Не удалось очистить лог', config.cycleLogClearFailed || 'Не удалось очистить лог цикла.');
+			}
 		});
 
 		return false;
@@ -639,6 +745,11 @@
 		if (behavior === 'replace') {
 			clearSelectedFiles();
 		}
+		var dateFilter = el('xrayDateFilter');
+		if (dateFilter && dateFilter.value && fileDateFromValue(file) !== dateFilter.value) {
+			dateFilter.value = '';
+			applyFileDateFilter(true);
+		}
 		if (state.filesTomSelect) {
 			state.filesTomSelect.addItem(file);
 		} else {
@@ -660,18 +771,187 @@
 		}
 	}
 
+	function decodeHtmlEntities(value) {
+		var textarea = document.createElement('textarea');
+		textarea.innerHTML = String(value === null || value === undefined ? '' : value);
+		return textarea.value;
+	}
+
+	function cycleLogCountLabel(count) {
+		var n = Math.abs(count) % 100;
+		var d = n % 10;
+		var word = 'записей';
+		if (d === 1 && n !== 11) {
+			word = 'запись';
+		} else if (d >= 2 && d <= 4 && (n < 12 || n > 14)) {
+			word = 'записи';
+		}
+		return count + ' ' + word;
+	}
+
+	function cycleLogEmpty(icon, title, text) {
+		return '<div class="md-empty md-empty--compact xray-cycle-empty">'
+			+ '<div class="md-empty__icon"><i class="ti ' + escapeHtml(icon) + '" aria-hidden="true"></i></div>'
+			+ '<div class="md-empty__title">' + escapeHtml(title) + '</div>'
+			+ '<div class="md-empty__text">' + escapeHtml(text) + '</div>'
+			+ '</div>';
+	}
+
+	function setCyclePauseUi() {
+		var paused = state.cycleLogPaused;
+		var button = el('xrayCyclePauseBtn');
+		if (button) {
+			var icon = button.querySelector('i');
+			if (icon) {
+				icon.className = 'ti ' + (paused ? 'ti-player-play' : 'ti-player-pause');
+			}
+			var label = button.querySelector('.md-btn__label');
+			if (label) {
+				label.textContent = paused ? 'Продолжить' : 'Пауза';
+			}
+		}
+		var status = el('xrayCycleStatus');
+		if (status) {
+			status.className = 'md-badge ' + (paused ? 'md-badge--warning' : 'md-badge--success');
+			status.textContent = paused ? 'Пауза' : 'Автообновление';
+		}
+	}
+
+	function renderCycleLog(data) {
+		state.cycleLogResponse = data || {};
+		state.cycleLogLines = (data && data.LINES) ? data.LINES : [];
+
+		var list = el('xrayCycleLogList');
+		var count = el('xrayCycleCount');
+		var updated = el('xrayCycleUpdated');
+		if (!list) {
+			return;
+		}
+
+		if (updated) {
+			updated.textContent = (data && data.STATUS === 'OK' && data.LOG_CYCLES_ENABLED == 0 ? 'Файловый лог выключен · ' : '')
+				+ 'Обновлено ' + new Date().toLocaleTimeString('ru-RU', {hour12: false});
+		}
+
+		if (!data || data.STATUS !== 'OK') {
+			list.innerHTML = cycleLogEmpty('ti-alert-triangle', 'Не удалось загрузить лог', data && data.MESSAGE ? data.MESSAGE : (config.cycleLogError || 'Ошибка загрузки лога.'));
+			if (count) {
+				count.textContent = '0 записей';
+			}
+			return;
+		}
+
+		if (data.LOG_CYCLES_ENABLED == 0 && !state.cycleLogLines.length) {
+			list.innerHTML = cycleLogEmpty('ti-file-off', 'Файловый лог выключен', config.cycleLogDisabledText || 'Файловый лог циклов выключен. Включите LOG_CYCLES, чтобы видеть хвост файлового лога.');
+			if (count) {
+				count.textContent = '0 записей';
+			}
+			return;
+		}
+
+		if (!state.cycleLogLines.length) {
+			list.innerHTML = cycleLogEmpty('ti-history', 'Пока нет записей', config.cycleLogEmptyText || 'Здесь появятся stdout/stderr цикла и хвост его файлового лога.');
+			if (count) {
+				count.textContent = '0 записей';
+			}
+			return;
+		}
+
+		var filter = state.cycleLogFilter.trim().toLowerCase();
+		var rows = [];
+		var visible = 0;
+		var lines = state.cycleLogLines;
+
+		for (var i = 0; i < lines.length; i++) {
+			var line = lines[i] || {};
+			var message = decodeHtmlEntities(line.MESSAGE || '');
+			var source = '';
+			if (message.indexOf('[file] ') === 0) {
+				source = 'файл';
+				message = message.slice(7);
+			}
+
+			if (filter && message.toLowerCase().indexOf(filter) === -1 && String(line.ADDED || '').indexOf(filter) === -1) {
+				continue;
+			}
+
+			var level = '';
+			if (/(fatal error|parse error|uncaught|exception|\berror\b|e_error|e_compile_error)/i.test(message)) {
+				level = 'error';
+			} else if (/(warning|deprecated|notice|e_warning)/i.test(message)) {
+				level = 'warning';
+			}
+
+			visible++;
+			rows.push(
+				'<div class="xray-cycle-entry' + (level ? ' xray-cycle-entry--' + level : '') + '">'
+				+ '<time class="xray-cycle-entry__time">' + escapeHtml(line.ADDED || '') + '</time>'
+				+ '<div class="xray-cycle-entry__body">'
+				+ (source ? '<span class="md-badge md-badge--outline xray-cycle-entry__source">' + source + '</span>' : '')
+				+ '<span class="xray-cycle-entry__message">' + escapeHtml(message) + '</span>'
+				+ '</div>'
+				+ '</div>'
+			);
+		}
+
+		if (count) {
+			count.textContent = filter
+				? visible + ' из ' + lines.length
+				: cycleLogCountLabel(lines.length);
+		}
+
+		if (!visible) {
+			list.innerHTML = cycleLogEmpty('ti-search-off', 'Ничего не найдено', 'Измените фильтр по сообщению или времени.');
+			return;
+		}
+
+		var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+		list.innerHTML = rows.join('');
+		if (state.cycleLogAutoScroll || nearBottom) {
+			list.scrollTop = list.scrollHeight;
+		}
+	}
+
+	function scheduleCycleLog() {
+		clearTimeout(state.cycleLogTimer);
+		if (state.cycleLogCurrent && !state.cycleLogPaused) {
+			state.cycleLogTimer = window.setTimeout(loadCycleLog, 2000);
+		}
+	}
+
 	function showCycleLog(cycle) {
 		if (!cycle || !window.MDJAdminDrawerHost) {
 			return false;
 		}
 		state.cycleLogCurrent = cycle;
-		setText(el('cycleLogBody'), config.loadingText || 'Загрузка...');
+		state.cycleLogPaused = false;
+		state.cycleLogFilter = '';
+		state.cycleLogLines = [];
+		state.cycleLogResponse = null;
+		state.cycleLogAutoScroll = true;
+		var filter = el('xrayCycleLogFilter');
+		if (filter) {
+			filter.value = '';
+		}
+		setCyclePauseUi();
+		var count = el('xrayCycleCount');
+		if (count) {
+			count.textContent = '0 записей';
+		}
+		var updated = el('xrayCycleUpdated');
+		if (updated) {
+			updated.textContent = '';
+		}
+		var list = el('xrayCycleLogList');
+		if (list) {
+			list.innerHTML = cycleLogEmpty('ti-loader', 'Загружаем лог', 'Запрашиваем оперативные записи и хвост файлового лога.');
+		}
 		window.MDJAdminDrawerHost.open({
 			owner: 'xray-cycle-log',
-			eyebrow: 'X-Ray',
+			eyebrow: 'X-Ray · цикл',
 			title: config.drawerCycleLogTitle || 'Лог цикла',
 			subtitle: cycle,
-			width: 'min(980px, 100vw)',
+			width: 'min(900px, 100vw)',
 			body: el('xrayCycleDrawerBody'),
 			footer: el('xrayCycleDrawerFooter'),
 			focus: el('xrayCycleDrawerCloseBtn'),
@@ -700,30 +980,48 @@
 		}).then(function (response) {
 			return response.json();
 		}).then(function (data) {
-			var content = '';
-			if (data.STATUS === 'OK' && data.LOG_CYCLES_ENABLED == 0) {
-				content = config.cycleLogDisabledText || 'Файловый лог циклов выключен.';
-			} else if (data.STATUS === 'OK' && data.LINES && data.LINES.length) {
-				for (var i = 0; i < data.LINES.length; i++) {
-					content += data.LINES[i].ADDED + '  ' + data.LINES[i].MESSAGE + '\n';
-				}
-			} else {
-				content = config.cycleLogEmptyText || 'Пока нет данных. Здесь появится stdout/stderr цикла и хвост его файлового лога.';
-			}
-			setText(el('cycleLogBody'), content);
-			var body = el('cycleLogBody');
-			if (body) {
-				body.scrollTop = body.scrollHeight;
-			}
+			renderCycleLog(data);
+			scheduleCycleLog();
 		}).catch(function (error) {
-			var message = config.cycleLogError || 'Ошибка загрузки лога.';
-			setText(el('cycleLogBody'), message + (error && error.message ? '\n\n' + error.message : ''));
+			renderCycleLog({
+				STATUS: 'ERROR',
+				MESSAGE: (config.cycleLogError || 'Ошибка загрузки лога.') + (error && error.message ? ' ' + error.message : '')
+			});
+			scheduleCycleLog();
 		});
 
-		if (state.cycleLogCurrent) {
+		return false;
+	}
+
+	function toggleCyclePause() {
+		state.cycleLogPaused = !state.cycleLogPaused;
+		setCyclePauseUi();
+		if (state.cycleLogPaused) {
 			clearTimeout(state.cycleLogTimer);
-			state.cycleLogTimer = window.setTimeout(loadCycleLog, 2000);
+		} else {
+			loadCycleLog();
 		}
+	}
+
+	function downloadCycleLog() {
+		if (!state.cycleLogLines.length) {
+			return false;
+		}
+		var lines = [];
+		for (var i = 0; i < state.cycleLogLines.length; i++) {
+			var line = state.cycleLogLines[i] || {};
+			lines.push((line.ADDED || '') + '  ' + decodeHtmlEntities(line.MESSAGE || ''));
+		}
+		var blob = new Blob([lines.join('\n')], {type: 'text/plain;charset=utf-8'});
+		var link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = 'cycle-' + String(state.cycleLogCurrent || 'log').replace(/[^\w.-]+/g, '_') + '.log';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		window.setTimeout(function () {
+			URL.revokeObjectURL(link.href);
+		}, 1000);
 		return false;
 	}
 
@@ -756,22 +1054,52 @@
 		}
 	}
 
+	function fileDateFromValue(value) {
+		var match = String(value || '').match(/^(\d{4}-\d{2}-\d{2})\//);
+		return match ? match[1] : '';
+	}
+
+	function applyFileDateFilter(preserveSelection) {
+		var dateFilter = el('xrayDateFilter');
+		if (!dateFilter || !state.filesTomSelect) {
+			return;
+		}
+		var date = dateFilter.value;
+		state.filesTomSelect.clearOptions();
+		state.filesTomSelect.addOptions(state.allFiles.filter(function (item) {
+			return date === '' || item.date === date;
+		}));
+		state.filesTomSelect.refreshOptions(false);
+		if (!preserveSelection) {
+			state.filesTomSelect.clear(true);
+		}
+		updateSelectedFilesBadge();
+	}
+
 	function initTomSelect() {
 		var filesSelect = el('files');
 		if (!filesSelect || typeof window.TomSelect !== 'function') {
 			return;
 		}
+		state.allFiles = Array.prototype.map.call(filesSelect.options, function (option) {
+			return {
+				value: option.value,
+				text: option.text,
+				date: option.getAttribute('data-date') || fileDateFromValue(option.value)
+			};
+		});
 		state.filesTomSelect = new window.TomSelect(filesSelect, {
 			plugins: ['remove_button'],
 			maxOptions: 500,
-			placeholder: config.logFilesLabel || 'Выберите файл лога...',
+			placeholder: config.logFilesLabel || 'Имя файла...',
 			persist: false,
 			create: false,
 			hideSelected: false,
 			closeAfterSelect: false,
 			render: {
 				option: function (data, escape) {
-					return '<div class="xray-ts-option"><span>' + escape(data.text) + '</span></div>';
+					var date = data.date || fileDateFromValue(data.value);
+					return '<div class="xray-ts-option"><span>' + escape(data.text) + '</span>' + (date ? '<small>' + escape(date) + '</small>' : '') + '</div>';
 				},
 				item: function (data, escape) {
 					return '<div>' + escape(data.text) + '</div>';
@@ -787,16 +1115,34 @@
 		var playButton = el('playpausebtn');
 		var clearButton = el('clearlogsbtn');
 		var toolbarForm = el('xrayToolbarForm');
+		var dateFilter = el('xrayDateFilter');
 		var openLogDrawerButton = el('openLogDrawerBtn');
 		var drawerCloseButton = el('xrayDrawerCloseBtn');
 		var cycleDrawerCloseButton = el('xrayCycleDrawerCloseBtn');
 		var cycleDrawerClearButton = el('xrayCycleDrawerClearBtn');
+		var cycleDrawerDownloadButton = el('xrayCycleDrawerDownloadBtn');
+		var cyclePauseButton = el('xrayCyclePauseBtn');
+		var cycleFilter = el('xrayCycleLogFilter');
+		var cycleList = el('xrayCycleLogList');
 
 		setText(el('xrayModeBadge'), formatModeLabel(config.viewMode || ''));
 		setText(el('xrayRefreshBadge'), Math.round(state.checkTimeout / 1000) + ' c');
 		setRefreshState(true);
 		initTomSelect();
 		updateSelectedFilesBadge();
+
+		if (dateFilter) {
+			var initialDate = new URL(window.location.href).searchParams.get('date') || '';
+			if (initialDate) {
+				dateFilter.value = initialDate;
+			}
+			if (dateFilter.value) {
+				applyFileDateFilter(true);
+			}
+			dateFilter.addEventListener('change', function () {
+				applyFileDateFilter(false);
+			});
+		}
 
 		if (toolbarForm) {
 			toolbarForm.addEventListener('submit', function (event) {
@@ -842,6 +1188,35 @@
 			cycleDrawerClearButton.addEventListener('click', function (event) {
 				event.preventDefault();
 				clearCycleLog();
+			});
+		}
+
+		if (cycleDrawerDownloadButton) {
+			cycleDrawerDownloadButton.addEventListener('click', function (event) {
+				event.preventDefault();
+				downloadCycleLog();
+			});
+		}
+
+		if (cyclePauseButton) {
+			cyclePauseButton.addEventListener('click', function (event) {
+				event.preventDefault();
+				toggleCyclePause();
+			});
+		}
+
+		if (cycleFilter) {
+			cycleFilter.addEventListener('input', function () {
+				state.cycleLogFilter = cycleFilter.value || '';
+				if (state.cycleLogResponse) {
+					renderCycleLog(state.cycleLogResponse);
+				}
+			});
+		}
+
+		if (cycleList) {
+			cycleList.addEventListener('scroll', function () {
+				state.cycleLogAutoScroll = cycleList.scrollHeight - cycleList.scrollTop - cycleList.clientHeight < 80;
 			});
 		}
 

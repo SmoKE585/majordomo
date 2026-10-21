@@ -96,15 +96,31 @@ function devServerRoute($projectRoot)
         return $projectRoot . DIRECTORY_SEPARATOR . 'index.php';
     }
 
-    $phpEntrypoints = array('index.php', 'admin.php', 'api.php', 'diagnostic.php', 'backup.php', 'command.php', 'nf.php', 'print_all.php');
+    // Admin pretty URLs and the admin root are resolved by nf.php.
+    if ($path === '/panel' || $path === '/panel/' || strpos($path, '/panel/') === 0) {
+        return $projectRoot . DIRECTORY_SEPARATOR . 'nf.php';
+    }
+
+    $phpEntrypoints = array('index.php', 'admin.php', 'api.php', 'diagnostic.php', 'backup.php', 'command.php', 'nf.php', 'print_all.php', '404.php');
     $basename = basename($path);
     if (in_array($basename, $phpEntrypoints, true) && is_file($projectRoot . DIRECTORY_SEPARATOR . $basename)) {
         return $projectRoot . DIRECTORY_SEPARATOR . $basename;
     }
 
     if ($file !== false && strpos($file, realpath($projectRoot)) === 0 && is_file($file)) {
+        $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        // Module AJAX endpoints (autosave/checkcode/etc.) are real PHP entry
+        // points. Let the built-in server execute them instead of serving the
+        // source as a static file.
+        if ($extension === 'php' && preg_match('#^/modules/#i', $path)) {
+            return $file;
+        }
         devServeStaticFile($file);
         return true;
+    }
+
+    if ($file !== false && is_dir($file) && is_file($file . DIRECTORY_SEPARATOR . 'index.php')) {
+        return $file . DIRECTORY_SEPARATOR . 'index.php';
     }
 
     if (preg_match('/\.(html|xml)$/i', $path) || preg_match('#/module/app_mediabrowser\.#i', $path)) {
@@ -112,6 +128,11 @@ function devServerRoute($projectRoot)
     }
 
     http_response_code(404);
+    if (is_file($projectRoot . DIRECTORY_SEPARATOR . '404.php')) {
+        require $projectRoot . DIRECTORY_SEPARATOR . '404.php';
+        return true;
+    }
+
     header('Content-Type: text/plain; charset=utf-8');
     echo "Not found: " . $path;
     return true;
@@ -233,6 +254,10 @@ function devIsDeniedPath($path)
 {
     $basename = basename($path);
     if (in_array($basename, array('config.php', 'debmes.txt'), true)) {
+        return true;
+    }
+
+    if (preg_match('#^/(?:templates/(?:ui|ui_kit)|lib/ui)/#i', $path)) {
         return true;
     }
 

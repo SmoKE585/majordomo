@@ -1,151 +1,233 @@
-<section class="md-admin-section-card md-admin-form-card md-method-edit-card">
-    <div class="md-admin-section-card__body">
-        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" id="frmEdit" class="md-admin-form-grid">
-            [#if OK#]
-            <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
-            [#endif OK#]
+[#if OK#]
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
+[#endif OK#]
 
-            [#if ERR#]
-            <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
-            [#endif ERR#]
+[#if ERR#]
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_FILLOUT_REQURED#></div></div>
+</div>
+[#endif ERR#]
 
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="methodTitle"><#LANG_TITLE#> <span class="text-danger">*</span></label>
-                <div class="col-lg-9">
-                    <input type="text" id="methodTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required>
-                </div>
-            </div>
-
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="methodDescription"><#LANG_DESCRIPTION#></label>
-                <div class="col-lg-9">
-                    <textarea name="description" id="methodDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea>
-                </div>
-            </div>
-
-            [#if ID!=""#]
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label"><#LANG_CODE#></label>
-                <div class="col-lg-9">
-                    <div class="md-method-edit__radio-group mb-3">
-                        <label class="md-method-edit__radio">
-                            <input type="radio" name="run_type" value="script"[#if SCRIPT_ID!="0"#] checked[#endif#] data-md-method-run-type="script">
-                            <span><#LANG_SCRIPT#></span>
-                        </label>
-                        <label class="md-method-edit__radio">
-                            <input type="radio" name="run_type" value="code"[#if SCRIPT_ID=="0"#] checked[#endif#] data-md-method-run-type="code">
-                            <span><#LANG_CODE#></span>
-                        </label>
+<section class="md-card">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <div class="md-card__eyebrow">Метод класса</div>
+            <h2 class="md-card__title"><i class="ti ti-braces" aria-hidden="true"></i>[#if ID!=""#][#TITLE#][#else#]<#LANG_ADD_METHOD#>[#endif#]</h2>
+            <p class="md-card__subtitle">Имя, описание и реализация. Код выполняется в контексте объекта.</p>
+        </div>
+    </header>
+    <div class="md-card__body">
+        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" id="frmEdit" class="md-ui-form">
+            <div class="md-ui-form-stack">
+                <div class="md-ui-form-grid">
+                    <div class="md-field [#if ERR_TITLE#]is-invalid[#endif#]">
+                        <label class="md-field__label" for="methodTitle"><#LANG_TITLE#><span class="md-field__req" aria-hidden="true">*</span></label>
+                        <div class="md-field__control">
+                            <input type="text" id="methodTitle" class="md-input [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required autocomplete="off">
+                        </div>
+                        [#if ERR_TITLE#]
+                        <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Укажите имя метода.</span></div>
+                        [#else#]
+                        <div class="md-field__hint">Без пробелов, например <code>onChange</code>.</div>
+                        [#endif#]
                     </div>
 
-                    <div class="md-method-edit__script-select mb-3 [#if SCRIPT_ID=="0"#]d-none[#endif#]" data-md-method-script-select>
-                        <label class="form-label" for="methodScript"><#LANG_SCRIPT#></label>
-                        <select name="script_id" id="methodScript" class="form-control form-select">
-                            <option value="0"></option>
+                    <div class="md-field">
+                        <label class="md-field__label" for="methodDescription"><#LANG_DESCRIPTION#></label>
+                        <div class="md-field__control">
+                            <input type="text" id="methodDescription" class="md-input" name="description" value="[#DESCRIPTION#]" autocomplete="off">
+                        </div>
+                        <div class="md-field__hint">Коротко: когда метод вызывается и что делает.</div>
+                    </div>
+                </div>
+
+                [#if ID!=""#]
+                <div class="md-field">
+                    <span class="md-field__label"><#LANG_CODE#></span>
+                    <div class="md-field__control">
+                        <div class="md-choice-group" role="radiogroup" aria-label="<#LANG_CODE#>">
+                            <label class="md-choice">
+                                <input class="md-choice__input" type="radio" name="run_type" value="script" data-md-raw-checkbox data-md-method-run-type="script"[#if SCRIPT_ID!="0"#] checked[#endif#]>
+                                <span class="md-choice__surface">
+                                    <span class="md-choice__icon"><i class="ti ti-file-code" aria-hidden="true"></i></span>
+                                    <span class="md-choice__body">
+                                        <span class="md-choice__title"><#LANG_SCRIPT#></span>
+                                        <span class="md-choice__desc">Выполнить готовый сценарий</span>
+                                    </span>
+                                    <span class="md-choice__marker" aria-hidden="true"></span>
+                                </span>
+                            </label>
+                            <label class="md-choice">
+                                <input class="md-choice__input" type="radio" name="run_type" value="code" data-md-raw-checkbox data-md-method-run-type="code"[#if SCRIPT_ID=="0"#] checked[#endif#]>
+                                <span class="md-choice__surface">
+                                    <span class="md-choice__icon"><i class="ti ti-code" aria-hidden="true"></i></span>
+                                    <span class="md-choice__body">
+                                        <span class="md-choice__title"><#LANG_CODE#></span>
+                                        <span class="md-choice__desc">PHP или Python прямо в методе</span>
+                                    </span>
+                                    <span class="md-choice__marker" aria-hidden="true"></span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="md-field__hint">Сценарий удобен для повторного использования, код — для локальной логики.</div>
+                </div>
+
+                <div class="md-field [#if SCRIPT_ID=="0"#]d-none[#endif#]" data-md-method-script-select>
+                    <label class="md-field__label" for="methodScript"><#LANG_SCRIPT#></label>
+                    <div class="md-field__control">
+                        <select name="script_id" id="methodScript" class="md-select">
+                            <option value="0">Выберите сценарий</option>
                             [#begin SCRIPTS#]
                             <option value="[#ID#]"[#if ID=="<#SCRIPT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
                             [#end SCRIPTS#]
                         </select>
                     </div>
+                </div>
 
-                    <div id="code_option" class="md-method-edit__code-panel [#if SCRIPT_ID!="0"#]d-none[#endif#]" data-md-method-code-panel>
-                        [#if SETTINGS_CODEEDITOR_TURNONSETTINGS != 1#]
-                        <div class="md-method-edit__editor-note">
-                            <#LANG_CODEEDITOR_NOTY_TURNOFF#>
+                <div class="[#if SCRIPT_ID!="0"#]d-none[#endif#]" data-md-method-code-panel>
+                    [#if SETTINGS_CODEEDITOR_TURNONSETTINGS != 1#]
+                    <div class="md-alert md-alert--warning" role="status">
+                        <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+                        <div class="md-alert__body"><div class="md-alert__text"><#LANG_CODEEDITOR_NOTY_TURNOFF#></div></div>
+                    </div>
+                    [#endif SETTINGS_CODEEDITOR_TURNONSETTINGS#]
+
+                    <div class="md-code-editor"
+                         data-code-editor
+                         data-code-editor-lazy="1"
+                         data-code-editor-key="[#CODE_EDITOR_KEY#]"
+                         data-code-editor-mode="[#CODE_EDITOR_MODE#]"
+                         data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
+                         data-code-editor-autosave="[#SETTINGS_CODEEDITOR_AUTOSAVE#]"
+                         data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
+                         data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
+                         data-code-editor-min-lines="[#SETTINGS_CODEEDITOR_MIXLINE#]"
+                         data-code-editor-max-lines="[#SETTINGS_CODEEDITOR_SHOWLINE#]"
+                         data-code-editor-autofocus="1"
+                         data-code-editor-validate-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+                         data-code-editor-autosave-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
+                         data-code-editor-id="[#ID#]"
+                         data-code-editor-md="method[#ID#]"
+                         data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
+                        <div class="md-code-editor__toolbar" data-code-editor-toolbar>
+                            <label class="md-code-editor__mode-switch" data-mode="[#if CODE_EDITOR_MODE=="python"#]python[#else#]php[#endif#]">
+                                <input type="checkbox" data-code-editor-mode-toggle [#if CODE_EDITOR_MODE=="python"#]checked[#endif#] aria-label="Режим редактора: PHP или Python">
+                                <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--php">PHP</span>
+                                <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--python">Python</span>
+                                <input type="hidden" name="code_editor_mode" value="[#if CODE_EDITOR_MODE=="python"#]python[#else#]php[#endif#]" data-code-editor-mode-select>
+                            </label>
+                            <span class="md-code-editor__toolbar-divider" aria-hidden="true"></span>
+                            <div class="md-code-editor__toolbar-group">
+                                <button type="button" class="md-code-editor__action" data-code-editor-action="save" title="Сохранить версию (Ctrl+S)" aria-label="Сохранить версию">
+                                    <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_SUBMIT#></span>
+                                </button>
+                                <button type="button" class="md-code-editor__action" data-code-editor-action="restore" title="История версий (Ctrl+R)" aria-label="История версий">
+                                    <i class="ti ti-history" aria-hidden="true"></i><span class="md-code-editor__action-label"><#LANG_CODEEDITOR_RESTORE#></span>
+                                </button>
+                            </div>
+                            <div class="md-code-editor__toolbar-spacer"></div>
+                            <span class="md-code-editor__status" data-code-editor-status aria-live="polite"></span>
+                            <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="search" title="Найти (Ctrl+F)" aria-label="Найти">
+                                <i class="ti ti-search" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="md-code-editor__icon-btn" data-code-editor-action="fullscreen" title="Полный экран (F11)" aria-label="Полный экран">
+                                <i class="ti ti-maximize" aria-hidden="true"></i>
+                            </button>
                         </div>
-                        [#endif SETTINGS_CODEEDITOR_TURNONSETTINGS#]
 
-                        <div class="md-code-editor"
-                             data-code-editor
-                             data-code-editor-key="[#CODE_EDITOR_KEY#]"
-                             data-code-editor-mode="[#CODE_EDITOR_MODE#]"
-                             data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
-                             data-code-editor-autosave="[#SETTINGS_CODEEDITOR_AUTOSAVE#]"
-                             data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
-                             data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
-                             data-code-editor-min-lines="[#SETTINGS_CODEEDITOR_MIXLINE#]"
-                             data-code-editor-max-lines="[#SETTINGS_CODEEDITOR_SHOWLINE#]"
-                             data-code-editor-autofocus="1"
-                             data-code-editor-validate-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
-                             data-code-editor-autosave-url="<#ROOTHTML#>modules/blockly_code/autosave.php"
-                             data-code-editor-id="[#ID#]"
-                             data-code-editor-md="method[#ID#]"
-                             data-code-editor-hide-errors-on-edit="[#if SETTINGS_CODEEDITOR_SHOWERROR == 1#]1[#else#]0[#endif#]">
-                            <div class="md-code-editor__toolbar" data-code-editor-toolbar>
-                                <label class="md-code-editor__mode-switch" data-mode="[#if CODE_EDITOR_MODE=="python"#]python[#else#]php[#endif#]">
-                                    <input type="checkbox" data-code-editor-mode-toggle [#if CODE_EDITOR_MODE=="python"#]checked[#endif#] aria-label="Code editor mode">
-                                    <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--php">PHP</span>
-                                    <span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--python">Python</span>
-                                    <input type="hidden" name="code_editor_mode" value="[#if CODE_EDITOR_MODE=="python"#]python[#else#]php[#endif#]" data-code-editor-mode-select>
-                                </label>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="save"><span class="md-code-editor__action-content"><i class="bi bi-floppy" aria-hidden="true"></i><span><#LANG_SAVE#></span></span></button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="restore"><#LANG_CODEEDITOR_RESTORE#></button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
-                                <span class="md-code-editor__status" data-code-editor-status></span>
+                        [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS!=""#]
+                        <div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
+                            <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
+                            <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
+                            <div class="md-code-editor__error-actions">
+                                <button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
                             </div>
+                        </div>
+                        [#endif#]
 
-                            [#if SETTINGS_CODEEDITOR_SHOWERROR == 1 AND ERRORS!=""#]
-                            <div class="md-code-editor__error" data-code-editor-error data-code-editor-old-code-b64="[#ERR_OLD_CODE_B64#]">
-                                <b><#LANG_CODEEDITOR_ERROR_IN_CODE#> -></b> [#ERR_FULL#]
-                                <div><#LANG_CODEEDITOR_ERROR_RESTORE_CODE#></div>
-                                <div class="md-code-editor__error-actions">
-                                    <button type="button" class="btn btn-danger btn-sm" data-code-editor-action="restore-error"><#LANG_CODEEDITOR_RESTORE#></button>
-                                </div>
-                            </div>
-                            [#endif#]
+                        <textarea name="code" id="code" rows="24" cols="100" class="form-control">[#CODE#]</textarea>
 
-                            <textarea name="code" id="code" rows="24" cols="100" class="form-control">[#CODE#]</textarea>
-
-                            <div class="md-code-editor__drawer-content" data-code-editor-drawer-content hidden data-md-drawer-title="<#LANG_HISTORY#>" data-md-drawer-subtitle="Автосохранённые версии и снимки кода">
-                                <div class="md-code-editor__drawer-body">
-                                    <div class="md-code-editor__section">
-                                        <h4><#LANG_CODEEDITOR_AUTOSAVE#></h4>
-                                        <p><#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></p>
-                                        <div class="md-code-editor__restore-list" data-code-editor-autosave-list>
-                                            <div class="md-code-editor__empty">Версии ещё не загружены.</div>
-                                        </div>
-                                        <pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
+                        <div class="md-code-editor__drawer-content" data-code-editor-drawer-content hidden data-md-drawer-title="<#LANG_HISTORY#>" data-md-drawer-subtitle="Автосохранённые версии и снимки кода">
+                            <div class="md-code-editor__drawer-body">
+                                <div class="md-code-editor__section">
+                                    <h4><#LANG_CODEEDITOR_AUTOSAVE#></h4>
+                                    <p><#LANG_CODEEDITOR_AUTOSAVE_CODE_HELP#></p>
+                                    <div class="md-code-editor__restore-list" data-code-editor-autosave-list>
+                                        <div class="md-code-editor__empty">Версии ещё не загружены.</div>
                                     </div>
+                                    <pre class="md-code-editor__preview" data-code-editor-preview hidden></pre>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label"><#LANG_CALL_PARENT_METHOD#></label>
-                <div class="col-lg-9">
-                    <div class="md-method-edit__radio-group">
-                        <label class="md-method-edit__radio">
-                            <input type="radio" name="call_parent" value="1"[#if CALL_PARENT=="1"#] checked[#endif#]>
-                            <span><#LANG_BEFORE_CODE_EXECUTION#></span>
-                        </label>
-                        <label class="md-method-edit__radio">
-                            <input type="radio" name="call_parent" value="2"[#if CALL_PARENT=="2"#] checked[#endif#]>
-                            <span><#LANG_AFTER_CODE_EXECUTION#></span>
-                        </label>
-                        <label class="md-method-edit__radio">
-                            <input type="radio" name="call_parent" value="0"[#if CALL_PARENT=="0"#] checked[#endif#]>
-                            <span><#LANG_NEVER#></span>
-                        </label>
+                <div class="md-field">
+                    <span class="md-field__label"><#LANG_CALL_PARENT_METHOD#></span>
+                    <div class="md-field__control">
+                        <div class="md-choice-group" role="radiogroup" aria-label="<#LANG_CALL_PARENT_METHOD#>">
+                            <label class="md-choice">
+                                <input class="md-choice__input" type="radio" name="call_parent" value="1" data-md-raw-checkbox[#if CALL_PARENT=="1"#] checked[#endif#]>
+                                <span class="md-choice__surface">
+                                    <span class="md-choice__icon"><i class="ti ti-arrow-up" aria-hidden="true"></i></span>
+                                    <span class="md-choice__body">
+                                        <span class="md-choice__title"><#LANG_BEFORE_CODE_EXECUTION#></span>
+                                        <span class="md-choice__desc">Сначала код класса, затем код метода</span>
+                                    </span>
+                                    <span class="md-choice__marker" aria-hidden="true"></span>
+                                </span>
+                            </label>
+                            <label class="md-choice">
+                                <input class="md-choice__input" type="radio" name="call_parent" value="2" data-md-raw-checkbox[#if CALL_PARENT=="2"#] checked[#endif#]>
+                                <span class="md-choice__surface">
+                                    <span class="md-choice__icon"><i class="ti ti-arrow-down" aria-hidden="true"></i></span>
+                                    <span class="md-choice__body">
+                                        <span class="md-choice__title"><#LANG_AFTER_CODE_EXECUTION#></span>
+                                        <span class="md-choice__desc">Сначала код метода, затем код класса</span>
+                                    </span>
+                                    <span class="md-choice__marker" aria-hidden="true"></span>
+                                </span>
+                            </label>
+                            <label class="md-choice">
+                                <input class="md-choice__input" type="radio" name="call_parent" value="0" data-md-raw-checkbox[#if CALL_PARENT=="0"#] checked[#endif#]>
+                                <span class="md-choice__surface">
+                                    <span class="md-choice__icon"><i class="ti ti-ban" aria-hidden="true"></i></span>
+                                    <span class="md-choice__body">
+                                        <span class="md-choice__title"><#LANG_NEVER#></span>
+                                        <span class="md-choice__desc">Выполняется только код объекта</span>
+                                    </span>
+                                    <span class="md-choice__marker" aria-hidden="true"></span>
+                                </span>
+                            </label>
+                        </div>
                     </div>
+                    <div class="md-field__hint">Когда вызывать реализацию метода из родительского класса.</div>
                 </div>
-            </div>
-            [#endif ID#]
-
-            <div class="md-admin-form-actions">
-                [#if ID!=""#]
-                <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_SUBMIT#>"><#LANG_SUBMIT#></button>
-                [#else ID#]
-                <button class="btn btn-primary" type="submit" name="subm" value="<#LANG_ADD#>"><#LANG_ADD#></button>
                 [#endif ID#]
-                <div class="btn-group">
-                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="?data_source=<#DATA_SOURCE#>"><#LANG_CANCEL#></a></li>
+            </div>
+
+            <div class="md-ui-form-actions">
+                <button class="md-btn md-btn--primary" type="submit" name="subm" value="<#LANG_SUBMIT#>">
+                    <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">[#if ID!=""#]<#LANG_SUBMIT#>[#else#]<#LANG_ADD#>[#endif#]</span>
+                </button>
+                <a class="md-btn md-btn--secondary" href="?view_mode=search_methods"><#LANG_CANCEL#></a>
+                [#if ID!=""#]
+                <div class="dropdown ms-auto">
+                    <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                        <li><a class="dropdown-item" href="<#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" target="_blank" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-player-play" aria-hidden="true"></i><#LANG_RUN_SCRIPT_BTN#></a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="?view_mode=delete_methods&id=[#ID#]" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#></a></li>
                     </ul>
                 </div>
+                [#endif ID#]
             </div>
 
             <input type="hidden" name="id" value="<#ID#>">
@@ -157,35 +239,15 @@
 </section>
 
 [#if ID!=""#]
-<section class="md-admin-section-card md-method-edit-card__xray">
-    <div class="md-admin-section-card__body">
+<section class="md-card">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <h2 class="md-card__title"><i class="ti ti-activity" aria-hidden="true"></i>X-Ray</h2>
+            <p class="md-card__subtitle">Где метод используется и что вызывается внутри.</p>
+        </div>
+    </header>
+    <div class="md-card__body">
         [#module name="xray" action="context" type="method" keyword="<#TITLE#>" code_id="code"#]
     </div>
 </section>
 [#endif ID#]
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var runTypeInputs = document.querySelectorAll('[data-md-method-run-type]');
-    var codePanel = document.querySelector('[data-md-method-code-panel]');
-    var scriptSelect = document.querySelector('[data-md-method-script-select]');
-    if (!runTypeInputs.length || !codePanel || !scriptSelect) {
-        return;
-    }
-
-    function syncRunType() {
-        var selected = Array.prototype.find.call(runTypeInputs, function (input) {
-            return input.checked;
-        });
-        var isCode = selected && selected.value === 'code';
-        codePanel.classList.toggle('d-none', !isCode);
-        scriptSelect.classList.toggle('d-none', isCode);
-    }
-
-    runTypeInputs.forEach(function (input) {
-        input.addEventListener('change', syncRunType);
-    });
-
-    syncRunType();
-});
-</script>

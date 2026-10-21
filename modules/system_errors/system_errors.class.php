@@ -143,29 +143,43 @@ class system_errors extends module
             $out['SET_DATASOURCE'] = 1;
         }
 
+        $ok_msg = gr('ok_msg');
+        if ($ok_msg != '') {
+            $out['OK_MSG'] = htmlspecialchars($ok_msg, ENT_QUOTES, 'UTF-8');
+        }
+
         if ($this->mode == 'update_settings') {
             $keep_history = gr('keep_history','int');
             $rec=SQLSelectOne("SELECT * FROM settings WHERE NAME='ERRORS_KEEP_HISTORY'");
             $rec['NAME']='ERRORS_KEEP_HISTORY';
             $rec['VALUE']=$keep_history;
             SQLInsertUpdate('settings',$rec);
-            $this->redirect("?ok_msg=" . urlencode(LANG_DATA_SAVED));
             if ($keep_history>0) {
                 SQLExec("DELETE FROM system_errors_data WHERE ADDED<'".date('Y-m-d H:i:s',time()-$keep_history*24*60*60)."'");
             }
+            $this->redirect("?ok_msg=" . urlencode(LANG_DATA_SAVED));
         }
 
-        $res = SQLSelectOne("SELECT max(ACTIVE) IS_ERROR FROM system_errors");
-        $out['ERRORS_FOUND'] = $res['IS_ERROR'];
+        if ($this->view_mode == 'toggle_keep_history') {
+            $error_id = (int)gr('id');
+            $keep_history = (int)gr('keep_history') ? 1 : 0;
+            if ($error_id > 0) {
+                SQLExec("UPDATE system_errors SET KEEP_HISTORY=" . $keep_history . " WHERE ID=" . $error_id);
+            }
+            $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Настройка истории обновлена'));
+        }
+
+        $res = SQLSelectOne("SELECT COUNT(*) AS CNT FROM system_errors WHERE ACTIVE>0");
+        $out['ERRORS_FOUND'] = isset($res['CNT']) ? (int)$res['CNT'] : 0;
         $this->search_system_errors($out);
 
         if ($this->view_mode == 'addtesterror') {
             registerError('testing_error_#' . rand(1000, 9999), 'Тестовая ошибка');
-            $this->redirect("?data_source=system_errors");
+            $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Тестовая ошибка создана'));
         }
         if ($this->view_mode == 'readall') {
             SQLExec("UPDATE system_errors SET ACTIVE=0");
-            $this->redirect("?data_source=system_errors");
+            $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Все ошибки отмечены как просмотренные'));
         }
 
         if ($this->data_source == 'system_errors' || $this->data_source == '') {
@@ -177,12 +191,12 @@ class system_errors extends module
             }
             if ($this->view_mode == 'delete_system_errors') {
                 $this->delete_system_errors($this->id);
-                $this->redirect("?data_source=system_errors");
+                $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Ошибка удалена'));
             }
             if ($this->view_mode == 'clear_system_errors') {
+                // Mark as read only: the history stays available for review.
                 SQLExec("UPDATE system_errors SET ACTIVE=0 WHERE ID='" . (int)$this->id . "'");
-                SQLExec("DELETE FROM system_errors_data WHERE ERROR_ID='" . (int)$this->id . "'");
-                $this->redirect("?data_source=system_errors");
+                $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Ошибка отмечена как просмотренная'));
             }
         }
         if ($this->data_source == 'system_errors_data') {

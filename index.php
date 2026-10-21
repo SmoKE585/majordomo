@@ -40,6 +40,19 @@ else
 
 if ($app->action != '' && $app->action != 'docs') $fake_doc = '';
 
+// Unknown frontend paths: nginx falls back to index.php, so render a real 404
+// instead of silently redirecting to the admin dashboard.
+$requestPath = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
+$rootIndex = rtrim(ROOTHTML, '/') . '/index.php';
+if ($app->action == '' && !isset($fake_doc) && $requestPath !== '/'
+    && $requestPath !== $rootIndex && $requestPath !== '/index.php') {
+    mdj_render_404(array(
+        'root' => ROOTHTML,
+        'area' => 'site',
+        'path' => isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '',
+    ));
+}
+
 $result = $app->run();
 if ($result) {
     $result = str_replace("nf.php", "index.php", $result);

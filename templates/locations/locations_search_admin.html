@@ -1,117 +1,118 @@
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-	<div class="col-md-12" style="margin-bottom: 15px;">
-		<div class="alert" style="background: radial-gradient(circle farthest-corner at 450px 10px, #38a276, #2c742d);color: white;text-align: center;border: 0px;">
-			<i class="glyphicon glyphicon-exclamation-sign" style="font-weight: normal;font-size: 13pt;vertical-align: sub;margin-right: 10px;"></i>
-			Модуль необходим для добавления и управления расположением (комнатами) в интерфейсе. Вместе с расположением будет создан объект в классе Rooms.
-		</div>
-	</div>
+<!--#
+ @version 0.2 (auto-set)
+#-->
+
+[#if RESULT#]
+<div class="md-table-wrap md-locations-table-wrap" data-md-table data-md-table-page-size="25" data-md-table-unit="помещений" data-md-table-unit-one="помещение" data-md-table-unit-few="помещения" data-md-table-unit-many="помещений">
+    <div class="md-table__toolbar">
+        <div class="md-table__search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" data-md-table-search placeholder="Поиск по помещению и room-объекту" aria-label="Поиск помещений" autocomplete="off">
+        </div>
+        <select class="md-table__filter" data-md-table-filter="state" aria-label="Фильтр по объектам">
+            <option value="">Все помещения</option>
+            <option value="with">С объектами</option>
+            <option value="empty">Без объектов</option>
+        </select>
+        <div class="md-table__meta" data-md-table-meta>Помещений: [#LOCATIONS_TOTAL#]</div>
+    </div>
+
+    <div class="md-table__scroll">
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">Помещение</th>
+                    <th scope="col">Room-объект</th>
+                    <th scope="col">Порядок</th>
+                    <th scope="col" class="text-end"><span class="md-visually-hidden"><#LANG_ACTIONS#></span></th>
+                </tr>
+            </thead>
+            <tbody data-md-table-body>
+                [#begin RESULT#]
+                <tr data-md-row data-row-id="[#ID#]" data-state="[#if OBJECTS_TOTAL!="0"#]with[#else#]empty[#endif#]" data-search="[#TITLE#] [#ROOM_OBJECT#]">
+                    <td class="md-locations-col-name">
+                        <div class="md-table__name">
+                            <span class="md-table__icon"><i class="ti ti-map-pin" aria-hidden="true"></i></span>
+                            <div class="md-locations-cell__body">
+                                <a href="?view_mode=edit_locations&id=[#ID#]"><strong>[#TITLE#]</strong></a>
+                                [#if OBJECTS_TOTAL!="0"#]
+                                <small class="md-locations-count-line"><i class="ti ti-cube" aria-hidden="true"></i>Объектов: [#OBJECTS_TOTAL#]</small>
+                                [#else#]
+                                <small class="md-locations-count-line md-locations-count-line--empty"><i class="ti ti-cube" aria-hidden="true"></i>Нет объектов</small>
+                                [#endif#]
+                            </div>
+                        </div>
+                    </td>
+                    <td class="md-locations-col-room">
+                        [#if ROOM_OBJECT!=""#]
+                        <span class="md-badge md-badge--outline md-locations-room-badge" title="[#ROOM_OBJECT#]"><i class="ti ti-home" aria-hidden="true"></i>[#ROOM_OBJECT#]</span>
+                        [#else#]
+                        <span class="md-badge md-badge--warning"><i class="ti ti-home-off" aria-hidden="true"></i>Не создан</span>
+                        [#endif#]
+                    </td>
+                    <td class="md-locations-col-priority">
+                        <div class="md-locations-priority">
+                            <span class="md-locations-priority__value">[#PRIORITY#]</span>
+                            <div class="md-table__actions">
+                                [#if CAN_UP="1"#]
+                                <a href="?view_mode=priority_up&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="Переместить выше" aria-label="Переместить выше">
+                                    <i class="ti ti-arrow-up" aria-hidden="true"></i>
+                                </a>
+                                [#else#]
+                                <button type="button" class="md-icon-btn md-icon-btn--sm" disabled aria-label="Выше некуда">
+                                    <i class="ti ti-arrow-up" aria-hidden="true"></i>
+                                </button>
+                                [#endif#]
+                                [#if CAN_DOWN="1"#]
+                                <a href="?view_mode=priority_down&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="Переместить ниже" aria-label="Переместить ниже">
+                                    <i class="ti ti-arrow-down" aria-hidden="true"></i>
+                                </a>
+                                [#else#]
+                                <button type="button" class="md-icon-btn md-icon-btn--sm" disabled aria-label="Ниже некуда">
+                                    <i class="ti ti-arrow-down" aria-hidden="true"></i>
+                                </button>
+                                [#endif#]
+                            </div>
+                        </div>
+                    </td>
+                    <td class="md-locations-col-actions">
+                        <div class="md-table__actions">
+                            <a href="?view_mode=edit_locations&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="<#LANG_EDIT#>" aria-label="<#LANG_EDIT#>">
+                                <i class="ti ti-pencil" aria-hidden="true"></i>
+                            </a>
+                            <a href="?view_mode=delete_locations&id=[#ID#]" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить помещение [#TITLE#]" data-md-confirm="Удалить помещение [#TITLE#]?">
+                                <i class="ti ti-trash" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                [#end RESULT#]
+            </tbody>
+        </table>
+    </div>
+
+    <div class="md-table__empty" data-md-table-empty>
+        <div class="md-empty md-empty--compact">
+            <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+            <div class="md-empty__title">Ничего не найдено</div>
+            <p class="md-empty__text">Измените запрос или фильтр по объектам.</p>
+        </div>
+    </div>
+
+    <div class="md-table__footer">
+        <span data-md-table-count>Показано [#LOCATIONS_TOTAL#] из [#LOCATIONS_TOTAL#]</span>
+        <ul class="pagination md-pagination mb-0" data-md-table-pagination></ul>
+    </div>
 </div>
-
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-	<div class="col-md-12 col-sm-12 col-xs-12 text-right" style="margin-bottom: 15px;">
-		<div class="visible-sm visible-xs" style="margin-top: 5px;"></div>
-		<a href="javascript://" data-toggle="modal" data-target="#modalAddLocation" class="btn btn-success"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_LOCATION#></a>
-	</div>
+[#else RESULT#]
+<div class="md-empty">
+    <span class="md-empty__icon"><i class="ti ti-map-pin" aria-hidden="true"></i></span>
+    <div class="md-empty__title">Помещений пока нет</div>
+    <p class="md-empty__text">Добавьте первое помещение — вместе с ним будет создан room-объект класса Rooms.</p>
+    <div class="md-empty__actions">
+        <a href="?view_mode=edit_locations" class="md-btn md-btn--primary md-btn--sm">
+            <i class="ti ti-plus" aria-hidden="true"></i>Добавить помещение
+        </a>
+    </div>
 </div>
-
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-	<div class="col-sm-12" style="margin-bottom: 15px;">
-		<div class="table-responsive">
-			[#if RESULT#]
-			<ul class="list-group">
-				[#begin RESULT#]
-				 <li class="list-group-item">
-					<span class="badge" style="background: transparent;">
-						[#if "<#ACTION#>"=="admin"#]
-							<div class="btn-group">
-								<a class="btn btn-default btn-xs" href="?view_mode=priority_up&id=[#ID#]"><i class="glyphicon glyphicon-arrow-up"></i></a>
-								<a class="btn btn-default btn-xs" href="?view_mode=priority_down&id=[#ID#]"><i class="glyphicon glyphicon-arrow-down"></i></a>
-								<a class="btn btn-default btn-xs" href="?view_mode=edit_locations&id=[#ID#]"><i class="glyphicon glyphicon-pencil"></i> <#LANG_EDIT#></a>
-								<a class="btn btn-danger btn-xs" href="?view_mode=delete_locations&id=[#ID#]" onClick="return confirm('Delete record?')"><i class="glyphicon glyphicon-remove"></i> <#LANG_DELETE#></a>
-							</div>
-						[#endif ACTION#]
-					</span>
-					[#TITLE#] <span style="color: lightgray;">(<#LANG_PRIORITY#> - [#PRIORITY#])</span>
-				</li>
-				
-				<div class="modal fade" id="modalEditLocation[#ID#]" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-					<div class="modal-dialog">
-						<div class="modal-content">
-							<div class="modal-header">
-								<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-								<h4 class="modal-title" id="myModalLabel"><#LANG_ADD_NEW_LOCATION#></h4>
-							</div> 
-							<div class="modal-body">
-								<form action="?" method="post" enctype="multipart/form-data" name="frmEdit"  class="form-horizontal">
-									<div class="form-group" style="margin-right: 0px;margin-left: 0px;">
-										<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_TITLE#>:<font color="red">*</font></label>
-										<div class="col-lg-10 col-md-8"><input type="text"  class="form-control [#if ERR_TITLE#]alert-danger[#endif#]"  name="title" value="[#TITLE#]" required="true"></div>
-									</div>
-									<div class="form-group" style="margin-right: 0px;margin-left: 0px;">
-										<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_PRIORITY#>:<font color="red">*</font></label>
-										<div class="col-lg-10 col-md-8"><input type="text"  class="form-control"  name="priority" value="[#PRIORITY#]"></div>
-									</div>
-
-									<div class="form-group">
-										<div class="col-md-12 text-center">
-											<input type="submit" name="subm" class="btn btn-default btn-success"  value="<#LANG_UPDATE#>">
-										</div>
-									</div>
-									<input type="hidden" name="id" value="[#ID#]">
-									<input type="hidden" name="view_mode" value="edit_locations">
-									<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-									<input type="hidden" name="mode" value="update">
-								</form>
-							</div>
-							<div class="modal-footer">
-								<button type="button" class="btn btn-default" data-dismiss="modal"><#LANG_CLOSE#></button>
-							</div>
-						</div>
-					</div>
-				</div>
-				[#end RESULT#]
-			</ul>
-			[#else RESULT#]
-			<p align=center>
-			<div class="alert alert-danger"><#LANG_NO_RECORDS_FOUND#></div>
-			</p>
-			[#endif RESULT#]
-		</div>
-	</div>
-</div> 
-
-<div class="modal fade" id="modalAddLocation" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-	<div class="modal-dialog">
-		<div class="modal-content">
-			<div class="modal-header">
-				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-				<h4 class="modal-title" id="myModalLabel"><#LANG_ADD_NEW_LOCATION#></h4>
-			</div> 
-			<div class="modal-body">
-				<form action="?" method="post" enctype="multipart/form-data" name="frmEdit"  class="form-horizontal">
-					<div class="form-group" style="margin-right: 0px;margin-left: 0px;">
-						<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_TITLE#>:<font color="red">*</font></label>
-						<div class="col-lg-10 col-md-8"><input type="text"  class="form-control [#if ERR_TITLE#]alert-danger[#endif#]"  name="title" value="[#TITLE#]" required="true"></div>
-					</div>
-					<div class="form-group" style="margin-right: 0px;margin-left: 0px;">
-						<label class="col-lg-2 col-md-4" style="max-width: 240px;float: left;padding: 5px 10px 0px 0px;text-align: right;"><#LANG_PRIORITY#>:<font color="red">*</font></label>
-						<div class="col-lg-10 col-md-8"><input type="text"  class="form-control"  name="priority" value="[#PRIORITY#]"></div>
-					</div>
-
-					<div class="form-group">
-						<div class="col-md-12 text-center">
-							<input type="submit" name="subm" class="btn btn-default btn-success"  value="<#LANG_ADD#>">
-						</div>
-					</div>
-					<input type="hidden" name="id" value="<#ID#>">
-					<input type="hidden" name="view_mode" value="edit_locations">
-					<input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-					<input type="hidden" name="mode" value="update">
-				</form>
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-default" data-dismiss="modal"><#LANG_CLOSE#></button>
-			</div>
-		</div>
-	</div>
-</div>
+[#endif RESULT#]

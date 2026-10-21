@@ -1,87 +1,106 @@
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-    <div class="col-md-6 col-sm-6 col-xs-7" style="margin-bottom: 15px;">
-		<div class="visible-sm visible-xs" style="margin-top: 5px;"></div>
-        <div class="btn-group">
-		  <button type="button" onclick="$('.status_1').show();$('.status_2').show();" class="btn btn-info">Any</button>
-		  <button type="button" onclick="$('.status_1').show();$('.status_2').hide();" class="btn btn-success">Online</button>
-		  <button type="button" onclick="$('.status_2').show();$('.status_1').hide();" class="btn btn-danger">Offline</button>
-		</div>
-    </div>
-	<div class="col-md-6 col-sm-6 col-xs-5 text-right" style="margin-bottom: 15px;">
-        <div class="visible-sm visible-xs" style="margin-top: 5px;"></div>
-        <a href="?view_mode=edit_pinghosts" class="btn btn-success"><i class="glyphicon glyphicon-plus"></i>
-            <#LANG_ADD#>
-        </a>
-    </div>
-</div>
+<!--#
+ @version 0.3 (auto-set)
+#-->
+
 [#if RESULT#]
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-    <div class="col-md-12" style="margin-bottom: 15px;">
-        [#if RESULT#]
-
-        [#if PAGES#]
-        <center>
-            <ul class="pagination">
-                [#begin PREVPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
-                [#begin PAGES#]
-                <li [#if SELECTED#]class="active" [#endif#]><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
-                [#end PAGES#]
-                [#begin NEXTPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
-            </ul>
-        </center>
-        [#endif PAGES#]
-
-        <form action="?" method="post" name="frmList_pinghosts" style="padding:0px">
-			<ul class="list-group" id="">
-				[#begin RESULT#]
-				<li class="list-group-item status_[#STATUS#]" >
-					[#if STATUS="1"#]<i onmouseout="$('#statusUpdate_[#ID#]').hide();$('#statusUpdateTitle_[#ID#]').show();" onmouseover="$('#statusUpdate_[#ID#]').show();$('#statusUpdateTitle_[#ID#]').hide();" class="glyphicon glyphicon glyphicon-ok-sign text-success" style="font-size: 2rem;margin-right: 10px;vertical-align: sub;"></i>[#endif#]
-					[#if STATUS="2"#]<i onmouseout="$('#statusUpdate_[#ID#]').hide();$('#statusUpdateTitle_[#ID#]').show();" onmouseover="$('#statusUpdate_[#ID#]').show();$('#statusUpdateTitle_[#ID#]').hide();" class="glyphicon glyphicon-remove-circle text-danger" style="font-size: 2rem;margin-right: 10px;vertical-align: sub;"></i>[#endif#]
-					[#if STATUS="0"#]<i onmouseout="$('#statusUpdate_[#ID#]').hide();$('#statusUpdateTitle_[#ID#]').show();" onmouseover="$('#statusUpdate_[#ID#]').show();$('#statusUpdateTitle_[#ID#]').hide();" class="glyphicon glyphicon-refresh  text-primary" style="font-size: 2rem;margin-right: 10px;vertical-align: sub;"></i>[#endif#]
-					
-					
-					[#if TITLE!=""#]<b>[#TITLE#]</b>[#endif#]
-					<span id="statusUpdateTitle_[#ID#]">
-						<i style="margin: 0px;color: gray;font-size: 1.2rem;">[#HOSTNAME#]</i>
-					</span>
-					<i id="statusUpdate_[#ID#]" style="margin: 0px;color: gray;font-size: 1.2rem;display:none;">Last check: [#CHECK_LATEST#], next check: [#CHECK_NEXT#]</i>
-					
-					
-					<span class="badge" id="btnAction" style="background: transparent;margin-top: -4px;">
-						<a href="?view_mode=edit_pinghosts&id=[#ID#]" class="btn btn-success btn-xs"><i class="glyphicon glyphicon-pencil"></i></a>
-						<a href="?view_mode=delete_pinghosts&id=[#ID#]" class="btn btn-danger btn-xs" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-remove"></i></a>
-					</span>
-				</li>
-				[#end RESULT#]
-			</ul>
-			
-			<input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
-			<input type="hidden" name="view_mode" value="multiple_pinghosts">
-        </form>
-
-        [#if PAGES#]
-        <center>
-            <ul class="pagination">
-                [#begin PREVPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
-                [#begin PAGES#]
-                <li [#if SELECTED#]class="active" [#endif#]><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
-                [#end PAGES#]
-                [#begin NEXTPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
-            </ul>
-        </center>
-        [#endif PAGES#]
-
-        [#else RESULT#]
-        <div class="alert alert-danger">
-            <#LANG_NO_RECORDS_FOUND#>
+<div class="md-table-wrap md-ping-table-wrap" data-md-table data-md-table-page-size="25" data-md-table-unit="хостов" data-md-table-unit-one="хост" data-md-table-unit-few="хоста" data-md-table-unit-many="хостов">
+    <div class="md-table__toolbar">
+        <div class="md-table__search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" data-md-table-search placeholder="Поиск по названию, хосту и объекту" aria-label="Поиск хостов" autocomplete="off">
         </div>
-        [#endif RESULT#]
+        <select class="md-table__filter" data-md-table-filter="status" aria-label="Фильтр по статусу">
+            <option value="">Все статусы</option>
+            <option value="1"[#if STATUS="1"#] selected[#endif#]>Онлайн</option>
+            <option value="2"[#if STATUS="2"#] selected[#endif#]>Офлайн</option>
+            <option value="0"[#if STATUS="0"#] selected[#endif#]>Не проверялись</option>
+        </select>
+        <div class="md-table__meta" data-md-table-meta>Хостов: [#HOSTS_TOTAL#]</div>
+    </div>
+
+    <div class="md-table__scroll">
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">
+                        <button type="button" class="md-table__sort" data-md-table-sort="title">Устройство <i class="ti ti-arrows-up-down" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col">Тип</th>
+                    <th scope="col">Проверки</th>
+                    <th scope="col">Привязка</th>
+                    <th scope="col" class="text-end"><span class="md-visually-hidden"><#LANG_ACTIONS#></span></th>
+                </tr>
+            </thead>
+            <tbody data-md-table-body>
+                [#begin RESULT#]
+                <tr data-md-row data-row-id="[#ID#]" data-status="[#STATUS#]" data-sort-title="[#TITLE#]" data-search="[#TITLE#] [#HOSTNAME#] [#TYPE_TITLE#] [#STATUS_LABEL#] [#LINK#]">
+                    <td class="md-ping-col-device">
+                        <div class="md-table__name md-ping-cell">
+                            <span class="md-table__icon"><i class="ti ti-[#TYPE_ICON#]" aria-hidden="true"></i></span>
+                            <div class="md-ping-cell__body">
+                                <a href="?view_mode=edit_pinghosts&id=[#ID#]"><strong>[#if TITLE!=""#][#TITLE#][#else#][#HOSTNAME#][#endif#]</strong></a>
+                                <small class="md-ping-host"><i class="ti ti-world" aria-hidden="true"></i>[#HOSTNAME#]</small>
+                                <span class="md-ping-cell__meta">
+                                    <span class="md-status md-status--[#STATUS_STATE#]"><span class="md-status__dot" aria-hidden="true"></span><span class="md-status__label">[#STATUS_LABEL#]</span></span>
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="md-ping-col-type">
+                        <span class="md-badge md-badge--[#TYPE_TONE#]" title="[#TYPE_TITLE#]"><i class="ti ti-[#TYPE_ICON#]" aria-hidden="true"></i>[#TYPE_LABEL#]</span>
+                    </td>
+                    <td class="md-ping-col-checks">
+                        <div class="md-ping-checks">
+                            <span title="[#CHECK_LATEST#]"><i class="ti ti-clock" aria-hidden="true"></i>Проверен: <strong>[#CHECK_LATEST_HUMAN#]</strong></span>
+                            <span title="[#CHECK_NEXT#]"><i class="ti ti-clock-play" aria-hidden="true"></i>Следующая: <strong>[#CHECK_NEXT_HUMAN#]</strong></span>
+                            <span class="md-ping-checks__interval">Интервалы: [#ONLINE_INTERVAL_EFFECTIVE#] / [#OFFLINE_INTERVAL_EFFECTIVE#] сек</span>
+                        </div>
+                    </td>
+                    <td class="md-ping-col-link">
+                        [#if LINK!=""#]
+                        <span class="md-badge md-badge--outline md-ping-link" title="[#LINK#]"><i class="ti ti-link" aria-hidden="true"></i>[#LINK#]</span>
+                        [#else#]
+                        <span class="md-tree-empty">—</span>
+                        [#endif#]
+                    </td>
+                    <td class="md-ping-col-actions">
+                        <div class="md-table__actions">
+                            <a href="?view_mode=edit_pinghosts&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="<#LANG_EDIT#>" aria-label="<#LANG_EDIT#>">
+                                <i class="ti ti-pencil" aria-hidden="true"></i>
+                            </a>
+                            <a href="?view_mode=delete_pinghosts&id=[#ID#]" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить хост [#HOSTNAME#]" data-md-confirm="Удалить хост [#HOSTNAME#]?">
+                                <i class="ti ti-trash" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                [#end RESULT#]
+            </tbody>
+        </table>
+    </div>
+
+    <div class="md-table__empty" data-md-table-empty>
+        <div class="md-empty md-empty--compact">
+            <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+            <div class="md-empty__title">Ничего не найдено</div>
+            <p class="md-empty__text">Измените запрос или фильтр по статусу.</p>
+        </div>
+    </div>
+
+    <div class="md-table__footer">
+        <span data-md-table-count>Показано [#HOSTS_TOTAL#] из [#HOSTS_TOTAL#]</span>
+        <ul class="pagination md-pagination mb-0" data-md-table-pagination></ul>
     </div>
 </div>
 [#else RESULT#]
-<p>
-<div class="alert alert-danger">
-    <#LANG_NO_RECORDS_FOUND#>
+<div class="md-empty">
+    <span class="md-empty__icon"><i class="ti ti-wifi" aria-hidden="true"></i></span>
+    <div class="md-empty__title">Хостов пока нет</div>
+    <p class="md-empty__text">Добавьте хост, URL или порт, чтобы следить за доступностью и запускать действия при смене статуса.</p>
+    <div class="md-empty__actions">
+        <a href="?view_mode=edit_pinghosts" class="md-btn md-btn--primary md-btn--sm">
+            <i class="ti ti-plus" aria-hidden="true"></i>Добавить хост
+        </a>
+    </div>
 </div>
-</p>
 [#endif RESULT#]

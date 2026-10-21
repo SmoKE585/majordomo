@@ -1,272 +1,364 @@
-<a href="<#ROOTHTML#>panel/mqtt.html" class="md-mqtt-topic-backdrop" aria-hidden="true"></a>
-<aside class="md-mqtt-topic-drawer md-mqtt-topic-drawer--open" aria-label="Редактор MQTT-топика">
-    <div class="md-mqtt-topic-drawer__header">
-        <div class="md-mqtt-topic-drawer__headline">
-            <div class="md-mqtt-topic-drawer__eyebrow">MQTT</div>
-            <h1 class="md-mqtt-topic-drawer__title">
-                [#if ID!=""#]Редактирование топика[#else#]Новый топик[#endif#]
-            </h1>
-            <div class="md-mqtt-topic-drawer__subtitle">
-                [#if PATH!=""#][#PATH#][#else#]Путь топика пока не задан[#endif#]
-            </div>
-        </div>
-
-        <div class="md-mqtt-topic-drawer__actions">
-            <a href="<#ROOTHTML#>panel/mqtt.html" class="btn btn-light" aria-label="<#LANG_CLOSE#>">
-                <i class="glyphicon glyphicon-remove"></i> <#LANG_CLOSE#>
-            </a>
-        </div>
-    </div>
-
-    <div class="md-mqtt-topic-drawer__body">
-        <div class="md-mqtt-topic-page">
-            <section class="md-admin-section-card md-admin-form-card md-mqtt-topic-hero">
-                <div class="md-admin-section-card__body">
-                    [#if OK#]
-                    <div class="alert alert-success">
-                        <#LANG_DATA_SAVED#>
-                    </div>
-                    [#endif OK#]
-                    [#if ERR#]
-                    <div class="alert alert-danger">
-                        <#LANG_FILLOUT_REQURED#>
-                    </div>
-                    [#endif ERR#]
-
-                    <div class="md-mqtt-topic-hero__layout">
-                        <div class="md-mqtt-topic-hero__main">
-                            <div class="md-mqtt-topic-hero__eyebrow">Сводка</div>
-                            <div class="md-mqtt-topic-hero__summary">
-                                [#if ID!=""#]Путь, привязки и правила записи собраны на одном экране.[#else#]Создайте топик и сразу задайте способ записи и привязку к объекту.[#endif#]
-                            </div>
-                            <div class="md-mqtt-topic-hero__chips">
-                                [#if PATH_WRITE!=""#]<span class="md-mqtt-chip">Запись: <strong>[#PATH_WRITE#]</strong></span>[#endif#]
-                                <span class="md-mqtt-chip">QoS: <strong>[#QOS#]</strong></span>
-                                <span class="md-mqtt-chip">Retain: <strong>[#if RETAIN="1" #]да[#else#]нет[#endif#]</strong></span>
-                                <span class="md-mqtt-chip">Только новое: <strong>[#if ONLY_NEW_VALUE="1" #]да[#else#]нет[#endif#]</strong></span>
-                                <span class="md-mqtt-chip">Логирование: <strong>[#if LOGGING="1" #]включено[#else#]выключено[#endif#]</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <div class="md-mqtt-topic-page__layout">
-                <section class="md-admin-section-card md-admin-form-card">
-                    <div class="md-admin-section-card__body">
-                        <div class="md-mqtt-topic-section">
-                            <div class="md-mqtt-topic-section__title">Основные параметры</div>
-                            <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid md-mqtt-topic-form">
-                                    <div class="md-mqtt-topic-group">
-                                        <h3 class="md-mqtt-topic-group__title">Маршрут и запись</h3>
-                                        <div class="row g-3 align-items-start">
-                                            <div class="col-lg-8">
-                                                <label class="form-label"><#LANG_PATH#> <span class="text-danger">*</span></label>
-                                                <input type="text" name="path" value="[#PATH#]" class="form-control" required>
-                                                [#if ERR_PATH#]<div class="invalid-feedback d-block"><#LANG_PATH#></div>[#endif#]
-                                            </div>
-                                            <div class="col-lg-4">
-                                                <label class="form-label"><#LANG_LOCATION#></label>
-                                                [#if IS_SET_LOCATION_ID#]
-                                                <input type="text" class="form-control" value="<#LOCATION_ID#>" disabled>
-                                                [#else#]
-                                                <select name="location_id" class="form-control form-select">
-                                                    <option value="">не выбрано</option>
-                                                    [#begin LOCATION_ID_OPTIONS#]
-                                                    <option value="[#ID#]" [#if SELECTED#] selected[#endif#]>[#TITLE#]</option>
-                                                    [#end LOCATION_ID_OPTIONS#]
-                                                </select>
-                                                [#endif#]
-                                            </div>
-                                        </div>
-
-                                        <div class="row g-3 align-items-start mt-1">
-                                            <div class="col-lg-8">
-                                                <label class="form-label"><#LANG_PATH#> для записи</label>
-                                                <input type="text" name="path_write" value="[#PATH_WRITE#]" class="form-control" placeholder="Оставьте пустым, если писать в тот же топик">
-                                            </div>
-                                            <div class="col-lg-4">
-                                                <label class="form-label">Метод записи</label>
-                                                <div class="pt-2 md-mqtt-radio-stack">
-                                                    <label class="radio-inline"><input type="radio" name="write_type" value="0" [#if WRITE_TYPE="0"#] checked[#endif#]> По умолчанию</label>
-                                                    <label class="radio-inline"><input type="radio" name="write_type" value="1" [#if WRITE_TYPE="1"#] checked[#endif#]> Новое соединение</label>
-                                                    <label class="radio-inline"><input type="radio" name="write_type" value="2" [#if WRITE_TYPE="2"#] checked[#endif#]> Очередь</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="md-mqtt-topic-group">
-                                        <h3 class="md-mqtt-topic-group__title">Параметры доставки</h3>
-                                        <div class="row g-3 align-items-start">
-                                            <div class="col-lg-4">
-                                                <label class="form-label">Только чтение</label>
-                                                <div class="pt-2 md-mqtt-radio-stack">
-                                                    <label class="radio-inline"><input type="radio" name="readonly" value="1" [#if READONLY="1" #] checked[#endif#]> Да</label>
-                                                    <label class="radio-inline"><input type="radio" name="readonly" value="0" [#if READONLY!="1" #] checked[#endif#]> Нет</label>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-4">
-                                                <label class="form-label">QoS</label>
-                                                <div class="pt-2 md-mqtt-radio-stack">
-                                                    <label class="radio-inline"><input type="radio" name="qos" value="0" [#if QOS="0" #] checked[#endif#]> 0</label>
-                                                    <label class="radio-inline"><input type="radio" name="qos" value="1" [#if QOS="1" #] checked[#endif#]> 1</label>
-                                                    <label class="radio-inline"><input type="radio" name="qos" value="2" [#if QOS="2" #] checked[#endif#]> 2</label>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-4">
-                                                <label class="form-label">Retain</label>
-                                                <div class="pt-2 md-mqtt-radio-stack">
-                                                    <label class="radio-inline"><input type="radio" name="retain" value="1" [#if RETAIN="1" #] checked[#endif#]> Да</label>
-                                                    <label class="radio-inline"><input type="radio" name="retain" value="0" [#if RETAIN!="1" #] checked[#endif#]> Нет</label>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row g-3 align-items-start mt-1">
-                                            <div class="col-lg-4">
-                                                <label class="form-label">Только новое значение</label>
-                                                <div class="pt-2">
-                                                    <label class="checkbox-inline">
-                                                        <input type="checkbox" name="only_new_value" value="1" [#if ONLY_NEW_VALUE="1" #]checked[#endif#]>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-4">
-                                                <label class="form-label">Подробное логирование</label>
-                                                <div class="pt-2">
-                                                    <label class="checkbox-inline">
-                                                        <input type="checkbox" name="logging" value="1" [#if LOGGING="1" #]checked[#endif#]>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-4">
-                                                <label class="form-label">Текущее значение</label>
-                                                <div class="md-mqtt-value-box">
-                                                    <span id="mqtt[#ID#]" class="mqtt_value">[#VALUE#]</span>
-                                                    <small>Обновлено: [#UPDATED#]</small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="md-mqtt-topic-group">
-                                        <h3 class="md-mqtt-topic-group__title">Управление значением</h3>
-                                        <div class="row g-3 align-items-start">
-                                            <div class="col-lg-3">
-                                                <div class="md-mqtt-toggle-field">
-                                                <label class="form-label"><#LANG_SET#></label>
-                                                <div class="md-mqtt-toggle-field__control">
-                                                    <label class="checkbox-inline">
-                                                        <input type="checkbox" name="set_new_value" value="1">
-                                                    </label>
-                                                </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-9">
-                                                <label class="form-label">Установить значение</label>
-                                                <input type="text" name="new_value" value="" class="form-control" placeholder="Введите новое значение">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="md-mqtt-topic-group">
-                                        <h3 class="md-mqtt-topic-group__title">Привязка к объекту</h3>
-                                        [#module name="linkedobject" object_field="linked_object" property_field="linked_property" method_field="linked_method" width="100%"#]
-                                    </div>
-
-                                    <div class="md-mqtt-topic-group">
-                                        <h3 class="md-mqtt-topic-group__title">Преобразование значений</h3>
-                                        <div class="row g-3 align-items-start">
-                                            <div class="col-lg-12">
-                                                <label class="form-label">Список замен</label>
-                                                <input type="text" name="replace_list" id="replace_list" value="[#REPLACE_LIST#]" class="form-control" placeholder="например: on=1,off=0">
-                                                <div class="d-flex flex-wrap gap-2 mt-2">
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-md-mqtt-replace-value="on=1,off=0">ON=1, OFF=0</button>
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-md-mqtt-replace-value="1=on,0=off">1=ON, 0=OFF</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="md-admin-form-actions">
-                                        [#if ID!=""#]
-                                        <button class="btn btn-primary" type="submit" name="subm">
-                                            <i class="glyphicon glyphicon-floppy-saved"></i> Сохранить
-                                        </button>
-                                        [#else ID#]
-                                        <button class="btn btn-primary" type="submit" name="subm">
-                                            <i class="glyphicon glyphicon-floppy-saved"></i> Добавить
-                                        </button>
-                                        [#endif ID#]
-                                        <a href="<#ROOTHTML#>panel/mqtt.html" class="btn btn-outline-secondary">
-                                            <i class="glyphicon glyphicon-remove"></i> Отмена
-                                        </a>
-                                        [#if ID!=""#]
-                                        <a href="?view_mode=delete_mqtt&id=[#ID#]" class="btn btn-outline-danger ms-auto" data-md-confirm="Удалить этот MQTT-топик?">
-                                            <i class="glyphicon glyphicon-trash"></i> <#LANG_DELETE#>
-                                        </a>
-                                        [#endif#]
-                                        <input type="hidden" name="id" value="<#ID#>">
-                                        <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-                                        <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-                                        <input type="hidden" name="mode" value="update">
-                                    </div>
-                            </form>
-                        </div>
-                    </div>
-                </section>
-
-                [#if CHILDS#]
-                <section class="md-admin-section-card md-admin-form-card">
-                    <div class="md-admin-section-card__body">
-                        <div class="md-mqtt-topic-section">
-                            <div class="md-mqtt-topic-section__title">Дочерние топики</div>
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover align-middle">
-                                    <thead>
-                                    <tr>
-                                        <th>Путь</th>
-                                        <th>Значение</th>
-                                        <th>Обновлено</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    [#begin CHILDS#]
-                                    <tr>
-                                        <td><a href="?view_mode=edit_mqtt&id=[#ID#]">[#PATH#]</a></td>
-                                        <td><span id="mqtt[#ID#]" class="mqtt_value">[#VALUE#]</span></td>
-                                        <td><span id="mqtt[#ID#]" class="mqtt_updated">[#UPDATED#]</span></td>
-                                    </tr>
-                                    [#end CHILDS#]
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+<!--#
+ @version 0.5 (auto-set)
+#-->
+<div class="md-ui-page md-ui-page--stack md-mqtt-page md-mqtt-edit-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-radio" aria-hidden="true"></i>MQTT · топик</div>
+            <h1 class="md-ui-hero__title">[#TITLE_DISPLAY#]</h1>
+            <p class="md-ui-hero__lede">[#if ID!=""#]Маршрут, привязка к объекту и публикация значения в одном месте.[#else#]Создайте топик, задайте путь и привяжите его к объекту.[#endif#]</p>
+            [#if ID!=""#]
+            <div class="md-ui-hero__meta">
+                <span class="md-mqtt-freshness md-mqtt-freshness--[#FRESHNESS#]"><span class="md-mqtt-freshness__dot"></span>[#UPDATED_HUMAN#]</span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-code" aria-hidden="true"></i><code>[#PATH_FULL#]</code></span>
+                [#if HAS_LINK="1"#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-link" aria-hidden="true"></i><strong>[#LINKED_DEVICE#]</strong>[#if LINKED_TARGET!=""#] · [#LINKED_KIND#]: [#LINKED_TARGET#][#endif#]</span>
+                [#endif#]
+                [#if LOCATION_TITLE!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-map-pin" aria-hidden="true"></i>[#LOCATION_TITLE#]</span>
+                [#endif#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-arrows-exchange" aria-hidden="true"></i>QoS [#QOS#][#if RETAIN="1"#] · retain[#endif#]</span>
+                [#if HAS_WRITE="1"#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-send" aria-hidden="true"></i>Запись: <strong>[#if IS_HTTP_WRITE="1"#]HTTP[#else#][#WRITE_DISPLAY#][#endif#]</strong></span>
                 [#endif#]
             </div>
+            [#endif#]
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_mqtt" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label">К топикам</span>
+            </a>
+            [#if ID!=""#]
+            <a href="?view_mode=delete_mqtt&id=[#ID#]" class="md-btn md-btn--ghost" data-md-confirm="Удалить топик [#PATH_FULL#]?">
+                <i class="ti ti-trash" aria-hidden="true"></i><span class="md-btn__label">Удалить</span>
+            </a>
+            [#endif#]
+        </div>
+    </header>
+
+    [#if OK#]
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body">
+            <div class="md-alert__title">[#if PUBLISHED="1"#]Сохранено, значение опубликовано[#else#]Топик сохранён[#endif#]</div>
+            [#if PUBLISHED="1"#]<div class="md-alert__text">Значение отправлено в MQTT и обновлено в привязанном объекте.</div>[#endif#]
         </div>
     </div>
-</aside>
+    [#endif#]
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.body.classList.add('md-mqtt-topic-open');
+    [#if ERR#]
+    <div class="md-alert md-alert--danger" role="alert">
+        <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body">
+            <div class="md-alert__title">Не удалось сохранить топик</div>
+            <div class="md-alert__text">[#if ERR_PATH#]Укажите путь MQTT-топика.[#else#]Проверьте заполнение формы.[#endif#]</div>
+        </div>
+    </div>
+    [#endif#]
 
-        var replaceInput = document.getElementById('replace_list');
-        if (!replaceInput) {
-            return;
-        }
+    <form action="?" method="post" name="frmEdit" class="md-ui-form" data-md-mqtt-edit-form>
+        <div class="md-mqtt-edit-layout">
+            <div class="md-mqtt-edit-main">
+                <section class="md-card" aria-labelledby="mdMqttTopicTitle">
+                    <header class="md-card__head">
+                        <div class="md-card__titles">
+                            <div class="md-card__eyebrow">Маршрут</div>
+                            <h2 class="md-card__title" id="mdMqttTopicTitle"><i class="ti ti-code" aria-hidden="true"></i>Топик</h2>
+                            <p class="md-card__subtitle">Путь чтения и, при необходимости, отдельный путь для записи.</p>
+                        </div>
+                        [#if HAS_WRITE="1"#]<div class="md-card__actions"><span class="md-badge md-badge--info"><i class="ti ti-send" aria-hidden="true"></i>запись</span></div>[#endif#]
+                    </header>
+                    <div class="md-card__body">
+                        <div class="md-ui-form-stack">
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttTitle">Название</label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttTitle" class="md-input" name="title" value="[#TITLE#]" maxlength="255" autocomplete="off" placeholder="Например, Яркость в гостиной">
+                                </div>
+                                <div class="md-field__hint">Необязательно. Если пусто, используется последний сегмент пути.</div>
+                            </div>
 
-        document.querySelectorAll('[data-md-mqtt-replace-value]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                replaceInput.value = button.getAttribute('data-md-mqtt-replace-value') || '';
-                replaceInput.focus();
-                replaceInput.dispatchEvent(new Event('input', { bubbles: true }));
-                replaceInput.dispatchEvent(new Event('change', { bubbles: true }));
-            });
-        });
-    });
-</script>
+                            <div class="md-field [#if ERR_PATH#]is-invalid[#endif#]">
+                                <label class="md-field__label" for="mdMqttPath">Путь топика<span class="md-field__req" aria-hidden="true">*</span></label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttPath" class="md-input [#if ERR_PATH#]is-invalid[#endif#]" name="path" value="[#PATH#]" required autocomplete="off" placeholder="home/livingroom/light/state">
+                                </div>
+                                [#if ERR_PATH#]
+                                <div class="md-field__error" role="alert"><i class="ti ti-alert-circle" aria-hidden="true"></i><span>Укажите путь топика.</span></div>
+                                [#else#]
+                                <div class="md-field__hint">Полный MQTT-путь, например <code>home/livingroom/light/state</code>.</div>
+                                [#endif#]
+                            </div>
+
+                            <div class="md-field">
+                                <label class="md-field__label" for="mdMqttPathWrite">Путь для записи</label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttPathWrite" class="md-input" name="path_write" value="[#PATH_WRITE#]" autocomplete="off" placeholder="Оставьте пустым, чтобы писать в тот же топик">
+                                </div>
+                                <div class="md-field__hint">Можно указать другой MQTT-топик или HTTP URL с <code>%VALUE%</code>.</div>
+                            </div>
+
+                            <div class="md-ui-form-grid">
+                                <div class="md-field">
+                                    <label class="md-field__label" for="mdMqttLocation">Локация</label>
+                                    <div class="md-field__control">
+                                        <select id="mdMqttLocation" class="md-select" name="location_id">
+                                            <option value="">Не выбрана</option>
+                                            [#begin LOCATION_OPTIONS#]
+                                            <option value="[#ID#]" [#if SELECTED="1"#]selected[#endif#]>[#TITLE#]</option>
+                                            [#end LOCATION_OPTIONS#]
+                                        </select>
+                                    </div>
+                                    <div class="md-field__hint">Используется для фильтра в списке топиков.</div>
+                                </div>
+                                <div class="md-field">
+                                    <label class="md-field__label" for="mdMqttWriteType">Способ записи</label>
+                                    <div class="md-field__control">
+                                        <select id="mdMqttWriteType" class="md-select" name="write_type">
+                                            <option value="0" [#if WRITE_TYPE="0"#]selected[#endif#]>Как в настройках модуля</option>
+                                            <option value="1" [#if WRITE_TYPE="1"#]selected[#endif#]>Новое соединение</option>
+                                            <option value="2" [#if WRITE_TYPE="2"#]selected[#endif#]>Через очередь</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="md-card" aria-labelledby="mdMqttLinkTitle">
+                    <header class="md-card__head">
+                        <div class="md-card__titles">
+                            <div class="md-card__eyebrow">Интеграция</div>
+                            <h2 class="md-card__title" id="mdMqttLinkTitle"><i class="ti ti-link" aria-hidden="true"></i>Привязка к объекту</h2>
+                            <p class="md-card__subtitle">Свойство получает входящие значения, метод может обрабатывать изменения.</p>
+                        </div>
+                    </header>
+                    <div class="md-card__body">
+                        [#module name="linkedobject" object_field="linked_object" property_field="linked_property" method_field="linked_method" width="100%"#]
+                    </div>
+                </section>
+
+                <section class="md-card" aria-labelledby="mdMqttBehaviorTitle">
+                    <header class="md-card__head">
+                        <div class="md-card__titles">
+                            <div class="md-card__eyebrow">Обработка</div>
+                            <h2 class="md-card__title" id="mdMqttBehaviorTitle"><i class="ti ti-adjustments" aria-hidden="true"></i>Поведение</h2>
+                            <p class="md-card__subtitle">Доставка, фильтрация повторов и преобразование значений.</p>
+                        </div>
+                    </header>
+                    <div class="md-card__body">
+                        <div class="md-ui-form-stack">
+                            <div class="md-ui-form-grid">
+                                <div class="md-field">
+                                    <label class="md-field__label" for="mdMqttQos">QoS</label>
+                                    <div class="md-field__control">
+                                        <select id="mdMqttQos" class="md-select" name="qos">
+                                            <option value="0" [#if QOS="0"#]selected[#endif#]>0 — максимум один раз</option>
+                                            <option value="1" [#if QOS="1"#]selected[#endif#]>1 — минимум один раз</option>
+                                            <option value="2" [#if QOS="2"#]selected[#endif#]>2 — ровно один раз</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="md-field">
+                                    <label class="md-field__label" for="mdMqttReplace">Список замен</label>
+                                    <div class="md-field__control">
+                                        <input type="text" id="mdMqttReplace" class="md-input" name="replace_list" value="[#REPLACE_LIST#]" autocomplete="off" placeholder="например: on=1,off=0">
+                                    </div>
+                                    <div class="md-field__hint">Пары <code>значение=замена</code> через запятую.</div>
+                                </div>
+                            </div>
+
+                            <div class="md-mqtt-preset-row" data-md-mqtt-replace-presets>
+                                <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-md-mqtt-replace-value="on=1,off=0">ON=1, OFF=0</button>
+                                <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-md-mqtt-replace-value="1=on,0=off">1=ON, 0=OFF</button>
+                                <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-md-mqtt-replace-value="true=1,false=0">true=1, false=0</button>
+                            </div>
+
+                            <div class="md-ui-form-grid">
+                                <label class="md-check" for="mdMqttReadonly">
+                                    <input class="md-check__input" id="mdMqttReadonly" type="checkbox" name="readonly" value="1" data-md-raw-checkbox[#if READONLY="1"#] checked[#endif#]>
+                                    <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                                    <span class="md-check__text"><span class="md-check__label">Только чтение</span><span class="md-check__desc">Не публиковать изменения из объекта</span></span>
+                                </label>
+                                <label class="md-check" for="mdMqttRetain">
+                                    <input class="md-check__input" id="mdMqttRetain" type="checkbox" name="retain" value="1" data-md-raw-checkbox[#if RETAIN="1"#] checked[#endif#]>
+                                    <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                                    <span class="md-check__text"><span class="md-check__label">Retain</span><span class="md-check__desc">Сохранять последнее значение на брокере</span></span>
+                                </label>
+                                <label class="md-check" for="mdMqttOnlyNew">
+                                    <input class="md-check__input" id="mdMqttOnlyNew" type="checkbox" name="only_new_value" value="1" data-md-raw-checkbox[#if ONLY_NEW_VALUE="1"#] checked[#endif#]>
+                                    <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                                    <span class="md-check__text"><span class="md-check__label">Только новое значение</span><span class="md-check__desc">Игнорировать повторы</span></span>
+                                </label>
+                                <label class="md-check" for="mdMqttLogging">
+                                    <input class="md-check__input" id="mdMqttLogging" type="checkbox" name="logging" value="1" data-md-raw-checkbox[#if LOGGING="1"#] checked[#endif#]>
+                                    <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                                    <span class="md-check__text"><span class="md-check__label">Подробное логирование</span><span class="md-check__desc">Писать каждое сообщение в историю</span></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="md-mqtt-edit-side">
+                <section class="md-card md-mqtt-value-card" aria-labelledby="mdMqttValueTitle">
+                    <header class="md-card__head">
+                        <div class="md-card__titles">
+                            <div class="md-card__eyebrow">Состояние</div>
+                            <h2 class="md-card__title" id="mdMqttValueTitle"><i class="ti ti-wave-sine" aria-hidden="true"></i>Значение</h2>
+                        </div>
+                        <div class="md-card__actions">
+                            <span class="md-mqtt-freshness md-mqtt-freshness--[#FRESHNESS#]"><span class="md-mqtt-freshness__dot"></span>[#UPDATED_HUMAN#]</span>
+                        </div>
+                    </header>
+                    <div class="md-card__body">
+                        <div class="md-mqtt-current-value">
+                            <div class="md-mqtt-current-value__label">Последнее полученное</div>
+                            <div class="md-mqtt-current-value__text" data-md-mqtt-value="[#ID#]" title="[#VALUE_FULL#]">[#if VALUE_EMPTY="1"#]—[#else#][#VALUE_DISPLAY#][#endif#]</div>
+                            <div class="md-mqtt-current-value__meta">
+                                <span title="[#UPDATED_EXACT#]">[#UPDATED_EXACT#]</span>
+                                [#if ID!=""#]<span>· [#VALUE_LENGTH#] симв.</span>[#endif#]
+                            </div>
+                            [#if IS_LONG_VALUE="1"#]
+                            <details class="md-mqtt-value-details">
+                                <summary>Полное значение</summary>
+                                <pre>[#VALUE_FULL#]</pre>
+                            </details>
+                            [#endif#]
+                        </div>
+
+                        <div class="md-mqtt-publish">
+                            <label class="md-check" for="mdMqttSetNewValue">
+                                <input class="md-check__input" id="mdMqttSetNewValue" type="checkbox" name="set_new_value" value="1" data-md-raw-checkbox data-md-mqtt-publish-toggle>
+                                <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
+                                <span class="md-check__text"><span class="md-check__label">Опубликовать новое значение</span><span class="md-check__desc">После сохранения отправить в MQTT</span></span>
+                            </label>
+                            <div class="md-field" data-md-mqtt-publish-panel hidden>
+                                <label class="md-field__label" for="mdMqttNewValue">Новое значение</label>
+                                <div class="md-field__control">
+                                    <input type="text" id="mdMqttNewValue" class="md-input" name="new_value" value="" autocomplete="off" placeholder="Например, 1 или ON">
+                                </div>
+                                <div class="md-field__hint">[#if IS_HTTP_WRITE="1"#]Будет отправлен HTTP-запрос.[#else#]Будет опубликовано в MQTT-топик.[#endif#]</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <div class="md-ui-form-actions md-mqtt-form-actions">
+            <button type="submit" class="md-btn md-btn--primary" name="subm"><i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">[#if ID!=""#]Сохранить[#else#]Добавить топик[#endif#]</span></button>
+            <a href="?view_mode=search_mqtt" class="md-btn md-btn--secondary">Отмена</a>
+            [#if ID!=""#]
+            <a href="?view_mode=delete_mqtt&id=[#ID#]" class="md-btn md-btn--ghost ms-auto" data-md-confirm="Удалить топик [#PATH_FULL#]?"><i class="ti ti-trash" aria-hidden="true"></i>Удалить</a>
+            [#endif#]
+        </div>
+
+        <input type="hidden" name="id" value="[#ID#]">
+        <input type="hidden" name="view_mode" value="[#VIEW_MODE#]">
+        <input type="hidden" name="edit_mode" value="[#EDIT_MODE#]">
+        <input type="hidden" name="mode" value="update">
+        <input type="hidden" name="disp_flag" value="[#DISP_FLAG#]">
+    </form>
+
+    [#if ID!=""#]
+    <section class="md-card" aria-labelledby="mdMqttHistoryTitle">
+        <header class="md-card__head">
+            <div class="md-card__titles">
+                <div class="md-card__eyebrow">Диагностика</div>
+                <h2 class="md-card__title" id="mdMqttHistoryTitle"><i class="ti ti-history" aria-hidden="true"></i>История сообщений</h2>
+                <p class="md-card__subtitle">Последние входящие и исходящие сообщения этого топика.</p>
+            </div>
+            <div class="md-card__actions">
+                <span class="md-badge md-badge--outline">[#HISTORY_TOTAL#]</span>
+                [#if HISTORY_TOTAL>20#]<span class="md-field__hint">Показаны последние 20</span>[#endif#]
+            </div>
+        </header>
+        <div class="md-card__body">
+            [#if HISTORY#]
+            <div class="md-table-wrap">
+                <div class="md-table__scroll">
+                    <table class="md-table md-mqtt-history-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Направление</th>
+                                <th scope="col">Время</th>
+                                <th scope="col">Топик</th>
+                                <th scope="col">Payload</th>
+                                <th scope="col">Значение</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            [#begin HISTORY#]
+                            <tr>
+                                <td>
+                                    [#if DIRECTION="out"#]
+                                    <span class="md-badge md-badge--info"><i class="ti ti-arrow-up-right" aria-hidden="true"></i>исходящее</span>
+                                    [#else#]
+                                    <span class="md-badge md-badge--success"><i class="ti ti-arrow-down-left" aria-hidden="true"></i>входящее</span>
+                                    [#endif#]
+                                </td>
+                                <td><span title="[#UPDATED_EXACT#]">[#UPDATED_HUMAN#]</span><small class="md-mqtt-history-exact">[#UPDATED_EXACT#]</small></td>
+                                <td><code class="md-mqtt-history-topic" title="[#TOPIC_FULL#]">[#TOPIC_DISPLAY#]</code></td>
+                                <td><code class="md-mqtt-history-payload" title="[#PAYLOAD_FULL#]">[#PAYLOAD_DISPLAY#]</code></td>
+                                <td>
+                                    <strong>[#VALUE_DISPLAY#]</strong>
+                                    [#if LINKED_DATA!=""#]<small class="md-mqtt-history-linked">[#LINKED_DATA#]</small>[#endif#]
+                                </td>
+                            </tr>
+                            [#end HISTORY#]
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            [#else#]
+            <div class="md-empty md-empty--compact">
+                <span class="md-empty__icon"><i class="ti ti-history" aria-hidden="true"></i></span>
+                <div class="md-empty__title">Истории пока нет</div>
+                <p class="md-empty__text">Сообщения появятся здесь, когда топик начнёт получать или отправлять значения.</p>
+            </div>
+            [#endif#]
+        </div>
+    </section>
+
+    [#if CHILDS#]
+    <section class="md-card" aria-labelledby="mdMqttChildrenTitle">
+        <header class="md-card__head">
+            <div class="md-card__titles">
+                <div class="md-card__eyebrow">Вложенные пути</div>
+                <h2 class="md-card__title" id="mdMqttChildrenTitle"><i class="ti ti-binary-tree" aria-hidden="true"></i>Дочерние топики</h2>
+                <p class="md-card__subtitle">Записи, путь которых начинается с текущего.</p>
+            </div>
+            <div class="md-card__actions"><span class="md-badge md-badge--outline">[#CHILDS_TOTAL#]</span></div>
+        </header>
+        <div class="md-card__body">
+            <div class="md-table-wrap">
+                <div class="md-table__scroll">
+                    <table class="md-table">
+                        <thead>
+                            <tr><th scope="col">Топик</th><th scope="col">Значение</th><th scope="col">Обновлено</th><th scope="col" class="text-end"><span class="md-visually-hidden">Действия</span></th></tr>
+                        </thead>
+                        <tbody>
+                            [#begin CHILDS#]
+                            <tr>
+                                <td>
+                                    <a href="?view_mode=edit_mqtt&id=[#ID#]" class="md-mqtt-child-title">[#TITLE_DISPLAY#]</a>
+                                    <small class="md-mqtt-child-path" title="[#PATH_FULL#]">[#PATH_DISPLAY#]</small>
+                                </td>
+                                <td><span class="md-mqtt-value__text" data-md-mqtt-value="[#ID#]">[#VALUE_DISPLAY#]</span></td>
+                                <td><span class="md-mqtt-freshness md-mqtt-freshness--[#FRESHNESS#]"><span class="md-mqtt-freshness__dot"></span>[#UPDATED_HUMAN#]</span></td>
+                                <td class="text-end"><a href="?view_mode=edit_mqtt&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" aria-label="Открыть топик"><i class="ti ti-arrow-right" aria-hidden="true"></i></a></td>
+                            </tr>
+                            [#end CHILDS#]
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            [#if CHILDS_TOTAL>50#]<div class="md-field__hint">Показаны первые 50 из [#CHILDS_TOTAL#].</div>[#endif#]
+        </div>
+    </section>
+    [#endif#]
+    [#endif#]
+</div>

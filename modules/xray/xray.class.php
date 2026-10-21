@@ -293,54 +293,101 @@ class xray extends module
         $out['CYCLE'] = $service;
         $op = gr('op');
         $ajax = gr('ajax');
-        if ($ajax) {
-            $result = array('cycle' => $service);
-            $this->ensureCycleRuntimeTables();
 
+        if ($ajax) {
+            $this->ensureCycleRuntimeTables();
             if ($service != '' && ($op == 'start' || $op == 'stop' || $op == 'restart')) {
                 $this->queueCycleCommand($service, $op);
             }
 
+            $state = $this->getCycleState($service);
+            $result = array(
+                'cycle' => $service,
+                'UPDATED' => $state['updated'],
+                'STATUS' => $state['status'],
+                'STATUS_TEXT' => $this->getCycleStatusText($state['status']),
+                'ONLINE' => $state['online'] ? 1 : 0,
+                'BODY' => ($state['online'] ? '<font color="green">ONLINE</font>' : '<font color="red">OFFLINE</font>')
+                    . ($state['updated'] > 0 ? ' (' . date('Y-m-d H:i:s', $state['updated']) . ')' : '')
+                    . ($state['control'] !== '' ? ' ' . $state['control'] : '')
+                    . ' status: ' . htmlspecialchars($state['status']),
+            );
+
             header("HTTP/1.0 200 OK\n");
             header('Content-Type: application/json; charset=utf-8');
-
-            $updated = gg($service . 'Run');
-            $control = gg($service . 'Control');
-            $status = checkCycleFromCache($service . 'Status');
-            $statusUpdated = (int)checkCycleFromCache($service . 'StatusUpdated');
-            $cycleHangTimeout = 10 * 60;
-            if ((int)$updated > 0 && (time() - (int)$updated) < $cycleHangTimeout) {
-                $status = 'running';
-            } elseif ((int)$updated > 0) {
-                $status = 'hang';
-            } elseif ($status == 'starting' && $statusUpdated > 0 && (time() - $statusUpdated) < $cycleHangTimeout) {
-                $status = 'starting';
-            } elseif ($status == 'stopping' && $statusUpdated > 0 && (time() - $statusUpdated) < $cycleHangTimeout) {
-                $status = 'stopping';
-            } else {
-                $status = 'stopped';
-            }
-            $result['UPDATED'] = $updated;
-            $result['STATUS'] = $status;
-            if ((time() - (int)$updated < $cycleHangTimeout)) {
-                $result['ONLINE'] = 1;
-                $result['BODY'] = '<font color="green">ONLINE</font>';
-            } else {
-                $result['ONLINE'] = 0;
-                $result['BODY'] = '<font color="red">OFFLINE</font>';
-            }
-            if ($updated != '') {
-                $result['BODY'] .= ' (' . date('Y-m-d H:i:s', $updated) . ')';
-            }
-            if ($control != '') {
-                $result['BODY'] .= ' ' . $control;
-            }
-            $result['BODY'] .= ' status: ' . htmlspecialchars($status);
-
-
             echo json_encode($result);
             exit;
         }
+
+        if ($service !== '') {
+            require_once(ROOT . 'lib/ui/MDJUI.php');
+            $state = $this->getCycleState($service);
+            $updatedLabel = $state['updated'] > 0 ? date('d.m.Y H:i:s', $state['updated']) : '';
+            $autoRestart = gg($service . 'AutoRestart');
+            $autoRestart = ($autoRestart === '' || $autoRestart === null) ? null : (bool)$autoRestart;
+            $out['CYCLE_WIDGET'] = MDJUI::cycleCard(array(
+                'name' => $service,
+                'label' => 'Состояние цикла',
+                'status' => $state['status'],
+                'status_text' => $this->getCycleStatusText($state['status']),
+                'online' => $state['online'],
+                'updated' => $updatedLabel,
+                'auto_restart' => $autoRestart,
+                'compact' => true,
+                'poll' => true,
+                'endpoint' => ROOTHTML . 'ajax/xray.html?action=service',
+            ));
+        }
+    }
+
+    /**
+     * Resolve a cycle runtime state from the same source used by the X-Ray grid.
+     *
+     * @param string $service
+     * @return array{status:string,updated:int,online:bool,control:string}
+     */
+    private function getCycleState($service)
+    {
+        $updated = (int)gg($service . 'Run');
+        $control = (string)gg($service . 'Control');
+        $status = checkCycleFromCache($service . 'Status');
+        $statusUpdated = (int)checkCycleFromCache($service . 'StatusUpdated');
+        $cycleHangTimeout = 10 * 60;
+
+        if ($updated > 0 && (time() - $updated) < $cycleHangTimeout) {
+            $status = 'running';
+        } elseif ($updated > 0) {
+            $status = 'hang';
+        } elseif ($status == 'starting' && $statusUpdated > 0 && (time() - $statusUpdated) < $cycleHangTimeout) {
+            $status = 'starting';
+        } elseif ($status == 'stopping' && $statusUpdated > 0 && (time() - $statusUpdated) < $cycleHangTimeout) {
+            $status = 'stopping';
+        } else {
+            $status = 'stopped';
+        }
+
+        return array(
+            'status' => $status,
+            'updated' => $updated,
+            'online' => $updated > 0 && (time() - $updated) < $cycleHangTimeout,
+            'control' => $control,
+        );
+    }
+
+    /**
+     * @param string $status
+     * @return string
+     */
+    private function getCycleStatusText($status)
+    {
+        $map = array(
+            'running' => 'Работает',
+            'starting' => 'Запускается',
+            'stopping' => 'Выключается',
+            'hang' => 'Завис',
+            'stopped' => 'Остановлен',
+        );
+        return isset($map[$status]) ? $map[$status] : 'Неизвестно';
     }
 
     /**
@@ -689,8 +736,16 @@ class xray extends module
                 if ($this->isCycleFileLog($files[$i]['FILENAME'])) {
                     continue;
                 }
-                $files[$i]['TITLE'] = str_replace($path . '/', '', $files[$i]['FILENAME']);
+                $filePath = str_replace('\\', '/', $files[$i]['FILENAME']);
+                $basePath = rtrim(str_replace('\\', '/', $path), '/') . '/';
+                $files[$i]['TITLE'] = strpos($filePath, $basePath) === 0 ? substr($filePath, strlen($basePath)) : $filePath;
                 $files[$i]['BASENAME'] = basename($files[$i]['FILENAME']);
+                $files[$i]['DATE'] = '';
+                $files[$i]['DATE_LABEL'] = '';
+                if (preg_match('~^(\d{4}-\d{2}-\d{2})/~', $files[$i]['TITLE'], $dateMatch)) {
+                    $files[$i]['DATE'] = $dateMatch[1];
+                    $files[$i]['DATE_LABEL'] = date('d.m.Y', strtotime($dateMatch[1]));
+                }
                 $files[$i]['PASSED'] = getPassedText($files[$i]['TM']);
                 $files[$i]['SIZE'] = filesize($files[$i]['FILENAME']);
                 if ($files[$i]['SIZE'] > 1024 * 1024) {
@@ -702,6 +757,23 @@ class xray extends module
             }
             $files = $filteredFiles;
             $out['FILES'] = $files;
+
+            $fileDates = array();
+            foreach ($files as $file) {
+                if (empty($file['DATE'])) {
+                    continue;
+                }
+                if (!isset($fileDates[$file['DATE']])) {
+                    $fileDates[$file['DATE']] = array(
+                        'DATE' => $file['DATE'],
+                        'DATE_LABEL' => $file['DATE_LABEL'],
+                        'COUNT' => 0,
+                    );
+                }
+                $fileDates[$file['DATE']]['COUNT']++;
+            }
+            krsort($fileDates);
+            $out['FILE_DATES'] = array_values($fileDates);
             $selected = gr('files');
             if (!is_array($selected)) {
                 $selected = array(date('Y-m-d') . '/debug.log');
@@ -928,6 +1000,16 @@ class xray extends module
                             } else {
                                 $data = '';
                             }
+                            $dateFolder = '';
+                            $dateLabel = '';
+                            if (preg_match('~^(\d{4}-\d{2}-\d{2})/~', str_replace('\\', '/', $file), $dateMatch)) {
+                                $dateFolder = $dateMatch[1];
+                                $dateLabel = date('d.m.Y', strtotime($dateFolder));
+                            } elseif (file_exists($filename)) {
+                                $dateFolder = date('Y-m-d', filemtime($filename));
+                                $dateLabel = date('d.m.Y', filemtime($filename));
+                            }
+                            $fileName = basename($file);
                             $res_lines = array();
                             $lines = explode("\n", $data);
                             $lines = array_slice($lines, -1 * ($limit), $limit);
@@ -965,13 +1047,25 @@ class xray extends module
                                 foreach ($res_lines as $line) {
                                     if (preg_match('/<b>(\d+?:\d+?:\d+?) ([\d\.]+)<\\/b>/uis', $line, $m)) {
                                         $tm = strtotime(date('Y-m-d', filemtime($filename)) . ' ' . $m[1]) + (float)$m[1];
-                                        $result[] = array('TM' => $tm + (float)$m[2], 'CONTENT' => $line);
+                                        $result[] = array(
+                                            'TM' => $tm + (float)$m[2],
+                                            'CONTENT' => $line,
+                                            'FILE' => $fileName,
+                                            'DATE' => $dateFolder,
+                                            'DATE_LABEL' => $dateLabel,
+                                        );
                                     }
                                 }
                             } else {
                                 $tm = 0;
                                 foreach ($res_lines as $line) {
-                                    $result[] = array('TM' => $tm, 'CONTENT' => $line);
+                                    $result[] = array(
+                                        'TM' => $tm,
+                                        'CONTENT' => $line,
+                                        'FILE' => $fileName,
+                                        'DATE' => $dateFolder,
+                                        'DATE_LABEL' => $dateLabel,
+                                    );
                                     $tm++;
                                 }
                             }
@@ -982,6 +1076,87 @@ class xray extends module
                         if ($a['TM'] < $b['TM']) return -1;
                         return 1;
                     });
+
+                    $structured = array();
+                    foreach ($result as $item) {
+                        $raw = (string)$item['CONTENT'];
+                        $time = '';
+                        if (preg_match('~<b>(\d{2}:\d{2}:\d{2}) [\d.]+</b>~u', $raw, $timeMatch)) {
+                            $time = $timeMatch[1];
+                            $raw = preg_replace('~^<b>\d{2}:\d{2}:\d{2} [\d.]+</b>\s*~u', '', $raw);
+                        } elseif (preg_match('~^(\d{2}:\d{2}:\d{2}) [\d.]+\s*~u', $raw, $timeMatch)) {
+                            $time = $timeMatch[1];
+                            $raw = preg_replace('~^\d{2}:\d{2}:\d{2} [\d.]+\s*~u', '', $raw);
+                        }
+                        $raw = preg_replace('~^<small>\(.*?\)</small>\s*~u', '', $raw);
+                        $raw = str_replace(array('<br/>', '<br />', '<br>'), "\n", $raw);
+                        $plain = html_entity_decode(strip_tags($raw), ENT_QUOTES, 'UTF-8');
+                        if (defined('ROOT')) {
+                            $rootPath = rtrim(str_replace('\\', '/', ROOT), '/');
+                            if ($rootPath !== '') {
+                                $plain = str_replace(
+                                    array($rootPath . '/', str_replace('/', '\\', $rootPath) . '\\'),
+                                    '',
+                                    $plain
+                                );
+                            }
+                        }
+                        $plain = trim(str_replace("\r\n", "\n", $plain));
+                        $messageLines = preg_split('/\n+/', $plain);
+                        $summary = '';
+                        $summaryScore = 0;
+                        foreach ($messageLines as $candidate) {
+                            $candidate = trim($candidate);
+                            if ($candidate === '') {
+                                continue;
+                            }
+                            if (preg_match('~^(commandline|Arguments:|Performance:|Latest file included:)~i', $candidate)) {
+                                continue;
+                            }
+                            $score = 1;
+                            if (preg_match('~Cannot redeclare|Fatal error|Uncaught|Parse error~i', $candidate)) {
+                                $score = 5;
+                            } elseif (preg_match('~E_COMPILE_ERROR~i', $candidate)) {
+                                $score = 4;
+                            } elseif (preg_match('~E_ERROR|PHP exception|Error registered|SQL error~i', $candidate)) {
+                                $score = 3;
+                            } elseif (preg_match('~Warning|Deprecated|Notice~i', $candidate)) {
+                                $score = 2;
+                            }
+                            if ($score > $summaryScore) {
+                                $summary = $candidate;
+                                $summaryScore = $score;
+                            }
+                            if ($score === 5) {
+                                break;
+                            }
+                        }
+                        if ($summary === '') {
+                            $summary = $plain;
+                        }
+                        if (function_exists('mb_strlen') && mb_strlen($summary, 'UTF-8') > 220) {
+                            $summary = mb_substr($summary, 0, 217, 'UTF-8') . '...';
+                        } elseif (strlen($summary) > 220) {
+                            $summary = substr($summary, 0, 217) . '...';
+                        }
+                        $level = 'info';
+                        if (preg_match('~E_COMPILE_ERROR|E_ERROR|PHP exception|Fatal error|Uncaught|Parse error|Cannot redeclare|Error registered|SQL error~i', $plain)) {
+                            $level = 'error';
+                        } elseif (preg_match('~Warning|E_WARNING|Deprecated|Notice~i', $plain)) {
+                            $level = 'warning';
+                        }
+                        $structured[] = array(
+                            'DATE' => isset($item['DATE']) ? $item['DATE'] : '',
+                            'DATE_LABEL' => isset($item['DATE_LABEL']) ? $item['DATE_LABEL'] : '',
+                            'TIME' => $time,
+                            'FILE' => isset($item['FILE']) ? $item['FILE'] : '',
+                            'LEVEL' => $level,
+                            'SUMMARY' => $summary,
+                            'MESSAGE' => $plain,
+                        );
+                    }
+                    $structured = array_reverse($structured);
+
                     $res_lines = array();
                     foreach ($result as $item) {
                         $res_lines[] = $item['CONTENT'];
@@ -996,7 +1171,7 @@ class xray extends module
 
                     $res_lines = array_reverse($res_lines);
 
-                    echo json_encode(array('MODE' => 'logs', 'CONTENT' => implode("<br/>", $res_lines)));
+                    echo json_encode(array('MODE' => 'logs', 'CONTENT' => implode("<br/>", $res_lines), 'LINES' => $structured));
 
                 }
 

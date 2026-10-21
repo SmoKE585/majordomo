@@ -833,7 +833,7 @@ $dictionary=array(
 'ENABLE_AUTO_UPDATE'=>'Automaatsete värskenduste lubamine',
 'AUTO_UPDATE_DELAY'=>'Automaatvärskenduste ohutusviivitus (päevades)',
 'AUTO_UPDATE_TIME'=>'Automaatse värskenduse kontrollimine ja installimise aeg',
-'CODEEDITOR_NOTY_TURNOFF'=>'Laiendage süsteemiseadetes koodiredaktori võimalusi, <a href="/admin.php?pd=pz_&md=panel&inst=&action=settings&filter_name=codeeditor" target="_blank">go to settings</a>',
+'CODEEDITOR_NOTY_TURNOFF'=>'Laiendage süsteemiseadetes koodiredaktori võimalusi, <a href="/panel/settings.html?filter_name=codeeditor" target="_blank">go to settings</a>',
 'RUN_SCRIPT_BTN'=>'JOOKSE',
 'SCRIPT_HOW_TO_RUN'=>'Kuidas joosta?',
 'SCRIPT_RUN_IN_METHOD'=>'meetodist (PHP)',

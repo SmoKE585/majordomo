@@ -1,114 +1,122 @@
 <!--#
- @version 0.2 (auto-set)
+ @version 0.3 (auto-set)
 #-->
 
-<p>
-<b>
-
-
-<a href="?view_mode=edit_users" class="btn btn-default"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_NEW_RECORD#></a>
-</b>
-</p>
-<table width=100% border=0><tr>
-<td valign=top>
-<!-- results -->
 [#if RESULT#]
-<!-- paging -->
-[#if PAGES#]
+<div class="md-table-wrap md-users-table-wrap" data-md-table data-md-table-page-size="25" data-md-table-unit="пользователей" data-md-table-unit-one="пользователь" data-md-table-unit-few="пользователя" data-md-table-unit-many="пользователей">
+    <div class="md-table__toolbar">
+        <div class="md-table__search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" data-md-table-search placeholder="Поиск по имени, логину, e-mail и объекту" aria-label="Поиск пользователей" autocomplete="off">
+        </div>
+        <select class="md-table__filter" data-md-table-filter="role" aria-label="Фильтр по роли">
+            <option value="">Все роли</option>
+            <option value="admin">Администраторы</option>
+            <option value="user">Пользователи</option>
+        </select>
+        <div class="md-table__meta" data-md-table-meta>Пользователей: [#USERS_TOTAL#]</div>
+    </div>
 
-<center>
-<ul class="pagination">
-  [#begin PREVPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
-  [#begin PAGES#]
-  <li [#if SELECTED#]class="active"[#endif#]><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
- [#end PAGES#]
-  [#begin NEXTPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
-</ul>
-</center>
+    <div class="md-table__scroll">
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">
+                        <button type="button" class="md-table__sort" data-md-table-sort="name">Пользователь <i class="ti ti-arrows-up-down" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col">Роль</th>
+                    <th scope="col">Контакты</th>
+                    <th scope="col">Объект</th>
+                    <th scope="col" class="text-end"><span class="md-visually-hidden"><#LANG_ACTIONS#></span></th>
+                </tr>
+            </thead>
+            <tbody data-md-table-body>
+                [#begin RESULT#]
+                <tr data-md-row data-row-id="[#ID#]" data-role="[#ROLE#]" data-sort-name="[#if NAME!=""#][#NAME#][#else#][#USERNAME#][#endif#]" data-search="[#USERNAME#] [#NAME#] [#EMAIL#] [#MOBILE#] [#LINKED_OBJECT#] [#HOST#]">
+                    <td>
+                        <div class="md-table__name md-users-cell">
+                            <span class="md-avatar md-avatar--md md-avatar--primary" aria-hidden="true">
+                                [#if AVATAR!=""#]
+                                <img src="<#ROOTHTML#>cms/avatars/[#AVATAR#]" alt="" loading="lazy">
+                                [#else#]
+                                [#INITIAL#]
+                                [#endif#]
+                            </span>
+                            <div class="md-users-cell__body">
+                                <a href="?view_mode=edit_users&id=[#ID#]"><strong>[#if NAME!=""#][#NAME#][#else#][#USERNAME#][#endif#]</strong></a>
+                                <small>@[#USERNAME#]</small>
+                                [#if IS_DEFAULT="1" || PASSWORD_SET="0"#]
+                                <span class="md-users-badges">
+                                    [#if IS_DEFAULT="1"#]<span class="md-badge md-badge--success"><i class="ti ti-star" aria-hidden="true"></i>По умолчанию</span>[#endif#]
+                                    [#if PASSWORD_SET="0"#]<span class="md-badge md-badge--warning"><i class="ti ti-key-off" aria-hidden="true"></i>Без пароля</span>[#endif#]
+                                </span>
+                                [#endif#]
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        [#if IS_ADMIN="1"#]
+                        <span class="md-badge md-badge--primary"><i class="ti ti-shield-lock" aria-hidden="true"></i>Администратор</span>
+                        [#else#]
+                        <span class="md-badge md-badge--outline"><i class="ti ti-user" aria-hidden="true"></i>Пользователь</span>
+                        [#endif#]
+                    </td>
+                    <td>
+                        [#if EMAIL!="" || MOBILE!="" || HOST!=""#]
+                        <div class="md-users-contacts">
+                            [#if EMAIL!=""#]<span><i class="ti ti-mail" aria-hidden="true"></i><a href="mailto:[#EMAIL#]">[#EMAIL#]</a></span>[#endif#]
+                            [#if MOBILE!=""#]<span><i class="ti ti-device-mobile" aria-hidden="true"></i>[#MOBILE#]</span>[#endif#]
+                            [#if HOST!=""#]<span title="Привязка по IP"><i class="ti ti-world" aria-hidden="true"></i>[#HOST#]</span>[#endif#]
+                        </div>
+                        [#else#]
+                        <span class="md-tree-empty">—</span>
+                        [#endif#]
+                    </td>
+                    <td>
+                        [#if LINKED_OBJECT!=""#]
+                        <span class="md-badge md-badge--outline" title="Связанный объект"><i class="ti ti-box" aria-hidden="true"></i>[#LINKED_OBJECT#]</span>
+                        [#else#]
+                        <span class="md-tree-empty">—</span>
+                        [#endif#]
+                    </td>
+                    <td>
+                        <div class="md-table__actions">
+                            <a href="?view_mode=edit_users&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="<#LANG_EDIT#>" aria-label="<#LANG_EDIT#>">
+                                <i class="ti ti-pencil" aria-hidden="true"></i>
+                            </a>
+                            <a href="?view_mode=delete_users&id=[#ID#]" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить пользователя [#USERNAME#]" data-md-confirm="Удалить пользователя [#USERNAME#]?">
+                                <i class="ti ti-trash" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                [#end RESULT#]
+            </tbody>
+        </table>
+    </div>
 
-[#endif PAGES#]
-<!-- / paging -->
-<!-- search results (list) -->
-<form action="?" method="post" name="frmList_users" style="padding:0px">
-<table class="table table-striped">
-<thead>
-        <tr>
-            <th>&nbsp;</th>
-         <th>
-                <#LANG_USERNAME#>
-         </th>
-         <th>
-                <#LANG_NAME#>
-         </th>
-          <th>
-                <#LANG_EMAIL#>
-         </th>
-         <th>&nbsp;</th>
-        </tr>
-</thead>
-<tbody>
-[#begin RESULT#]
-<tr class="hover_btn2">
- <td>
-   [#if AVATAR!=""#]
-   <a href="#" onClick="return switchTo('[#USERNAME#]');"><img src="<#ROOTHTML#>cms/avatars/[#AVATAR#]" border="0" height="30"></a>
-   [#else#]
-   <a href="#" onClick="return switchTo('[#USERNAME#]');"><img src="<#ROOTHTML#>img/icons/user.png" border="0" height="30"></a>
-   [#endif#] 
- </td>
-    <td>
-        [#USERNAME#]
-        [#if IS_DEFAULT="1"#](<#LANG_USE_DEFAULT#>)[#endif#]
-        [#if PASSWORD!=""#]+ <#LANG_PASSWORD#>[#endif#]
-    </td>
- <td
-   >
-  <b>
-   [#NAME#][#if COLOR!=""#] <span class="badge" style="background-color:[#COLOR#];"> </span>[#endif#] 
-  </a></b>
- </td>
- <td
-  
-   >
-   [#EMAIL#]
- </td>
- <td  width="100">
- 
-  [#if "<#ACTION#>"=="admin"#]
-   
-    <a class="btn btn-default btn-sm" href="?view_mode=edit_users&id=[#ID#]"><i class="glyphicon glyphicon-pencil"></i></a>
-   
-  
-    <a class="btn btn-default btn-sm" href="?view_mode=delete_users&id=[#ID#]" onClick="return confirm('Delete record?')"><i class="glyphicon glyphicon-remove"></i></a>
-  
-  [#endif ACTION#]
- &nbsp;
- </td>
-</tr>
-[#end RESULT#]
-</tbody>
-</table>
-<input type="hidden" name="data_source" value="<#DATA_SOURCE#>">
-<input type="hidden" name="view_mode" value="multiple_users">
-</form>
-<!-- / search results (list) -->
-<!-- paging -->
-[#if PAGES#]
-<center>
-<ul class="pagination">
-  [#begin PREVPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&laquo;</a></li>[#end PREVPAGE#]
-  [#begin PAGES#]
-  <li [#if SELECTED#]class="active"[#endif#]><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">[#NUM#]</a></li>
- [#end PAGES#]
-  [#begin NEXTPAGE#]<li><a href="?view_mode=<#VIEW_MODE#>&mode=<#MODE#>&save_qry=1&page=[#NUM#]">&raquo;</a></li>[#end NEXTPAGE#]
-</ul>
-</center>
-[#endif PAGES#]
-<!-- / paging -->
+    <div class="md-table__empty" data-md-table-empty>
+        <div class="md-empty md-empty--compact">
+            <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+            <div class="md-empty__title">Ничего не найдено</div>
+            <p class="md-empty__text">Измените запрос или фильтр по роли.</p>
+        </div>
+    </div>
+
+    <div class="md-table__footer">
+        <span data-md-table-count>Показано [#USERS_TOTAL#] из [#USERS_TOTAL#]</span>
+        <ul class="pagination md-pagination mb-0" data-md-table-pagination></ul>
+    </div>
+</div>
 [#else RESULT#]
-<p>
-<div class="alert alert-danger"><#LANG_NO_RECORDS_FOUND#></div>
-</p>
+<div class="md-empty">
+    <span class="md-empty__icon"><i class="ti ti-users" aria-hidden="true"></i></span>
+    <div class="md-empty__title">Пользователей пока нет</div>
+    <p class="md-empty__text">Создайте первую учётную запись, чтобы настроить вход в систему.</p>
+    <div class="md-empty__actions">
+        <a href="?view_mode=edit_users" class="md-btn md-btn--primary md-btn--sm">
+            <i class="ti ti-user-plus" aria-hidden="true"></i><#LANG_ADD_NEW_RECORD#>
+        </a>
+    </div>
+</div>
 [#endif RESULT#]
-<!-- / results -->
-</td></tr></table>

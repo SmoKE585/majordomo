@@ -216,11 +216,21 @@
             });
         }
 
-        if (searchForm) {
-            searchForm.addEventListener('submit', function () {
-                if (searchInput && searchInput.value.trim() === '') {
+        if (searchInput) {
+            searchInput.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter') {
                     return;
                 }
+                event.preventDefault();
+                var params = new URLSearchParams(window.location.search);
+                params.set('data_source', 'scripts');
+                var term = String(searchInput.value || '').trim();
+                if (term !== '') {
+                    params.set('title', term);
+                } else {
+                    params.delete('title');
+                }
+                window.location.href = '?' + params.toString();
             });
         }
 
@@ -264,8 +274,6 @@
         var runDrawerFooter = page ? page.querySelector('[data-scripts-run-drawer-footer]') : null;
         var runOpenButtons = page ? page.querySelectorAll('[data-scripts-run-drawer-open]') : [];
         var runSubmitButton = page ? page.querySelector('[data-scripts-run-submit]') : null;
-        var codeMirrorLines = [];
-
         if (!page) {
             return;
         }
@@ -310,26 +318,25 @@
             if (errorNode.getAttribute('data-scripts-error-enabled') === '1' && errorNode.getAttribute('data-scripts-error-settings') === '1') {
                 var errorLine = Number(errorNode.getAttribute('data-scripts-error-line') || 0);
                 var errorText = errorNode.getAttribute('data-scripts-error-text') || '';
-                var errorUp = errorNode.getAttribute('data-scripts-error-up') === '1';
-                if (window.CodeMirror && errorLine > 0) {
-                    window.setTimeout(function () {
-                        codeMirrorLines = Array.prototype.slice.call(document.querySelectorAll('div pre.CodeMirror-line'));
-                        var index = Math.max(0, errorLine - 1);
-                        var lineNode = codeMirrorLines[index];
-                        if (!lineNode) {
-                            return;
+                if (errorLine > 0) {
+                    var applyErrorLine = function () {
+                        var wrapper = page.querySelector('[data-code-editor]');
+                        var editor = wrapper && wrapper._codeEditor;
+                        if (!editor || typeof editor.setErrorLine !== 'function') {
+                            return false;
                         }
-                        lineNode.id = 'errorline_' + errorLine;
-                        if (!lineNode.querySelector('.cm-error.md-scripts-code-error-line')) {
-                            var errorBlock = document.createElement('div');
-                            errorBlock.className = 'cm-error md-scripts-code-error-line';
-                            errorBlock.textContent = 'Code error -> ' + errorText;
-                            lineNode.appendChild(errorBlock);
-                        }
-                        if (errorUp) {
-                            window.location.hash = '#errorline_' + errorLine;
-                        }
-                    }, 100);
+                        editor.setErrorLine(errorLine, errorText);
+                        return true;
+                    };
+                    if (!applyErrorLine()) {
+                        var errorAttempts = 0;
+                        var errorTimer = window.setInterval(function () {
+                            errorAttempts += 1;
+                            if (applyErrorLine() || errorAttempts > 20) {
+                                window.clearInterval(errorTimer);
+                            }
+                        }, 250);
+                    }
                 } else {
                     errorNode.textContent = errorText;
                 }

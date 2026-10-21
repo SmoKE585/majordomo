@@ -1,72 +1,270 @@
-<script>
-    $(window).load(function() {
-        //Вставляем данные в бредкрумбс
-        $('.breadcrumb:eq(0)').append('<li style="color: gray;">[#TITLE#] ([#NAME#])</li>');
-    });
-</script>
-<div class="row" style="margin-right: -15px;margin-left: -15px;">
-    <div class="col-lg-3 col-md-4 col-sm-12 col-xs-12">
-        <div class="panel panel-default" style="margin-bottom: 0px;">
-            <div class="panel-body">
-                <span class="label label-primary" style="position: absolute;right: 25px;top: 10px;">[#CATEGORY#]</span>
-                <center><img class="media-object" onError="this.src='<#ROOTHTML#>img/logo.png'" style="width: 100px;height: 100px;margin: 50px 0;" src="<#ROOTHTML#>img/modules/[#NAME#].png"></center>
-            </div>
-        </div>
-        <center>
-            <div class="btn-group" style="margin-top: 15px;margin-bottom: 15px;">
-                <a class="btn btn-warning" href="?mode=<#MODE#>&mode2=install&name=[#NAME#]" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-refresh"></i> Re-install</a>
-                <a class="btn btn-danger" href="?mode=<#MODE#>&mode2=uninstall&name=[#NAME#]" onClick="return confirm('<#LANG_ARE_YOU_SURE#>')"><i class="glyphicon glyphicon-trash"></i> Un-install</a>
-                <a class="btn btn-default" href="?mode=<#MODE#>&mode2=download&name=[#NAME#]"><i class="glyphicon glyphicon-download"></i> Pack</a>
-            </div>
-        </center>
-    </div>
-    <div class="col-lg-9 col-md-8 col-sm-12 col-xs-12">
-        <div class="panel panel-default">
-            <div class="panel-heading"><b>[#TITLE#] ([#NAME#])</b></div>
-            <div class="panel-body">
-                <p>[#MARKET_DESCRIPTION_RU#]</p>
-                [#if MARKET_ID == ''#]
-                <p>No information from Connect on this module.</p>
-                [#endif#]
+<!--#
+ @version 0.3 (redesigned admin UI)
+#-->
 
+<div class="md-ui-page md-ui-page--stack md-modules-page md-module-edit">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-puzzle" aria-hidden="true"></i><#LANG_MODULE_MODULES#></div>
+            <h1 class="md-ui-hero__title">[#TITLE#]</h1>
+            <p class="md-ui-hero__lede">Карточка модуля: описание, параметры, данные маркета и действия установки.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-code" aria-hidden="true"></i><code>[#NAME#]</code></span>
+                <span class="md-badge md-badge--outline"><i class="ti ti-category" aria-hidden="true"></i>[#CATEGORY#]</span>
+                [#if IS_HIDDEN="1"#]
+                <span class="md-badge"><i class="ti ti-eye-off" aria-hidden="true"></i>Скрыт</span>
+                [#else#]
+                <span class="md-badge md-badge--success"><i class="ti ti-eye" aria-hidden="true"></i>В меню</span>
+                [#endif#]
+                [#if ADDED_FORMATTED!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-calendar" aria-hidden="true"></i>Установлен: <strong>[#ADDED_FORMATTED#]</strong></span>
+                [#endif#]
+                [#if MARKET_HAS_INFO="1" && MARKET_AUTHOR!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-user" aria-hidden="true"></i>Автор: <strong>[#MARKET_AUTHOR#]</strong></span>
+                [#endif#]
+                [#if MARKET_HAS_INFO="1" && MARKET_LATEST_VERSION!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-tag" aria-hidden="true"></i>Версия: <strong>[#MARKET_LATEST_VERSION#]</strong></span>
+                [#endif#]
             </div>
-            [#if MARKET_ID != ''#]
-            <ul class="list-group">
-                <li class="list-group-item">
-                    <span class="badge">[#MARKET_AUTHOR#]</span>
-                    Author
-                </li>
-                <li class="list-group-item">
-                    <span class="badge">[#MARKET_LATEST_VERSION#]</span>
-                    Latest version
-                </li>
-                <li class="list-group-item">
-                    <span class="badge" style="background: transparent;padding: 0;"><a href="[#MARKET_LATEST_VERSION_URL#]" class="btn btn-info btn-xs" target="_blank">Open</a></span>
-                    Latest version link
-                </li>
-                <li class="list-group-item">
-                    <span class="badge" style="background: transparent;padding: 0;"><a href="[#MARKET_SUPPORT_URL#]" class="btn btn-info btn-xs" target="_blank">Open</a></span>
-                    Support
-                </li>
-                <li class="list-group-item">
-                    <span class="badge">[#if MARKET_PRICE==""#]free[#else#][#MARKET_PRICE#][#endif#]</span>
-                    Price
-                </li>
-            </ul>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="/panel/control_modules.html" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+            <div class="dropdown">
+                <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    <li>
+                        <a class="dropdown-item" href="?mode=edit&amp;mode2=install&amp;name=[#NAME#]" data-md-confirm="Переустановить модуль «[#TITLE#]»?">
+                            <i class="ti ti-refresh" aria-hidden="true"></i>Переустановить
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="?mode=edit&amp;mode2=download&amp;name=[#NAME#]">
+                            <i class="ti ti-package-export" aria-hidden="true"></i>Скачать пакет
+                        </a>
+                    </li>
+                    <li>
+                        [#if IS_HIDDEN="1"#]
+                        <a class="dropdown-item" href="?mode=edit&amp;mode2=show&amp;name=[#NAME#]" data-md-confirm="Показать модуль «[#TITLE#]» в меню?">
+                            <i class="ti ti-eye" aria-hidden="true"></i>Показать в меню
+                        </a>
+                        [#else#]
+                        <a class="dropdown-item" href="?mode=edit&amp;mode2=show&amp;name=[#NAME#]" data-md-confirm="Скрыть модуль «[#TITLE#]» из меню?">
+                            <i class="ti ti-eye-off" aria-hidden="true"></i>Скрыть из меню
+                        </a>
+                        [#endif#]
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="?mode=edit&amp;mode2=uninstall&amp;name=[#NAME#]" data-md-confirm="Удалить модуль «[#TITLE#]» вместе с файлами модуля и шаблонами? Это действие нельзя отменить.">
+                            <i class="ti ti-trash" aria-hidden="true"></i>Удалить модуль
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <div class="md-module-edit-layout">
+        <div class="md-ui-form-stack">
+            <section class="md-card" aria-labelledby="mdModuleAboutTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Описание</div>
+                        <h2 class="md-card__title" id="mdModuleAboutTitle"><i class="ti ti-info-circle" aria-hidden="true"></i>О модуле</h2>
+                        <p class="md-card__subtitle">Назначение модуля и информация из маркета дополнений.</p>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    <div class="md-module-about">
+                        <span class="md-module-about__icon[#if HAS_ICON="1"#] has-image[#endif#]" aria-hidden="true">
+                            <i class="ti ti-puzzle"></i>
+                            [#if HAS_ICON="1"#]
+                            <img src="[#ICON_URL#]" alt="" loading="lazy" data-md-module-icon>
+                            [#endif#]
+                        </span>
+                        <div class="md-module-about__body">
+                            <div class="md-module-about__title">[#TITLE#]</div>
+                            <div class="md-module-about__meta"><code>[#NAME#]</code> · [#CATEGORY#]</div>
+                            [#if MARKET_HAS_INFO="1" && MARKET_DESCRIPTION_RU!=""#]
+                            <div class="md-module-about__description">[#MARKET_DESCRIPTION_RU#]</div>
+                            [#else#]
+                            <p class="md-module-about__empty"><i class="ti ti-cloud-off" aria-hidden="true"></i>Нет описания из Connect. Модуль установлен локально или отсутствует в маркете.</p>
+                            [#endif#]
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            [#if MARKET_HAS_INFO="1"#]
+            <section class="md-card" aria-labelledby="mdModuleMarketTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Connect</div>
+                        <h2 class="md-card__title" id="mdModuleMarketTitle"><i class="ti ti-cloud" aria-hidden="true"></i>Данные маркета</h2>
+                        <p class="md-card__subtitle">Автор, версия и поддержка модуля в каталоге дополнений.</p>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    <dl class="md-module-facts">
+                        [#if MARKET_AUTHOR!=""#]
+                        <div class="md-module-facts__item">
+                            <dt>Автор</dt>
+                            <dd>[#MARKET_AUTHOR#]</dd>
+                        </div>
+                        [#endif#]
+                        <div class="md-module-facts__item">
+                            <dt>Последняя версия</dt>
+                            <dd>
+                                [#if MARKET_LATEST_VERSION!=""#]
+                                    [#if MARKET_LATEST_VERSION_URL!=""#]
+                                    <a href="[#MARKET_LATEST_VERSION_URL#]" target="_blank" rel="noopener">[#MARKET_LATEST_VERSION#]</a>
+                                    [#else#]
+                                    [#MARKET_LATEST_VERSION#]
+                                    [#endif#]
+                                [#else#]
+                                —
+                                [#endif#]
+                            </dd>
+                        </div>
+                        <div class="md-module-facts__item">
+                            <dt>Цена</dt>
+                            <dd>[#if MARKET_PRICE!=""#][#MARKET_PRICE#][#else#]Бесплатно[#endif#]</dd>
+                        </div>
+                        <div class="md-module-facts__item">
+                            <dt>Поддержка</dt>
+                            <dd>
+                                [#if MARKET_SUPPORT_URL!=""#]
+                                <a href="[#MARKET_SUPPORT_URL#]" target="_blank" rel="noopener"><i class="ti ti-external-link" aria-hidden="true"></i>Открыть</a>
+                                [#else#]
+                                —
+                                [#endif#]
+                            </dd>
+                        </div>
+                        [#if MARKET_REPOSITORY_URL!=""#]
+                        <div class="md-module-facts__item md-module-facts__item--wide">
+                            <dt>Репозиторий</dt>
+                            <dd><a href="[#MARKET_REPOSITORY_URL#]" target="_blank" rel="noopener" class="md-module-facts__repo">[#MARKET_REPOSITORY_URL#]</a></dd>
+                        </div>
+                        [#endif#]
+                    </dl>
+                </div>
+            </section>
             [#endif#]
+
+            <section class="md-card" aria-labelledby="mdModuleConfigTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Конфигурация</div>
+                        <h2 class="md-card__title" id="mdModuleConfigTitle"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i>Параметры модуля</h2>
+                        <p class="md-card__subtitle">Значения, которые модуль возвращает через <code>getConfig()</code>.</p>
+                    </div>
+                    [#if HAS_MODULE_CONFIG="1"#]
+                    <div class="md-card__actions">
+                        <span class="md-badge">[#MODULE_CONFIG_TOTAL#]</span>
+                    </div>
+                    [#endif#]
+                </header>
+                <div class="md-card__body">
+                    [#if HAS_MODULE_CONFIG="1"#]
+                    <div class="md-table__scroll">
+                        <table class="md-table md-module-config-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Параметр</th>
+                                    <th scope="col">Значение</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                [#begin MODULE_CONFIG#]
+                                <tr>
+                                    <td><code class="md-module-config-table__key">[#KEY_HTML#]</code></td>
+                                    <td><span class="md-module-config-table__value">[#VALUE_HTML#]</span></td>
+                                </tr>
+                                [#end MODULE_CONFIG#]
+                            </tbody>
+                        </table>
+                    </div>
+                    [#else#]
+                    <p class="md-module-config-empty"><i class="ti ti-info-circle" aria-hidden="true"></i>У модуля нет параметров конфигурации.</p>
+                    [#endif#]
+                </div>
+            </section>
         </div>
-        [#if MODULE_CONFIG#]
-        <div class="panel panel-default">
-            <div class="panel-heading"><b>Module config</b></div>
-            <ul class="list-group">
-                [#begin MODULE_CONFIG#]
-                <li class="list-group-item">
-                    <span class="badge label-danger" style="border-radius: 3px;padding: 5px 15px;margin: 0;">[#VALUE#]</span>
-                    [#KEY#]
-                </li>
-                [#end MODULE_CONFIG#]
-            </ul>
-        </div>
-        [#endif#]
+
+        <aside class="md-module-edit-aside md-ui-form-stack">
+            <section class="md-card" aria-labelledby="mdModuleSummaryTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Сводка</div>
+                        <h2 class="md-card__title" id="mdModuleSummaryTitle"><i class="ti ti-list-details" aria-hidden="true"></i>Модуль</h2>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    <dl class="md-module-facts md-module-facts--stacked">
+                        <div class="md-module-facts__item">
+                            <dt>Имя</dt>
+                            <dd><code>[#NAME#]</code></dd>
+                        </div>
+                        <div class="md-module-facts__item">
+                            <dt>Категория</dt>
+                            <dd>[#CATEGORY#]</dd>
+                        </div>
+                        <div class="md-module-facts__item">
+                            <dt>Видимость</dt>
+                            <dd>[#HIDDEN_LABEL#]</dd>
+                        </div>
+                        <div class="md-module-facts__item">
+                            <dt>Установлен</dt>
+                            <dd>[#if ADDED_FORMATTED!=""#][#ADDED_FORMATTED#][#else#]—[#endif#]</dd>
+                        </div>
+                        [#if MARKET_HAS_INFO="1" && MARKET_LATEST_VERSION!=""#]
+                        <div class="md-module-facts__item">
+                            <dt>Версия</dt>
+                            <dd>[#MARKET_LATEST_VERSION#]</dd>
+                        </div>
+                        [#endif#]
+                    </dl>
+                </div>
+            </section>
+
+            <section class="md-card" aria-labelledby="mdModuleActionsTitle">
+                <header class="md-card__head">
+                    <div class="md-card__titles">
+                        <div class="md-card__eyebrow">Действия</div>
+                        <h2 class="md-card__title" id="mdModuleActionsTitle"><i class="ti ti-bolt" aria-hidden="true"></i>Установка</h2>
+                    </div>
+                </header>
+                <div class="md-card__body">
+                    <div class="md-module-action-list">
+                        <a href="?mode=edit&amp;mode2=install&amp;name=[#NAME#]" class="md-btn md-btn--secondary" data-md-confirm="Переустановить модуль «[#TITLE#]»?">
+                            <i class="ti ti-refresh" aria-hidden="true"></i><span class="md-btn__label">Переустановить</span>
+                        </a>
+                        <a href="?mode=edit&amp;mode2=download&amp;name=[#NAME#]" class="md-btn md-btn--secondary">
+                            <i class="ti ti-package-export" aria-hidden="true"></i><span class="md-btn__label">Скачать пакет</span>
+                        </a>
+                        [#if IS_HIDDEN="1"#]
+                        <a href="?mode=edit&amp;mode2=show&amp;name=[#NAME#]" class="md-btn md-btn--secondary" data-md-confirm="Показать модуль «[#TITLE#]» в меню?">
+                            <i class="ti ti-eye" aria-hidden="true"></i><span class="md-btn__label">Показать в меню</span>
+                        </a>
+                        [#else#]
+                        <a href="?mode=edit&amp;mode2=show&amp;name=[#NAME#]" class="md-btn md-btn--secondary" data-md-confirm="Скрыть модуль «[#TITLE#]» из меню?">
+                            <i class="ti ti-eye-off" aria-hidden="true"></i><span class="md-btn__label">Скрыть из меню</span>
+                        </a>
+                        [#endif#]
+                    </div>
+                    <div class="md-module-danger-zone">
+                        <div class="md-module-danger-zone__title"><i class="ti ti-alert-triangle" aria-hidden="true"></i>Опасное действие</div>
+                        <p class="md-module-danger-zone__text">Удаление модуля стирает его файлы, шаблоны и данные установки. Сначала сделайте резервную копию.</p>
+                        <a href="?mode=edit&amp;mode2=uninstall&amp;name=[#NAME#]" class="md-btn md-btn--danger" data-md-confirm="Удалить модуль «[#TITLE#]» вместе с файлами модуля и шаблонами? Это действие нельзя отменить.">
+                            <i class="ti ti-trash" aria-hidden="true"></i><span class="md-btn__label">Удалить модуль</span>
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </aside>
     </div>
 </div>

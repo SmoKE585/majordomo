@@ -35,7 +35,10 @@
 
         function setPanel(panelId) {
             panelButtons.forEach(function (button) {
-                button.classList.toggle('is-active', button.getAttribute('data-saverestore-panel') === panelId);
+                var isActive = button.getAttribute('data-saverestore-panel') === panelId;
+                button.classList.toggle('is-active', isActive);
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-selected', isActive ? 'true' : 'false');
             });
             panelBodies.forEach(function (panel) {
                 var isActive = panel.id === panelId;
@@ -147,11 +150,8 @@
         }
         if (progress) {
             progress.style.width = percent + '%';
-            progress.style.background = state === 'error'
-                ? 'linear-gradient(90deg, #dc3545, #ef6a78)'
-                : state === 'success'
-                    ? 'linear-gradient(90deg, #198754, #54b47b)'
-                    : 'linear-gradient(90deg, var(--md-admin-primary, #4792d1), #6ab1df)';
+            progress.classList.toggle('is-error', state === 'error');
+            progress.classList.toggle('is-success', state === 'success');
         }
         if (modal) {
             var normalizedPercent = Math.max(0, Math.min(100, percent));

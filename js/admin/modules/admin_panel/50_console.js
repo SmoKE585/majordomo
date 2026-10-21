@@ -5,23 +5,31 @@
 
     function initAdminConsoleDrawer(root) {
         var drawerContent = document.getElementById('mdAdminConsoleDrawerContent');
-        var drawerFooter = document.getElementById('mdAdminConsoleDrawerFooter');
         var output = document.getElementById('console_output');
-        var outputHint = document.getElementById('console_output_hintResize');
         var command = document.getElementById('command');
         var commandEditorHost = drawerContent ? drawerContent.querySelector('[data-code-editor-key="admin_console"]') : null;
         var form = drawerContent ? drawerContent.querySelector('form') : null;
         var moduleSelect = document.getElementById('currModuleName');
         var moduleField = document.getElementById('module_add');
         var methodsModule = document.getElementById('methodsModule');
-        var methodsList = methodsModule ? methodsModule.querySelector('ul') : null;
+        var methodsList = methodsModule ? methodsModule.querySelector('[data-md-console-methods-list]') : null;
+        var methodsFilter = document.getElementById('consoleMethodsFilter');
+        var methodsCount = document.getElementById('consoleMethodsCount');
+        var methodsPanelName = document.getElementById('consoleMethodsPanelName');
         var loaderConsole = document.getElementById('loaderConsole');
         var loaderConsoleModule = document.getElementById('loaderConsoleModule');
         var dangerAlert = document.getElementById('dangerAlertConsole');
         var warningAlert = document.getElementById('warningAlertConsole');
+        var dangerAlertText = dangerAlert ? dangerAlert.querySelector('[data-md-console-alert-text]') : null;
+        var warningAlertText = warningAlert ? warningAlert.querySelector('[data-md-console-alert-text]') : null;
         var historyList = document.getElementById('consoleHistoryList');
+        var historyCount = document.getElementById('consoleHistoryCount');
+        var consoleStatus = document.getElementById('consoleStatus');
         var toggleModuleButton = document.getElementById('btnConsoleToggleModule');
+        var toggleModuleLabel = document.getElementById('btnConsoleToggleModuleLabel');
+        var methodsCloseButton = document.getElementById('btnConsoleMethodsClose');
         var clearHistoryButton = document.getElementById('btnConsoleClearHistory');
+        var clearOutputButton = document.getElementById('btnConsoleClearOutput');
         var currentModuleName = '';
         var consoleHistoryKey = 'md-admin-console-history-v1';
         var consoleHistory = [];
@@ -30,18 +38,6 @@
 
         if (!drawerContent || !command || !output) {
             return;
-        }
-
-        function escapeHtml(value) {
-            return String(value === null || value === undefined ? '' : value).replace(/[&<>"']/g, function (char) {
-                return {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#039;'
-                }[char];
-            });
         }
 
         function getConsoleEditor() {
@@ -95,14 +91,16 @@
                 eyebrow: drawerContent.getAttribute('data-md-drawer-eyebrow') || 'Панель управления',
                 title: drawerContent.getAttribute('data-md-drawer-title') || 'Консоль',
                 subtitle: drawerContent.getAttribute('data-md-drawer-subtitle') || '',
-                width: '920px',
+                width: 'min(1040px, 100vw)',
                 body: drawerContent,
-                footer: drawerFooter,
                 focus: function () {
                     ensureConsoleEditorBindings();
                     return getConsoleEditor() ? null : command;
                 }
             });
+            if (window.MDCodeEditor && typeof window.MDCodeEditor.init === 'function') {
+                window.MDCodeEditor.init(drawerContent);
+            }
             window.setTimeout(function () {
                 ensureConsoleEditorBindings();
                 focusCommand();
@@ -123,36 +121,30 @@
 
             commandEditorHost.dataset.mdConsoleEditorBound = '1';
 
-            var existingExtraKeys = editor.getOption('extraKeys') || {};
-            var extraKeys = {};
-            Object.keys(existingExtraKeys).forEach(function (key) {
-                extraKeys[key] = existingExtraKeys[key];
+            editor.addKeymap({
+                'Mod-Enter': function () {
+                    sendCommand();
+                    return true;
+                },
+                'Up': function (instance) {
+                    var cursor = instance.getCursor();
+                    if (cursor.line === 0 && cursor.ch === 0) {
+                        moveHistory(1);
+                        return true;
+                    }
+                    return false;
+                },
+                'Down': function (instance) {
+                    var cursor = instance.getCursor();
+                    var lastLine = instance.lastLine();
+                    if (cursor.line === lastLine && cursor.ch === instance.getLine(lastLine).length) {
+                        moveHistory(-1);
+                        return true;
+                    }
+                    return false;
+                }
             });
 
-            extraKeys['Ctrl-Enter'] = function () {
-                sendCommand();
-            };
-            extraKeys['Cmd-Enter'] = function () {
-                sendCommand();
-            };
-            extraKeys.Up = function (cm) {
-                if (cm.getCursor().line === 0 && cm.getCursor().ch === 0) {
-                    moveHistory(1);
-                    return;
-                }
-                return CodeMirror.Pass;
-            };
-            extraKeys.Down = function (cm) {
-                var cursor = cm.getCursor();
-                var lastLine = cm.lastLine();
-                if (cursor.line === lastLine && cursor.ch === cm.getLine(lastLine).length) {
-                    moveHistory(-1);
-                    return;
-                }
-                return CodeMirror.Pass;
-            };
-
-            editor.setOption('extraKeys', extraKeys);
             editor.on('change', function () {
                 currentHistoryIndex = -1;
             });
@@ -234,19 +226,22 @@
             if (!historyList) {
                 return;
             }
+            if (historyCount) {
+                historyCount.textContent = String(consoleHistory.length);
+            }
             historyList.innerHTML = '';
             if (!consoleHistory.length) {
-                historyList.innerHTML = '<div class="md-admin-console-history__empty">История пуста. После отправки команд она появится здесь и в стрелках редактора.</div>';
+                historyList.innerHTML = '<div class="md-console-history__empty">Пока пусто. Выполненные команды появятся здесь и в стрелках редактора.</div>';
                 return;
             }
 
             consoleHistory.forEach(function (item) {
                 var button = document.createElement('button');
                 button.type = 'button';
-                button.className = 'md-admin-console-history__item';
+                button.className = 'md-console-history__item';
                 button.setAttribute('data-md-console-history-value', item);
-                button.title = 'Вставить в редактор';
-                button.textContent = item;
+                button.title = 'Вставить в редактор:\n' + item;
+                button.textContent = item.length > 64 ? item.slice(0, 64) + '…' : item;
                 historyList.appendChild(button);
             });
         }
@@ -254,11 +249,15 @@
         function setAlerts(kind, message) {
             if (dangerAlert) {
                 dangerAlert.hidden = kind !== 'danger';
-                dangerAlert.textContent = kind === 'danger' ? message : dangerAlert.textContent;
+                if (dangerAlertText && kind === 'danger') {
+                    dangerAlertText.textContent = message;
+                }
             }
             if (warningAlert) {
                 warningAlert.hidden = kind !== 'warning';
-                warningAlert.textContent = kind === 'warning' ? message : warningAlert.textContent;
+                if (warningAlertText && kind === 'warning') {
+                    warningAlertText.textContent = message;
+                }
             }
         }
 
@@ -278,35 +277,136 @@
             node.classList.toggle('is-visible', !!visible);
         }
 
-        function escapeCommandForDisplay(value) {
-            return escapeHtml(value).replace(/\n/g, '<br>');
+        function setConsoleStatus(state) {
+            if (!consoleStatus) {
+                return;
+            }
+            var states = {
+                idle: ['md-badge', 'Ожидание'],
+                running: ['md-badge md-badge--warning', 'Выполняется…'],
+                success: ['md-badge md-badge--success', 'Готово'],
+                warning: ['md-badge md-badge--warning', 'Предупреждение'],
+                error: ['md-badge md-badge--danger', 'Ошибка']
+            };
+            var next = states[state] || states.idle;
+            consoleStatus.className = next[0];
+            consoleStatus.textContent = next[1];
         }
 
-        function appendOutputEntry(commandText, resultText, metaText) {
+        function outputEmptyMarkup() {
+            return '<div class="md-console-empty" data-md-console-empty>' +
+                '<span class="md-console-empty__icon"><i class="ti ti-terminal-2" aria-hidden="true"></i></span>' +
+                '<div class="md-console-empty__title">Готово к работе</div>' +
+                '<div class="md-console-empty__text">Напишите команду и нажмите Ctrl+Enter. Результат появится здесь.</div>' +
+                '</div>';
+        }
+
+        function setOutputEmpty() {
+            if (output) {
+                output.innerHTML = outputEmptyMarkup();
+            }
+            setConsoleStatus('idle');
+        }
+
+        function appendOutputEntry(commandText, resultText, moduleName, duration, level) {
+            if (!output) {
+                return;
+            }
+            var existingEmpty = output.querySelector('[data-md-console-empty]');
+            if (existingEmpty) {
+                existingEmpty.remove();
+            }
+
+            var tone = level === 'error' ? 'danger' : (level === 'warning' ? 'warning' : 'success');
+            var toneLabel = level === 'error' ? 'Ошибка' : (level === 'warning' ? 'Предупреждение' : 'Готово');
+
             var entry = document.createElement('div');
-            entry.className = 'md-admin-console-output__entry';
+            entry.className = 'md-console-entry' + (level === 'error' ? ' md-console-entry--error' : (level === 'warning' ? ' md-console-entry--warning' : ''));
 
-            var meta = document.createElement('div');
-            meta.className = 'md-admin-console-output__meta';
-            meta.innerHTML = '<strong>' + escapeHtml(metaText || 'консоль') + '</strong>';
+            var head = document.createElement('div');
+            head.className = 'md-console-entry__head';
 
-            var commandNode = document.createElement('div');
-            commandNode.className = 'md-admin-console-output__command';
-            commandNode.innerHTML = escapeCommandForDisplay(commandText);
+            var status = document.createElement('span');
+            status.className = 'md-badge md-badge--' + tone;
+            status.textContent = toneLabel;
+            head.appendChild(status);
 
-            var resultNode = document.createElement('div');
-            resultNode.className = 'md-admin-console-output__result';
-            resultNode.innerHTML = escapeCommandForDisplay(resultText || '');
+            if (moduleName) {
+                var moduleBadge = document.createElement('span');
+                moduleBadge.className = 'md-badge md-badge--outline';
+                moduleBadge.textContent = moduleName;
+                head.appendChild(moduleBadge);
+            }
 
-            entry.appendChild(meta);
-            entry.appendChild(commandNode);
+            var time = document.createElement('span');
+            time.className = 'md-console-entry__time';
+            time.textContent = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+            head.appendChild(time);
+
+            if (typeof duration === 'number' && isFinite(duration)) {
+                var timing = document.createElement('span');
+                timing.className = 'md-console-entry__duration';
+                timing.textContent = duration.toFixed(2) + ' c';
+                head.appendChild(timing);
+            }
+
+            var resultNode = document.createElement('pre');
+            resultNode.className = 'md-console-entry__result';
+            resultNode.textContent = resultText || 'Запрос выполнен.';
+
+            var commandDetails = document.createElement('details');
+            commandDetails.className = 'md-console-entry__command';
+            var commandSummary = document.createElement('summary');
+            commandSummary.textContent = 'Показать запрос';
+            var commandNode = document.createElement('pre');
+            commandNode.textContent = commandText || '';
+            commandDetails.appendChild(commandSummary);
+            commandDetails.appendChild(commandNode);
+
+            entry.appendChild(head);
             entry.appendChild(resultNode);
-
+            entry.appendChild(commandDetails);
             output.prepend(entry);
         }
 
-        function setOutputMessage(message, kind) {
-            output.innerHTML = '<div class="md-admin-console-output__entry"><div class="md-admin-console-output__meta"><strong>' + escapeHtml(kind || 'консоль') + '</strong></div><div class="md-admin-console-output__result">' + escapeCommandForDisplay(message) + '</div></div>';
+        function updateModuleActions() {
+            var hasModule = !!(currentModuleName && currentModuleName !== '0');
+            var methodsVisible = !!(methodsModule && !methodsModule.hidden);
+            var methodButtons = methodsList ? methodsList.querySelectorAll('[data-md-console-method]') : [];
+            if (toggleModuleButton) {
+                toggleModuleButton.disabled = !hasModule;
+                toggleModuleButton.setAttribute('aria-expanded', methodsVisible ? 'true' : 'false');
+            }
+            if (toggleModuleLabel) {
+                toggleModuleLabel.textContent = methodsVisible ? 'Скрыть методы' : 'Методы';
+            }
+            if (methodsCount) {
+                methodsCount.hidden = !hasModule;
+                methodsCount.textContent = String(methodButtons.length);
+            }
+            if (methodsPanelName) {
+                methodsPanelName.hidden = !hasModule;
+                methodsPanelName.textContent = hasModule ? currentModuleName : '';
+            }
+        }
+
+        function filterMethods() {
+            if (!methodsList) {
+                return;
+            }
+            var query = methodsFilter ? methodsFilter.value.toLowerCase().trim() : '';
+            var visible = 0;
+            methodsList.querySelectorAll('[data-md-console-method]').forEach(function (button) {
+                var isVisible = query === '' || button.textContent.toLowerCase().indexOf(query) !== -1;
+                button.hidden = !isVisible;
+                if (isVisible) {
+                    visible++;
+                }
+            });
+            var empty = methodsList.querySelector('[data-md-console-methods-empty]');
+            if (empty) {
+                empty.hidden = visible !== 0 || !methodsList.querySelector('[data-md-console-method]');
+            }
         }
 
         function setMethods(methods) {
@@ -316,7 +416,8 @@
             methodsList.innerHTML = '';
             if (!Array.isArray(methods) || !methods.length) {
                 methodsModule.hidden = false;
-                methodsList.innerHTML = '<div class="md-admin-console-methods__empty">Для выбранного модуля не найдено доступных методов.</div>';
+                methodsList.innerHTML = '<div class="md-console-methods__empty" data-md-console-methods-empty>Для выбранного модуля не найдено доступных методов.</div>';
+                updateModuleActions();
                 return;
             }
 
@@ -328,18 +429,33 @@
                 }
                 var button = document.createElement('button');
                 button.type = 'button';
-                button.className = 'btn btn-sm btn-outline-primary md-admin-console-methods__item';
+                button.className = 'md-console-method';
                 button.setAttribute('data-md-console-method', method);
                 button.textContent = '$' + currentModuleName + '->' + method + '();';
                 methodsList.appendChild(button);
             });
+            var empty = document.createElement('div');
+            empty.className = 'md-console-methods__empty';
+            empty.setAttribute('data-md-console-methods-empty', '');
+            empty.hidden = true;
+            empty.textContent = 'Методы не найдены.';
+            methodsList.appendChild(empty);
+            if (methodsFilter) {
+                methodsFilter.value = '';
+            }
+            updateModuleActions();
+            filterMethods();
         }
 
-        function setModuleVisibility(visible) {
-            if (!moduleSelect) {
+        function setMethodsPanel(visible) {
+            if (!methodsModule) {
                 return;
             }
-            moduleSelect.classList.toggle('is-visible', !!visible);
+            methodsModule.hidden = !visible;
+            updateModuleActions();
+            if (visible && methodsFilter) {
+                methodsFilter.focus({preventScroll: true});
+            }
         }
 
         function insertIntoTextarea(value) {
@@ -365,11 +481,13 @@
                 moduleField.value = '';
                 methodsModule.hidden = true;
                 methodsList.innerHTML = '';
+                updateModuleActions();
                 return;
             }
 
             moduleField.value = buildModuleBootstrapCommand(module);
-            methodsModule.hidden = false;
+            var revealMethods = !methodsModule.hidden;
+            updateModuleActions();
             setLoaderVisible(loaderConsoleModule, true);
             clearAlerts();
             pendingModuleLoad = true;
@@ -396,13 +514,16 @@
                     methods = [];
                 }
                 setMethods(methods);
-                setOutputMessage('Модуль подключен: ' + module, 'консоль');
             }).catch(function () {
                 setMethods([]);
                 setAlerts('warning', 'Не удалось загрузить список методов модуля.');
             }).finally(function () {
                 pendingModuleLoad = false;
                 setLoaderVisible(loaderConsoleModule, false);
+                if (!revealMethods) {
+                    methodsModule.hidden = true;
+                }
+                updateModuleActions();
             });
         }
 
@@ -417,14 +538,16 @@
 
             if (trimmedCommand === 'clear' || trimmedCommand === 'clear;') {
                 clearAlerts();
-                output.innerHTML = '<div class="md-admin-console-output__entry"><div class="md-admin-console-output__meta"><strong>консоль</strong></div><div class="md-admin-console-output__result"><em>Консоль очищена.</em></div></div>';
+                setOutputEmpty();
                 setCommandValue('');
                 setLoaderVisible(loaderConsole, false);
                 return false;
             }
 
             clearAlerts();
+            setConsoleStatus('running');
             setLoaderVisible(loaderConsole, true);
+            var startedAt = (window.performance && typeof window.performance.now === 'function') ? window.performance.now() : Date.now();
 
             var finalCommand = trimmedCommand;
             if (!customCommand && moduleField && moduleField.value) {
@@ -447,13 +570,19 @@
                 return response.text();
             }).then(function (text) {
                 var result = text || 'Запрос выполнен.';
-                appendOutputEntry(finalCommand, result, 'консоль');
+                var elapsed = ((window.performance && typeof window.performance.now === 'function' ? window.performance.now() : Date.now()) - startedAt) / 1000;
+                var level = 'success';
+                if (/Fatal error|Parse error|Uncaught|E_COMPILE_ERROR|E_ERROR|MajorDoMo dev error|\bError:/i.test(result)) {
+                    level = 'error';
+                } else if (/Warning|E_WARNING|Deprecated|Notice/i.test(result)) {
+                    level = 'warning';
+                }
+                appendOutputEntry(trimmedCommand, result, currentModuleName, elapsed, level);
                 pushHistory(trimmedCommand);
                 setCommandValue('');
-                if (outputHint) {
-                    outputHint.hidden = false;
-                }
+                setConsoleStatus(level);
             }).catch(function () {
+                setConsoleStatus('error');
                 setAlerts('danger', 'Не удалось отправить запрос.');
             }).finally(function () {
                 setLoaderVisible(loaderConsole, false);
@@ -488,8 +617,9 @@
         ensureConsoleEditorBindings();
 
         if (!output.innerHTML.trim()) {
-            setOutputMessage('Ожидание команды...', 'консоль');
+            setOutputEmpty();
         }
+        updateModuleActions();
 
         if (drawerContent.dataset.mdConsoleBound !== '1') {
             drawerContent.dataset.mdConsoleBound = '1';
@@ -521,10 +651,32 @@
         if (toggleModuleButton && toggleModuleButton.dataset.mdConsoleBound !== '1') {
             toggleModuleButton.dataset.mdConsoleBound = '1';
             toggleModuleButton.addEventListener('click', function () {
-                setModuleVisibility(!moduleSelect.classList.contains('is-visible'));
-                if (moduleSelect.classList.contains('is-visible')) {
-                    moduleSelect.focus();
+                if (!currentModuleName || currentModuleName === '0') {
+                    return;
                 }
+                setMethodsPanel(!!methodsModule.hidden);
+            });
+        }
+
+        if (methodsCloseButton && methodsCloseButton.dataset.mdConsoleBound !== '1') {
+            methodsCloseButton.dataset.mdConsoleBound = '1';
+            methodsCloseButton.addEventListener('click', function () {
+                setMethodsPanel(false);
+                focusCommand();
+            });
+        }
+
+        if (methodsFilter && methodsFilter.dataset.mdConsoleBound !== '1') {
+            methodsFilter.dataset.mdConsoleBound = '1';
+            methodsFilter.addEventListener('input', filterMethods);
+        }
+
+        if (clearOutputButton && clearOutputButton.dataset.mdConsoleBound !== '1') {
+            clearOutputButton.dataset.mdConsoleBound = '1';
+            clearOutputButton.addEventListener('click', function () {
+                clearAlerts();
+                setOutputEmpty();
+                focusCommand();
             });
         }
 

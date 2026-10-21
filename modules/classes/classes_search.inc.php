@@ -55,6 +55,16 @@ if ($res[0]['ID']) {
     $total = count($res);
 
     $class_methods = array();
+    $class_methods_total = array();
+    $class_properties_total = array();
+    $method_rows = SQLSelect("SELECT CLASS_ID, COUNT(*) AS TOTAL FROM methods WHERE OBJECT_ID=0 GROUP BY CLASS_ID");
+    foreach ($method_rows as $method_row) {
+        $class_methods_total[(int)$method_row['CLASS_ID']] = (int)$method_row['TOTAL'];
+    }
+    $property_rows = SQLSelect("SELECT CLASS_ID, COUNT(*) AS TOTAL FROM properties WHERE OBJECT_ID=0 GROUP BY CLASS_ID");
+    foreach ($property_rows as $property_row) {
+        $class_properties_total[(int)$property_row['CLASS_ID']] = (int)$property_row['TOTAL'];
+    }
 
     for ($i = 0; $i < $total; $i++) {
         // some action for every record if required
@@ -94,10 +104,32 @@ if ($res[0]['ID']) {
                 unset($res[$i]['OBJECTS']);
             }
         }
+        $res[$i]['OBJECTS_TOTAL'] = isset($res[$i]['OBJECTS']) ? count($res[$i]['OBJECTS']) : 0;
+        $res[$i]['METHODS_TOTAL'] = isset($class_methods_total[(int)$res[$i]['ID']]) ? $class_methods_total[(int)$res[$i]['ID']] : 0;
+        $res[$i]['PROPERTIES_TOTAL'] = isset($class_properties_total[(int)$res[$i]['ID']]) ? $class_properties_total[(int)$res[$i]['ID']] : 0;
     }
     endMeasure('getClasses');
     startMeasure('classesBuildTree');
     $res = $this->buildTree_classes($res);
     endMeasure('classesBuildTree');
     $out['RESULT'] = $res;
+    $out['CLASSES_TOTAL'] = $total;
+    $out['ROOT_CLASSES_TOTAL'] = count($res);
+    $out['CHILD_CLASSES_TOTAL'] = max(0, $total - count($res));
+
+    $out['OBJECTS_TOTAL'] = 0;
+    $objects_total_rec = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM objects");
+    if (isset($objects_total_rec['TOTAL'])) {
+        $out['OBJECTS_TOTAL'] = (int)$objects_total_rec['TOTAL'];
+    }
+    $out['METHODS_TOTAL'] = 0;
+    $methods_total_rec = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM methods WHERE OBJECT_ID=0");
+    if (isset($methods_total_rec['TOTAL'])) {
+        $out['METHODS_TOTAL'] = (int)$methods_total_rec['TOTAL'];
+    }
+    $out['PROPERTIES_TOTAL'] = 0;
+    $properties_total_rec = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM properties WHERE OBJECT_ID=0");
+    if (isset($properties_total_rec['TOTAL'])) {
+        $out['PROPERTIES_TOTAL'] = (int)$properties_total_rec['TOTAL'];
+    }
 }

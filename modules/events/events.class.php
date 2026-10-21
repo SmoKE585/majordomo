@@ -199,17 +199,7 @@ class events extends module
         global $session;
 
         if ($this->ajax) {
-            $events = SQLSelect("SELECT ID, EVENT_NAME, DESCRIPTION, DETAILS, ADDED FROM events ORDER BY ADDED DESC LIMIT 8");
-            $total = count($events);
-            echo "<table class='table'>";
-            for ($i = 0; $i < $total; $i++) {
-                echo "<tr>";
-                echo "<td><a href='" . ROOTHTML . "panel/event/" . $events[$i]['ID'] . ".html'>" . $events[$i]['EVENT_NAME'] . "</a></td>";
-                echo "<td><i>" . $events[$i]['DESCRIPTION'] . '</i><div>' . $events[$i]['DETAILS'] . "</div></td>";
-                echo "<td>" . $events[$i]['ADDED'] . "</td>";
-                echo "</tr>";
-            }
-            echo "</table>";
+            echo $this->renderEventsFeedHtml(12);
             exit;
         }
 
@@ -281,6 +271,106 @@ class events extends module
             }
             exit;
         }
+    }
+
+    /**
+     * Recent events feed used by the admin page and its live AJAX refresh.
+     *
+     * The feed is rendered server-side so the page works without JavaScript and
+     * the same markup is reused by /ajax/events.html?getlatest=1.
+     */
+    function renderEventsFeedHtml($limit = 12)
+    {
+        $limit = max(1, (int)$limit);
+        $events = SQLSelect("SELECT ID, EVENT_NAME, EVENT_TYPE, DESCRIPTION, DETAILS, ADDED
+            FROM events
+            ORDER BY ADDED DESC, ID DESC
+            LIMIT " . $limit);
+
+        if (!isset($events[0]['ID'])) {
+            return '<div class="md-empty md-empty--compact md-events-feed__empty">'
+                . '<span class="md-empty__icon"><i class="ti ti-bell-off" aria-hidden="true"></i></span>'
+                . '<div class="md-empty__title">Событий пока нет</div>'
+                . '<p class="md-empty__text">События появятся здесь после вызова <code>registerEvent()</code> или отправки через API.</p>'
+                . '</div>';
+        }
+
+        $html = '<ul class="md-events-feed__list">';
+        foreach ($events as $event) {
+            $event_type = strtolower(trim((string)$event['EVENT_TYPE']));
+            $tone = 'neutral';
+            $icon = 'activity';
+            if ($event_type === 'system') {
+                $tone = 'primary';
+                $icon = 'bolt';
+            } elseif ($event_type === 'message') {
+                $tone = 'info';
+                $icon = 'message';
+            } elseif ($event_type === 'alarm' || $event_type === 'alert') {
+                $tone = 'danger';
+                $icon = 'bell-ringing';
+            } elseif ($event_type === 'error') {
+                $tone = 'danger';
+                $icon = 'alert-triangle';
+            }
+
+            $name = trim((string)$event['EVENT_NAME']);
+            if ($name === '') {
+                $name = 'Событие #' . (int)$event['ID'];
+            }
+            $name_html = htmlspecialchars($name, ENT_QUOTES);
+            $description = trim((string)$event['DESCRIPTION']);
+            $description_html = htmlspecialchars($description, ENT_QUOTES);
+
+            $details = trim((string)$event['DETAILS']);
+            $details_html = '';
+            if ($details !== '') {
+                $decoded = json_decode($details, true);
+                if (is_array($decoded)) {
+                    $json_options = 0;
+                    if (defined('JSON_UNESCAPED_UNICODE')) {
+                        $json_options |= JSON_UNESCAPED_UNICODE;
+                    }
+                    if (defined('JSON_UNESCAPED_SLASHES')) {
+                        $json_options |= JSON_UNESCAPED_SLASHES;
+                    }
+                    $encoded = json_encode($decoded, $json_options);
+                    if (is_string($encoded) && $encoded !== '') {
+                        $details = $encoded;
+                    }
+                }
+                $details = preg_replace('/\s+/u', ' ', $details);
+                if (mb_strlen($details, 'UTF-8') > 280) {
+                    $details = mb_substr($details, 0, 280, 'UTF-8') . '…';
+                }
+                $details_html = '<code class="md-events-feed__details">' . htmlspecialchars($details, ENT_QUOTES) . '</code>';
+            }
+
+            $added_ts = strtotime((string)$event['ADDED']);
+            $added_date = $added_ts ? date('d.m.Y', $added_ts) : (string)$event['ADDED'];
+            $added_time = $added_ts ? date('H:i:s', $added_ts) : '';
+            $added_iso = $added_ts ? date('c', $added_ts) : '';
+            $url = ROOTHTML . 'panel/event/' . (int)$event['ID'] . '.html';
+
+            $html .= '<li class="md-events-feed__item">';
+            $html .= '<span class="md-events-feed__marker md-events-feed__marker--' . $tone . '"><i class="ti ti-' . $icon . '" aria-hidden="true"></i></span>';
+            $html .= '<div class="md-events-feed__body">';
+            $html .= '<div class="md-events-feed__head">';
+            $html .= '<a class="md-events-feed__name" href="' . htmlspecialchars($url, ENT_QUOTES) . '">' . $name_html . '</a>';
+            $html .= '<time class="md-events-feed__time" datetime="' . htmlspecialchars($added_iso, ENT_QUOTES) . '">' . htmlspecialchars($added_date . ' ' . $added_time, ENT_QUOTES) . '</time>';
+            $html .= '</div>';
+            if ($description_html !== '') {
+                $html .= '<p class="md-events-feed__desc">' . $description_html . '</p>';
+            }
+            if ($details_html !== '') {
+                $html .= '<div class="md-events-feed__payload">' . $details_html . '</div>';
+            }
+            $html .= '</div>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+
+        return $html;
     }
 
     function registerEvent($eventName, $details = '', $expire_in = 0)

@@ -1,0 +1,906 @@
+/*
+ * MQTT workspace: grouped topic explorer, settings and topic editor.
+ * Loaded only from templates/mqtt/action_admin.html.
+ */
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-cycle-card__body {
+  padding: 12px 16px 16px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-cycle-card__body .xray-service-grid {
+  margin: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-cycle-card__body .xray-service-card {
+  box-shadow: none;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-workspace {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar {
+  position: sticky;
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 108px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar__head {
+  flex: 0 0 auto;
+  padding: 14px 14px 0;
+  border-bottom: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar__head .md-card__title {
+  font-size: var(--md-ui-fs-md);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar__toggle {
+  display: none;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 10px 12px 12px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-mode-tabs {
+  flex: 0 0 auto;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group-search {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 10px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group-search:focus-within {
+  border-color: var(--md-ui-primary);
+  box-shadow: 0 0 0 3px var(--md-ui-focus);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group-search i {
+  flex: 0 0 auto;
+  font-size: 14px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: var(--md-ui-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group-search input::placeholder {
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+  padding-right: 2px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group-list__label {
+  padding: 9px 8px 4px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 7px 8px;
+  color: var(--md-ui-text-soft);
+  border: 1px solid transparent;
+  border-radius: var(--md-ui-radius-sm);
+  text-decoration: none;
+  transition: background var(--md-ui-transition), border-color var(--md-ui-transition);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group:hover {
+  color: var(--md-ui-text);
+  background: var(--md-ui-surface-2);
+  text-decoration: none;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group.is-active {
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-color: var(--md-ui-primary-soft);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 9px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group__icon--warning {
+  color: var(--md-ui-warning);
+  background: var(--md-ui-warning-soft);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group.is-active .md-mqtt-group__icon {
+  color: var(--md-ui-primary-contrast);
+  background: var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group__main strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group__main small {
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group__count {
+  min-width: 24px;
+  padding: 2px 6px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border-radius: 999px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group.is-active .md-mqtt-group__count {
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-contrast);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-group-list__empty {
+  padding: 12px 8px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-toolbar {
+  padding: 14px 16px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-toolbar__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-toolbar__titles {
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-toolbar__title {
+  margin: 2px 0 2px;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-lg);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-toolbar__subtitle {
+  margin: 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-toolbar__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-live__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--md-ui-muted);
+  border-radius: 50%;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-live.is-active {
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft);
+  border-color: var(--md-ui-success-soft);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-live.is-active .md-mqtt-live__dot {
+  background: var(--md-ui-success);
+  box-shadow: 0 0 0 3px var(--md-ui-success-soft);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-live.is-paused {
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border-color: var(--md-ui-border);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-live.is-paused .md-mqtt-live__dot {
+  background: var(--md-ui-muted);
+  box-shadow: none;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-filter-search {
+  position: relative;
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  gap: 7px;
+  min-width: 200px;
+  height: 36px;
+  padding: 0 10px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-filter-search:focus-within {
+  border-color: var(--md-ui-primary);
+  box-shadow: 0 0 0 3px var(--md-ui-focus);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-filter-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: var(--md-ui-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-filters .md-select {
+  flex: 0 1 190px;
+  min-width: 150px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-filter-chip {
+  gap: 5px;
+  text-decoration: none;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-filter-chip:hover {
+  color: var(--md-ui-danger);
+  border-color: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-table-wrap .md-table__scroll {
+  contain: paint;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-col-value {
+  width: 190px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-col-link {
+  width: 150px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-col-actions {
+  width: 76px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-topic {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-topic__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-topic__title {
+  overflow: hidden;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-topic__title:hover {
+  color: var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-topic__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-topic__path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-topic__flags {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-flag i {
+  font-size: 12px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-topic__mobile {
+  display: none;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value {
+  display: flex;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value__text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 7px;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 6px;
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value__text.is-empty {
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value__text.is-changed {
+  animation: md-mqtt-value-flash .8s ease;
+}
+
+@keyframes md-mqtt-value-flash {
+  0% { background: var(--md-ui-primary-soft); border-color: var(--md-ui-primary); }
+  100% { background: var(--md-ui-surface-2); border-color: var(--md-ui-border); }
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value__time {
+  display: block;
+  margin-top: 3px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-link {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-link strong {
+  overflow: hidden;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-link small {
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  font-family: var(--md-ui-font-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-unlinked {
+  display: inline-flex;
+  align-items: center;
+  color: var(--md-ui-muted);
+  font-size: 14px;
+  opacity: .7;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-freshness__dot {
+  width: 7px;
+  height: 7px;
+  background: var(--md-ui-muted);
+  border-radius: 50%;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-freshness--fresh .md-mqtt-freshness__dot {
+  background: var(--md-ui-success);
+  box-shadow: 0 0 0 3px var(--md-ui-success-soft);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-freshness--recent .md-mqtt-freshness__dot {
+  background: var(--md-ui-warning);
+  box-shadow: 0 0 0 3px var(--md-ui-warning-soft);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-freshness--empty .md-mqtt-freshness__dot {
+  background: var(--md-ui-border-strong);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-updated-exact {
+  display: block;
+  margin-top: 3px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Settings */
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-input-with-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-input-with-action .md-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-form-actions {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  box-shadow: var(--md-ui-shadow-xs);
+}
+
+/* Topic editor */
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-edit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+  align-items: start;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-edit-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-edit-side {
+  position: sticky;
+  top: 84px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value-card .md-card__actions {
+  align-items: center;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-current-value {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-current-value__label {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-current-value__text {
+  max-height: 180px;
+  padding: 9px 10px;
+  overflow: auto;
+  color: var(--md-ui-text);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-family: var(--md-ui-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-current-value__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value-details {
+  margin-top: 2px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value-details summary {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  cursor: pointer;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-value-details pre {
+  max-height: 240px;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-publish {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: -2px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-history-table {
+  min-width: 720px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-history-topic,
+body.md-admin-shell .md-mqtt-page .md-mqtt-history-payload {
+  display: inline-block;
+  max-width: 260px;
+  overflow: hidden;
+  padding: 0;
+  color: var(--md-ui-text-soft);
+  background: transparent;
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-history-exact {
+  display: block;
+  margin-top: 2px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-history-linked {
+  display: block;
+  margin-top: 2px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-child-title {
+  display: block;
+  overflow: hidden;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-mqtt-page .md-mqtt-child-path {
+  display: block;
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  font-family: var(--md-ui-font-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1199.98px) {
+  body.md-admin-shell .md-mqtt-page .md-mqtt-workspace {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-edit-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  body.md-admin-shell .md-mqtt-page .md-mqtt-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar {
+    position: static;
+    max-height: none;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar__toggle {
+    display: inline-flex;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar__body {
+    display: none;
+    max-height: 420px;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-sidebar.is-open .md-mqtt-sidebar__body {
+    display: flex;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-edit-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-edit-side {
+    position: static;
+  }
+}
+
+@media (max-width: 767.98px) {
+  body.md-admin-shell .md-mqtt-page .md-mqtt-toolbar__head {
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-toolbar__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-filters .md-select,
+  body.md-admin-shell .md-mqtt-page .md-mqtt-filters .md-btn {
+    flex: 1 1 150px;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-table {
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-table thead {
+    display: none;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-col-value,
+  body.md-admin-shell .md-mqtt-page .md-mqtt-col-link {
+    display: none;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-col-topic {
+    min-width: 0;
+    width: auto;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-col-actions {
+    width: 86px;
+    min-width: 86px;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-topic__mobile {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-topic__mobile .md-mqtt-value__text {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-topic__mobile .md-mqtt-freshness {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-topic__flags {
+    display: none;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-topic__title,
+  body.md-admin-shell .md-mqtt-page .md-mqtt-topic__path {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-value__text {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-form-actions {
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-form-actions .md-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-form-actions .ms-auto {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .md-mqtt-page .md-mqtt-filters {
+    align-items: stretch;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-filter-search {
+    flex-basis: 100%;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-filters .md-select {
+    flex-basis: 100%;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-filters .md-btn {
+    flex: 1 1 0;
+  }
+
+  body.md-admin-shell .md-mqtt-page .md-mqtt-current-value__text {
+    font-size: 11px;
+  }
+}
+
+

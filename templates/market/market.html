@@ -1,117 +1,255 @@
-<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-06-05-7" type="text/css">
-<script src="<#ROOTHTML#>templates/market/market.js?v=2026-06-05-5"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-10-21-4" type="text/css">
+<script src="<#ROOTHTML#>templates/market/market.js?v=2026-10-21-7"></script>
 <div
     data-market-config
     data-roothtml="<#ROOTHTML#>"
     data-loading-text="<#LANG_NEWDASH_LOADING#>"
     data-search-label="Поиск"
     data-search-close-label="Закрыть поиск"
-    data-install-prompt="Укажите Git/архив URL для установки.\nGitHub repo/tree/commit будет преобразован в архив master/branch/commit.\nПустое значение сбросит пользовательский URL."
-    data-list-load-error="Не удалось загрузить список расширений."
+    data-install-prompt="Укажите Git/архив URL.\nПустое значение сбросит URL."
+    data-list-load-error="Не удалось загрузить каталог."
 ></div>
 
 [#if MODE=""#]
-<div class="market-page" id="marketPage">
-    <div class="market-toolbar-grid">
-        <section class="market-hero">
-            <div class="market-hero__eyebrow"><i class="glyphicon glyphicon-th-large"></i> MajorDoMo Market</div>
-            <h1 class="market-hero__title"><#LANG_NEWMARKET_BANNER#></h1>
-            <p class="market-hero__text"><#LANG_NEWMARKET_BANNER_TEXT#></p>
-            <div class="market-hero__meta">
-                <span>Каталог совместимых модулей и ручная установка из архива или Git-репозитория.</span>
-                <a href="https://mjdm.ru/forum/viewforum.php?f=36" target="_blank" class="market-hero__link"><i class="glyphicon glyphicon-comment"></i> <#LANG_NEWMARKET_BANNER_BTN#></a>
+<div class="md-ui-page md-ui-page--stack market-v2" id="marketPage">
+    <section class="md-ui-hero market-v2__hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-building-store" aria-hidden="true"></i> MajorDoMo Market</div>
+            <h1 class="md-ui-hero__title">Маркет дополнений</h1>
+            <p class="md-ui-hero__lede">Модули, архивы и Git-репозитории в одном каталоге.</p>
+            <div class="market-v2__hero-meta">
+                <span><i class="ti ti-package" aria-hidden="true"></i> Каталог совместимых модулей</span>
+                <span><i class="ti ti-brand-git" aria-hidden="true"></i> Архивы и Git-репозитории</span>
             </div>
-        </section>
-        <section class="market-card" aria-labelledby="marketSearchHeading">
-            <h2 class="market-card__title" id="marketSearchHeading"><#LANG_NEWMARKET_SERACH_BLOCK#></h2>
-            <p class="market-card__subtitle">Поиск по доступным модулям, установка архивов и подключение собственных Git/архив URL для обновлений.</p>
-            <div class="market-search" id="marketSearchBox">
-                <i class="glyphicon glyphicon-search market-search__icon"></i>
-                <i class="glyphicon glyphicon-refresh market-search__spinner"></i>
-                <input type="text" class="form-control" placeholder="<#LANG_NEWMARKET_SEARCH_INPUT_PLACEHOLDER#>" id="filter" autocomplete="off" autofocus>
-            </div>
-            <div class="market-actions">
-                [#if CLEAR_FIRST!="1"#]
-                <button type="button" class="btn btn-primary market-actions__primary" data-market-action="toggle-upload"><i class="glyphicon glyphicon-plus"></i> <#LANG_ADD_UPDATE_MANUALLY#></button>
-                <details class="market-actions-menu">
-                    <summary class="btn btn-default market-actions-menu__summary"><i class="glyphicon glyphicon-cog"></i> Действия <span class="caret"></span></summary>
-                    <div class="market-actions-menu__dropdown">
-                        <a href="?mode=iframe&mode2=update_new" data-confirm="<#LANG_ARE_YOU_SURE#>" class="market-actions-menu__item">
-                            <i class="glyphicon glyphicon-download-alt"></i>
+        </div>
+        <div class="md-ui-hero__actions">
+            [#if CLEAR_FIRST!="1"#]
+            <button type="button" class="md-btn md-btn--primary" data-market-action="toggle-upload" aria-controls="marketManualUpload" aria-expanded="false">
+                <i class="ti ti-plus" aria-hidden="true"></i>
+                <span class="md-btn__label">Добавить вручную</span>
+            </button>
+            <div class="dropdown">
+                <button type="button" class="md-btn md-btn--secondary" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="ti ti-settings" aria-hidden="true"></i>
+                    <span class="md-btn__label">Действия</span>
+                    <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    <li>
+                        <a href="?mode=iframe&amp;mode2=update_new" data-confirm="<#LANG_ARE_YOU_SURE#>" class="dropdown-item">
+                            <i class="ti ti-download" aria-hidden="true"></i>
                             <span><#LANG_UPDATE_NEW_EXTENSIONS#></span>
                         </a>
-                        <a href="?mode=iframe&mode2=update_all" data-confirm="<#LANG_ARE_YOU_SURE#>" class="market-actions-menu__item">
-                            <i class="glyphicon glyphicon-repeat"></i>
+                    </li>
+                    <li>
+                        <a href="?mode=iframe&amp;mode2=update_all" data-confirm="<#LANG_ARE_YOU_SURE#>" class="dropdown-item">
+                            <i class="ti ti-refresh" aria-hidden="true"></i>
                             <span><#LANG_UPDATE_ALL_EXTENSIONS#></span>
                         </a>
-                    </div>
-                </details>
-                [#else CLEAR_FIRST#]
-                <form action="?" method="post">
-                    <input type="hidden" name="mode" value="clear">
-                    <button type="submit" class="btn btn-warning"><i class="glyphicon glyphicon-folder-open"></i> <#LANG_CLEAR_TEMPORARY_FOLDER#></button>
-                </form>
-                [#endif CLEAR_FIRST#]
+                    </li>
+                </ul>
             </div>
-            [#if CLEAR_FIRST!="1"#]
-            <div class="market-manual-upload" id="marketManualUpload">
-                <div class="market-manual-upload__intro">
-                    <div>
-                        <h3 class="market-manual-upload__title"><#LANG_ADD_UPDATE_MANUALLY#></h3>
-                        <p class="market-manual-upload__subtitle">Выберите локальный архив или укажите ссылку на Git/архив. Перед установкой пакет проверяется на структуру MajorDoMo-модуля.</p>
-                    </div>
-                </div>
-                <div class="market-manual-upload__grid">
-                    <div class="market-manual-upload__panel">
-                        <h3>Локальный архив</h3>
-                        <p>Поддерживается архив с пакетом MajorDoMo. Перед установкой проверяется наличие структуры `modules/&lt;module&gt;/&lt;module&gt;.class.php`.</p>
-                        <form class="form" method="post" enctype="multipart/form-data">
-                            <div class="form-group">
-                                <label for="module_file"><#LANG_ADDON_FILE#> (.tgz, .tar.gz)</label>
-                                <input type="file" name="file" id="module_file" class="form-control">
-                            </div>
-                            <input type="hidden" name="mode" value="upload">
-                            <button type="submit" class="btn btn-primary"><#LANG_UPLOAD_AND_INSTALL#></button>
-                        </form>
-                    </div>
-                    <div class="market-manual-upload__panel">
-                        <h3>Git / архив URL</h3>
-                        <p>Поддерживаются GitHub repo/tree/commit/tag и прямой `.tar.gz`. Ссылка будет сохранена как источник обновлений модуля после успешной проверки пакета.</p>
-                        <form class="form" method="get">
-                            <div class="form-group">
-                                <label for="module_repo_url">Ссылка на Git или архив</label>
-                                <input type="url" name="repo_url" id="module_repo_url" class="form-control" placeholder="https://github.com/user/repo/tree/main" required>
-                            </div>
-                            <input type="hidden" name="mode" value="iframe">
-                            <input type="hidden" name="mode2" value="install_repository">
-                            <button type="submit" class="btn btn-primary">Скачать и установить</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="market-manual-upload__footer">После успешной установки Git/архив URL сохраняется в настройках модуля и используется для последующих обновлений.</div>
-            </div>
+            [#else CLEAR_FIRST#]
+            <form action="?" method="post">
+                <input type="hidden" name="mode" value="clear">
+                <button type="submit" class="md-btn md-btn--secondary">
+                    <i class="ti ti-folder-open" aria-hidden="true"></i>
+                    <span class="md-btn__label"><#LANG_CLEAR_TEMPORARY_FOLDER#></span>
+                </button>
+            </form>
             [#endif CLEAR_FIRST#]
-        </section>
+        </div>
+    </section>
+
+    <div class="md-ui-kpi-grid market-v2__kpis">
+        <article class="md-kpi">
+            <span class="md-kpi__icon"><i class="ti ti-category" aria-hidden="true"></i></span>
+            <span class="md-kpi__label">Категории</span>
+            <span class="md-kpi__value">[#MARKET_CATEGORY_COUNT#]</span>
+            <span class="md-kpi__meta">Разделы каталога</span>
+        </article>
+        <article class="md-kpi md-kpi--success">
+            <span class="md-kpi__icon"><i class="ti ti-cloud" aria-hidden="true"></i></span>
+            <span class="md-kpi__label">Каталог</span>
+            <span class="md-kpi__value">Connect</span>
+            <span class="md-kpi__meta">Основной источник модулей</span>
+        </article>
+        <article class="md-kpi md-kpi--neutral">
+            <span class="md-kpi__icon"><i class="ti ti-upload" aria-hidden="true"></i></span>
+            <span class="md-kpi__label">Ручная установка</span>
+            <span class="md-kpi__value">Git / ZIP</span>
+            <span class="md-kpi__meta">Архив или репозиторий</span>
+        </article>
+        <article class="md-kpi md-kpi--neutral">
+            <span class="md-kpi__icon"><i class="ti ti-box" aria-hidden="true"></i></span>
+            <span class="md-kpi__label">Формат</span>
+            <span class="md-kpi__value">MajorDoMo</span>
+            <span class="md-kpi__meta">Пакеты модулей</span>
+        </article>
     </div>
+
+    <section class="md-card market-v2__search-card" aria-labelledby="marketSearchHeading">
+        <h2 class="visually-hidden" id="marketSearchHeading">Поиск модулей</h2>
+        <div class="md-card__body">
+            <div class="market-v2__search-row">
+                <div class="md-input-shell md-input-shell--lg market-search-v2" id="marketSearchBox">
+                    <i class="ti ti-search md-input-icon market-search-v2__icon" aria-hidden="true"></i>
+                    <i class="ti ti-loader-2 market-search-v2__spinner" aria-hidden="true"></i>
+                    <input type="search" class="md-input" placeholder="Поиск модуля" id="filter" autocomplete="off" aria-label="Поиск по каталогу модулей">
+                </div>
+                <div class="market-v2__search-aside">
+                    <span class="market-v2__search-hint">По названию или описанию</span>
+                    <a class="md-btn md-btn--ghost md-btn--sm" href="#marketCatalogSection" data-market-action="scroll-to-catalog">
+                        <i class="ti ti-arrow-down" aria-hidden="true"></i>
+                        <span class="md-btn__label">К каталогу</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    [#if CLEAR_FIRST!="1"#]
+    <section class="md-card market-manual" id="marketManualUpload" aria-labelledby="marketManualTitle">
+        <div class="md-card__head">
+            <div class="md-card__titles">
+                <div class="md-card__eyebrow">Ручная установка</div>
+                <h2 class="md-card__title" id="marketManualTitle">Добавить модуль</h2>
+            </div>
+            <div class="md-card__actions">
+                <button type="button" class="md-icon-btn" data-market-action="toggle-upload" aria-label="Свернуть ручную установку">
+                    <i class="ti ti-x" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        <div class="md-card__body">
+            <div class="market-manual__grid">
+                <section class="market-manual__panel">
+                    <div class="market-manual__panel-head">
+                        <span class="market-manual__panel-icon"><i class="ti ti-upload" aria-hidden="true"></i></span>
+                        <div>
+                            <h3>Локальный архив</h3>
+                            <p>Архив `.tgz` или `.tar.gz` с модулем MajorDoMo.</p>
+                        </div>
+                    </div>
+                    <form class="market-manual__form" method="post" enctype="multipart/form-data">
+                        <div class="md-field">
+                            <label class="md-field__label" for="module_file"><#LANG_ADDON_FILE#></label>
+                            <input type="file" name="file" id="module_file" class="form-control md-input" accept=".tgz,.tar.gz,application/gzip,application/x-gzip">
+                            <div class="md-field__hint">Структура модуля проверяется автоматически.</div>
+                        </div>
+                        <input type="hidden" name="mode" value="upload">
+                        <button type="submit" class="md-btn md-btn--primary">
+                            <i class="ti ti-upload" aria-hidden="true"></i>
+                            <span class="md-btn__label">Загрузить</span>
+                        </button>
+                    </form>
+                </section>
+                <section class="market-manual__panel">
+                    <div class="market-manual__panel-head">
+                        <span class="market-manual__panel-icon"><i class="ti ti-brand-git" aria-hidden="true"></i></span>
+                        <div>
+                            <h3>Git или архив URL</h3>
+                            <p>GitHub-ссылка или прямой `.tar.gz`.</p>
+                        </div>
+                    </div>
+                    <form class="market-manual__form" method="get">
+                        <div class="md-field">
+                            <label class="md-field__label" for="module_repo_url">Ссылка на Git или архив</label>
+                            <input type="url" name="repo_url" id="module_repo_url" class="form-control md-input" placeholder="https://github.com/user/repo/tree/main" required>
+                            <div class="md-field__hint">Сохранится как источник обновлений.</div>
+                        </div>
+                        <input type="hidden" name="mode" value="iframe">
+                        <input type="hidden" name="mode2" value="install_repository">
+                        <button type="submit" class="md-btn md-btn--primary">
+                            <i class="ti ti-download" aria-hidden="true"></i>
+                            <span class="md-btn__label">Установить</span>
+                        </button>
+                    </form>
+                </section>
+            </div>
+            <div class="market-manual__note">
+                <i class="ti ti-info-circle" aria-hidden="true"></i>
+                <span>URL сохранится для будущих обновлений.</span>
+            </div>
+        </div>
+    </section>
+    [#endif CLEAR_FIRST#]
+
     [#if ERR_MSG!=""#]
-    <div class="alert alert-danger">[#ERR_MSG#]</div>
+    <div class="md-alert md-alert--danger" role="alert">
+        <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">[#ERR_MSG#]</div></div>
+    </div>
     [#endif ERR_MSG#]
 
     [#if OK_MSG!=""#]
-    <div class="alert alert-success">[#OK_MSG#]</div>
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">[#OK_MSG#]</div></div>
+    </div>
     [#endif OK_MSG#]
 
     [#if CATEGORIES#]
-    <nav id="tab" class="md-admin-module-tabs market-page__tabs" aria-label="Market categories">
-        [#begin CATEGORIES#]
-        <a href="#panel_[#ID#]" id="panel_[#ID#]" class="md-admin-module-tabs__link" data-category-id="[#ID#]">[#TITLE#]</a>
-        [#end CATEGORIES#]
-    </nav>
-    <div class="alert alert-warning market-connect-error" id="problemLinkToConnect">Не удалось корректно получить данные маркета. Проверьте соединение с `connect.smartliving.ru` или повторите позже.</div>
-    <div class="market-results" id="marketCatalogSection">
-        <div id="search_result"></div>
-    </div>
+    <section class="market-catalog" aria-labelledby="marketCatalogTitle">
+        <div class="md-section-head market-catalog__head">
+            <div class="md-section-head__text">
+                <div class="md-section-head__eyebrow">Каталог</div>
+                <h2 class="md-section-head__title" id="marketCatalogTitle">Расширения</h2>
+                <p class="md-section-head__description">Выберите категорию и установите модуль.</p>
+            </div>
+            <div class="md-section-head__actions">
+                <span class="md-badge md-badge--outline" id="marketCatalogCount">0 модулей</span>
+            </div>
+        </div>
+
+        <nav id="tab" class="md-tabs market-tabs" aria-label="Категории маркета">
+            [#begin CATEGORIES#]
+            <a href="#panel_[#ID#]" id="panel_[#ID#]" class="nav-link [#if ID="installed"#]active[#endif#]" data-category-id="[#ID#]">[#TITLE#]</a>
+            [#end CATEGORIES#]
+        </nav>
+
+        <div class="md-alert md-alert--warning market-connect-error" id="problemLinkToConnect" style="display:none">
+            <i class="ti ti-plug-connected-x md-alert__icon" aria-hidden="true"></i>
+            <div class="md-alert__body"><div class="md-alert__text">Не удалось получить данные маркета. Проверьте соединение и повторите.</div></div>
+        </div>
+
+        <div class="market-results" id="marketCatalogSection">
+            <div id="search_result" class="market-results__body" aria-live="polite">
+                <div class="market-results__loading">
+                    <span class="md-spinner" aria-hidden="true"></span>
+                    <span>Загрузка каталога…</span>
+                </div>
+            </div>
+        </div>
+    </section>
     [#endif CATEGORIES#]
+
+    <div class="modal fade md-modal market-update-modal" id="marketUpdateModal" tabindex="-1" aria-labelledby="marketUpdateModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <div class="md-card__eyebrow" id="marketUpdateModalEyebrow">Обновление модуля</div>
+                        <h2 class="modal-title" id="marketUpdateModalTitle">Модуль</h2>
+                        <div class="market-update-modal__versions" id="marketUpdateModalVersions"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="market-update-modal__repo" id="marketUpdateModalRepo"></div>
+                    <div class="market-update-modal__loading" id="marketUpdateModalLoading">
+                        <span class="md-spinner" aria-hidden="true"></span>
+                        <span>Загружаем информацию из Git…</span>
+                    </div>
+                    <div class="market-update-list" id="marketUpdateModalList"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="md-btn md-btn--secondary" data-bs-dismiss="modal">Отмена</button>
+                    <a class="md-btn md-btn--primary" id="marketUpdateModalConfirm" href="#">Обновить</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 [#endif MODE#]
 
@@ -148,8 +286,8 @@
             </div>
 
             <div class="md-market-inline-alert">
-                <i class="glyphicon glyphicon-info-sign"></i>
-                <span>Не закрывайте это окно до окончания операции. После успешной установки страница обновится автоматически.</span>
+                <i class="ti ti-info-circle" aria-hidden="true"></i>
+                <span>Не закрывайте окно до завершения установки.</span>
             </div>
 
             <iframe id="processUpdateFrame" class="md-market-console" src="<#ROOTHTML#>modules/market/update_iframe.php?mode2=<#MODE2#>&name=[#NAME#]&names=[#NAMES#]&link=[#LINK_URL#]&url=[#INSTALL_URL#]&repo_url=[#REPO_URL#]&version=[#VERSION_URL#]" frameborder="0"></iframe>

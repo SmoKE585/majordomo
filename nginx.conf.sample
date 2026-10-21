@@ -1,3 +1,14 @@
+# MajorDoMo virtual host (nginx only).
+#
+# The project is deployed on nginx: all rewrite and access rules live in this
+# file, and no per-directory configuration should be added anywhere else.
+#
+# Usage:
+#   cp nginx.conf.sample /etc/nginx/sites-available/majordomo
+#   # adjust root, server_name and the php-fpm socket below
+#   ln -s /etc/nginx/sites-available/majordomo /etc/nginx/sites-enabled/
+#   nginx -t && systemctl reload nginx
+
 server {
     listen 127.0.0.1:80;
     server_name example.com www.example.com localhost;
@@ -9,34 +20,71 @@ server {
 
     index index.php index.html index.htm;
     charset utf-8;
+    autoindex off;
 
-    # Sensitive files
+    # --- Access protection -------------------------------------------------
+    # These paths must never be served directly.
     location = /config.php { deny all; }
     location = /debmes.txt { deny all; }
+    # Let's Encrypt HTTP-01 validation must stay reachable.
+    location ^~ /.well-known/acme-challenge/ { allow all; }
+    # Dotfiles and dot-directories (.git, .gitkeep, .htpasswd, elFinder .tmp).
     location ~ /\. { deny all; }
     location ~* \.(htaccess|htpasswd|ini|phps|fla|sql|log|sh|py)$ { deny all; }
 
-    # Apache: ReWriteCond %{REQUEST_URI} pda$ -> /popup/pda.html [R,L]
+    # lib/ is include-only PHP: never serve it directly.
+    location ^~ /lib/ { deny all; }
+
+    # templates/*.html is include-only markup.
+    location ~* ^/templates/.*\.html$ { deny all; }
+
+    # UI component/page templates are include-only PHP.
+    location ^~ /templates/ui/ { deny all; }
+    location ^~ /templates/ui_kit/ { deny all; }
+
+    # --- Friendly URL routing ---------------------------------------------
+    # Admin shell and admin pretty URLs (/panel/, /panel/classes.html, ...).
+    # `^~` wins over the generic *.html location below, so every admin route
+    # is resolved by nf.php and the shared route table in lib/admin_router.php.
+    location = /panel {
+        return 301 /panel/;
+    }
+    location ^~ /panel/ {
+        try_files $uri $uri/ /nf.php?$query_string;
+    }
+
+    # Styled 404 page for nginx-generated errors and unknown *.html routes.
+    # The request is executed by the generic PHP location below; no exact
+    # location is declared here so fastcgi_pass is not bypassed.
+    error_page 404 /404.php;
+
+    # /.../pda -> /popup/pda.html
     location ~* pda$ {
         return 302 /popup/pda.html;
     }
 
-    # Apache: ReWriteCond %{REQUEST_URI} ^/api/ -> /api.php
+    # /api/... -> /api.php
     location ^~ /api/ {
         rewrite ^ /api.php last;
     }
 
-    # Apache: /module/app_mediabrowser.* -> nf.php when no real file/dir exists
+    # Long-lived cache for media files.
+    location ~* \.(gif|jpe?g|png|svg|webp|ico|ogg|mp3|mp4|mkv|flv|swf|wmv|asf|asx|wma|wax|wmx|wm)$ {
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    # /module/app_mediabrowser.* -> nf.php when no real file/directory exists.
     location ~* ^/module/app_mediabrowser\..*$ {
         try_files $uri $uri/ /nf.php?$query_string;
     }
 
-    # Apache: *.html/*.xml -> nf.php when no real file/dir exists
+    # *.html / *.xml -> nf.php when no real file/directory exists.
     location ~* \.(html|xml)$ {
         try_files $uri $uri/ /nf.php?$query_string;
     }
 
-    # Keep static/real files behavior predictable
+    # Everything else: real files first, then the application entry point.
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }

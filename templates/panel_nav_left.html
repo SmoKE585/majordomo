@@ -1,10 +1,10 @@
 <aside class="col-lg-2 col-md-3 col-sm-4 col-xs-12 md-admin-sidebar" id="left_block" aria-label="Admin navigation">
     <div class="md-admin-sidebar__inner">
         <div class="md-admin-sidebar__brand-shell">
-            <button type="button" class="md-admin-sidebar__close" data-md-admin-sidebar-close aria-label="Close menu">
-                <i class="glyphicon glyphicon-remove"></i>
+            <button type="button" class="md-admin-sidebar__close" data-md-admin-sidebar-close aria-label="Закрыть меню">
+                <i class="ti ti-x" aria-hidden="true"></i>
             </button>
-            <a class="md-admin-sidebar__brand" href="<#ROOTHTML#>admin.php" aria-label="MajorDoMo">
+            <a class="md-admin-sidebar__brand" href="<#ROOTHTML#>panel/" aria-label="MajorDoMo">
                 <img src="<#ROOTHTML#>img/logo-md.png" alt="MajorDoMo">
             </a>
         </div>
@@ -18,7 +18,7 @@
                             data-md-sidebar-category-toggle="[#CATEGORY_ID#]" aria-expanded="true"
                             aria-controls="row_[#CATEGORY_ID#]">
                         <span>[#CATEGORY#]</span>
-                        <i class="glyphicon glyphicon-arrow-down"></i>
+                        <i class="ti ti-chevron-down" aria-hidden="true"></i>
                     </button>
                     <div id="row_[#CATEGORY_ID#]" class="collapse show">
                         <ul class="md-admin-sidebar__list">
@@ -26,9 +26,16 @@
 
                             [#if !DENIED#]
                             <li class="md-admin-sidebar__item [#if SELECTED#]active[#endif#] category[#CATEGORY_ID#]"
-                                id="module_[#NAME#]_link">
+                                id="module_[#NAME#]_link"
+                                data-md-module="[#NAME#]"
+                                data-md-title="[#TITLE#]"
+                                data-md-category="[#CATEGORY#]">
                                 <a class="md-admin-sidebar__link leftmenutab" href="?action=[#NAME#]">
+                                    [#if ICON_BI#]
+                                    <i class="md-admin-sidebar__icon-bi ti [#ICON_BI#]" aria-hidden="true"></i>
+                                    [#else#]
                                     <img src="[#ICON_SM#]" alt="" class="md-admin-sidebar__icon">
+                                    [#endif#]
                                     <span class="md-admin-sidebar__label">[#TITLE#]</span>
                                     [#if NOTIFICATIONS_COUNT != 0#]
                                     <span class="badge md-admin-sidebar__badge alert-[#NOTIFICATIONS_TYPE#]"
@@ -52,3 +59,5 @@
     </div>
 
 </aside>
+
+

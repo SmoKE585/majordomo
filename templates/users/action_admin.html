@@ -1,20 +1,95 @@
 <!--#
- @version 0.1 (auto-set)
+ @version 0.2 (auto-set)
 #-->
 
- <!-- action usual -->
- <!-- table users search -->
- [#if VIEW_MODE="search_users" || VIEW_MODE=""#]
-  [#inc users_search_admin.html#]
- [#endif VIEW_MODE#]
- <!-- / table users search -->
- <!-- table users edit -->
- [#if VIEW_MODE="edit_users"#]
-   [#inc users_edit.html#]
- [#endif VIEW_MODE#]
- <!-- / table users edit -->
- <!-- table users view --> 
- [#if VIEW_MODE="view_users"#]
-   [#inc users_view.html#]
- [#endif VIEW_MODE#]
- <!-- / table users view -->
+<link rel="stylesheet" href="<#ROOTHTML#>templates/users/users.css?v=2026-10-21-1">
+
+[#if VIEW_MODE="search_users" || VIEW_MODE=""#]
+<div class="md-ui-page md-ui-page--stack md-users-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-users" aria-hidden="true"></i><#LANG_MODULE_USERS#></div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_USERS#></h1>
+            <p class="md-ui-hero__lede">Учётные записи для входа в систему, права администратора и привязка к объектам.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-users" aria-hidden="true"></i>Всего: <strong>[#USERS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-shield-lock" aria-hidden="true"></i>Администраторов: <strong>[#USERS_ADMIN_TOTAL#]</strong></span>
+                [#if DEFAULT_USERNAME!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-star" aria-hidden="true"></i>По умолчанию: <strong>[#DEFAULT_USERNAME#]</strong></span>
+                [#endif#]
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=edit_users" class="md-btn md-btn--primary">
+                <i class="ti ti-user-plus" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD_NEW_RECORD#></span>
+            </a>
+        </div>
+    </header>
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-users" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Пользователи</span>
+            </div>
+            <div class="md-kpi__value">[#USERS_TOTAL#]</div>
+            <div class="md-kpi__meta">Учётных записей в системе</div>
+        </div>
+        <div class="md-kpi md-kpi--warning">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-shield-lock" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Администраторы</span>
+            </div>
+            <div class="md-kpi__value">[#USERS_ADMIN_TOTAL#]</div>
+            <div class="md-kpi__meta">Полный доступ к панели</div>
+        </div>
+        <div class="md-kpi md-kpi--success">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-key" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">С паролем</span>
+            </div>
+            <div class="md-kpi__value">[#USERS_PASSWORD_TOTAL#]</div>
+            <div class="md-kpi__meta">Защищённый вход</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-box" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">С объектом</span>
+            </div>
+            <div class="md-kpi__value">[#USERS_LINKED_TOTAL#]</div>
+            <div class="md-kpi__meta">Привязаны к объектам</div>
+        </div>
+    </div>
+
+    [#inc users_search_admin.html#]
+</div>
+[#endif VIEW_MODE#]
+
+[#if VIEW_MODE="edit_users"#]
+<div class="md-ui-page md-ui-page--stack md-users-page md-users-edit">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-user" aria-hidden="true"></i><#LANG_MODULE_USERS#></div>
+            <h1 class="md-ui-hero__title">[#if ID!=""#][#if NAME!=""#][#NAME#][#else#][#USERNAME#][#endif#][#else#]Новый пользователь[#endif#]</h1>
+            <p class="md-ui-hero__lede">Профиль учётной записи, доступ в панель и привязка к объекту.</p>
+            [#if ID!=""#]
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-user" aria-hidden="true"></i>Логин: <strong>[#USERNAME#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-shield-lock" aria-hidden="true"></i><strong>[#if IS_ADMIN="1"#]Администратор[#else#]Пользователь[#endif#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-box" aria-hidden="true"></i>Объект: <strong>[#if LINKED_OBJECT!=""#][#LINKED_OBJECT#][#else#]—[#endif#]</strong></span>
+                [#if IS_DEFAULT="1"#]
+                <span class="md-badge md-badge--success"><i class="ti ti-star" aria-hidden="true"></i>По умолчанию</span>
+                [#endif#]
+            </div>
+            [#endif#]
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_users" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+        </div>
+    </header>
+
+    [#inc users_edit.html#]
+</div>
+[#endif VIEW_MODE#]

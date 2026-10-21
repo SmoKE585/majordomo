@@ -1,20 +1,42 @@
 <!--#
- @version 0.1 (auto-set)
+ @version 0.2 (auto-set)
 #-->
 
- <!-- action usual -->
- <!-- table history search -->
- [#if VIEW_MODE="search_history" || VIEW_MODE=""#]
-  [#inc history_search_admin.html#]
- [#endif VIEW_MODE#]
- <!-- / table history search -->
- <!-- table history edit -->
- [#if VIEW_MODE="edit_history"#]
-   [#inc history_edit.html#]
- [#endif VIEW_MODE#]
- <!-- / table history edit -->
- <!-- table history view --> 
- [#if VIEW_MODE="view_history"#]
-   [#inc history_view.html#]
- [#endif VIEW_MODE#]
- <!-- / table history view -->
+[#if VIEW_MODE="search_history" || VIEW_MODE=""#]
+[#if "<#IS_SET_OBJECT_ID#>"!="1"#]
+<div class="md-ui-page md-ui-page--stack">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-history" aria-hidden="true"></i><#LANG_MODULE_OBJECTS_HISTORY#></div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_OBJECTS_HISTORY#></h1>
+            <p class="md-ui-hero__lede">Журнал изменений объектов, методов и свойств. Новые записи — сверху.</p>
+        </div>
+    </header>
+    [#inc history_search_admin.html#]
+</div>
+[#else#]
+[#inc history_search_admin.html#]
+[#endif#]
+[#endif VIEW_MODE#]
+
+[#if VIEW_MODE="edit_history"#]
+[#if "<#IS_SET_OBJECT_ID#>"!="1"#]
+<div class="md-ui-page md-ui-page--stack">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-history" aria-hidden="true"></i><#LANG_MODULE_OBJECTS_HISTORY#></div>
+            <h1 class="md-ui-hero__title"><#LANG_EDIT#></h1>
+            <p class="md-ui-hero__lede">Ручная правка записи журнала. Обычно записи создаются автоматически.</p>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_history" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+        </div>
+    </header>
+    [#inc history_edit.html#]
+</div>
+[#else#]
+[#inc history_edit.html#]
+[#endif#]
+[#endif VIEW_MODE#]

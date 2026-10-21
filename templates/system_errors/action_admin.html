@@ -1,200 +1,207 @@
-<div id="settings_form" style="display:none">
-	<form action="?" method="post" class="form form-horizontal">
-		<div class="form-group">
-			<label for="clean_up" class="col-lg-5"><#LANG_KEEP_HISTORY_DAYS#>:</label>
-			<div class="col-lg-4">
-				<input id="clean_up" type="text" name="keep_history" value="<#SETTINGS_ERRORS_KEEP_HISTORY#>" placeholder="0" class="form-control">
-			</div>
-		</div>
-		<div class="form-group">
-			<div class="col-lg-5">&nbsp;</div>
-			<div class="col-lg-4">
-				<input type="submit" value="<#LANG_SUBMIT#>" class="btn btn-default btn-primary">
-				<a href="#" class="btn btn-default" onclick="$('#settings_form').toggle();return false;"><#LANG_CANCEL#></a>
-			</div>
-		</div>
-		<input type="hidden" name="mode" value="update_settings">
-	</form>
+<!--#
+ @version 0.2 (auto-set)
+#-->
+
+<link rel="stylesheet" href="<#ROOTHTML#>templates/system_errors/system_errors.css?v=2026-10-21-1">
+<script src="<#ROOTHTML#>templates/system_errors/system_errors.js?v=2026-10-21-1" defer></script>
+
+[#if VIEW_MODE="search_system_errors" || VIEW_MODE=""#]
+<div class="md-ui-page md-ui-page--stack md-errors-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-alert-triangle" aria-hidden="true"></i><#LANG_MODULE_SYSTEM_ERRORS#></div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_SYSTEM_ERRORS#></h1>
+            <p class="md-ui-hero__lede">Сгруппированные ошибки модулей, история срабатываний и быстрые действия диагностики.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-list-details" aria-hidden="true"></i>Групп: <strong>[#ERRORS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-alert-triangle" aria-hidden="true"></i>Активных: <strong>[#ERRORS_ACTIVE_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-history" aria-hidden="true"></i>Событий: <strong>[#EVENTS_TOTAL#]</strong></span>
+                [#if LAST_ERROR_UPDATE!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>Последняя: <strong>[#LAST_ERROR_UPDATE#]</strong></span>
+                [#endif#]
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="/diagnostic.php" class="md-btn md-btn--primary">
+                <i class="ti ti-stethoscope" aria-hidden="true"></i><span class="md-btn__label"><#LANG_SUBMIT_DIAGNOSTIC#></span>
+            </a>
+            <a href="?view_mode=addtesterror" class="md-btn md-btn--secondary" data-md-confirm="Создать тестовую ошибку?">
+                <i class="ti ti-bug" aria-hidden="true"></i><span class="md-btn__label"><#LANG_NEWSYSTEM_ERROR_GET_ERROR#></span>
+            </a>
+            <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="modal" data-bs-target="#mdErrorsSettingsModal">
+                <i class="ti ti-settings" aria-hidden="true"></i><span class="md-btn__label"><#LANG_SECTION_SETTINGS#></span>
+            </button>
+        </div>
+    </header>
+
+    [#if OK_MSG!=""#]
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">[#OK_MSG#]</div></div>
+    </div>
+    [#endif#]
+
+    [#if ERRORS_FOUND!="0"#]
+    <div class="md-alert md-alert--danger" role="alert">
+        <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body">
+            <div class="md-alert__title">Есть активные ошибки</div>
+            <div class="md-alert__text">Групп: <strong>[#ERRORS_ACTIVE_TOTAL#]</strong> · срабатываний: <strong>[#ERRORS_ACTIVE_OCCURRENCES#]</strong>. Проверьте журнал и отметьте просмотренные.</div>
+            <div class="md-alert__actions">
+                <a href="?view_mode=readall" class="md-btn md-btn--secondary md-btn--sm">
+                    <i class="ti ti-checks" aria-hidden="true"></i><#LANG_NEWSYSTEM_ERROR_CHECK_ALL_READ#>
+                </a>
+            </div>
+        </div>
+    </div>
+    [#else#]
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-shield-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body">
+            <div class="md-alert__title"><#LANG_NEWSYSTEM_ERROR_NOT_ERROR#></div>
+            <div class="md-alert__text"><#LANG_NEWSYSTEM_ERROR_NOT_ERROR_TEXT#></div>
+        </div>
+    </div>
+    [#endif#]
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--danger">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-alert-triangle" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Активные группы</span>
+            </div>
+            <div class="md-kpi__value">[#ERRORS_ACTIVE_TOTAL#]</div>
+            <div class="md-kpi__meta">Срабатываний: [#ERRORS_ACTIVE_OCCURRENCES#]</div>
+        </div>
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-list-details" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Всего групп</span>
+            </div>
+            <div class="md-kpi__value">[#ERRORS_TOTAL#]</div>
+            <div class="md-kpi__meta">В журнале ошибок</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-history" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">События</span>
+            </div>
+            <div class="md-kpi__value">[#EVENTS_TOTAL#]</div>
+            <div class="md-kpi__meta">Записей истории</div>
+        </div>
+        <div class="md-kpi md-kpi--neutral">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-clock" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Хранить дней</span>
+            </div>
+            <div class="md-kpi__value">[#SETTINGS_ERRORS_KEEP_HISTORY#]</div>
+            <div class="md-kpi__meta">0 — без очистки</div>
+        </div>
+    </div>
+
+    [#inc system_errors_search_admin.html#]
+
+    <p class="md-errors-hint-line"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Добавляйте ошибки через <code>registerError('код', 'описание')</code> в сценариях и методах.</span></p>
 </div>
 
-<div style="clear:both"></div>
-
-<div class="row" style="margin-right: -15px;margin-left: -15px;display: flex;flex-wrap: wrap;">
-	<div class="col-md-6" style="display: flex;flex-wrap: wrap;">
-		[#if ERRORS_FOUND!=0#]
-		<div class="jumbotron" style="margin-bottom: 10px;padding-top: 20px;padding-bottom: 10px;border-radius: 5px;background-image: radial-gradient(circle farthest-corner at 10px 10px, #ffffff, #ec1b2e);">
-			<h2><#LANG_NEWSYSTEM_ERROR_FIND_ERROR#></h2>
-			<p style="font-size: 11pt;"><#LANG_NEWSYSTEM_ERROR_FIND_ERROR_TEXT#></p>
-			<p class="text-right">
-				<a style="border-color: #ffffff;" onclick="location.href='?action=system_errors&md=system_errors&view_mode=readall'" class="btn btn-default btn-md" role="button"><#LANG_NEWSYSTEM_ERROR_CHECK_ALL_READ#></a>
-			</p>
-		</div>
-		[#else#]
-		<div class="jumbotron" style="min-height: 230px;margin-bottom: 10px;padding-top: 20px;padding-bottom: 10px;border-radius: 5px;background-image: radial-gradient(circle farthest-corner at 100px 50px, #9efac3, #4792d1);">
-			<h2><#LANG_NEWSYSTEM_ERROR_NOT_ERROR#></h2>
-			<p style="font-size: 11pt;"><#LANG_NEWSYSTEM_ERROR_NOT_ERROR_TEXT#></p>
-		</div>
-		[#endif#]
-	</div>
-	<div class="col-md-6" style="display: flex;flex-wrap: wrap;">
-		<div class="jumbotron" style="margin-bottom: 10px;padding-top: 20px;padding-bottom: 10px;border-radius: 5px;background: #f5f5f5;">
-			<h2><#LANG_DESCRIPTION#></h2>
-			<p style="font-size: 11pt;"><#LANG_NEWSYSTEM_ERROR_FULL_DESC#></p>
-			<div class="text-right">
-				<div class="btn-group">
-					<button type="button" onclick="location.href='/diagnostic.php'" class="btn btn-success"><#LANG_SUBMIT_DIAGNOSTIC#></button>
-					<button type="button" onclick="location.href='?action=system_errors&md=system_errors&view_mode=addtesterror'" class="btn btn-warning"><#LANG_NEWSYSTEM_ERROR_GET_ERROR#></button>
-					<a href="#" id="settings_button" class="btn btn-default" onclick="$('#settings_form').toggle();return false;"><#LANG_SECTION_SETTINGS#></a>
-				</div>
-			</div>
-		</div>
-
-	</div>
-
+<div class="modal fade md-modal" id="mdErrorsSettingsModal" tabindex="-1" aria-labelledby="mdErrorsSettingsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="?" method="post">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="mdErrorsSettingsTitle">Настройки хранения</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdErrorsKeepHistory"><#LANG_KEEP_HISTORY_DAYS#></label>
+                        <div class="md-field__control">
+                            <input type="number" id="mdErrorsKeepHistory" class="md-input" name="keep_history" value="[#SETTINGS_ERRORS_KEEP_HISTORY#]" min="0" step="1" inputmode="numeric">
+                        </div>
+                        <div class="md-field__hint">Сколько дней хранить историю ошибок. 0 — не удалять старые записи.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="md-btn md-btn--secondary" data-bs-dismiss="modal"><#LANG_CANCEL#></button>
+                    <button type="submit" class="md-btn md-btn--primary"><i class="ti ti-device-floppy" aria-hidden="true"></i><#LANG_SUBMIT#></button>
+                </div>
+                <input type="hidden" name="mode" value="update_settings">
+            </form>
+        </div>
+    </div>
 </div>
+[#endif VIEW_MODE#]
 
+[#if VIEW_MODE="edit_system_errors"#]
+<div class="md-ui-page md-ui-page--stack md-errors-page md-errors-edit">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-alert-triangle" aria-hidden="true"></i><#LANG_MODULE_SYSTEM_ERRORS#></div>
+            <h1 class="md-ui-hero__title">[#if ID!=""#][#TITLE_DISPLAY#][#else#]Новая группа ошибок[#endif#]</h1>
+            <p class="md-ui-hero__lede">[#if ID!=""#]Группа ошибок и история срабатываний.[#else#]Ручное создание группы ошибок в журнале.[#endif#]</p>
+            [#if ID!=""#]
+            <div class="md-ui-hero__meta">
+                [#if ACTIVE!="0"#]
+                <span class="md-badge md-badge--danger"><i class="ti ti-alert-triangle" aria-hidden="true"></i>Активна · [#ACTIVE#]</span>
+                [#else#]
+                <span class="md-badge md-badge--success"><i class="ti ti-check" aria-hidden="true"></i>Прочитана</span>
+                [#endif#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-code" aria-hidden="true"></i><code>[#CODE#]</code></span>
+                [#if HAS_ORIGIN="1"#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-map-pin" aria-hidden="true"></i>Источник: <strong>[#ORIGIN_MODULE#]</strong></span>
+                [#endif#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>Обновлено: <strong>[#LATEST_UPDATE_FORMATTED#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-history" aria-hidden="true"></i>Событий: <strong>[#HISTORY_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-archive" aria-hidden="true"></i>История: <strong>[#if KEEP_HISTORY="1"#]хранится[#else#]только последнее[#endif#]</strong></span>
+            </div>
+            [#endif#]
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_system_errors" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
+            </a>
+            [#if ID!="" && ACTIVE!="0"#]
+            <a href="?view_mode=clear_system_errors&id=[#ID#]" class="md-btn md-btn--secondary">
+                <i class="ti ti-check" aria-hidden="true"></i><span class="md-btn__label"><#LANG_NEWSYSTEM_ERROR_READ_BTN#></span>
+            </a>
+            [#endif#]
+            [#if ID!=""#]
+            <div class="dropdown">
+                <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    [#if TAB=="history"#]
+                    <li><a class="dropdown-item" href="?view_mode=edit_system_errors&id=[#ID#]&tab="><i class="ti ti-pencil" aria-hidden="true"></i>Редактировать группу</a></li>
+                    [#else#]
+                    <li><a class="dropdown-item" href="?view_mode=edit_system_errors&id=[#ID#]&tab=history"><i class="ti ti-history" aria-hidden="true"></i>История событий</a></li>
+                    [#endif#]
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="?view_mode=delete_system_errors&id=[#ID#]" data-md-confirm="Удалить ошибку [#CODE#] и всю историю?"><i class="ti ti-trash" aria-hidden="true"></i>Удалить ошибку</a></li>
+                </ul>
+            </div>
+            [#endif#]
+        </div>
+    </header>
 
-[#if TAB="history"#]
-<script>
-$(document).ready(function() {
-	$('#modalShowError').modal('show');
-});
-</script>
-<div class="modal fade" id="modalShowError" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-	<div class="modal-dialog" style="width: 80%;">
-		<div class="modal-content">
-			<div class="modal-header">
-				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-				<h4 class="modal-title" id="myModalLabel"><#LANG_NEWSYSTEM_ERROR_VIEW_ERROR#></h4>
-			</div>
-			<div class="modal-body">
-				[#inc system_errors_edit_history.html#]
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-default" data-dismiss="modal"><#LANG_CODEEDITOR_CLOSE_BTN#></button>
-				[#if ACTIVE!="0"#]
-					<a href="?data_source=<#DATA_SOURCE#>&view_mode=clear_system_errors&id=[#ID#]" class="btn btn-success" title=""><i class="glyphicon glyphicon-ok"></i> <#LANG_NEWSYSTEM_ERROR_READ_BTN#></a>
-				[#endif#]
-			</div>
-		</div>
-	</div>
-</div>
-[#endif#]
+    [#if ID!=""#]
+    <nav class="md-tabs" aria-label="Группа ошибок">
+        <a class="nav-link [#if TAB==""#]active[#endif#]" [#if TAB==""#]aria-current="page"[#endif#] href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=">
+            <i class="ti ti-info-circle" aria-hidden="true"></i><span>Основное</span>
+        </a>
+        <a class="nav-link [#if TAB=="history"#]active[#endif#]" [#if TAB=="history"#]aria-current="page"[#endif#] href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=history">
+            <i class="ti ti-history" aria-hidden="true"></i><span>История</span>
+            [#if HISTORY_TOTAL!=""#]<span class="md-badge">[#HISTORY_TOTAL#]</span>[#endif#]
+        </a>
+    </nav>
+    [#endif ID#]
 
-[#inc system_errors_search_admin.html#]
-
-
-
-
-<!---
-
- [#if DATA_SOURCE="system_errors" || DATA_SOURCE=""#]
-
- [#if VIEW_MODE="edit_system_errors"#]
-
-   [#if TAB=""#]
+    [#if TAB==""#]
     [#inc system_errors_edit_default.html#]
-   [#endif TAB#]
-   
- [#endif VIEW_MODE#]
+    [#endif TAB#]
 
- [#if VIEW_MODE="view_system_errors"#]
-   <table border=0 cellpadding=3 cellspacing=1 bgcolor="#000000" width="100%">
-   <tr>
-    <td align=center[#if TAB=""#] bgcolor="#FFFFFF"[#else#] bgcolor="#CCCCCC"[#endif#]><b>[#if TAB!=""#]<a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=">[#endif TAB#]Home</a></td>
-    <td align=center[#if TAB="history"#] bgcolor="#FFFFFF"[#else#] bgcolor="#CCCCCC"[#endif#]><b>[#if TAB!="history"#]<a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=history">[#endif TAB#]History</a></td>
-   </tr>
-   </table>
-   [#if TAB=""#]
-    [#inc system_errors_view_default.html#]
-   [#endif TAB#]
-   [#if TAB="history"#]
-    [#inc system_errors_view_history.html#]
-   [#endif TAB#]
- [#endif VIEW_MODE#]
-
- [#endif DATA_SOURCE#]
-
- [#if DATA_SOURCE="system_errors_data"#]
-
- [#if VIEW_MODE="search_system_errors_data" || VIEW_MODE=""#]
-  [#inc system_errors_data_search_admin.html#]
- [#endif VIEW_MODE#]
-
- [#if VIEW_MODE="edit_system_errors_data"#]
-   [#if ID!=""#]
-   [#if TITLE!=""#]<h4>[#TITLE#]</h4>[#endif TITLE#]
-<ul class="nav nav-tabs">
-  <li[#if TAB=""#] class="active"[#endif#]>
-   <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=">General</a>
-  </li>
-  <li[#if TAB="methods"#] class="active"[#endif#]>
-   <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods">Methods</a>
-  </li>
-  <li[#if TAB="scripts"#] class="active"[#endif#]>
-   <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=scripts">Scripts</a>
-  </li>
-  <li[#if TAB="timers"#] class="active"[#endif#]>
-   <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=timers">Timers</a>
-  </li>
-  <li[#if TAB="events"#] class="active"[#endif#]>
-   <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=events">Events</a>
-  </li>
-  <li[#if TAB="debug"#] class="active"[#endif#]>
-   <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=debug">Debug</a>
-  </li>
-</ul>
-   [#endif ID#]
-   [#if TAB=""#]
-    [#inc system_errors_data_edit_default.html#]
-   [#endif TAB#]
-   [#if TAB="methods"#]
-    [#inc system_errors_data_edit_methods.html#]
-   [#endif TAB#]
-   [#if TAB="scripts"#]
-    [#inc system_errors_data_edit_scripts.html#]
-   [#endif TAB#]
-   [#if TAB="timers"#]
-    [#inc system_errors_data_edit_timers.html#]
-   [#endif TAB#]
-   [#if TAB="events"#]
-    [#inc system_errors_data_edit_events.html#]
-   [#endif TAB#]
-   [#if TAB="debug"#]
-    [#inc system_errors_data_edit_debug.html#]
-   [#endif TAB#]
- [#endif VIEW_MODE#]
-
- [#if VIEW_MODE="view_system_errors_data"#]
-   <table border=0 cellpadding=3 cellspacing=1 bgcolor="#000000" width="100%">
-   <tr>
-    <td align=center[#if TAB=""#] bgcolor="#FFFFFF"[#else#] bgcolor="#CCCCCC"[#endif#]><b>[#if TAB!=""#]<a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=">[#endif TAB#]Home</a></td>
-    <td align=center[#if TAB="methods"#] bgcolor="#FFFFFF"[#else#] bgcolor="#CCCCCC"[#endif#]><b>[#if TAB!="methods"#]<a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods">[#endif TAB#]Methods</a></td>
-    <td align=center[#if TAB="scripts"#] bgcolor="#FFFFFF"[#else#] bgcolor="#CCCCCC"[#endif#]><b>[#if TAB!="scripts"#]<a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=scripts">[#endif TAB#]Scripts</a></td>
-    <td align=center[#if TAB="timers"#] bgcolor="#FFFFFF"[#else#] bgcolor="#CCCCCC"[#endif#]><b>[#if TAB!="timers"#]<a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=timers">[#endif TAB#]Timers</a></td>
-    <td align=center[#if TAB="events"#] bgcolor="#FFFFFF"[#else#] bgcolor="#CCCCCC"[#endif#]><b>[#if TAB!="events"#]<a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=events">[#endif TAB#]Events</a></td>
-    <td align=center[#if TAB="debug"#] bgcolor="#FFFFFF"[#else#] bgcolor="#CCCCCC"[#endif#]><b>[#if TAB!="debug"#]<a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=debug">[#endif TAB#]Debug</a></td>
-   </tr>
-   </table>
-   [#if TAB=""#]
-    [#inc system_errors_data_view_default.html#]
-   [#endif TAB#]
-   [#if TAB="methods"#]
-    [#inc system_errors_data_view_methods.html#]
-   [#endif TAB#]
-   [#if TAB="scripts"#]
-    [#inc system_errors_data_view_scripts.html#]
-   [#endif TAB#]
-   [#if TAB="timers"#]
-    [#inc system_errors_data_view_timers.html#]
-   [#endif TAB#]
-   [#if TAB="events"#]
-    [#inc system_errors_data_view_events.html#]
-   [#endif TAB#]
-   [#if TAB="debug"#]
-    [#inc system_errors_data_view_debug.html#]
-   [#endif TAB#]
- [#endif VIEW_MODE#]
-
- [#endif DATA_SOURCE#]
- --->
+    [#if TAB=="history"#]
+    [#inc system_errors_edit_history.html#]
+    [#endif TAB#]
+</div>
+[#endif VIEW_MODE#]

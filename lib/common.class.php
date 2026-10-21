@@ -1273,6 +1273,24 @@ function registerError($code = 'custom', $details = '')
     $history_rec['COMMENTS'] = $details . "\nBacktrace:\n" . $backtrace;
     $history_rec['ADDED'] = $error_rec['LATEST_UPDATE'];
 
+    // Request context helps to understand where a registered error came from.
+    $context_lines = array();
+    if ($url !== '' && $url !== 'n/a') {
+        $context_lines[] = 'URL: ' . str_replace(array("\r", "\n"), '', $url);
+    }
+    if (!empty($_SERVER['REQUEST_METHOD'])) {
+        $context_lines[] = 'Method: ' . str_replace(array("\r", "\n"), '', (string)$_SERVER['REQUEST_METHOD']);
+    }
+    if (!empty($_SERVER['REMOTE_ADDR'])) {
+        $context_lines[] = 'IP: ' . str_replace(array("\r", "\n"), '', (string)$_SERVER['REMOTE_ADDR']);
+    }
+    if (!empty($_SERVER['HTTP_REFERER'])) {
+        $context_lines[] = 'Referer: ' . str_replace(array("\r", "\n"), '', (string)$_SERVER['HTTP_REFERER']);
+    }
+    if (count($context_lines)) {
+        $history_rec['COMMENTS'] .= "\nContext:\n" . implode("\n", $context_lines);
+    }
+
     //Temporary disabled
     /*
     $xrayUrl = BASE_URL . ROOTHTML.'popup/xray.html?ajax=1&md=xray&op=getcontent&view_mode=';

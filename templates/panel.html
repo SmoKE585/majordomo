@@ -4,32 +4,31 @@
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 		<title>{#TITLE#}</title>
 		[#inc common_header_admin.html#]
-		<link rel="stylesheet" href="<#ROOTHTML#>3rdparty/fonts/rubik/rubik.css?v=2026-06-03" type="text/css">
-		<link rel="stylesheet" href="<#ROOTHTML#>css/admin/admin_panel.css?v=2026-06-04-11" type="text/css">
 		[#inc websockets.html#]
 	</head>
 
-<body>
+<body class="md-admin-shell [#if PRINT=="1"#]md-admin-print[#endif#]">
 	[#if AUTHORIZED#]
 	<script>
 	window.MDJAdminConfig = window.MDJAdminConfig || {};
 	window.MDJAdminConfig.flashNotifications = [#if FLASH_NOTIFICATIONS_JSON!=""#][#FLASH_NOTIFICATIONS_JSON#][#else#][][#endif#];
 	window.MDJAdminConfig.sanitizeFlashQuery = [#if FLASH_SANITIZE_URL="1"#]true[#else#]false[#endif#];
 	</script>
-	[#inc panel_js_scripts.html#]
 	[#if PRINT!="1"#]
 	<div class="md-admin-drawer-backdrop" data-md-drawer-close hidden></div>
-	<aside class="md-admin-drawer" id="mdAdminDrawerHost" aria-labelledby="mdAdminDrawerTitle" aria-hidden="true" tabindex="-1" hidden>
-		<div class="md-admin-drawer__header">
+	<aside class="md-admin-drawer md-drawer" id="mdAdminDrawerHost" aria-labelledby="mdAdminDrawerTitle" aria-hidden="true" tabindex="-1" hidden>
+		<div class="md-admin-drawer__header md-drawer__header">
 			<div>
-				<div class="md-admin-drawer__eyebrow" id="mdAdminDrawerEyebrow" hidden></div>
-				<h2 id="mdAdminDrawerTitle"></h2>
-				<div class="md-admin-drawer__subtitle" id="mdAdminDrawerSubtitle" hidden></div>
+				<div class="md-admin-drawer__eyebrow md-drawer__eyebrow" id="mdAdminDrawerEyebrow" hidden></div>
+				<h2 class="md-drawer__title" id="mdAdminDrawerTitle"></h2>
+				<div class="md-admin-drawer__subtitle md-drawer__subtitle" id="mdAdminDrawerSubtitle" hidden></div>
 			</div>
-			<button type="button" class="btn-close" data-md-drawer-close aria-label="<#LANG_CLOSE#>"></button>
+			<button type="button" class="md-icon-btn md-admin-drawer__close" data-md-drawer-close aria-label="<#LANG_CLOSE#>">
+				<i class="ti ti-x" aria-hidden="true"></i>
+			</button>
 		</div>
-		<div class="md-admin-drawer__body" id="mdAdminDrawerBody"></div>
-		<div class="md-admin-drawer__footer" id="mdAdminDrawerFooter" hidden></div>
+		<div class="md-admin-drawer__body md-drawer__body" id="mdAdminDrawerBody"></div>
+		<div class="md-admin-drawer__footer md-drawer__footer" id="mdAdminDrawerFooter" hidden></div>
 	</aside>
 
 	<div class="md-admin-search-backdrop" data-md-search-close></div>
@@ -53,30 +52,82 @@
 		</div>
 	</aside>
 	
-	<div class="md-admin-console-drawer-template" id="mdAdminConsoleDrawerContent" hidden data-md-drawer-eyebrow="<#LANG_CONTROL_PANEL#>" data-md-drawer-title="<#LANG_CONSOLE#>" data-md-drawer-subtitle="Редактор кода, история команд и список методов без лишней обвязки.">
-		<div class="md-admin-console-drawer__body">
-			<div class="md-admin-console-alerts">
-				<div class="alert alert-danger text-center" id="dangerAlertConsole" hidden>Команда пуста. Введите код или выражение.</div>
-				<div class="alert alert-warning text-center" id="warningAlertConsole" hidden>Не удалось выполнить запрос к консоли.</div>
+	<div class="md-admin-console-drawer-template md-console" id="mdAdminConsoleDrawerContent" hidden data-md-drawer-eyebrow="<#LANG_CONTROL_PANEL#>" data-md-drawer-title="<#LANG_CONSOLE#>" data-md-drawer-subtitle="Выполняйте PHP-код в контексте модуля: результат, методы и история команд рядом.">
+		<div class="md-admin-console-alerts">
+			<div class="md-alert md-alert--danger" id="dangerAlertConsole" hidden>
+				<i class="ti ti-alert-circle md-alert__icon" aria-hidden="true"></i>
+				<div class="md-alert__body"><div class="md-alert__text" data-md-console-alert-text>Команда пуста. Введите код или выражение.</div></div>
 			</div>
+			<div class="md-alert md-alert--warning" id="warningAlertConsole" hidden>
+				<i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+				<div class="md-alert__body"><div class="md-alert__text" data-md-console-alert-text>Не удалось выполнить запрос к консоли.</div></div>
+			</div>
+		</div>
 
-			<form id="adminConsoleForm" class="md-admin-console-composer" action="?" method="post">
-				<select class="form-control md-admin-console-module" id="currModuleName">
-					<option value="0"><#LANG_NEWDASH_CONSOLE_CHOOSE_MODULE#></option>
+		<div class="md-console__context">
+			<div class="md-field md-console__module">
+				<label class="md-field__label" for="currModuleName">Модуль</label>
+				<select class="md-select" id="currModuleName">
+					<option value="0">Без модуля — чистый PHP</option>
 					[#begin SUB_MODULES#]
 						[#if NAME#]<option value="[#NAME#]">[#TITLE#]</option>[#endif#]
 					[#end SUB_MODULES#]
 				</select>
+				<div class="md-field__hint">Необязательно: подключит модуль и откроет его методы.</div>
+			</div>
+			<div class="md-console__context-actions">
+				<button type="button" id="btnConsoleToggleModule" class="md-btn md-btn--secondary md-btn--sm" disabled aria-expanded="false">
+					<i class="ti ti-list-details" aria-hidden="true"></i>
+					<span id="btnConsoleToggleModuleLabel">Методы</span>
+					<span class="md-badge" id="consoleMethodsCount" hidden>0</span>
+				</button>
+			</div>
+		</div>
+
+		<section class="md-card md-card--compact md-console__methods" id="methodsModule" hidden>
+			<div class="md-card__head">
+				<div class="md-card__titles">
+					<div class="md-card__eyebrow">Контекст модуля</div>
+					<h2 class="md-card__title">Методы <span class="md-badge md-badge--outline" id="consoleMethodsPanelName" hidden></span></h2>
+				</div>
+				<div class="md-card__actions">
+					<button type="button" id="btnConsoleMethodsClose" class="md-icon-btn" aria-label="Скрыть методы">
+						<i class="ti ti-x" aria-hidden="true"></i>
+					</button>
+				</div>
+			</div>
+			<div class="md-card__body">
+				<div class="md-input-shell md-console__methods-search">
+					<i class="ti ti-search md-input-icon" aria-hidden="true"></i>
+					<input id="consoleMethodsFilter" class="md-input" type="search" placeholder="Поиск метода" aria-label="Поиск метода">
+				</div>
+				<div id="loaderConsoleModule" class="md-console-loader">
+					<span class="md-spinner" aria-hidden="true"></span>
+					<span>Загружаем методы…</span>
+				</div>
+				<div class="md-console-methods__list" data-md-console-methods-list></div>
+			</div>
+		</section>
+		<section class="md-console__composer">
+			<div class="md-console__section-head">
+				<div>
+					<div class="md-console__eyebrow">Команда</div>
+					<h2 class="md-console__title">PHP-консоль</h2>
+				</div>
+				<span class="md-console__hint">Ctrl+Enter — выполнить</span>
+			</div>
+			<form id="adminConsoleForm" class="md-console__form" action="?" method="post">
 				<input type="hidden" id="module_add" name="module_add" value="">
 				<div class="md-code-editor md-admin-console-editor"
 				     data-code-editor
+				     data-code-editor-lazy="1"
 				     data-code-editor-key="admin_console"
 				     data-code-editor-mode="php"
 				     data-code-editor-theme="[#SETTINGS_CODEEDITOR_THEME#]"
 				     data-code-editor-autosave="0"
 				     data-code-editor-autoclose="[#SETTINGS_CODEEDITOR_AUTOCLOSEQUOTES#]"
 				     data-code-editor-wraplines="[#SETTINGS_CODEEDITOR_WRAPLINES#]"
-				     data-code-editor-min-lines="8"
+				     data-code-editor-min-lines="6"
 				     data-code-editor-max-lines="0"
 				     data-code-editor-autofocus="1"
 				     data-code-editor-validate-url=""
@@ -86,52 +137,81 @@
 				     data-code-editor-hide-errors-on-edit="1">
 					<div class="md-code-editor__toolbar" data-code-editor-toolbar>
 						<label class="md-code-editor__mode-switch" data-mode="php">
-							<input type="checkbox" data-code-editor-mode-toggle aria-label="Режим редактора">
+							<input type="checkbox" data-code-editor-mode-toggle aria-label="Режим редактора: PHP или Python">
 							<span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--php">PHP</span>
 							<span class="md-code-editor__mode-switch-option md-code-editor__mode-switch-option--python">Python</span>
 							<input type="hidden" name="code_editor_mode" value="php" data-code-editor-mode-select>
 						</label>
-						<button type="submit" class="btn btn-success btn-sm">Выполнить</button>
-						<button type="button" class="btn btn-outline-secondary btn-sm" data-code-editor-action="fullscreen">F11</button>
-						<button type="button" class="btn btn-outline-secondary btn-sm" id="btnConsoleClearCommand">Очистить</button>
-						<span class="md-code-editor__status" data-code-editor-status></span>
+						<span class="md-code-editor__toolbar-divider" aria-hidden="true"></span>
+						<div class="md-code-editor__toolbar-group">
+							<button type="submit" class="md-code-editor__action md-code-editor__action--success" title="Выполнить (Ctrl+Enter)" aria-label="Выполнить">
+								<i class="ti ti-player-play" aria-hidden="true"></i><span class="md-code-editor__action-label">Выполнить</span>
+							</button>
+							<button type="button" class="md-code-editor__action" id="btnConsoleClearCommand" title="Очистить редактор" aria-label="Очистить редактор">
+								<i class="ti ti-eraser" aria-hidden="true"></i><span class="md-code-editor__action-label">Очистить</span>
+							</button>
+						</div>
+						<div class="md-code-editor__toolbar-spacer"></div>
+						<span class="md-code-editor__status" data-code-editor-status aria-live="polite"></span>
+						<button type="button" class="md-code-editor__icon-btn" data-code-editor-action="search" title="Найти (Ctrl+F)" aria-label="Найти">
+							<i class="ti ti-search" aria-hidden="true"></i>
+						</button>
+						<button type="button" class="md-code-editor__icon-btn" data-code-editor-action="fullscreen" title="Полный экран (F11)" aria-label="Полный экран">
+							<i class="ti ti-maximize" aria-hidden="true"></i>
+						</button>
 					</div>
-					<textarea name="command" id="command" class="form-control md-admin-console-textarea" rows="8" placeholder="Введите код, метод или выражение"></textarea>
+					<textarea name="command" id="command" class="md-textarea md-admin-console-textarea" rows="8" placeholder="Введите код, метод или выражение"></textarea>
 				</div>
-				<div class="md-admin-console-label">История</div>
-				<div class="md-admin-console-history" id="consoleHistoryList" aria-live="polite"></div>
 			</form>
+		</section>
 
-			<div class="md-admin-console-panels">
-				<div class="md-admin-console-panel">
-					<div class="md-admin-console-panel__header">
-						<h3>Результат</h3>
-						<div class="md-admin-console-panel__hint" id="console_output_hintResize">Ctrl+Enter - выполнить, стрелки - история, F11 - полноэкранный режим.</div>
-					</div>
-					<div id="loaderConsole" class="md-admin-console-loader text-center">
-						<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
-					</div>
-					<div id="console_output" class="md-admin-console-output" aria-live="polite"></div>
+		<section class="md-card md-console__output">
+			<div class="md-card__head">
+				<div class="md-card__titles">
+					<div class="md-card__eyebrow">Результат</div>
+					<h2 class="md-card__title">Вывод <span class="md-badge" id="consoleStatus">Ожидание</span></h2>
 				</div>
-
-				<div class="md-admin-console-methods" id="methodsModule" hidden>
-					<div class="md-admin-console-panel">
-						<div class="md-admin-console-panel__header">
-							<h3>Методы</h3>
-							<div class="md-admin-console-panel__hint">Нажмите, чтобы вставить в редактор.</div>
-						</div>
-						<div id="loaderConsoleModule" class="md-admin-console-loader text-center">
-							<div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
-						</div>
-						<ul class="md-admin-console-methods__list list-unstyled mb-0"></ul>
+				<div class="md-card__actions">
+					<button type="button" id="btnConsoleClearOutput" class="md-btn md-btn--ghost md-btn--sm">
+						<i class="ti ti-eraser" aria-hidden="true"></i>
+						<span class="md-btn__label">Очистить</span>
+					</button>
+				</div>
+			</div>
+			<div class="md-card__body md-console__output-body">
+				<div id="loaderConsole" class="md-console-loader">
+					<span class="md-spinner" aria-hidden="true"></span>
+					<span>Выполняется…</span>
+				</div>
+				<div id="console_output" class="md-console-output" aria-live="polite">
+					<div class="md-console-empty" data-md-console-empty>
+						<span class="md-console-empty__icon"><i class="ti ti-terminal-2" aria-hidden="true"></i></span>
+						<div class="md-console-empty__title">Готово к работе</div>
+						<div class="md-console-empty__text">Напишите команду и нажмите Ctrl+Enter. Результат появится здесь.</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	</div>
-	<div class="md-admin-console-drawer__footer" id="mdAdminConsoleDrawerFooter" hidden>
-		<button type="button" id="btnConsoleToggleModule" class="btn btn-outline-secondary">Подключить модуль</button>
-		<button type="button" id="btnConsoleClearHistory" class="btn btn-light">Очистить историю</button>
+		</section>
+
+
+
+		<section class="md-card md-card--compact md-console__history">
+			<div class="md-card__head">
+				<div class="md-card__titles">
+					<div class="md-card__eyebrow">История</div>
+					<h2 class="md-card__title">Последние команды <span class="md-badge" id="consoleHistoryCount">0</span></h2>
+				</div>
+				<div class="md-card__actions">
+					<button type="button" id="btnConsoleClearHistory" class="md-btn md-btn--ghost md-btn--sm">
+						<i class="ti ti-trash" aria-hidden="true"></i>
+						<span class="md-btn__label">Очистить</span>
+					</button>
+				</div>
+			</div>
+			<div class="md-card__body">
+				<div id="consoleHistoryList" class="md-console-history" aria-live="polite"></div>
+			</div>
+		</section>
 	</div>
 	[#endif PRINT#]
 	
@@ -149,25 +229,42 @@
 		<div class="md-admin-sidebar-backdrop" data-md-admin-sidebar-close></div>
 		<div class="row md-admin-layout" id="content">
 			[#if PRINT!="1"#]
-			<section class="md-admin-topbar" aria-label="Быстрые функции панели">
-				<button type="button" class="btn md-admin-topbar__menu-toggle" data-md-admin-sidebar-toggle aria-label="Open menu">
-					<i class="glyphicon glyphicon-th-list"></i>
-				</button>
-				<div class="md-admin-topbar__time">
-					<div class="md-admin-topbar__clock" data-md-header-clock>--:--</div>
-					<div class="md-admin-topbar__date" data-md-header-date>--</div>
+			<section class="md-admin-topbar" aria-label="Верхняя панель">
+				<div class="md-admin-topbar__left">
+					<button type="button" class="md-admin-topbar__menu-toggle md-topbar-action" data-md-admin-sidebar-toggle aria-label="Открыть меню">
+						<i class="ti ti-list" aria-hidden="true"></i>
+					</button>
+					<div class="md-admin-topbar__search" data-md-header-search>
+						<i class="ti ti-search md-admin-topbar__search-icon" aria-hidden="true"></i>
+						<input type="search"
+						       id="mdHeaderSearchInput"
+						       class="md-admin-topbar__search-input"
+						       placeholder="Поиск по панели"
+						       autocomplete="off"
+						       spellcheck="false"
+						       aria-label="Поиск по панели"
+						       aria-controls="mdHeaderSearchResults"
+						       aria-expanded="false">
+						<kbd class="md-admin-topbar__search-kbd">Ctrl K</kbd>
+						<div class="md-admin-topbar__search-results" id="mdHeaderSearchResults" role="listbox" aria-label="Результаты поиска" hidden></div>
+					</div>
 				</div>
 				<div class="md-admin-topbar__actions">
-					<div class="dropdown">
-						<button type="button" class="btn md-admin-topbar__dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Открыть действия">
-							<i class="glyphicon glyphicon-th-list"></i>
-							<span>Действия</span>
-						</button>
-						<ul class="dropdown-menu dropdown-menu-end md-admin-topbar__dropdown-menu">
-							<li><a class="dropdown-item" href="#" data-md-search-open><i class="glyphicon glyphicon-search"></i><span><#LANG_SEARCH#></span></a></li>
-							<li><a class="dropdown-item" href="?action=xray"><i class="glyphicon glyphicon-dashboard"></i><span>X-Ray</span></a></li>
-							<li><a class="dropdown-item" href="#" data-md-console-open><i class="glyphicon glyphicon-flash"></i><span><#LANG_CONSOLE#></span></a></li>
-						</ul>
+					<div class="md-admin-topbar__time">
+						<div class="md-admin-topbar__clock" data-md-header-clock>--:--</div>
+						<div class="md-admin-topbar__date" data-md-header-date>--</div>
+					</div>
+					<button type="button" class="md-topbar-action" data-md-console-open aria-label="Консоль">
+						<i class="ti ti-terminal-2" aria-hidden="true"></i><span>Консоль</span>
+					</button>
+					<a class="md-topbar-action" href="?action=xray" aria-label="X-Ray">
+						<i class="ti ti-activity" aria-hidden="true"></i><span>X-Ray</span>
+					</a>
+					<div class="md-topbar-theme" role="group" aria-label="Тема оформления">
+						<input class="btn-check" type="radio" name="topbarTheme" id="topbarThemeLight" value="light" data-md-theme-choice="light">
+						<label for="topbarThemeLight" title="Светлая тема"><i class="ti ti-sun" aria-hidden="true"></i><span class="visually-hidden">Светлая тема</span></label>
+						<input class="btn-check" type="radio" name="topbarTheme" id="topbarThemeDark" value="dark" data-md-theme-choice="dark">
+						<label for="topbarThemeDark" title="Тёмная тема"><i class="ti ti-moon-stars" aria-hidden="true"></i><span class="visually-hidden">Тёмная тема</span></label>
 					</div>
 				</div>
 			</section>
@@ -224,6 +321,9 @@
 				
 				[#endif PRINT#]
 				<!--right_main-->
+				[#if NOT_FOUND#]
+					<div class="md-ui-page md-ui-page--stack">[#NOT_FOUND_HTML#]</div>
+				[#else NOT_FOUND#]
 				[#if ACTION!=""#]
 
 
@@ -263,6 +363,7 @@
 				[#else ACTION#]
 					[#inc panel_default.html#]
 				[#endif ACTION#]
+				[#endif NOT_FOUND#]
 			</div>
 		</div>
 	</div><!--partloadend-->
@@ -354,8 +455,6 @@ $(document).ready(function() {
 	});
 	[#endif#]
 
-	$('.datepicker').datetimepicker({format:'YYYY-MM-DD'});
-
 	$(".popup").fancybox({
 		maxWidth        : 800,
 		maxHeight       : 600,
@@ -387,3 +486,4 @@ $(document).ready(function() {
 
 </body>
 </html>
+

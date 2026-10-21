@@ -13,7 +13,7 @@ $codeEditorSettings = array(
     'WRAPLINES' => 0,
     'SHOWERROR' => 0,
     'UPTOLINE' => 0,
-    'THEME' => 'codemirror',
+    'THEME' => 'auto',
     'MIXLINE' => 20,
     'SHOWLINE' => 20,
     'TURNONSETTINGS' => 0,
@@ -171,6 +171,13 @@ if (is_array($rec)) {
     }
 }
 outHash($rec, $out);
+
+if (!empty($out['UPDATED'])) {
+    $updated_ts = strtotime($out['UPDATED']);
+    if ($updated_ts > 0) {
+        $out['UPDATED_PASSED'] = getPassedText($updated_ts);
+    }
+}
 
 if ($out['XML']) {
     $this->xml = $out['XML'];

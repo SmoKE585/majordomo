@@ -1,139 +1,67 @@
+<link rel="stylesheet" href="<#ROOTHTML#>templates/objects/objects.css?v=2026-10-21-18">
+
 [#if VIEW_MODE=="search_objects" || VIEW_MODE==""#]
-	[#inc objects_search_admin.html#]
+    [#inc objects_search_admin.html#]
 [#endif VIEW_MODE#]
 
 [#if VIEW_MODE=="edit_objects"#]
-	[#if ID!=""#]
-		<script>
-		document.addEventListener('DOMContentLoaded', function () {
-		    var breadcrumb = document.querySelector('.breadcrumb');
-		    if (breadcrumb) {
-		        var lastItem = breadcrumb.querySelector('li:last-child');
-		        if (lastItem) {
-		            lastItem.insertAdjacentHTML('beforeend', ' &rarr; <a href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>">[#TITLE#]</a>');
-		        }
-		    }
+    [#if ID!=""#]
+        [#if PARENT_NAME!="classes"#]
+        <section class="md-obj-hero">
+            <div class="md-obj-hero__main">
+                <p class="md-obj-hero__eyebrow"><#LANG_OBJECTS#></p>
+                <h1 class="md-obj-hero__title">[#TITLE#]</h1>
+                <p class="md-obj-hero__summary">
+                    [#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Объект без описания. Добавьте назначение и связь с устройством, чтобы им было проще управлять.[#endif#]
+                </p>
+                <div class="md-obj-hero__meta">
+                    <span class="md-obj-hero__meta-item"><i class="ti ti-hierarchy" aria-hidden="true"></i><span><#LANG_CLASS#></span><strong>[#CLASS_TITLE#]</strong></span>
+                    <span class="md-obj-hero__meta-item"><i class="ti ti-map-pin" aria-hidden="true"></i><span><#LANG_LOCATION#></span><strong>[#if LOCATION_TITLE!=""#][#LOCATION_TITLE#][#else#]—[#endif#]</strong></span>
+                    [#if PROPERTIES_TOTAL!=""#]<span class="md-obj-hero__meta-item"><i class="ti ti-list-check" aria-hidden="true"></i><span><#LANG_PROPERTIES#></span><strong>[#PROPERTIES_TOTAL#]</strong></span>[#endif#]
+                    [#if METHODS_TOTAL!=""#]<span class="md-obj-hero__meta-item"><i class="ti ti-braces" aria-hidden="true"></i><span><#LANG_METHODS#></span><strong>[#METHODS_TOTAL#]</strong></span>[#endif#]
+                </div>
+            </div>
+            <div class="md-obj-hero__actions">
+                <a href="?data_source=<#DATA_SOURCE#>" class="btn btn-light"><i class="ti ti-arrow-left" aria-hidden="true"></i><#LANG_BACK#></a>
+            </div>
+        </section>
+        [#endif#]
 
-		    [#if PARENT_NAME=="classes"#]
-		    var classHero = document.querySelector('.md-classes-page__hero');
-		    if (classHero && classHero.dataset.mdObjectMerged !== '1') {
-		        var classTitle = classHero.querySelector('.md-classes-page__title');
-		        var classSummary = classHero.querySelector('.md-classes-page__summary');
-		        var classMeta = classHero.querySelector('.md-classes-page__meta');
+        [#if PARENT_NAME=="classes"#]
+        <div class="md-obj-embedded-head">
+            <div class="md-obj-embedded-head__title">[#TITLE#]</div>
+            [#if DESCRIPTION!=""#]<div class="md-obj-embedded-head__summary">[#DESCRIPTION#]</div>[#endif#]
+        </div>
+        [#endif#]
 
-		        classHero.dataset.mdObjectMerged = '1';
+        <nav class="md-tabs" aria-label="<#LANG_OBJECTS#>">
+            <a class="nav-link [#if TAB==""#]active[#endif#]" [#if TAB==""#]aria-current="page"[#endif#] href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=">
+                <i class="ti ti-info-circle" aria-hidden="true"></i><span><#LANG_DETAILS#></span>
+            </a>
+            <a class="nav-link [#if TAB=="properties"#]active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties">
+                <i class="ti ti-list-check" aria-hidden="true"></i><span><#LANG_PROPERTIES#></span>
+                [#if PROPERTIES_TOTAL!=""#]<span class="md-badge">[#PROPERTIES_TOTAL#]</span>[#endif#]
+            </a>
+            <a class="nav-link [#if TAB=="methods"#]active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods">
+                <i class="ti ti-braces" aria-hidden="true"></i><span><#LANG_METHODS#></span>
+                [#if METHODS_TOTAL!=""#]<span class="md-badge">[#METHODS_TOTAL#]</span>[#endif#]
+            </a>
+            <a class="nav-link [#if TAB=="history"#]active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=history">
+                <i class="ti ti-history" aria-hidden="true"></i><span><#LANG_HISTORY#></span>
+            </a>
+        </nav>
+    [#endif ID#]
 
-		        if (classTitle) {
-		            classTitle.insertAdjacentHTML('beforeend', '<span class="md-classes-page__title-separator" aria-hidden="true">&rarr;</span><span class="md-classes-page__title-object">[#TITLE#]</span>');
-		        }
-
-		        if (classSummary && '[#DESCRIPTION#]' !== '') {
-		            classSummary.insertAdjacentHTML('afterend', '<div class="md-classes-page__object-summary">[#DESCRIPTION#]</div>');
-		        }
-
-		        if (classMeta) {
-		            classMeta.insertAdjacentHTML('afterend', '' +
-		                '<div class="md-classes-page__meta md-classes-page__meta--object">' +
-		                    '<div class="md-classes-page__meta-item md-classes-page__meta-item--object">' +
-		                        '<span><#LANG_LOCATION#></span>' +
-		                        '<strong>[#if LOCATION_TITLE!=""#][#LOCATION_TITLE#][#else#]-[#endif#]</strong>' +
-		                    '</div>' +
-		                    '[#if PROPERTIES_TOTAL!=""#]<div class="md-classes-page__meta-item md-classes-page__meta-item--object"><span><#LANG_PROPERTIES#></span><strong>[#PROPERTIES_TOTAL#]</strong></div>[#endif#]' +
-		                    '[#if METHODS_TOTAL!=""#]<div class="md-classes-page__meta-item md-classes-page__meta-item--object"><span><#LANG_METHODS#></span><strong>[#METHODS_TOTAL#]</strong></div>[#endif#]' +
-		                '</div>');
-		        }
-		    }
-
-		    var classTabs = document.querySelector('.md-classes-page .md-admin-module-tabs');
-		    if (classTabs && classTabs.dataset.mdObjectTabsMerged !== '1') {
-		        classTabs.dataset.mdObjectTabsMerged = '1';
-		        classTabs.classList.add('md-admin-module-tabs--composite');
-		        classTabs.insertAdjacentHTML('beforeend', '' +
-		            '<span class="md-admin-module-tabs__group md-admin-module-tabs__group--object">' +
-		                '<span class="md-admin-module-tabs__group-label" title="[#TITLE#]">[#TITLE#]</span>' +
-		                '<a class="md-admin-module-tabs__link [#if TAB==""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_DETAILS#></a>' +
-		                '<a class="md-admin-module-tabs__link [#if TAB=="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>' +
-		                '<a class="md-admin-module-tabs__link [#if TAB=="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>' +
-		            '</span>');
-		    }
-		    [#endif#]
-
-		    [#if DEVICE_ID!=""#]
-		    [#endif DEVICE_ID#]
-		});
-		</script>
-
-		[#if PARENT_NAME!="classes"#]
-			<div class="md-admin-module-page md-objects-page">
-				<section class="md-admin-section-card md-objects-page__hero">
-					<div class="md-admin-section-card__body">
-						<div class="md-objects-page__hero-layout">
-							<div class="md-objects-page__hero-main">
-								<div class="md-objects-page__eyebrow"><#LANG_OBJECTS#></div>
-								<h1 class="md-objects-page__title">[#TITLE#]</h1>
-								<div class="md-objects-page__summary">[#if DESCRIPTION!=""#][#DESCRIPTION#][#else#]Объект без описания. Здесь лучше держать назначение, связь с устройством и правила изменения свойств.[#endif#]</div>
-								<div class="md-objects-page__meta">
-									<div class="md-objects-page__meta-item">
-										<span><#LANG_CLASS#></span>
-										<strong>[#CLASS_TITLE#]</strong>
-									</div>
-									<div class="md-objects-page__meta-item">
-										<span><#LANG_LOCATION#></span>
-										<strong>[#if LOCATION_TITLE!=""#][#LOCATION_TITLE#][#else#]-[#endif#]</strong>
-									</div>
-									[#if PROPERTIES_TOTAL!=""#]
-									<div class="md-objects-page__meta-item">
-										<span><#LANG_PROPERTIES#></span>
-										<strong>[#PROPERTIES_TOTAL#]</strong>
-									</div>
-									[#endif#]
-									[#if METHODS_TOTAL!=""#]
-									<div class="md-objects-page__meta-item">
-										<span><#LANG_METHODS#></span>
-										<strong>[#METHODS_TOTAL#]</strong>
-									</div>
-									[#endif#]
-								</div>
-							</div>
-							<div class="md-objects-page__hero-actions">
-								[#if DEVICE_ID!=""#]
-								[#endif#]
-								<a href="?data_source=<#DATA_SOURCE#>" class="btn btn-outline-secondary"><#LANG_BACK#></a>
-							</div>
-						</div>
-					</div>
-				</section>
-		[#endif#]
-
-			[#if PARENT_NAME!="classes"#]
-			<nav class="md-admin-module-tabs" aria-label="<#LANG_OBJECTS#>">
-				<a class="md-admin-module-tabs__link [#if TAB==""#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab="><#LANG_DETAILS#></a>
-				<a class="md-admin-module-tabs__link [#if TAB=="properties"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=properties"><#LANG_PROPERTIES#></a>
-				<a class="md-admin-module-tabs__link [#if TAB=="methods"#]is-active[#endif#]" href="?data_source=<#DATA_SOURCE#>&view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=methods"><#LANG_METHODS#></a>
-			</nav>
-			[#endif#]
-	[#endif ID#]
-	[#if TAB==""#]
-		[#inc objects_edit_default.html#]
-	[#endif TAB#]
-	[#if TAB=="properties"#]
-		[#inc objects_edit_properties.html#]
-	[#endif TAB#]
-	[#if TAB=="methods"#]
-		[#inc objects_edit_methods.html#]
-	[#endif TAB#]
-	[#if TAB=="history"#]
-		[#inc objects_edit_history.html#]
-	[#endif TAB#]
-	[#if ID!=""#]
-		[#if PARENT_NAME!="classes"#]
-		</div>
-		[#endif#]
-	[#endif ID#]
-[#endif VIEW_MODE#]
-
-[#if VIEW_MODE=="view_objects"#]
-	[#if TAB==""#]
-		[#inc objects_view_default.html#]
-	[#endif TAB#]
+    [#if TAB==""#]
+        [#inc objects_edit_default.html#]
+    [#endif TAB#]
+    [#if TAB=="properties"#]
+        [#inc objects_edit_properties.html#]
+    [#endif TAB#]
+    [#if TAB=="methods"#]
+        [#inc objects_edit_methods.html#]
+    [#endif TAB#]
+    [#if TAB=="history"#]
+        [#inc objects_edit_history.html#]
+    [#endif TAB#]
 [#endif VIEW_MODE#]

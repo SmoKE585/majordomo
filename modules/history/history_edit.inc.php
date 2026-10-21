@@ -14,7 +14,11 @@
    global $added_date;
    global $added_minutes;
    global $added_hours;
-   $rec['ADDED']=toDBDate($added_date)." $added_hours:$added_minutes:00";
+   $added_date=trim((string)$added_date);
+   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $added_date)) {
+    $added_date=date('Y-m-d');
+   }
+   $rec['ADDED']=$added_date." $added_hours:$added_minutes:00";
   //updating 'Object ID' (int)
    if (IsSet($this->object_id)) {
     $rec['OBJECT_ID']=$this->object_id;
@@ -60,7 +64,7 @@
   }
   if ($rec['ADDED']!='') {
    $tmp=explode(' ', $rec['ADDED']);
-   $out['ADDED_DATE']=fromDBDate($tmp[0]);
+   $out['ADDED_DATE']=$tmp[0];
    $tmp2=explode(':', $tmp[1]);
    $added_hours=$tmp2[0];
    $added_minutes=$tmp2[1];

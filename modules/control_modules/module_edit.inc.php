@@ -88,8 +88,7 @@ if ($mode2 == 'download') {
     //SQLExec("DELETE FROM project_modules WHERE NAME='" . $name . "'");
     @unlink(ROOT . 'cms/modules_installed/' . $name . ".installed");
     include_once(DIR_MODULES . $name . "/" . $name . ".class.php");
-    $obj = "\$object$i";
-    $code .= "$obj=new " . $name . ";\n";
+    $code = '$module_instance = new ' . $name . ";\n";
     setEvalCode($code);
     @eval($code);
     setEvalCode();
@@ -128,48 +127,91 @@ if ($mode2 == 'download') {
     $this->redirect("?");
 }
 
-if (preg_match('|<#(.*?)#>|si', $rec['TITLE'], $arr)) {
-    $rec['TITLE'] = constant($arr[1]);
-} else {
-    $rec['TITLE'] = $rec['TITLE'];
-}
+$title = isset($rec['TITLE']) && trim((string)$rec['TITLE']) !== ''
+    ? $this->resolveLanguageString($rec['TITLE'])
+    : $name;
+$rec['TITLE'] = $title;
+
+$category = isset($rec['CATEGORY']) && trim((string)$rec['CATEGORY']) !== ''
+    ? $this->resolveLanguageString($rec['CATEGORY'])
+    : 'Без категории';
+$rec['CATEGORY'] = $category;
+
+$added_ts = !empty($rec['ADDED']) ? strtotime((string)$rec['ADDED']) : false;
+$rec['ADDED_FORMATTED'] = $added_ts ? date('d.m.Y H:i', $added_ts) : '';
+$rec['ADDED_ISO'] = $added_ts ? date('c', $added_ts) : '';
 
 outHash($rec, $out);
+$out['NAME'] = $name;
+$out['TITLE'] = $title;
+$out['CATEGORY'] = $category;
+$out['TITLE_HTML'] = htmlspecialchars($title, ENT_QUOTES);
+$out['NAME_HTML'] = htmlspecialchars($name, ENT_QUOTES);
+$out['CATEGORY_HTML'] = htmlspecialchars($category, ENT_QUOTES);
+$out['IS_HIDDEN'] = !empty($rec['HIDDEN']) ? 1 : 0;
+$out['HIDDEN_LABEL'] = $out['IS_HIDDEN'] ? 'Скрыт' : 'В меню';
+$out['HIDDEN_STATE'] = $out['IS_HIDDEN'] ? 'hidden' : 'visible';
 
-//Получим конфиг модуля
+$icon_path = ROOT . 'img/modules/' . $name . '.png';
+$out['HAS_ICON'] = is_file($icon_path) ? 1 : 0;
+$out['ICON_URL'] = $out['HAS_ICON'] ? ROOTHTML . 'img/modules/' . rawurlencode($name) . '.png' : '';
+
+// Получим конфиг модуля
 
 include_once(DIR_MODULES . $name . '/' . $name . '.class.php');
 $module = new $name();
 
-$genConfig = [];
+$genConfig = array();
 $iter = 0;
 
 $config = $module->getConfig();
 if (is_array($config)) {
     foreach ($config as $key => $value) {
+        $value_display = $value;
+        if (is_array($value) || is_object($value)) {
+            $json_options = 0;
+            if (defined('JSON_UNESCAPED_UNICODE')) {
+                $json_options |= JSON_UNESCAPED_UNICODE;
+            }
+            if (defined('JSON_UNESCAPED_SLASHES')) {
+                $json_options |= JSON_UNESCAPED_SLASHES;
+            }
+            $value_display = json_encode($value, $json_options);
+        }
         $genConfig[$iter]['KEY'] = $key;
-        $genConfig[$iter]['VALUE'] = $value;
+        $genConfig[$iter]['KEY_HTML'] = htmlspecialchars((string)$key, ENT_QUOTES);
+        $genConfig[$iter]['VALUE'] = $value_display;
+        $genConfig[$iter]['VALUE_HTML'] = htmlspecialchars((string)$value_display, ENT_QUOTES);
         $iter++;
     }
     $out['MODULE_CONFIG'] = $genConfig;
 }
+$out['MODULE_CONFIG_TOTAL'] = count($genConfig);
+$out['HAS_MODULE_CONFIG'] = count($genConfig) > 0 ? 1 : 0;
 
-
-$url = "https://connect.smartliving.ru/market/?op=list&search=" . urlencode($rec['TITLE']);
-$marketInfo = file_get_contents($url);
-$marketInfo = json_decode($marketInfo, TRUE);
-if (isset($marketInfo["PLUGINS"][0])) {
-    $marketInfo = $marketInfo["PLUGINS"][0];
-    if (is_array($marketInfo)) {
-        $out['MARKET_ID'] = $marketInfo['ID'];
-        $out['MARKET_REPOSITORY_URL'] = $marketInfo['REPOSITORY_URL'];
-        $out['MARKET_AUTHOR'] = $marketInfo['AUTHOR'];
-        $out['MARKET_SUPPORT_URL'] = $marketInfo['SUPPORT_URL'];
-        $out['MARKET_DESCRIPTION_RU'] = $marketInfo['DESCRIPTION_RU'];
-        $out['MARKET_LATEST_VERSION'] = $marketInfo['LATEST_VERSION'];
-        $out['MARKET_PRICE'] = $marketInfo['PRICE'];
-        $out['MARKET_URL'] = $marketInfo['URL'];
-        $out['MARKET_LATEST_VERSION_COMMENT'] = $marketInfo['LATEST_VERSION_COMMENT'];
-        $out['MARKET_LATEST_VERSION_URL'] = $marketInfo['LATEST_VERSION_URL'];
-    }
+$url = "https://connect.smartliving.ru/market/?op=list&search=" . urlencode($title);
+$http_context = stream_context_create(array(
+    'http' => array('timeout' => 4),
+));
+$market_response = @file_get_contents($url, false, $http_context);
+$marketInfo = is_string($market_response) && $market_response !== ''
+    ? json_decode($market_response, true)
+    : null;
+$market_plugin = is_array($marketInfo) && isset($marketInfo['PLUGINS'][0]) && is_array($marketInfo['PLUGINS'][0])
+    ? $marketInfo['PLUGINS'][0]
+    : null;
+if ($market_plugin !== null) {
+    $out['MARKET_ID'] = isset($market_plugin['ID']) ? $market_plugin['ID'] : '';
+    $out['MARKET_REPOSITORY_URL'] = isset($market_plugin['REPOSITORY_URL']) ? $market_plugin['REPOSITORY_URL'] : '';
+    $out['MARKET_AUTHOR'] = isset($market_plugin['AUTHOR']) ? $market_plugin['AUTHOR'] : '';
+    $out['MARKET_SUPPORT_URL'] = isset($market_plugin['SUPPORT_URL']) ? $market_plugin['SUPPORT_URL'] : '';
+    $out['MARKET_DESCRIPTION_RU'] = isset($market_plugin['DESCRIPTION_RU']) ? $market_plugin['DESCRIPTION_RU'] : '';
+    $out['MARKET_LATEST_VERSION'] = isset($market_plugin['LATEST_VERSION']) ? $market_plugin['LATEST_VERSION'] : '';
+    $out['MARKET_PRICE'] = isset($market_plugin['PRICE']) ? $market_plugin['PRICE'] : '';
+    $out['MARKET_URL'] = isset($market_plugin['URL']) ? $market_plugin['URL'] : '';
+    $out['MARKET_LATEST_VERSION_COMMENT'] = isset($market_plugin['LATEST_VERSION_COMMENT']) ? $market_plugin['LATEST_VERSION_COMMENT'] : '';
+    $out['MARKET_LATEST_VERSION_URL'] = isset($market_plugin['LATEST_VERSION_URL']) ? $market_plugin['LATEST_VERSION_URL'] : '';
+    $out['MARKET_HAS_INFO'] = 1;
+} else {
+    $out['MARKET_HAS_INFO'] = 0;
 }

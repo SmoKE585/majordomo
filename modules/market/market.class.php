@@ -323,6 +323,85 @@ class market extends module
             return;
         }
 
+        if ($op == 'commits') {
+            header('Content-Type: application/json; charset=utf-8');
+            $name = trim((string)gr('name'));
+            if ($name === '') {
+                echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty module name'));
+                exit;
+            }
+
+            $plugin_rec = SQLSelectOne("SELECT * FROM plugins WHERE MODULE_NAME LIKE '" . DBSafe($name) . "'");
+            $plugin_data = array();
+            $result = $this->marketRequest('?&m[]=' . urlencode($name));
+            $data = json_decode($result, true);
+            if (is_array($data) && isset($data['PLUGINS'][0])) {
+                $plugin_data = $data['PLUGINS'][0];
+            }
+
+            $repository = isset($plugin_data['REPOSITORY_URL']) ? $plugin_data['REPOSITORY_URL'] : '';
+            if ($repository !== '') {
+                $plugin_data = $this->applyCustomRepositoryUrl($plugin_data);
+                $plugin_data = $this->applyRepositoryVersionMetadata($plugin_data, $this->shouldUseCustomRepositoryVersioning($plugin_data));
+                $repository = isset($plugin_data['REPOSITORY_URL']) ? $plugin_data['REPOSITORY_URL'] : $repository;
+            }
+
+            $commits = array();
+            $github_info = $this->getGithubRepositoryInfo($repository);
+            if ($github_info) {
+                $github_feed = getURL($github_info['feed_url'], 30 * 60);
+                if ($github_feed != '') {
+                    $tmp = GetXMLTree($github_feed);
+                    if (is_array($tmp)) {
+                        $feed = XMLTreeToArray($tmp);
+                        $items = isset($feed['feed']['entry']) ? $feed['feed']['entry'] : false;
+                        if (is_array($items)) {
+                            foreach ($items as $item) {
+                                $content = isset($item['content']['textvalue']) ? $item['content']['textvalue'] : '';
+                                $content = trim(strip_tags(html_entity_decode($content, ENT_QUOTES, 'UTF-8')));
+                                if (function_exists('mb_substr')) {
+                                    $content = mb_substr($content, 0, 320, 'UTF-8');
+                                } else {
+                                    $content = substr($content, 0, 320);
+                                }
+                                $updated = isset($item['updated']['textvalue']) ? $item['updated']['textvalue'] : '';
+                                $updated_ts = $updated !== '' ? strtotime($updated) : false;
+                                $commits[] = array(
+                                    'DATE' => $updated_ts ? date('d.m.Y H:i', $updated_ts) : $updated,
+                                    'TEXT' => $content,
+                                    'URL' => isset($item['link']['href']) ? $item['link']['href'] : '',
+                                );
+                                if (count($commits) >= 10) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            $title = '';
+            if (isset($plugin_rec['TITLE']) && $plugin_rec['TITLE'] !== '') {
+                $title = $plugin_rec['TITLE'];
+            } elseif (isset($plugin_data['TITLE'])) {
+                $title = $plugin_data['TITLE'];
+            }
+            $current_version = isset($plugin_rec['CURRENT_VERSION']) ? $plugin_rec['CURRENT_VERSION'] : '';
+            $latest_version = isset($plugin_data['LATEST_VERSION']) ? $plugin_data['LATEST_VERSION'] : '';
+            $latest_comment = isset($plugin_data['LATEST_VERSION_COMMENT']) ? strip_tags((string)$plugin_data['LATEST_VERSION_COMMENT']) : '';
+
+            echo json_encode(array(
+                'STATUS' => 'OK',
+                'TITLE' => $title,
+                'REPOSITORY' => $repository,
+                'CURRENT_VERSION' => $current_version,
+                'LATEST_VERSION' => $latest_version,
+                'LATEST_COMMENT' => $latest_comment,
+                'COMMITS' => $commits,
+            ));
+            exit;
+        }
+
         if ($op == '') {
             $result = $this->marketRequest('op=categories', 120);
             $data = json_decode($result, true);
@@ -345,6 +424,8 @@ class market extends module
             }
             array_unshift($out['CATEGORIES'], array('ID' => 'updates', 'TITLE' => LANG_MARKET_CATEGORY_HAVE_UPDATES));
             array_unshift($out['CATEGORIES'], array('ID' => 'installed', 'TITLE' => LANG_MARKET_CATEGORY_INSTALLED));
+
+            $out['MARKET_CATEGORY_COUNT'] = count($out['CATEGORIES']);
             return;
         }
 

@@ -27,6 +27,12 @@ for ($i = 0; $i < $total; $i++) {
     }
 }
 $out['PARAMS']=$params;
+$out['PARAMS_TOTAL']=$total;
+
+$added_ts = !empty($rec['ADDED']) ? strtotime((string)$rec['ADDED']) : false;
+$out['ADDED_FORMATTED'] = $added_ts ? date('d.m.Y H:i', $added_ts) : '';
+$expire_ts = !empty($rec['EXPIRE']) && $rec['EXPIRE'] != '0000-00-00 00:00:00' ? strtotime((string)$rec['EXPIRE']) : false;
+$out['EXPIRE_FORMATTED'] = $expire_ts ? date('d.m.Y H:i', $expire_ts) : '';
 
 if ($rec['ID'] && $rec['ADDED']!='') {
     $events=SQLSelect("SELECT ID, EVENT_NAME,ADDED FROM events WHERE ABS(UNIX_TIMESTAMP(ADDED)-UNIX_TIMESTAMP(('".$rec['ADDED']."')))<=5 AND ID!=".$rec['ID']);

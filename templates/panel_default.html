@@ -1,282 +1,417 @@
-<script src="<#ROOTHTML#>3rdparty/amcharts/core.js"></script>
-<script src="<#ROOTHTML#>3rdparty/amcharts/charts.js"></script>
-<script src="<#ROOTHTML#>3rdparty/amcharts/material.js"></script>
-<script src="<#ROOTHTML#>3rdparty/amcharts/animated.js"></script>
-
-<div class="md-admin-dashboard md-admin-dashboard--home">
-    <section class="md-admin-dashboard-top">
-        <div>
-            <p class="md-admin-eyebrow">MajorDoMo</p>
-            <h1><#LANG_CONTROL_PANEL#></h1>
-            <p class="md-admin-dashboard__lead"><#LANG_NEWDASH_SYSTEM_INFO#> / X-Ray / Последние изменения свойств</p>
+<div class="md-dash" data-md-dashboard>
+    <header class="md-dash__header">
+        <div class="md-dash__heading">
+            <p class="md-dash__eyebrow"><span class="md-dash__live-dot" aria-hidden="true"></span>Обзор системы</p>
+            <h1 class="md-dash__title"><#LANG_HOME#></h1>
+            <p class="md-dash__subtitle"><span data-md-dash-date>Сегодня</span> · сводка состояния умного дома</p>
+            <div class="md-dash__status" id="mdDashHealth" data-state="loading" aria-live="polite">
+                <span class="md-dash__status-dot" aria-hidden="true"></span>
+                <span data-md-dash-health-text>Проверяем состояние системы…</span>
+                <a class="md-dash__status-link" data-md-dash-health-link href="?action=system_errors" hidden>Подробнее</a>
+            </div>
         </div>
-    </section>
+        <div class="md-dash__actions">
+            <span class="md-dash__updated">Обновлено <time data-md-dash-updated datetime="">—</time></span>
+            <button type="button" class="md-btn md-btn--primary md-btn--sm" data-md-dash-refresh>
+                <i class="ti ti-refresh" aria-hidden="true"></i><span class="md-btn__label">Обновить</span>
+            </button>
+            <a class="md-btn md-btn--secondary md-btn--sm" href="?action=xray">
+                <i class="ti ti-activity" aria-hidden="true"></i><span class="md-btn__label">X-Ray</span>
+            </a>
+        </div>
+    </header>
 
-    <section class="md-admin-kpi-grid" aria-label="System summary">
-        <article class="md-admin-kpi-card">
-            <span class="md-admin-kpi-card__icon"><i class="glyphicon glyphicon-flash"></i></span>
-            <span class="md-admin-kpi-card__label"><#LANG_DEVICES_STATUS#> WebSocket</span>
-            <strong id="wsStatus" class="badge md-admin-status-badge"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
-        </article>
-        <article class="md-admin-kpi-card">
-            <span class="md-admin-kpi-card__icon"><i class="glyphicon glyphicon-dashboard"></i></span>
-            <span class="md-admin-kpi-card__label"><#LANG_NEWDASH_DB_REQ_SEC#></span>
-            <strong id="dashInfoDBReqS" class="badge md-admin-status-badge" data-dbload-level><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
-        </article>
-        <article class="md-admin-kpi-card">
-            <span class="md-admin-kpi-card__icon"><i class="glyphicon glyphicon-cloud-download"></i></span>
-            <span class="md-admin-kpi-card__label"><#LANG_NEWDASH_MJDM_VERSION#></span>
-            <strong id="dashInfoVersion" class="badge md-admin-status-badge"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
-        </article>
-        <article class="md-admin-kpi-card">
-            <span class="md-admin-kpi-card__icon"><i class="glyphicon glyphicon-refresh"></i></span>
-            <span class="md-admin-kpi-card__label"><#LANG_NEWDASH_SYSTEM_INFO_LAST_UPDATE#></span>
-            <strong id="dashInfoLastUpdate" class="badge md-admin-status-badge"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></strong>
-        </article>
-    </section>
+    <div class="md-dash__alerts" data-md-dash-alerts aria-live="polite">
+        <div class="md-alert md-alert--info md-dash-alert">
+            <span class="md-alert__icon"><i class="ti ti-loader-2" aria-hidden="true"></i></span>
+            <div class="md-alert__body">
+                <div class="md-alert__title">Проверяем состояние систем…</div>
+            </div>
+        </div>
+    </div>
 
-    <section class="md-admin-dashboard-widget-grid" aria-label="Виджеты мониторинга">
-        <article class="md-admin-section-card md-admin-dbload-card">
-            <header class="md-admin-section-card__header">
-                <h2>Нагрузка базы данных <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=database">X-Ray</a></h2>
-                <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="dbLoadWidgetDiv" aria-expanded="true" aria-controls="row_dbLoadWidgetDiv" aria-label="Скрыть"><i class="glyphicon glyphicon-eye-close"></i></button>
-            </header>
-            <div id="row_dbLoadWidgetDiv" class="collapse show md-admin-section-card__body">
-                <div class="md-admin-dbload-widget" id="dashInfoDBLoad">
-                    <div class="md-admin-dbload-widget__hero">
-                        <div>
-                            <span class="md-admin-dbload-widget__eyebrow">Нагрузка базы данных</span>
-                            <strong id="dashInfoDBLoadStatus">Загрузка...</strong>
-                            <small id="dashInfoDBLoadSource">Ожидание данных X-Ray</small>
-                        </div>
-                        <div class="md-admin-dbload-widget__dial" data-dbload-level>
-                            <span id="dashInfoDBUsage">—</span>
-                            <small>соединения</small>
-                        </div>
-                    </div>
-                    <div class="md-admin-dbload-widget__metrics">
-                        <div>
-                            <span>Запросов в секунду</span>
-                            <strong id="dashInfoDBReqSDetail">—</strong>
-                        </div>
-                        <div>
-                            <span>Запросов в минуту</span>
-                            <strong id="dashInfoDBReqM">—</strong>
-                        </div>
-                        <div>
-                            <span>Запросов в час</span>
-                            <strong id="dashInfoDBReqH">—</strong>
-                        </div>
-                    </div>
-                    <div class="md-admin-dbload-widget__connections">
-                        <span><b id="dashInfoDBRunning">—</b> выполняется</span>
-                        <span><b id="dashInfoDBConnected">—</b> подключено</span>
-                        <span><b id="dashInfoDBCached">—</b> в кэше</span>
-                        <span><b id="dashInfoDBMax">—</b> лимит</span>
-                    </div>
-                    <div class="md-admin-dbload-widget__raw" id="dashInfoDBConnections"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></div>
-                </div>
+    <section class="md-dash__stats" aria-label="Ключевые показатели системы">
+        <article class="md-dash-stat">
+            <div class="md-dash-stat__head">
+                <span class="md-dash-stat__icon" data-md-dash-health-icon>
+                    <i class="ti ti-shield-check" aria-hidden="true"></i>
+                </span>
+                <span class="md-dash-stat__label">Состояние</span>
+            </div>
+            <div class="md-dash-stat__value" data-md-dash-health-value>—</div>
+            <div class="md-dash-stat__meta" data-md-dash-health-meta>Проверка…</div>
+        </article>
+
+        <article class="md-dash-stat">
+            <div class="md-dash-stat__head">
+                <span class="md-dash-stat__icon"><i class="ti ti-box-seam" aria-hidden="true"></i></span>
+                <span class="md-dash-stat__label">Объекты</span>
+            </div>
+            <div class="md-dash-stat__value">
+                <span data-md-dash-field="objects">—</span>
+            </div>
+            <div class="md-dash-stat__meta">
+                <span data-md-dash-field="active-objects">—</span> активны за <span data-md-dash-field="active-window">15</span> мин · <span data-md-dash-field="classes">—</span> <span data-md-dash-field="classes-word">классов</span>
+            </div>
+        </article>
+
+        <article class="md-dash-stat">
+            <div class="md-dash-stat__head">
+                <span class="md-dash-stat__icon"><i class="ti ti-broadcast" aria-hidden="true"></i></span>
+                <span class="md-dash-stat__label">Устройства</span>
+            </div>
+            <div class="md-dash-stat__value">
+                <span data-md-dash-field="devices-online">—</span><small>из <span data-md-dash-field="devices-total">—</span></small>
+            </div>
+            <div class="md-dash-stat__meta" data-md-dash-field="devices-meta">Ожидание данных…</div>
+        </article>
+
+        <article class="md-dash-stat">
+            <div class="md-dash-stat__head">
+                <span class="md-dash-stat__icon"><i class="ti ti-repeat" aria-hidden="true"></i></span>
+                <span class="md-dash-stat__label">Циклы</span>
+            </div>
+            <div class="md-dash-stat__value">
+                <span data-md-dash-field="cycles-works">—</span><small>из <span data-md-dash-field="cycles-total">—</span></small>
+            </div>
+            <div class="md-dash-stat__meta" data-md-dash-field="cycles-meta">Ожидание данных…</div>
+        </article>
+
+        <article class="md-dash-stat">
+            <div class="md-dash-stat__head">
+                <span class="md-dash-stat__icon"><i class="ti ti-database" aria-hidden="true"></i></span>
+                <span class="md-dash-stat__label">База данных</span>
+            </div>
+            <div class="md-dash-stat__value">
+                <span data-md-dash-field="db-rate">—</span><small>зап/с</small>
+            </div>
+            <div class="md-dash-stat__meta">
+                <span data-md-dash-field="db-usage">—</span>% соединений · <span data-md-dash-field="db-size">—</span>
             </div>
         </article>
     </section>
 
-    <div class="md-admin-dashboard-grid">
-        <div class="md-admin-dashboard-grid__main">
-            <section class="md-admin-section-card" id="myBlockOnDash" style="display:none;">
-                <header class="md-admin-section-card__header">
-                    <h2 id="myBlockOnDash_title"><#LANG_NEWDASH_DMB_TITLE#></h2>
-                    <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="myBlockDiv" aria-expanded="true" aria-controls="row_myBlockDiv" aria-label="Hide"><i id="hideTogglemyBlock" class="glyphicon glyphicon-eye-close"></i></button>
+    <div class="md-dash__grid">
+        <div class="md-dash__col md-dash__col--main">
+            <section class="md-dash-card md-dash-card--chart" aria-labelledby="mdDashActivityChartTitle">
+                <header class="md-dash-card__head">
+                    <div>
+                        <h2 class="md-dash-card__title" id="mdDashActivityChartTitle">Активность за 24 часа</h2>
+                        <p class="md-dash-card__subtitle">Свойства с обновлением и скрипты с запуском в каждом часе</p>
+                    </div>
+                    <a class="md-dash-card__link" href="?action=xray">
+                        X-Ray <i class="ti ti-arrow-up-right" aria-hidden="true"></i>
+                    </a>
                 </header>
-                <div id="row_myBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div id="myBlockOnDash_body"></div>
-                    <div id="more_myBlockOnDash" class="md-admin-more-list">
-                        <ul class="list-group" id="more_myBlockOnDash_body"></ul>
+                <div class="md-dash-card__body">
+                    <div class="md-dash-chart" data-md-dash-chart="activity" role="img" aria-label="Активность за 24 часа">
+                        <div class="md-dash-chart__loading" aria-hidden="true">
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                        </div>
+                    </div>
+                    <div class="md-dash-chart__summary">
+                        <span class="md-dash-chart__metric">
+                            <span class="md-dash-chart__dot md-dash-chart__dot--primary" aria-hidden="true"></span>
+                            Свойства <strong data-md-dash-field="activity-properties">—</strong>
+                        </span>
+                        <span class="md-dash-chart__metric">
+                            <span class="md-dash-chart__dot md-dash-chart__dot--warning" aria-hidden="true"></span>
+                            Скрипты <strong data-md-dash-field="activity-scripts">—</strong>
+                        </span>
+                        <span class="md-dash-chart__hint">За последние 24 часа</span>
                     </div>
                 </div>
             </section>
 
-            <section class="md-admin-section-card">
-                <header class="md-admin-section-card__header">
-                    <h2><#LANG_NEWDASH_SYSTEM_INFO#></h2>
-                    <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="infoBlockDiv" aria-expanded="true" aria-controls="row_infoBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
+            <section class="md-dash-card" aria-labelledby="mdDashActivityTitle">
+                <header class="md-dash-card__head">
+                    <div>
+                        <h2 class="md-dash-card__title" id="mdDashActivityTitle">Последние события</h2>
+                        <p class="md-dash-card__subtitle">Запуски скриптов и изменения свойств</p>
+                    </div>
+                    <a class="md-dash-card__link" href="?action=xray">
+                        X-Ray <i class="ti ti-arrow-up-right" aria-hidden="true"></i>
+                    </a>
                 </header>
-                <div id="row_infoBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div class="md-admin-info-list">
-                        <div class="md-admin-info-row md-admin-info-row--note" id="dbreqdiscus">
-                            <a href="https://mjdm.ru/forum/viewtopic.php?f=6&t=7301" target="_blank"><i class="glyphicon glyphicon-send"></i> <#LANG_NEWDASH_FORUM_DISCUSSION#></a>
+                <div class="md-dash-card__body md-dash-card__body--flush">
+                    <ul class="nav nav-underline md-dash-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="mdDashScriptsTab" data-bs-toggle="tab" data-bs-target="#mdDashScriptsPane" type="button" role="tab" aria-controls="mdDashScriptsPane" aria-selected="true">
+                                Скрипты <span class="badge" data-md-dash-count="scripts">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="mdDashPropertiesTab" data-bs-toggle="tab" data-bs-target="#mdDashPropertiesPane" type="button" role="tab" aria-controls="mdDashPropertiesPane" aria-selected="false">
+                                Свойства <span class="badge" data-md-dash-count="properties">0</span>
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="mdDashScriptsPane" role="tabpanel" aria-labelledby="mdDashScriptsTab" tabindex="0">
+                            <div class="md-dash-activity" data-md-dash-list="scripts" aria-live="polite">
+                                <div class="md-dash-skeleton" aria-hidden="true">
+                                    <div class="md-dash-skeleton__row"><span class="md-dash-skeleton__dot"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--wide"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--short"></span></div>
+                                    <div class="md-dash-skeleton__row"><span class="md-dash-skeleton__dot"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--wide"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--short"></span></div>
+                                    <div class="md-dash-skeleton__row"><span class="md-dash-skeleton__dot"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--wide"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--short"></span></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="md-admin-info-row">
-                            <span><#LANG_THEME#></span>
-                            <span class="md-admin-theme-switch" role="group" aria-label="<#LANG_THEME#>">
-                                <input class="btn-check" type="radio" name="adminTheme" id="adminThemeDark" value="dark" data-md-theme-choice="dark"[#if "<#SETTINGS_THEME#>"!="light"#] checked[#endif#]>
-                                <label class="btn btn-sm btn-outline-secondary" for="adminThemeDark"><#LANG_THEME_DARK#></label>
-                                <input class="btn-check" type="radio" name="adminTheme" id="adminThemeLight" value="light" data-md-theme-choice="light"[#if "<#SETTINGS_THEME#>"=="light"#] checked[#endif#]>
-                                <label class="btn btn-sm btn-outline-secondary" for="adminThemeLight"><#LANG_THEME_LIGHT#></label>
-                            </span>
+                        <div class="tab-pane fade" id="mdDashPropertiesPane" role="tabpanel" aria-labelledby="mdDashPropertiesTab" tabindex="0">
+                            <div class="md-dash-activity" data-md-dash-list="properties" aria-live="polite">
+                                <div class="md-dash-skeleton" aria-hidden="true">
+                                    <div class="md-dash-skeleton__row"><span class="md-dash-skeleton__dot"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--wide"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--short"></span></div>
+                                    <div class="md-dash-skeleton__row"><span class="md-dash-skeleton__dot"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--wide"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--short"></span></div>
+                                    <div class="md-dash-skeleton__row"><span class="md-dash-skeleton__dot"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--wide"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--short"></span></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <pre class="md-admin-system-text" id="dashInfoOS"><#LANG_NEWDASH_LOADING#></pre>
                 </div>
             </section>
 
-            <section class="md-admin-section-card md-admin-chart-card">
-                <header class="md-admin-section-card__header">
-                    <h2><#LANG_NEWDASH_CYCLE_CONTROL#> <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=services">X-Ray</a></h2>
-                    <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="cycleBlockDiv" aria-expanded="true" aria-controls="row_cycleBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
+            <section class="md-dash-card md-dash-block" id="myBlockOnDash" hidden aria-labelledby="myBlockOnDash_title">
+                <header class="md-dash-card__head">
+                    <div>
+                        <h2 class="md-dash-card__title" id="myBlockOnDash_title"></h2>
+                        <p class="md-dash-card__subtitle">Блок с главной страницы проекта</p>
+                    </div>
                 </header>
-                <div id="row_cycleBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div id="chartdiv_cycle" class="md-admin-chart md-admin-chart--cycle"><span class="spinner-border text-primary" aria-hidden="true"></span></div>
+                <div class="md-dash-card__body">
+                    <div class="md-dash-block__body" id="myBlockOnDash_body"></div>
+                    <ul class="md-dash-block__more" id="more_myBlockOnDash_body"></ul>
                 </div>
             </section>
 
-            <section class="md-admin-section-card">
-                <header class="md-admin-section-card__header">
-                    <h2><#LANG_NEWDASH_LAST_SCRIPTS#> <a href="?pd=pz_&md=panel&inst=&action=scripts"><#LANG_NEWDASH_LAST_SCRIPTS_GO#></a></h2>
-                    <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="scriptBlockDiv" aria-expanded="true" aria-controls="row_scriptBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
+            <section class="md-dash-card" aria-labelledby="mdDashDbTitle">
+                <header class="md-dash-card__head">
+                    <div>
+                        <h2 class="md-dash-card__title" id="mdDashDbTitle">База данных</h2>
+                        <p class="md-dash-card__subtitle">Нагрузка, соединения и размер</p>
+                    </div>
+                    <span class="md-dash-badge" data-md-dash-db-status>—</span>
                 </header>
-                <div id="row_scriptBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div class="md-admin-inline-note"><i class="glyphicon glyphicon-exclamation-sign"></i> <#LANG_NEWDASH_SHOW_LAST_SCRIPTS#></div>
-                    <ul class="md-admin-list" id="scriptLast"><li><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></li></ul>
+                <div class="md-dash-card__body">
+                    <div class="md-dash-db__head">
+                        <div class="md-dash-db__usage">
+                            <span class="md-dash-db__value" data-md-dash-db-usage>—</span>
+                            <span class="md-dash-db__caption">% соединений</span>
+                        </div>
+                        <span class="md-dash-db__rate"><span data-md-dash-db-rate>—</span> зап/с</span>
+                    </div>
+                    <div class="progress md-dash-progress" role="progressbar" aria-label="Использование соединений" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-md-dash-db-progress>
+                        <div class="progress-bar" data-md-dash-db-bar style="width:0%"></div>
+                    </div>
+                    <dl class="md-dash-metrics">
+                        <div><dt>Выполняется</dt><dd data-md-dash-db-running>—</dd></div>
+                        <div><dt>Подключено</dt><dd data-md-dash-db-connected>—</dd></div>
+                        <div><dt>В кэше</dt><dd data-md-dash-db-cached>—</dd></div>
+                        <div><dt>Лимит</dt><dd data-md-dash-db-max>—</dd></div>
+                    </dl>
+                    <dl class="md-dash-metrics md-dash-metrics--three">
+                        <div><dt>Размер</dt><dd data-md-dash-field="db-size">—</dd></div>
+                        <div><dt>Таблиц</dt><dd data-md-dash-field="db-tables">—</dd></div>
+                        <div><dt>Свободно</dt><dd data-md-dash-field="db-free">—</dd></div>
+                    </dl>
+                    <p class="md-dash-note" data-md-dash-db-note>Ожидание данных…</p>
+                </div>
+            </section>
+
+            <section class="md-dash-card" aria-labelledby="mdDashErrorsTitle">
+                <header class="md-dash-card__head">
+                    <div>
+                        <h2 class="md-dash-card__title" id="mdDashErrorsTitle">Ошибки системы</h2>
+                        <p class="md-dash-card__subtitle">Активные и недавние инциденты</p>
+                    </div>
+                    <span class="md-dash-badge" data-md-dash-errors-badge>—</span>
+                </header>
+                <div class="md-dash-card__body">
+                    <div class="md-dash-errors" data-md-dash-errors>
+                        <div class="md-dash-skeleton" aria-hidden="true">
+                            <div class="md-dash-skeleton__row"><span class="md-dash-skeleton__dot"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--wide"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--short"></span></div>
+                            <div class="md-dash-skeleton__row"><span class="md-dash-skeleton__dot"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--wide"></span><span class="md-dash-skeleton__line md-dash-skeleton__line--short"></span></div>
+                        </div>
+                    </div>
+                    <a class="md-dash-card__link md-dash-errors__link" href="?action=system_errors">
+                        Все ошибки <i class="ti ti-arrow-up-right" aria-hidden="true"></i>
+                    </a>
                 </div>
             </section>
         </div>
 
-        <aside class="md-admin-dashboard-grid__side">
-            <section class="md-admin-section-card md-admin-section-card--large md-admin-chart-card">
-                <header class="md-admin-section-card__header">
-                    <h2><#LANG_NEWDASH_HINT_BIG_DATA_DB#> <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=database">X-Ray</a></h2>
-                    <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="tablesBlockDiv" aria-expanded="true" aria-controls="row_tablesBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
+        <aside class="md-dash__col md-dash__col--side">
+            <section class="md-dash-card" aria-labelledby="mdDashResourcesTitle">
+                <header class="md-dash-card__head">
+                    <div>
+                        <h2 class="md-dash-card__title" id="mdDashResourcesTitle">Ресурсы сервера</h2>
+                        <p class="md-dash-card__subtitle">CPU, память и дисковое пространство</p>
+                    </div>
+                    <span class="md-dash-badge" data-md-dash-resource-status>—</span>
                 </header>
-                <div id="row_tablesBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div id="tablesChart" class="md-admin-chart md-admin-chart--tables"><span class="spinner-border text-primary" aria-hidden="true"></span></div>
+                <div class="md-dash-card__body">
+                    <div class="md-dash-chart md-dash-chart--radial" data-md-dash-chart="resources" role="img" aria-label="Загрузка ресурсов сервера">
+                        <div class="md-dash-chart__loading" aria-hidden="true">
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                        </div>
+                    </div>
+                    <div class="md-dash-meters">
+                        <div class="md-meter" data-md-dash-meter="cpu">
+                            <div class="md-meter__head">
+                                <span class="md-meter__label"><i class="ti ti-cpu" aria-hidden="true"></i>CPU</span>
+                                <span class="md-meter__value">—</span>
+                            </div>
+                            <div class="md-progress md-progress--primary md-progress--sm" role="progressbar" aria-label="Загрузка CPU" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                <span class="md-progress__bar" style="width:0%"></span>
+                            </div>
+                            <div class="md-meter__hint">Ожидание данных…</div>
+                        </div>
+                        <div class="md-meter" data-md-dash-meter="memory">
+                            <div class="md-meter__head">
+                                <span class="md-meter__label"><i class="ti ti-device-desktop-analytics" aria-hidden="true"></i>Память</span>
+                                <span class="md-meter__value">—</span>
+                            </div>
+                            <div class="md-progress md-progress--info md-progress--sm" role="progressbar" aria-label="Использование памяти" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                <span class="md-progress__bar" style="width:0%"></span>
+                            </div>
+                            <div class="md-meter__hint">Ожидание данных…</div>
+                        </div>
+                        <div class="md-meter" data-md-dash-meter="disk">
+                            <div class="md-meter__head">
+                                <span class="md-meter__label"><i class="ti ti-database" aria-hidden="true"></i>Диск</span>
+                                <span class="md-meter__value">—</span>
+                            </div>
+                            <div class="md-progress md-progress--warning md-progress--sm" role="progressbar" aria-label="Использование диска" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                <span class="md-progress__bar" style="width:0%"></span>
+                            </div>
+                            <div class="md-meter__hint">Ожидание данных…</div>
+                        </div>
+                    </div>
+                    <dl class="md-dash-metrics md-dash-metrics--three">
+                        <div><dt>Load 1 мин</dt><dd data-md-dash-field="load-1">—</dd></div>
+                        <div><dt>Load 5 мин</dt><dd data-md-dash-field="load-5">—</dd></div>
+                        <div><dt>Load 15 мин</dt><dd data-md-dash-field="load-15">—</dd></div>
+                    </dl>
                 </div>
             </section>
 
-            <section class="md-admin-section-card">
-                <header class="md-admin-section-card__header">
-                    <h2>Последние изменения свойств <a href="?(panel:{action=xray})&md=xray&inst=adm&view_mode=properties">X-Ray</a></h2>
-                    <button type="button" class="md-admin-icon-button" data-md-collapse-toggle="propertiesBlockDiv" aria-expanded="true" aria-controls="row_propertiesBlockDiv" aria-label="Hide"><i class="glyphicon glyphicon-eye-close"></i></button>
+            <section class="md-dash-card" aria-labelledby="mdDashCyclesTitle">
+                <header class="md-dash-card__head">
+                    <div>
+                        <h2 class="md-dash-card__title" id="mdDashCyclesTitle">Циклы</h2>
+                        <p class="md-dash-card__subtitle">Фоновые процессы системы</p>
+                    </div>
+                    <a class="md-dash-card__link" href="?action=xray&amp;md=xray&amp;inst=adm&amp;view_mode=services">
+                        Подробнее <i class="ti ti-arrow-up-right" aria-hidden="true"></i>
+                    </a>
                 </header>
-                <div id="row_propertiesBlockDiv" class="collapse show md-admin-section-card__body">
-                    <div class="md-admin-property-feed" id="recentProperties"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> <#LANG_NEWDASH_LOADING#></div>
+                <div class="md-dash-card__body">
+                    <div class="md-dash-cycle-summary">
+                        <span><strong data-md-dash-field="cycles-works-2">—</strong> из <span data-md-dash-field="cycles-total-2">—</span> работают</span>
+                        <span class="md-dash-cycle-summary__meta" data-md-dash-field="cycles-meta">Ожидание данных…</span>
+                    </div>
+                    <div class="md-dash-chart md-dash-chart--donut" data-md-dash-chart="cycles" role="img" aria-label="Состояние циклов">
+                        <div class="md-dash-chart__loading" aria-hidden="true">
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                            <span class="md-dash-chart__loading-bar"></span>
+                        </div>
+                    </div>
+                    <div class="md-dash-legend" data-md-dash-cycle-legend></div>
+                    <ul class="md-dash-cycle-list" data-md-dash-cycle-list></ul>
                 </div>
             </section>
 
-            <div class="md-admin-dashboard-footer-actions">
-                <button type="button" class="btn btn-light btn-sm" data-md-reset-hints data-confirm="<#LANG_ARE_YOU_SURE#>"><i class="glyphicon glyphicon-eye-open"></i> <#LANG_NEWDASH_RESET_VISIBILITY#></button>
-            </div>
+            <section class="md-dash-card" aria-labelledby="mdDashSystemTitle">
+                <header class="md-dash-card__head">
+                    <div>
+                        <h2 class="md-dash-card__title" id="mdDashSystemTitle">Система</h2>
+                        <p class="md-dash-card__subtitle">Подключение и параметры сервера</p>
+                    </div>
+                </header>
+                <div class="md-dash-card__body">
+                    <dl class="md-dash-kv">
+                        <div>
+                            <dt>WebSocket</dt>
+                            <dd><span id="wsStatus" class="md-dash-badge">Подключение…</span></dd>
+                        </div>
+                        <div>
+                            <dt>PHP</dt>
+                            <dd data-md-dash-field="php-version">—</dd>
+                        </div>
+                        <div>
+                            <dt>Операционная система</dt>
+                            <dd data-md-dash-field="os">—</dd>
+                        </div>
+                        <div>
+                            <dt>Uptime сервера</dt>
+                            <dd data-md-dash-field="uptime">—</dd>
+                        </div>
+                        <div>
+                            <dt>Сервер</dt>
+                            <dd data-md-dash-field="host">—</dd>
+                        </div>
+                        <div>
+                            <dt>Таблиц в базе</dt>
+                            <dd data-md-dash-field="tables">—</dd>
+                        </div>
+                    </dl>
+                    <div class="md-dash-system__footer">
+                        <span class="md-dash-system__hint">Подсказки и свёрнутые блоки</span>
+                        <button type="button" class="md-dash-system__reset" data-md-reset-hints>Сбросить</button>
+                    </div>
+                </div>
+            </section>
         </aside>
     </div>
+
+    <section class="md-dash-card md-dash-quick" aria-labelledby="mdDashShortcutsTitle">
+        <header class="md-dash-card__head">
+            <div>
+                <h2 class="md-dash-card__title" id="mdDashShortcutsTitle">Быстрый доступ</h2>
+                <p class="md-dash-card__subtitle">Частые разделы панели управления</p>
+            </div>
+        </header>
+        <div class="md-dash-card__body">
+            <div class="md-dash-shortcuts md-dash-shortcuts--wide">
+                <a class="md-dash-shortcut" href="?action=objects">
+                    <span class="md-dash-shortcut__icon"><i class="ti ti-box-seam" aria-hidden="true"></i></span>
+                    <span class="md-dash-shortcut__text"><strong>Объекты</strong><small>Устройства и свойства</small></span>
+                </a>
+                <a class="md-dash-shortcut" href="?action=classes">
+                    <span class="md-dash-shortcut__icon"><i class="ti ti-hierarchy" aria-hidden="true"></i></span>
+                    <span class="md-dash-shortcut__text"><strong>Классы</strong><small>Структура и методы</small></span>
+                </a>
+                <a class="md-dash-shortcut" href="?action=scripts">
+                    <span class="md-dash-shortcut__icon"><i class="ti ti-code" aria-hidden="true"></i></span>
+                    <span class="md-dash-shortcut__text"><strong>Сценарии</strong><small>Автоматизация</small></span>
+                </a>
+                <a class="md-dash-shortcut" href="?action=xray">
+                    <span class="md-dash-shortcut__icon"><i class="ti ti-activity" aria-hidden="true"></i></span>
+                    <span class="md-dash-shortcut__text"><strong>X-Ray</strong><small>Циклы и нагрузка</small></span>
+                </a>
+                <a class="md-dash-shortcut" href="?action=mqtt">
+                    <span class="md-dash-shortcut__icon"><i class="ti ti-broadcast" aria-hidden="true"></i></span>
+                    <span class="md-dash-shortcut__text"><strong>MQTT</strong><small>Топики и сообщения</small></span>
+                </a>
+                <a class="md-dash-shortcut" href="?action=pinghosts">
+                    <span class="md-dash-shortcut__icon"><i class="ti ti-server" aria-hidden="true"></i></span>
+                    <span class="md-dash-shortcut__text"><strong>Online</strong><small>Доступность устройств</small></span>
+                </a>
+                <a class="md-dash-shortcut" href="?action=system_errors">
+                    <span class="md-dash-shortcut__icon"><i class="ti ti-alert-triangle" aria-hidden="true"></i></span>
+                    <span class="md-dash-shortcut__text"><strong>Ошибки</strong><small>Журнал и история</small></span>
+                </a>
+                <a class="md-dash-shortcut" href="?action=saverestore">
+                    <span class="md-dash-shortcut__icon"><i class="ti ti-cloud-download" aria-hidden="true"></i></span>
+                    <span class="md-dash-shortcut__text"><strong>Обновление</strong><small>Резервные копии</small></span>
+                </a>
+            </div>
+        </div>
+    </section>
 </div>
-
-<script type="text/javascript">
-am4core.ready(function() {
-    am4core.useTheme(am4themes_material);
-    am4core.useTheme(am4themes_animated);
-
-    var chart = am4core.create("chartdiv_cycle", am4charts.PieChart);
-    chart.hiddenState.properties.opacity = 0;
-    chart.logo.disabled = true;
-    chart.responsive.enabled = true;
-    chart.dataSource.url = "?action=xray&md=xray&inst=adm&view_mode=services&ajax=1&op=getcontent&mode=chart";
-    chart.dataSource.parser = new am4core.JSONParser();
-    chart.dataSource.reloadFrequency = 30000;
-    chart.padding(8, 8, 8, 8);
-    chart.radius = am4core.percent(72);
-    chart.innerRadius = am4core.percent(52);
-    chart.startAngle = 180;
-    chart.endAngle = 360;
-
-    var series = chart.series.push(new am4charts.PieSeries());
-    series.dataFields.value = "cycle";
-    series.dataFields.category = "title";
-    series.dataFields.cyclename = "cyclename";
-    series.slices.template.propertyFields.fill = "color";
-    series.slices.template.cornerRadius = 0;
-    series.slices.template.innerCornerRadius = 0;
-    series.slices.template.draggable = true;
-    series.slices.template.inert = true;
-    series.alignLabels = false;
-    series.labels.template.disabled = true;
-    series.ticks.template.disabled = true;
-    series.hiddenState.properties.startAngle = 90;
-    series.hiddenState.properties.endAngle = 90;
-
-    chart.legend = new am4charts.Legend();
-    chart.legend.position = "bottom";
-    chart.legend.fontSize = 12;
-    chart.legend.useDefaultMarker = true;
-    var marker = chart.legend.markers.template.children.getIndex(0);
-    marker.cornerRadius(12, 12, 12, 12);
-    marker.strokeWidth = 2;
-    marker.strokeOpacity = 1;
-    marker.stroke = am4core.color("#ccc");
-    chart.legend.labels.template.text = "[bold {color}]{cyclename}[/]";
-});
-
-am4core.ready(function() {
-    am4core.useTheme(am4themes_material);
-    am4core.useTheme(am4themes_animated);
-
-    var chart = am4core.create("tablesChart", am4charts.XYChart);
-    chart.logo.disabled = true;
-    chart.responsive.enabled = true;
-    chart.dataSource.url = "?action=xray&md=xray&inst=adm&view_mode=database&ajax=1&op=getcontent&mode=chart";
-    chart.dataSource.parser = new am4core.JSONParser();
-    chart.dataSource.reloadFrequency = 180000;
-    chart.padding(22, 18, 52, 8);
-
-    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
-    categoryAxis.renderer.grid.template.location = 0;
-    categoryAxis.dataFields.category = "NAME";
-    categoryAxis.renderer.minGridDistance = 28;
-    categoryAxis.renderer.inversed = false;
-    categoryAxis.renderer.grid.template.disabled = true;
-    categoryAxis.renderer.labels.template.rotation = -28;
-    categoryAxis.renderer.labels.template.horizontalCenter = "right";
-    categoryAxis.renderer.labels.template.verticalCenter = "middle";
-    categoryAxis.renderer.labels.template.fontSize = 12;
-    categoryAxis.renderer.labels.template.maxWidth = 120;
-    categoryAxis.renderer.labels.template.truncate = true;
-
-    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
-    valueAxis.calculateTotals = true;
-    valueAxis.min = 0;
-    valueAxis.renderer.labels.template.fontSize = 12;
-    valueAxis.renderer.grid.template.strokeOpacity = .08;
-    chart.cursor = new am4charts.XYCursor();
-    chart.cursor.behavior = "none";
-
-    var series = chart.series.push(new am4charts.ColumnSeries());
-    series.dataFields.categoryX = "NAME";
-    series.dataFields.valueY = "ROWS";
-    series.tooltipText = "{valueY.value}";
-    series.columns.template.strokeOpacity = 0;
-    series.columns.template.column.cornerRadiusTopRight = 4;
-    series.columns.template.column.cornerRadiusTopLeft = 4;
-    series.columns.template.maxWidth = 74;
-
-    var labelBullet = series.bullets.push(new am4charts.LabelBullet());
-    labelBullet.label.verticalCenter = "bottom";
-    labelBullet.label.dy = -10;
-    labelBullet.label.fontSize = 12;
-    labelBullet.label.text = "{values.valueY.workingValue.formatNumber('#.')}";
-    chart.zoomOutButton.disabled = true;
-
-    series.columns.template.adapter.add("fill", function (fill, target) {
-        return chart.colors.getIndex(target.dataItem.index);
-    });
-
-    categoryAxis.sortBySeries = series;
-});
-
-$(document).ready(function() {
-    checkUpdatesAvailable();
-    hideHintCookie('alert_hide_hint2', 1);
-    setInterval(function() { checkSystemInfo(); }, 300000);
-    checkSystemInfo();
-    myBlockOnDash();
-});
-</script>
-
-[#endif#]

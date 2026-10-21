@@ -1,63 +1,122 @@
-<div class="alert" style="color: #398439;text-align: center;border: 1px solid #398439;"><i class="glyphicon glyphicon-exclamation-sign" style="font-weight: normal;font-size: 13pt;vertical-align: sub;margin-right: 10px;"></i>
-	<#LANG_NEWSYSTEM_ERROR_ERROR_HINT#> <code style="white-space: normal;">registerError('<#LANG_NEWSYSTEM_ERROR_NAME#>', '<#LANG_NEWSYSTEM_ERROR_DESC#>');</code>
-</div>
-
+<!--#
+ @version 0.2 (auto-set)
+#-->
 
 [#if RESULT#]
-<form action="?" method="post" name="frmList_system_errors" style="padding:0px" class="form">
-	<div class="table-responsive">
-		<table class="table table-bordered">
-			<thead>
-				<tr>
-					<th class="text-center">История</th>
-					<th class="text-center"><#LANG_CODE#></th>
-					<th class="text-center"><#LANG_TITLE#></th>
-					<th class="text-center"><#LANG_COUNTER#></th>
-					<th class="text-center"><#LANG_UPDATED#></th>
-					<th class="text-center"><#LANG_ACTIONS#></th>
-				</tr>
-			</thead>
-			<tbody>
-				[#begin RESULT#]
-					<tr style="[#if ACTIVE!="0"#]background-color:#ffdddd;[#endif#]">
-						<td>
-						<form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="form-horizontal">
-							<input type="checkbox" onchange="this.form.submit()" name="keep_history" value="1"[#if KEEP_HISTORY="1"#] checked[#endif#]> <#LANG_KEEP_HISTORY#>
-							<input type="hidden" class="form-control" name="title" value=" ">
-							<input type="hidden" class="form-control" name="code" value="[#CODE#]">
-							
-							<input type="hidden" name="id" value="[#ID#]">
-							<input type="hidden" name="view_mode" value="edit_system_errors">
-							<input type="hidden" name="mode" value="update">
-						</form>
-						</td>
-						<td style="vertical-align: middle;">
-							[#CODE#]
-						</td>
-						<td style="vertical-align: middle;">
-							[#TITLE#]
-						</td>
-						<td style="vertical-align: middle;" class="text-center">[#ACTIVE#]</td>
-						<td style="vertical-align: middle;" class="text-center">
-							[#if LATEST_UPDATE!=""#]
-								[#LATEST_UPDATE#]
-							[#else#]
-								<#LANG_UNKNOWN#>
-							[#endif#]
-						</td>
-						<td style="vertical-align: middle;" class="text-right">
-							<a href="?data_source=<#DATA_SOURCE#>&view_mode=edit_system_errors&id=[#ID#]&tab=history" class="btn btn btn-sm btn-info" title="View"><i class="glyphicon glyphicon-eye-open"></i> <#LANG_NEWSYSTEM_ERROR_SEE_BTN#></a>
-							<a href="?data_source=<#DATA_SOURCE#>&view_mode=delete_system_errors&id=[#ID#]" onClick="return confirm('Are you sure?')" class="btn btn btn-sm btn-danger" title="Delete"><i class="glyphicon glyphicon-remove"></i> <#LANG_STRING_DELETE#></a>
-							[#if ACTIVE!="0"#]
-								<a href="?data_source=<#DATA_SOURCE#>&view_mode=clear_system_errors&id=[#ID#]" class="btn btn btn-sm btn-success" title="Clear"><i class="glyphicon glyphicon-ok"></i> <#LANG_NEWSYSTEM_ERROR_READ_BTN#></a>
-							[#endif#]
-						</td>
-					</tr>
-					[#end RESULT#]
-			</tbody>
-		</table>
-	</div>
-</form>
-[#else#]
-<div class="alert alert-success text-center"><i class="glyphicon glyphicon-ok"></i> <#LANG_NEWSYSTEM_ERROR_NOT_FOUND#></div>
+<div class="md-table-wrap md-errors-table-wrap" data-md-table data-md-table-page-size="25" data-md-table-unit="групп" data-md-table-unit-one="группа" data-md-table-unit-few="группы" data-md-table-unit-many="групп">
+    <div class="md-table__toolbar">
+        <div class="md-table__search">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" data-md-table-search placeholder="Поиск по коду, названию и описанию" aria-label="Поиск ошибок" autocomplete="off">
+        </div>
+        <select class="md-table__filter" data-md-table-filter="state" aria-label="Фильтр по статусу">
+            <option value="">Все ошибки</option>
+            <option value="active">Активные</option>
+            <option value="read">Просмотренные</option>
+        </select>
+        <div class="md-table__meta" data-md-table-meta>Групп: [#ERRORS_TOTAL#]</div>
+    </div>
+
+    <div class="md-table__scroll">
+        <table class="md-table">
+            <thead>
+                <tr>
+                    <th scope="col">Ошибка</th>
+                    <th scope="col" class="md-errors-col-history">История</th>
+                    <th scope="col" class="md-errors-col-updated">Обновлено</th>
+                    <th scope="col" class="md-errors-col-keep">Хранить</th>
+                    <th scope="col" class="md-errors-col-actions text-end"><span class="md-visually-hidden"><#LANG_ACTIONS#></span></th>
+                </tr>
+            </thead>
+            <tbody data-md-table-body>
+                [#begin RESULT#]
+                <tr data-md-row data-row-id="[#ID#]" data-state="[#STATUS_STATE#]" data-search="[#CODE#] [#TITLE#] [#DETAILS#] [#ORIGIN_MODULE#] [#ORIGIN_FILE#]">
+                    <td class="md-errors-col-main">
+                        <div class="md-table__name md-errors-cell">
+                            <span class="md-table__icon"><i class="ti ti-alert-triangle" aria-hidden="true"></i></span>
+                            <div class="md-errors-cell__body">
+                                <a href="?view_mode=edit_system_errors&id=[#ID#]&tab=history"><strong>[#TITLE_DISPLAY#]</strong></a>
+                                [#if SHOW_CODE="1"#]<small class="md-errors-code"><code>[#CODE#]</code></small>[#endif#]
+                                [#if HAS_ORIGIN="1"#]
+                                <small class="md-errors-origin" title="[#ORIGIN_FILE#]:[#ORIGIN_LINE#] — [#ORIGIN_CALL#]"><i class="ti ti-file-code" aria-hidden="true"></i><span>[#ORIGIN_MODULE#] · [#ORIGIN_FILE_SHORT#][#if ORIGIN_LINE!="0"#]:[#ORIGIN_LINE#][#endif#]</span></small>
+                                [#endif#]
+                                <span class="md-errors-cell__meta">
+                                    [#if STATUS_STATE="active"#]
+                                    <span class="md-badge md-badge--danger"><i class="ti ti-alert-triangle" aria-hidden="true"></i>Активна · [#ACTIVE#]</span>
+                                    [#else#]
+                                    <span class="md-badge md-badge--success"><i class="ti ti-check" aria-hidden="true"></i>Прочитана</span>
+                                    [#endif#]
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="md-errors-col-history">
+                        [#if EVENTS_TOTAL!="0"#]
+                        <div class="md-errors-history-cell">
+                            <span><strong>[#EVENTS_LABEL#]</strong></span>
+                            <small>Последнее: [#LAST_EVENT_FORMATTED#]</small>
+                        </div>
+                        [#else#]
+                        <span class="md-tree-empty">Нет записей</span>
+                        [#endif#]
+                    </td>
+                    <td class="md-errors-col-updated">
+                        <span title="[#LATEST_UPDATE#]">[#LATEST_UPDATE_FORMATTED#]</span>
+                    </td>
+                    <td class="md-errors-col-keep">
+                        <form action="?" method="post" class="md-errors-keep-form">
+                            <label class="md-switch md-switch--sm" for="mdErrorKeep_[#ID#]">
+                                <input class="md-switch__input" id="mdErrorKeep_[#ID#]" type="checkbox" name="keep_history" value="1" data-md-raw-checkbox data-md-error-keep[#if KEEP_HISTORY="1"#] checked[#endif#] aria-label="Хранить историю ошибки [#CODE#]">
+                                <span class="md-switch__track" aria-hidden="true"><span class="md-switch__thumb"></span></span>
+                            </label>
+                            <input type="hidden" name="id" value="[#ID#]">
+                            <input type="hidden" name="view_mode" value="toggle_keep_history">
+                            <input type="hidden" name="data_source" value="system_errors">
+                        </form>
+                    </td>
+                    <td class="md-errors-col-actions">
+                        <div class="md-table__actions">
+                            <a href="?view_mode=edit_system_errors&id=[#ID#]&tab=history" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="История" aria-label="История ошибки [#CODE#]">
+                                <i class="ti ti-history" aria-hidden="true"></i>
+                            </a>
+                            [#if STATUS_STATE="active"#]
+                            <a href="?view_mode=clear_system_errors&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="<#LANG_NEWSYSTEM_ERROR_READ_BTN#>" aria-label="Отметить ошибку [#CODE#] просмотренной">
+                                <i class="ti ti-check" aria-hidden="true"></i>
+                            </a>
+                            [#endif#]
+                            <a href="?view_mode=delete_system_errors&id=[#ID#]" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить ошибку [#CODE#]" data-md-confirm="Удалить ошибку [#CODE#] и всю историю?">
+                                <i class="ti ti-trash" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                [#end RESULT#]
+            </tbody>
+        </table>
+    </div>
+
+    <div class="md-table__empty" data-md-table-empty>
+        <div class="md-empty md-empty--compact">
+            <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+            <div class="md-empty__title">Ничего не найдено</div>
+            <p class="md-empty__text">Измените запрос или фильтр по статусу.</p>
+        </div>
+    </div>
+
+    <div class="md-table__footer">
+        <span data-md-table-count>Показано [#ERRORS_TOTAL#] из [#ERRORS_TOTAL#]</span>
+        <ul class="pagination md-pagination mb-0" data-md-table-pagination></ul>
+    </div>
+</div>
+[#else RESULT#]
+<div class="md-empty">
+    <span class="md-empty__icon"><i class="ti ti-shield-check" aria-hidden="true"></i></span>
+    <div class="md-empty__title">Ошибок пока нет</div>
+    <p class="md-empty__text">Журнал пуст. Ошибки появятся здесь, когда модули вызовут <code>registerError()</code>.</p>
+    <div class="md-empty__actions">
+        <a href="?view_mode=addtesterror" class="md-btn md-btn--secondary md-btn--sm" data-md-confirm="Создать тестовую ошибку?">
+            <i class="ti ti-bug" aria-hidden="true"></i><#LANG_NEWSYSTEM_ERROR_GET_ERROR#>
+        </a>
+    </div>
+</div>
 [#endif RESULT#]

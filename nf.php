@@ -14,8 +14,16 @@ list($usec, $sec) = explode(" ",microtime());
 $script_started_time = ((float)$usec + (float)$sec);
 
 
-if (!preg_match('/\/$/', $_SERVER["REQUEST_URI"]))
-   $file = basename($_SERVER["REQUEST_URI"]);
+$requestUri = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '/';
+$requestPath = parse_url($requestUri, PHP_URL_PATH);
+if (!is_string($requestPath) || $requestPath === '') {
+    $requestPath = '/';
+}
+
+$file = '';
+if (!preg_match('/\/$/', $requestPath)) {
+    $file = basename($requestPath);
+}
 
 $ext = strtolower(substr($file, -3));
 
@@ -25,57 +33,33 @@ if ($ext == 'jpg' || $ext == 'gif' || $ext == 'css')
    exit;
 }
 
-if (preg_match('/\/ajax\//',$_SERVER["REQUEST_URI"])) {
+if (preg_match('/\/ajax\//', $requestUri)) {
     Define('ALLOW_RUNNING_WITH_ERRORS', 1);
 }
 
-if (preg_match("/\?(.*?)$/", $_SERVER["REQUEST_URI"], $matches))
+if (preg_match("/\?(.*?)$/", $requestUri, $matches))
    $redir_qry = $matches[1];
 
-$file = preg_replace("/\.htm.*$/","", $file);
+$file = preg_replace("/\.htm.*$/", '', $file);
 
 if ($file != '')
    $fake_doc = $file;
 
 include_once("./config.php");
+include_once("./lib/admin_router.php");
 
-// use this array for URL conversion rules
-$rootHTML=preg_replace('/\//', '\/', ROOTHTML);
-$requests = array(
-   '/^'.$rootHTML.'panel\/event\/(\d+)\.html/is'  => '?(panel:{action=events})&md=events&view_mode=edit_events&id=\1',
-   '/^'.$rootHTML.'panel\/script\/(\d+)\.html/is'  => '?(panel:{action=scripts})&md=scripts&view_mode=edit_scripts&id=\1',
-   '/^'.$rootHTML.'panel\/xray\.html/is' => '?(panel:{action=xray})&md=xray',
-   '/^'.$rootHTML.'panel\/linkedobject.html/is'    => '?(panel:{action=linkedobject})',
-   '/^'.$rootHTML.'panel\/popup\/(.+?).html/is'   => '?(panel:{action=\1,print=1})&print=1',
-   '/^'.$rootHTML.'panel\/class\/(\d+)\.html/is'   => '?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=\1',
-   '/^'.$rootHTML.'panel\/class\/(\d+)\/properties\.html/is'=> '?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=\1&tab=properties',
-   '/^'.$rootHTML.'panel\/class\/(\d+)\/methods\.html/is'=> '?(panel:{action=classes})&md=classes&view_mode=edit_classes&id=\1&tab=methods',
-   '/^'.$rootHTML.'panel\/class\/(\d+)\/methods\/(\d+)\.html/is'=> '?(panel:{action=classes}classes:{view_mode=edit_classes, tab=methods, id=\1, instance=adm})&md=methods&view_mode=edit_methods&id=\2',
-   '/^'.$rootHTML.'panel\/class\/(\d+)\/object\/(\d+)\.html/is'=> '?(panel:{action=classes}classes:{view_mode=edit_classes, tab=objects, id=\1, instance=adm})&md=objects&view_mode=edit_objects&id=\2',
-   '/^'.$rootHTML.'panel\/class\/(\d+)\/object\/(\d+)\/methods\.html/is'=> '?(panel:{action=classes}classes:{view_mode=edit_classes, tab=objects, id=\1, instance=adm})&md=objects&view_mode=edit_objects&id=\2&tab=methods',
-   '/^'.$rootHTML.'panel\/class\/(\d+)\/object\/(\d+)\/methods\/(\d+)\.html/is'=> '?(panel:{action=classes}classes:{view_mode=edit_classes, tab=objects, id=\1, instance=adm})&md=objects&view_mode=edit_objects&id=\2&tab=methods&overwrite=1&method_id=\3',
-   '/^'.$rootHTML.'panel\/class\/(\d+)\/object\/(\d+)\/properties\.html/is'=> '?(panel:{action=classes}classes:{view_mode=edit_classes, tab=objects, id=\1, instance=adm})&md=objects&view_mode=edit_objects&id=\2&tab=properties',
-   '/^'.$rootHTML.'panel\/zwave\/(\d+)\.html/is'   => '?(panel:{action=zwave})&md=zwave&view_mode=edit_zwave_devices&id=\1',
-   '/^'.$rootHTML.'panel\/app_gpstrack\/action_(\d+)\.html/is'=> '?(panel:{action=app_gpstrack})&md=app_gpstrack&data_source=gpsactions&view_mode=edit_gpsactions&id=\1',
-   '/^'.$rootHTML.'panel\/(\w+?)\.html/is' => '?(panel:{action=\1})&md=\1',
-   '/^'.$rootHTML.'pages\.html/is'                 => '?(application:{action=pages})',
-   '/^'.$rootHTML.'popup\/(shoutbox)\.html/is'     => '?(application:{action=\1, popup=1, app_action=1})',
-   '/^'.$rootHTML.'module\/(.+?)\.html/is'     => '?(application:{action=\1, popup=1, app_action=1})',
-   '/^'.$rootHTML.'module\/app_mediabrowser\.(.+?)\?play=/is'=> '?(application:{action=app_mediabrowser, popup=1, app_action=1})',
-   '/^'.$rootHTML.'apps\/(.+?)\.html/is'     => '?(application:{action=apps, popup=1, app_action=\1})',
-   '/^'.$rootHTML.'apps\.html/is'     => '?(application:{action=apps, popup=1})',
-   '/^'.$rootHTML.'popup\/(.+?)\/(.+?)\.html/is'   => '?(application:{action=\1, popup=1})',
-   '/^'.$rootHTML.'popup\/(.+?)\.html/is'          => '?(application:{action=\1, popup=1})',
-   '/^'.$rootHTML.'ajax\/(.+?)\.html/is'           => '?(application:{action=\1, ajax=1})',
-   '/^'.$rootHTML.'page\/(\w+?)\.html/is'          => '?(application:{action=layouts, popup=1, id=\1}layouts:{view_mode=view_layouts, id=\1})',
-   '/^'.$rootHTML.'getnextevent\.html/is'          => '?(application:{action=events})',
-   '/^'.$rootHTML.'getlatestnote\.html/is'         => '?(application:{action=getlatestnote})',
-   '/^'.$rootHTML.'getlatestmp3\.html/is'          => '?(application:{action=getlatestmp3})',
-   '/^'.$rootHTML.'design_sample\.html/is'         => '?(application:{action=design_sample})',
-    '/^'.$rootHTML.'settings\/(.+?)\.html/is'         => '?(application:{app_action=1, action=settings}settings:{filter_name=\1})',
-   '/^'.$rootHTML.'docs\/(\d+)\.html/is'           => '?(application:{action=docs, doc_id=\1})',
-   '/^'.$rootHTML.'([\w-]+)\.html/is'              => '?(application:{action=docs, doc_name=\1})'
-);
+// URL conversion rules live in lib/admin_router.php and are shared with the
+// outbound link prettifier, so inbound and outbound routing can never drift.
+$rootHTML = ROOTHTML;
+$requests = mdj_admin_route_table($rootHTML);
+
+// Admin root: /panel/ and /panel (no .html suffix).
+$requestPath = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
+$panelRoot = rtrim(ROOTHTML, '/') . '/panel/';
+if ($requestPath === $panelRoot || $requestPath === rtrim($panelRoot, '/')) {
+    include_once("admin.php");
+    exit;
+}
 
 $found=0;
 foreach($requests as $key => $value)
@@ -103,6 +87,16 @@ if (isset($link) && preg_match('/^moved:(.+)/is', $link, $matches))
    exit;
 }
 
+if (!isset($link))
+{
+   include_once("./lib/error_page.php");
+   mdj_render_404(array(
+      'root' => ROOTHTML,
+      'area' => 'site',
+      'path' => isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '',
+   ));
+}
+
 include_once("./lib/perfmonitor.class.php");
 
 startMeasure('TOTAL');
@@ -111,39 +105,16 @@ startMeasure('loader');
 include_once("./lib/loader.php");
 endMeasure('loader');
 
-if (isset($link))
-{
-   $mdl       = new module();
-   $param_str = $mdl->parseLinks("<a href=\"$link\">");
-
-   if (preg_match("/<a href=\".+?\?pd=(.*?)&(.+)\">/", $param_str, $matches))
-   {
-      $pd    = $matches[1];
-      $other = $matches[2];
-      $tmp   = explode('&', $other);
-      foreach ($tmp as $pair)
-      {
-         $tmp2 = explode('=', $pair);
-         if (isset($tmp2[1])) {
-            $_REQUEST[$tmp2[0]] = $tmp2[1];
-            ${$tmp2[0]}     = $tmp2[1];
-         }
-      }
-   }
-   elseif (preg_match("/<a href=\".+?\?pd=(.*?)\">/", $param_str, $matches))
-   {
-      $pd = $matches[1];
-   }
-   $_REQUEST['pd']=$pd;
+$requestQuery = mdj_admin_target_to_query($link);
+foreach ($requestQuery as $key => $value) {
+   $_REQUEST[$key] = $value;
+   ${$key} = $value;
 }
-else
-{
-   header("HTTP/1.0 404 Not Found");
-   echo "The page cannot be found. Please use <a href='/'>this link</a> to continue browsing.";
-   exit;
+if (!isset($_REQUEST['pd'])) {
+   $_REQUEST['pd'] = '';
 }
 
-if (preg_match('/^'.$rootHTML.'panel\//is', $_SERVER['REQUEST_URI']))
+if (preg_match('/^' . preg_quote($rootHTML, '/') . 'panel\//is', $_SERVER['REQUEST_URI']))
    include_once("admin.php");
 else
    include_once("index.php");

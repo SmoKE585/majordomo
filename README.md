@@ -36,3 +36,15 @@ Any help is much appreciated.
 
 Docs for shared CodeMirror integration:
 - [docs/codemirror-module-integration.md](docs/codemirror-module-integration.md)
+
+Admin asset build
+=========
+The admin panel assets are built with npm + Vite into `assets/admin/` and committed, so PHP hosting does not need Node.js at runtime.
+
+```bash
+npm install
+npm run build
+```
+
+Source entry point: `src/admin/main.js`. Details: `docs/admin-assets.md`.
+

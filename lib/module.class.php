@@ -641,8 +641,15 @@ class module
         $param_str = $this->parseLinks("<a href=\"$url\">");
         preg_match("<a href=\"(.*?)\">", $param_str, $matches);
 
-        $url = $matches[1];
-        $url = str_replace("?", "?" . session_name() . "=" . session_id() . "&", $url);
+        $url = isset($matches[1]) ? $matches[1] : $url;
+
+        // Pretty admin URLs are stable and use the session cookie; adding a
+        // session id to them only makes them ugly and breaks sharing.
+        $root = defined('ROOTHTML') ? ROOTHTML : '/';
+        $panelPrefix = rtrim($root, '/') . '/panel/';
+        if (strpos($url, $panelPrefix) !== 0) {
+            $url = str_replace("?", "?" . session_name() . "=" . session_id() . "&", $url);
+        }
 
         return $url;
     }
@@ -735,6 +742,13 @@ class module
             global $PHP_SELF;
             $_SERVER['PHP_SELF'] = $PHP_SELF;
         }
+        $linkBase = function_exists('mdj_admin_link_base') ? mdj_admin_link_base() : $_SERVER['PHP_SELF'];
+        $prettify = static function ($url) {
+            if (!function_exists('mdj_admin_pretty_url')) {
+                return $url;
+            }
+            return mdj_admin_pretty_url(str_replace('&amp;', '&', $url));
+        };
         $param_str = '';
 
         if ($md != $this->name) {
@@ -754,14 +768,14 @@ class module
                     if (preg_match('/^\((.+?)\)(.*)$/', $link, $matches1)) {
                         $other = $matches1[2];
                         $res_str = $this->codeParams($matches1[1]);
-                        $result = str_replace($matches[0][$i], '="' . $_SERVER['PHP_SELF'] . '?pd=' . $res_str . $other . '"', $result);
+                        $linkUrl = $prettify($linkBase . '?pd=' . $res_str . $other);
+                        $result = str_replace($matches[0][$i], '="' . $linkUrl . '"', $result);
                     } elseif (strpos($link, "md=") !== 0) {
-                        $replaceString = '="' . $_SERVER['PHP_SELF'] . '?pd=' . $param_str;
-                        $replaceString .= '&md=' . $this->name . '&inst=' . $this->instance . '&' . $link . '"';
+                        $replaceString = '="' . $prettify($linkBase . '?pd=' . $param_str . '&md=' . $this->name . '&inst=' . $this->instance . '&' . $link) . '"';
 
                         $result = str_replace($matches[0][$i], $replaceString, $result); // links
                     } else {
-                        $result = str_replace('action="?', 'action="' . $_SERVER['PHP_SELF'] . '"', $result); // forms
+                        $result = str_replace('action="?', 'action="' . $linkBase . '"', $result); // forms
                     }
                 } else {
                     // remove modified param
@@ -792,9 +806,9 @@ class module
                 if (preg_match('/^\((.+?)\)(.*)$/', $link, $matches1)) {
                     $other = $matches1[2];
                     $res_str = $this->codeParams($matches1[1]);
-                    $result = str_replace($matches[0][$i], $_SERVER['PHP_SELF'] . '?pd=' . $res_str . $other, $result);
+                    $result = str_replace($matches[0][$i], $prettify($linkBase . '?pd=' . $res_str . $other), $result);
                 } elseif (strpos($link, "md=") !== 0) {
-                    $replaceString = $_SERVER['PHP_SELF'] . '?pd=' . $param_str . '&md=' . $this->name . '&inst=' . $this->instance . '&' . $link;
+                    $replaceString = $prettify($linkBase . '?pd=' . $param_str . '&md=' . $this->name . '&inst=' . $this->instance . '&' . $link);
 
                     $result = str_replace($matches[0][$i], $replaceString, $result); // links
                 }

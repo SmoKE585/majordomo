@@ -1,0 +1,283 @@
+/*
+ * Actions history module: filters, dense log table and expandable details.
+ * Loaded only from templates/actions_log/action_admin.html.
+ */
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-filter-form .md-ui-form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-filter-actions {
+  align-items: center;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-filter-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.45;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-filter-hint i {
+  flex: 0 0 auto;
+  font-size: 13px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-table-wrap {
+  min-width: 0;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-table-wrap .md-table__scroll {
+  contain: paint;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-table {
+  min-width: 1240px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-col-when {
+  width: 104px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-col-action {
+  min-width: 230px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-col-target {
+  min-width: 150px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-col-route {
+  min-width: 200px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-col-details {
+  min-width: 150px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-when {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--md-ui-text-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-when strong {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 500;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-when span {
+  color: var(--md-ui-muted);
+  font-size: 11px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-action {
+  align-items: flex-start;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-action .md-table__icon {
+  flex: 0 0 28px;
+  margin-top: 1px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-action__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-action__body strong {
+  color: var(--md-ui-text);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-action__body small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-user {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-user .md-avatar {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-user__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-user__body strong {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-user__body small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-user__body small i {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-target {
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-route .md-badge {
+  font-size: 10px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-route code {
+  display: inline-block;
+  max-width: 160px;
+  padding: 2px 6px;
+  overflow: hidden;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 5px;
+  font-family: var(--md-ui-font-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-url {
+  display: block;
+  max-width: 230px;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--md-ui-muted);
+  font-family: var(--md-ui-font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-details {
+  min-width: 0;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-details > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--md-ui-primary);
+  font-size: var(--md-ui-fs-xs);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-details > summary:hover {
+  color: var(--md-ui-primary-strong);
+  text-decoration: underline;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-details > summary i {
+  font-size: 12px;
+}
+
+body.md-admin-shell .md-actions-log-page .md-actions-log-details pre {
+  max-width: 420px;
+  max-height: 260px;
+  margin: 8px 0 0;
+  padding: 9px 10px;
+  overflow: auto;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1199.98px) {
+  body.md-admin-shell .md-actions-log-page .md-actions-log-filter-form .md-ui-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 991.98px) {
+  body.md-admin-shell .md-actions-log-page .md-actions-log-filter-form .md-ui-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.md-admin-shell .md-actions-log-page .md-actions-log-filter-hint {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .md-actions-log-page .md-actions-log-filter-form .md-ui-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-actions-log-page .md-actions-log-filter-actions {
+    align-items: stretch;
+  }
+
+  body.md-admin-shell .md-actions-log-page .md-actions-log-filter-actions .md-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  body.md-admin-shell .md-actions-log-page .md-actions-log-details pre {
+    max-width: 280px;
+  }
+}

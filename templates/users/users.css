@@ -1,0 +1,191 @@
+/*
+ * Users module: list and account card.
+ * Loaded only from templates/users/action_admin.html.
+ */
+
+body.md-admin-shell .md-users-page .md-users-cell__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-users-page .md-users-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+body.md-admin-shell .md-users-page .md-users-badges .md-badge {
+  font-size: 10px;
+}
+
+body.md-admin-shell .md-users-page .md-users-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.4;
+}
+
+body.md-admin-shell .md-users-page .md-users-contacts > span {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-users-page .md-users-contacts i {
+  margin-top: 1px;
+  color: var(--md-ui-muted);
+  font-size: 13px;
+}
+
+body.md-admin-shell .md-users-page .md-users-contacts a {
+  color: var(--md-ui-text-soft);
+  text-decoration: none;
+}
+
+body.md-admin-shell .md-users-page .md-users-contacts a:hover {
+  color: var(--md-ui-primary);
+  text-decoration: underline;
+}
+
+/* Account card */
+
+body.md-admin-shell .md-users-page .md-users-avatar {
+  width: 64px;
+  height: 64px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-color: transparent;
+  font-size: 24px;
+  border-radius: 50%;
+}
+
+body.md-admin-shell .md-users-page input[type="file"].md-input {
+  height: auto;
+  min-height: var(--md-ui-control-md);
+  padding: 6px 10px;
+}
+
+body.md-admin-shell .md-users-page input[type="file"].md-input::file-selector-button {
+  margin-right: 12px;
+  padding: 6px 12px;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border-strong);
+  border-radius: var(--md-ui-radius-sm);
+  font: 500 var(--md-ui-fs-xs)/1.2 var(--md-ui-font);
+  cursor: pointer;
+}
+
+body.md-admin-shell .md-users-page input[type="file"].md-input::file-selector-button:hover {
+  border-color: var(--md-ui-primary);
+  color: var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-users-page .md-users-avatar-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+body.md-admin-shell .md-users-page .md-users-avatar-field__input {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-users-page .md-users-color {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-users-page .md-users-color .md-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-users-page .md-users-color__sample {
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+body.md-admin-shell .md-users-page .md-users-checks {
+  padding: 12px 14px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+}
+
+body.md-admin-shell .md-users-page .md-users-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  min-height: var(--md-ui-control-md);
+}
+
+body.md-admin-shell .md-users-page .md-users-form-actions {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  box-shadow: var(--md-ui-shadow-xs);
+}
+
+/* Keep the wide table inside its scroll area instead of widening the page on mobile. */
+body.md-admin-shell .md-users-page .md-users-table-wrap .md-table__scroll {
+  contain: paint;
+}
+
+/* Layout wrapper only: the linked-object widget owns its own internals. */
+body.md-admin-shell .md-users-page .md-users-linkedobject {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .md-users-page .md-users-avatar-field {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  body.md-admin-shell .md-users-page .md-users-color {
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-users-page .md-users-color__sample {
+    flex-basis: 100%;
+    width: 100%;
+    height: 8px;
+    min-width: 0;
+    border-radius: 4px;
+  }
+
+  body.md-admin-shell .md-users-page .md-users-form-actions .md-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  body.md-admin-shell .md-users-page .md-users-form-actions .dropdown {
+    flex: 1 1 100%;
+  }
+
+  body.md-admin-shell .md-users-page .md-users-form-actions .dropdown .md-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

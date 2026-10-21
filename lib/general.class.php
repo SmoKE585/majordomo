@@ -113,13 +113,17 @@ function redirect($url, $owner = "", $no_sid = 0)
         $owner->redirect($url);
     } else {
         $param_str = "";
-        if (!$no_sid) {
-            $replaceStr = (isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '/') . '?' . session_name() . '=' . session_id();
+        $isAdminPath = strpos($url, 'admin.php') !== false;
+        if (!$no_sid && !$isAdminPath) {
+            $replaceStr = (function_exists('mdj_admin_link_base') ? mdj_admin_link_base() : (isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '/')) . '?' . session_name() . '=' . session_id();
             $replaceStr .= '&pd=' . $param_str;
             if (is_object($owner)) {
                 $replaceStr .= '&md=' . $owner->name . '&inst=' . $owner->instance . '&';
             }
             $url = str_replace('?', $replaceStr, $url);
+        }
+        if ($isAdminPath && function_exists('mdj_admin_pretty_url')) {
+            $url = mdj_admin_pretty_url($url);
         }
         $url = mdjExtractFlashNotificationsFromUrl($url, 'admin');
         $url = "Location:$url\n\n";

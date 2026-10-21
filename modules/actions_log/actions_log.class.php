@@ -273,6 +273,29 @@ EOD;
         return $this->translateLogCode('RESULT', $result);
     }
 
+    /**
+     * Normalize a date filter value coming from the UI.
+     *
+     * The redesigned filter uses native date inputs (Y-m-d), while the log
+     * table stores full datetimes. A date-only upper bound must include the
+     * whole day, otherwise "to=2026-10-21" would only match midnight.
+     */
+    function normalizeDateInput($value, $endOfDay = false)
+    {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return '';
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return $value . ($endOfDay ? ' 23:59:59' : ' 00:00:00');
+        }
+        $timestamp = strtotime($value);
+        if ($timestamp === false) {
+            return '';
+        }
+        return date('Y-m-d H:i:s', $timestamp);
+    }
+
     function translateLogCode($prefix, $value)
     {
         $value = trim((string)$value);

@@ -8,7 +8,7 @@
 		'WRAPLINES' => 0,
 		'SHOWERROR' => 0,
 		'UPTOLINE' => 0,
-		'THEME' => 'codemirror',
+		'THEME' => 'auto',
 		'MIXLINE' => 20,
 		'SHOWLINE' => 20,
 		'TURNONSETTINGS' => 0,

@@ -1,17 +1,350 @@
+<!--#
+ @version 0.3 (redesigned admin UI)
+#-->
 
- <!-- action usual -->
- <!-- table actions_log search -->
- [#if VIEW_MODE="search_actions_log" || VIEW_MODE=""#]
-  [#inc actions_log_search_admin.html#]
- [#endif VIEW_MODE#]
- <!-- / table actions_log search -->
- <!-- table actions_log edit -->
- [#if VIEW_MODE="edit_actions_log"#]
-   [#inc actions_log_edit.html#]
- [#endif VIEW_MODE#]
- <!-- / table actions_log edit -->
- <!-- table actions_log view --> 
- [#if VIEW_MODE="view_actions_log"#]
-   [#inc actions_log_view.html#]
- [#endif VIEW_MODE#]
- <!-- / table actions_log view -->
+<link rel="stylesheet" href="<#ROOTHTML#>templates/actions_log/actions_log.css?v=2026-10-21-1">
+
+[#if VIEW_MODE="search_actions_log" || VIEW_MODE=""#]
+<div class="md-ui-page md-ui-page--stack md-actions-log-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-history" aria-hidden="true"></i><#LANG_MODULE_ACTIONS_LOG#></div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_ACTIONS_LOG#></h1>
+            <p class="md-ui-hero__lede">Журнал действий в панели, API и объектах: кто, что и когда сделал, с результатом и подробностями запроса.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-list-details" aria-hidden="true"></i>Найдено: <strong>[#LOG_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-world" aria-hidden="true"></i>Источников: <strong>[#LOG_SOURCE_TOTAL#]</strong></span>
+                [#if FROM_DATE!="" && TO_DATE!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-calendar" aria-hidden="true"></i>Период: <strong>[#FROM_DATE#] — [#TO_DATE#]</strong></span>
+                [#else#]
+                    [#if FROM_DATE!=""#]
+                    <span class="md-ui-hero__meta-item"><i class="ti ti-calendar" aria-hidden="true"></i>С: <strong>[#FROM_DATE#]</strong></span>
+                    [#endif#]
+                    [#if TO_DATE!=""#]
+                    <span class="md-ui-hero__meta-item"><i class="ti ti-calendar" aria-hidden="true"></i>По: <strong>[#TO_DATE#]</strong></span>
+                    [#endif#]
+                [#endif#]
+                [#if LOG_TOTAL="0"#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-filter-off" aria-hidden="true"></i>Под текущие фильтры записей нет</span>
+                [#endif#]
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_actions_log" class="md-btn md-btn--secondary">
+                <i class="ti ti-refresh" aria-hidden="true"></i><span class="md-btn__label">Обновить</span>
+            </a>
+            <a href="?clear_history=1" class="md-btn md-btn--danger" data-md-confirm="Очистить всю историю действий? Это действие нельзя отменить.">
+                <i class="ti ti-trash" aria-hidden="true"></i><span class="md-btn__label"><#LANG_CLEAR_ALL#></span>
+            </a>
+        </div>
+    </header>
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-list-details" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Записей в выборке</span>
+            </div>
+            <div class="md-kpi__value">[#LOG_TOTAL#]</div>
+            <div class="md-kpi__meta">С учетом периода и фильтров</div>
+        </div>
+        <div class="md-kpi md-kpi--success">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-circle-check" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Успешные</span>
+            </div>
+            <div class="md-kpi__value">[#LOG_OK_TOTAL#]</div>
+            <div class="md-kpi__meta">Результат OK</div>
+        </div>
+        <div class="md-kpi md-kpi--danger">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-alert-triangle" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Ошибки</span>
+            </div>
+            <div class="md-kpi__value">[#LOG_ERROR_TOTAL#]</div>
+            <div class="md-kpi__meta">Требуют внимания</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-users" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Пользователи</span>
+            </div>
+            <div class="md-kpi__value">[#LOG_USER_TOTAL#]</div>
+            <div class="md-kpi__meta">Уникальные в выборке</div>
+        </div>
+    </div>
+
+    <section class="md-card md-actions-log-filters" aria-labelledby="mdActionsLogFiltersTitle">
+        <header class="md-card__head">
+            <div class="md-card__titles">
+                <div class="md-card__eyebrow">Выборка</div>
+                <h2 class="md-card__title" id="mdActionsLogFiltersTitle"><i class="ti ti-filter" aria-hidden="true"></i>Фильтры</h2>
+                <p class="md-card__subtitle">Период, действие, источник и параметры запроса. Все условия комбинируются.</p>
+            </div>
+            [#if FILTERS_ACTIVE="1"#]
+            <div class="md-card__actions">
+                <span class="md-badge md-badge--primary"><i class="ti ti-filter" aria-hidden="true"></i>Фильтры активны</span>
+            </div>
+            [#endif#]
+        </header>
+        <div class="md-card__body">
+            <form action="?" method="get" class="md-ui-form md-actions-log-filter-form">
+                <div class="md-ui-form-grid">
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogPeriod"><#LANG_PERIOD#></label>
+                        <div class="md-field__control">
+                            <select name="period" id="mdLogPeriod" class="md-select">
+                                <option value="custom"[#if PERIOD="custom"#] selected[#endif#]><#LANG_PERIOD_CUSTOM#></option>
+                                <option value="today"[#if PERIOD="today"#] selected[#endif#]><#LANG_PERIOD_TODAY#></option>
+                                <option value="day"[#if PERIOD="day"#] selected[#endif#]><#LANG_PERIOD_DAY#></option>
+                                <option value="week"[#if PERIOD="week"#] selected[#endif#]><#LANG_PERIOD_WEEK#></option>
+                                <option value="month"[#if PERIOD="month"#] selected[#endif#]><#LANG_PERIOD_MONTH#></option>
+                            </select>
+                        </div>
+                        <div class="md-field__hint">Быстрый период перекрывает даты начала и конца.</div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogFrom">Начало</label>
+                        <div class="md-field__control">
+                            <input type="date" name="from" id="mdLogFrom" value="[#FROM_DATE#]" class="md-input">
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogTo">Конец</label>
+                        <div class="md-field__control">
+                            <input type="date" name="to" id="mdLogTo" value="[#TO_DATE#]" class="md-input">
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogActionType"><#LANG_ACTION#></label>
+                        <div class="md-field__control">
+                            <select name="action_type" id="mdLogActionType" class="md-select">
+                                <option value=""><#LANG_ALL#></option>
+                                [#begin ACTION_TYPES#]
+                                <option value="[#VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
+                                [#end ACTION_TYPES#]
+                            </select>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogSource"><#LANG_ACTIONLOG_SOURCE#></label>
+                        <div class="md-field__control">
+                            <select name="source" id="mdLogSource" class="md-select">
+                                <option value=""><#LANG_ALL#></option>
+                                [#begin SOURCES#]
+                                <option value="[#VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
+                                [#end SOURCES#]
+                            </select>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogResult"><#LANG_ACTIONLOG_RESULT#></label>
+                        <div class="md-field__control">
+                            <select name="result" id="mdLogResult" class="md-select">
+                                <option value=""><#LANG_ALL#></option>
+                                [#begin RESULTS_LIST#]
+                                <option value="[#VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#TITLE#]</option>
+                                [#end RESULTS_LIST#]
+                            </select>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogModule"><#LANG_ACTIONLOG_MODULE#></label>
+                        <div class="md-field__control">
+                            <select name="module_name" id="mdLogModule" class="md-select" data-md-searchable>
+                                <option value=""><#LANG_ALL#></option>
+                                [#begin MODULES_LIST#]
+                                <option value="[#VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#VALUE#]</option>
+                                [#end MODULES_LIST#]
+                            </select>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogMethod"><#LANG_ACTIONLOG_REQUEST_METHOD#></label>
+                        <div class="md-field__control">
+                            <select name="request_method" id="mdLogMethod" class="md-select">
+                                <option value=""><#LANG_ALL#></option>
+                                [#begin METHODS_LIST#]
+                                <option value="[#VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#VALUE#]</option>
+                                [#end METHODS_LIST#]
+                            </select>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogUser"><#LANG_USER#></label>
+                        <div class="md-field__control">
+                            <input type="text" name="user_name" id="mdLogUser" value="[#USER_NAME#]" class="md-input" placeholder="Имя пользователя" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogTerminal"><#LANG_TERMINAL#></label>
+                        <div class="md-field__control">
+                            <input type="text" name="terminal" id="mdLogTerminal" value="[#TERMINAL_FILTER#]" class="md-input" placeholder="Терминал" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogIp">IP-адрес</label>
+                        <div class="md-field__control">
+                            <input type="text" name="ip" id="mdLogIp" value="[#IP_FILTER#]" class="md-input" placeholder="127.0.0.1" autocomplete="off" inputmode="decimal">
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdLogSearch"><#LANG_SEARCH#></label>
+                        <div class="md-field__control">
+                            <input type="search" name="search" id="mdLogSearch" value="[#SEARCH#]" class="md-input" placeholder="Заголовок, URL, детали" autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md-ui-form-actions md-actions-log-filter-actions">
+                    <button type="submit" class="md-btn md-btn--primary">
+                        <i class="ti ti-filter" aria-hidden="true"></i><span class="md-btn__label"><#LANG_SEARCH#></span>
+                    </button>
+                    [#if FILTERS_ACTIVE="1"#]
+                    <a href="?view_mode=search_actions_log" class="md-btn md-btn--secondary">
+                        <i class="ti ti-filter-off" aria-hidden="true"></i><span class="md-btn__label"><#LANG_CANCEL#></span>
+                    </a>
+                    [#endif#]
+                    <span class="md-actions-log-filter-hint"><i class="ti ti-info-circle" aria-hidden="true"></i>Поиск ищет по заголовку, пользователю, IP, URL и JSON-деталям.</span>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    [#if RESULT#]
+    <div class="md-table-wrap md-actions-log-table-wrap">
+        <div class="md-table__toolbar">
+            <div class="md-table__meta ms-0">Страница [#PAGE_CURRENT#] из [#PAGE_TOTAL#]</div>
+            <div class="md-table__meta">Показано [#PAGE_FROM#]–[#PAGE_TO#] из [#LOG_TOTAL#]</div>
+        </div>
+        <div class="md-table__scroll">
+            <table class="md-table md-actions-log-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Когда</th>
+                        <th scope="col">Действие</th>
+                        <th scope="col">Источник</th>
+                        <th scope="col">Результат</th>
+                        <th scope="col">Пользователь</th>
+                        <th scope="col">Объект</th>
+                        <th scope="col">Маршрут</th>
+                        <th scope="col"><#LANG_DETAILS#></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    [#begin RESULT#]
+                    <tr>
+                        <td class="md-actions-log-col-when">
+                            <time class="md-actions-log-when" datetime="[#ADDED_ISO_HTML#]">
+                                <strong>[#ADDED_DATE_HTML#]</strong>
+                                <span>[#ADDED_TIME_HTML#]</span>
+                            </time>
+                        </td>
+                        <td class="md-actions-log-col-action">
+                            <div class="md-table__name md-actions-log-action">
+                                <span class="md-table__icon"><i class="ti ti-[#ACTION_ICON#]" aria-hidden="true"></i></span>
+                                <div class="md-actions-log-action__body">
+                                    <strong>[#ACTION_TYPE_TITLE_HTML#]</strong>
+                                    [#if TITLE_HTML!=""#]<small>[#TITLE_HTML#]</small>[#endif#]
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="md-badge md-badge--[#SOURCE_TONE#]">
+                                <i class="ti ti-[#SOURCE_ICON#]" aria-hidden="true"></i>[#SOURCE_TITLE_HTML#]
+                            </span>
+                        </td>
+                        <td>
+                            <span class="md-badge md-badge--[#RESULT_TONE#]">
+                                <i class="ti ti-[#RESULT_ICON#]" aria-hidden="true"></i>[#RESULT_TITLE_HTML#]
+                            </span>
+                        </td>
+                        <td>
+                            <div class="md-actions-log-user">
+                                <span class="md-avatar md-avatar--sm md-avatar--primary" aria-hidden="true">[#USER_INITIAL_HTML#]</span>
+                                <div class="md-actions-log-user__body">
+                                    <strong>[#USER_DISPLAY_HTML#]</strong>
+                                    [#if IP_HTML!=""#]<small><i class="ti ti-world" aria-hidden="true"></i>[#IP_HTML#]</small>[#endif#]
+                                    [#if TERMINAL_HTML!=""#]<small><i class="ti ti-device-desktop" aria-hidden="true"></i>[#TERMINAL_HTML#]</small>[#endif#]
+                                </div>
+                            </div>
+                        </td>
+                        <td class="md-actions-log-col-target">
+                            [#if HAS_TARGET="1"#]
+                            <span class="md-actions-log-target">[#TARGET_TITLE_HTML#]</span>
+                            [#else#]
+                            <span class="md-tree-empty">—</span>
+                            [#endif#]
+                        </td>
+                        <td class="md-actions-log-col-route">
+                            <div class="md-actions-log-route">
+                                [#if MODULE_HTML!=""#]<span class="md-badge md-badge--outline">[#MODULE_HTML#]</span>[#endif#]
+                                [#if VIEW_MODE_HTML!=""#]<code>[#VIEW_MODE_HTML#]</code>[#endif#]
+                                [#if REQUEST_METHOD_HTML!=""#]<span class="md-badge">[#REQUEST_METHOD_HTML#]</span>[#endif#]
+                            </div>
+                            [#if URL_SHORT_HTML!=""#]
+                            <small class="md-actions-log-url" title="[#URL_HTML#]">[#URL_SHORT_HTML#]</small>
+                            [#else#]
+                            [#if LOCATION_TITLE_HTML!=""#]<small class="md-actions-log-url">[#LOCATION_TITLE_HTML#]</small>[#endif#]
+                            [#endif#]
+                        </td>
+                        <td class="md-actions-log-col-details">
+                            [#if HAS_DETAILS="1"#]
+                            <details class="md-actions-log-details">
+                                <summary><i class="ti ti-code" aria-hidden="true"></i>Детали</summary>
+                                <pre>[#DETAILS_BODY_HTML#]</pre>
+                            </details>
+                            [#else#]
+                            <span class="md-tree-empty">—</span>
+                            [#endif#]
+                        </td>
+                    </tr>
+                    [#end RESULT#]
+                </tbody>
+            </table>
+        </div>
+        <div class="md-table__footer">
+            <span class="md-table__meta ms-0">Записей: [#LOG_TOTAL#]</span>
+            [#if PAGES#]
+            <ul class="pagination md-pagination mb-0">
+                [#if PREV_URL!=""#]
+                <li class="page-item"><a class="page-link" href="[#PREV_URL#]" aria-label="Предыдущая страница">&lsaquo;</a></li>
+                [#else#]
+                <li class="page-item disabled"><span class="page-link" aria-hidden="true">&lsaquo;</span></li>
+                [#endif#]
+                [#begin PAGES#]
+                [#if IS_ELLIPSIS="1"#]
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+                [#else#]
+                <li class="page-item [#if SELECTED="1"#]active[#endif#]"><a class="page-link" href="[#URL#]"[#if SELECTED="1"#] aria-current="page"[#endif#]>[#NUM#]</a></li>
+                [#endif#]
+                [#end PAGES#]
+                [#if NEXT_URL!=""#]
+                <li class="page-item"><a class="page-link" href="[#NEXT_URL#]" aria-label="Следующая страница">&rsaquo;</a></li>
+                [#else#]
+                <li class="page-item disabled"><span class="page-link" aria-hidden="true">&rsaquo;</span></li>
+                [#endif#]
+            </ul>
+            [#endif#]
+        </div>
+    </div>
+    [#else RESULT#]
+    <div class="md-empty">
+        <span class="md-empty__icon"><i class="ti ti-history-off" aria-hidden="true"></i></span>
+        <div class="md-empty__title">Записей не найдено</div>
+        <p class="md-empty__text">Измените период или сбросьте фильтры. Если журнал пуст, действия появятся здесь после работы в панели или через API.</p>
+        <div class="md-empty__actions">
+            [#if FILTERS_ACTIVE="1"#]
+            <a href="?view_mode=search_actions_log" class="md-btn md-btn--secondary md-btn--sm">
+                <i class="ti ti-filter-off" aria-hidden="true"></i>Сбросить фильтры
+            </a>
+            [#else#]
+            <a href="?view_mode=search_actions_log" class="md-btn md-btn--secondary md-btn--sm">
+                <i class="ti ti-refresh" aria-hidden="true"></i>Обновить
+            </a>
+            [#endif#]
+        </div>
+    </div>
+    [#endif RESULT#]
+</div>
+[#endif VIEW_MODE#]

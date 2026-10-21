@@ -1,93 +1,111 @@
-<link href="<#ROOTHTML#>3rdparty/tom-select/css/tom-select.css" rel="stylesheet">
-<script src="<#ROOTHTML#>3rdparty/tom-select/js/tom-select.complete.min.js"></script>
+[#if OK#]
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_DATA_SAVED#></div></div>
+</div>
+[#endif OK#]
+[#if ERR#]
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__title"><#LANG_FILLOUT_REQURED#></div></div>
+</div>
+[#endif ERR#]
 
-<section class="md-admin-section-card md-admin-form-card md-classes-edit-card">
-    <div class="md-admin-section-card__body">
-        [#if OK#]
-            <div class="alert alert-success"><#LANG_DATA_SAVED#></div>
-        [#endif OK#]
-        [#if ERR#]
-            <div class="alert alert-danger"><#LANG_FILLOUT_REQURED#></div>
-        [#endif ERR#]
+<form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-ui-form">
+    <section class="md-card">
+        <header class="md-card__head">
+            <div class="md-card__titles">
+                <h2 class="md-card__title"><i class="ti ti-settings" aria-hidden="true"></i>Основное</h2>
+                <p class="md-card__subtitle">Имя класса, родитель и назначение в структуре объектов.</p>
+            </div>
+        </header>
+        <div class="md-card__body">
+            <div class="md-ui-form-stack">
+                <div class="md-ui-form-grid">
+                    <div class="md-field">
+                        <label class="md-field__label" for="classesParent"><#LANG_PARENT_CLASS#></label>
+                        <div class="md-field__control">
+                            <select name="parent_id" id="classesParent" class="md-select" data-md-searchable>
+                                <option value="0">— нет —</option>
+                                [#begin PARENTS#]
+                                <option value="[#ID#]"[#if ID=="<#PARENT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
+                                [#end PARENTS#]
+                            </select>
+                        </div>
+                        <div class="md-field__hint">Родительский класс наследует свойства и методы.</div>
+                    </div>
 
-        <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid">
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="classesParent"><#LANG_PARENT_CLASS#></label>
-                <div class="col-lg-9">
-                    <select name="parent_id" id="classesParent" class="form-control form-select" data-md-classes-parent-select>
-                        <option value="0">- no -</option>
-                        [#begin PARENTS#]
-                        <option value="[#ID#]"[#if ID=="<#PARENT_ID#>"#] selected[#endif#]>[#TITLE#]</option>
-                        [#end PARENTS#]
-                    </select>
+                    <div class="md-field">
+                        <label class="md-field__label" for="classesTitle"><#LANG_TITLE#><span class="md-field__req" aria-hidden="true">*</span></label>
+                        <div class="md-field__control">
+                            <input type="text" id="classesTitle" class="md-input [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required>
+                        </div>
+                        [#if ERR_TITLE#]
+                        <div class="md-field__error"><i class="ti ti-alert-circle" aria-hidden="true"></i>Укажите название класса.</div>
+                        [#else#]
+                        <div class="md-field__hint">Без пробелов, например <code>Rooms</code> или <code>OperationalModes</code>.</div>
+                        [#endif#]
+                    </div>
+                </div>
+
+                <div class="md-field">
+                    <label class="md-field__label" for="classesDescription"><#LANG_DESCRIPTION#></label>
+                    <div class="md-field__control">
+                        <textarea name="description" id="classesDescription" rows="4" class="md-textarea">[#DESCRIPTION#]</textarea>
+                    </div>
+                    <div class="md-field__hint">Коротко опишите, какие объекты описывает класс и что он умеет.</div>
                 </div>
             </div>
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="classesTitle"><#LANG_TITLE#> <span class="text-danger">*</span></label>
-                <div class="col-lg-9"><input type="text" id="classesTitle" class="form-control [#if ERR_TITLE#]is-invalid[#endif#]" name="title" value="[#TITLE#]" required></div>
-            </div>
-            <div class="row g-3 align-items-start">
-                <label class="col-lg-3 col-form-label" for="classesDescription"><#LANG_DESCRIPTION#></label>
-                <div class="col-lg-9"><textarea name="description" id="classesDescription" rows="4" class="form-control md-admin-textarea">[#DESCRIPTION#]</textarea></div>
-            </div>
-            <div class="md-admin-form-actions">
+
+            <div class="md-ui-form-actions">
                 [#if ID!=""#]
-                <button class="btn btn-primary" type="submit" name="subm"><#LANG_SUBMIT#></button>
+                <button class="md-btn md-btn--primary" type="submit" name="subm"><i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label"><#LANG_SUBMIT#></span></button>
                 [#else ID#]
-                <button class="btn btn-primary" type="submit" name="subm"><#LANG_ADD#></button>
+                <button class="md-btn md-btn--primary" type="submit" name="subm"><i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label"><#LANG_ADD#></span></button>
                 [#endif ID#]
-                <div class="btn-group">
-                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><#LANG_ACTIONS#></button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="?data_source=<#DATA_SOURCE#>"><#LANG_CANCEL#></a></li>
-                        [#if ID!=""#]
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="?view_mode=export_classes&id=[#ID#]"><#LANG_EXPORT_CLASS_FULL#></a></li>
-                        <li><a class="dropdown-item" href="?view_mode=export_classes&id=[#ID#]&skip_objects=1"><#LANG_EXPORT_CLASS_NO_OBJECTS#></a></li>
-                        [#endif ID#]
+                <a href="?data_source=<#DATA_SOURCE#>" class="md-btn md-btn--secondary"><#LANG_CANCEL#></a>
+                [#if ID!=""#]
+                <div class="dropdown ms-auto">
+                    <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                        <li><a class="dropdown-item" href="?view_mode=export_classes&amp;id=[#ID#]"><i class="ti ti-download" aria-hidden="true"></i><#LANG_EXPORT_CLASS_FULL#></a></li>
+                        <li><a class="dropdown-item" href="?view_mode=export_classes&amp;id=[#ID#]&amp;skip_objects=1"><i class="ti ti-download" aria-hidden="true"></i><#LANG_EXPORT_CLASS_NO_OBJECTS#></a></li>
                     </ul>
                 </div>
+                [#endif ID#]
             </div>
+        </div>
+    </section>
 
-            <input type="hidden" name="id" value="<#ID#>">
-            <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
-            <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
-            <input type="hidden" name="mode" value="update">
-            <input type="hidden" name="tab" value="<#TAB#>">
-        </form>
-    </div>
-</section>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var select = document.querySelector('[data-md-classes-parent-select]');
-    if (!select || typeof window.TomSelect !== 'function') {
-        return;
-    }
-    if (select.tomselect) {
-        select.tomselect.destroy();
-    }
-    new window.TomSelect(select, {
-        create: false,
-        allowEmptyOption: true,
-        placeholder: '<#LANG_PARENT_CLASS#>',
-        searchField: ['text'],
-        dropdownParent: 'body'
-    });
-});
-</script>
+    <input type="hidden" name="id" value="<#ID#>">
+    <input type="hidden" name="view_mode" value="<#VIEW_MODE#>">
+    <input type="hidden" name="edit_mode" value="<#EDIT_MODE#>">
+    <input type="hidden" name="mode" value="update">
+    <input type="hidden" name="tab" value="<#TAB#>">
+</form>
 
 [#if SUB_CLASSES#]
-<section class="md-admin-section-card md-classes-subclasses">
-    <button type="button" class="md-admin-section-card__header md-classes-subclasses__toggle" data-md-toggle-target="#classesSubclasses">
-        <h2>Дочерние классы</h2>
-    </button>
-    <div id="classesSubclasses" class="md-admin-section-card__body md-classes-subclasses__body is-visible">
-        <ul class="list-group md-classes-subclasses__list">
+<section class="md-card">
+    <header class="md-card__head">
+        <div class="md-card__titles">
+            <h2 class="md-card__title"><i class="ti ti-git-branch" aria-hidden="true"></i>Дочерние классы</h2>
+            <p class="md-card__subtitle">Классы, которые наследуют свойства и методы текущего.</p>
+        </div>
+        <div class="md-card__actions">
+            <span class="md-badge md-badge--outline">[#SUB_CLASSES_TOTAL#]</span>
+        </div>
+    </header>
+    <div class="md-card__body">
+        <div class="md-tree-objects">
             [#begin SUB_CLASSES#]
-            <li class="list-group-item"><a href="?id=[#ID#]&view_mode=<#VIEW_MODE#>">[#TITLE#]</a></li>
+            <a class="md-tree-object" href="?id=[#ID#]&amp;view_mode=<#VIEW_MODE#>">
+                <span class="md-tree-object__icon"><i class="ti ti-hierarchy-2" aria-hidden="true"></i></span>
+                <span class="md-tree-object__body"><strong>[#TITLE#]</strong></span>
+            </a>
             [#end SUB_CLASSES#]
-        </ul>
+        </div>
     </div>
 </section>
 [#endif#]

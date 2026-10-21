@@ -1,372 +1,319 @@
-<div class="md-mqtt-page">
-    <section class="md-admin-section-card md-admin-form-card md-mqtt-hero">
-        <div class="md-admin-section-card__body">
-            <div class="md-mqtt-hero__layout">
-                <div class="md-mqtt-hero__copy">
-                    <div class="md-mqtt-hero__eyebrow">MQTT</div>
-                    <h1 class="md-mqtt-hero__title"><#LANG_MODULE_MQTT#></h1>
-                    <p class="md-mqtt-hero__lead">
-                        Настройки брокера, фильтр топиков и список записей разделены по независимым зонам. Страница остается компактной даже при большом количестве топиков.
-                    </p>
-
-                    <div class="md-mqtt-hero__chips">
-                        <span class="md-mqtt-chip">Брокер: <strong><#MQTT_HOST#></strong>:<#MQTT_PORT#></span>
-                        <span class="md-mqtt-chip">Запрос: <strong><#MQTT_QUERY#></strong></span>
-                        <span class="md-mqtt-chip">Авторизация: <strong>[#if MQTT_AUTH="1"#]да[#else#]нет[#endif#]</strong></span>
-                        <span class="md-mqtt-chip">TLS: <strong>[#if MQTT_TLS_ENABLE="1"#]включён[#else#]выключен[#endif#]</strong></span>
-                    </div>
-                </div>
-
-                <div class="md-mqtt-hero__actions">
-                    <a href="?view_mode=edit_mqtt" class="btn btn-primary">
-                        <i class="glyphicon glyphicon-plus"></i> <#LANG_ADD#> топик
-                    </a>
-                    <a href="?view_mode=clear_trash" class="btn btn-outline-danger" data-md-confirm="<#LANG_ARE_YOU_SURE#>" title="Удалить неиспользуемые топики">
-                        <i class="glyphicon glyphicon-trash"></i> Очистить мусор
-                    </a>
-                    [#if TREE="1"#]
-                    <a href="?tree=0" class="btn btn-light"><#LANG_LIST_VIEW#></a>
-                    [#else#]
-                    <a href="?tree=1" class="btn btn-light"><#LANG_TREE_VIEW#></a>
-                    [#endif#]
-                    <button type="button" class="btn btn-light" data-md-mqtt-drawer-open="filter">
-                        <i class="glyphicon glyphicon-search"></i> Фильтр
-                    </button>
-                    <button type="button" class="btn btn-light" data-md-mqtt-drawer-open="settings">
-                        <i class="glyphicon glyphicon-cog"></i> Настройки
-                    </button>
-                </div>
-            </div>
-
-            <div class="md-mqtt-hero__monitor">
-                <div class="md-mqtt-hero__monitor-label">Состояние цикла</div>
-                [#module name="xray" action="service" cycle="mqtt"#]
-            </div>
-        </div>
-    </section>
-
-<div class="md-mqtt-drawer-backdrop" hidden data-md-mqtt-drawer-close></div>
-<aside class="md-mqtt-drawer" id="mqttDrawer" hidden aria-hidden="true">
-    <div class="md-mqtt-drawer__header">
+<!--#
+ @version 0.5 (auto-set)
+#-->
+<div class="md-ui-page md-ui-page--stack md-mqtt-page">
+    <header class="md-ui-hero">
         <div>
-            <div class="md-mqtt-drawer__eyebrow">MQTT</div>
-            <h2 id="mqttDrawerTitle">Настройки</h2>
-            <div class="md-mqtt-drawer__subtitle" id="mqttDrawerSubtitle">Параметры брокера, авторизации и фильтрации потоков.</div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-radio" aria-hidden="true"></i>MQTT</div>
+            <h1 class="md-ui-hero__title"><#LANG_MODULE_MQTT#></h1>
+            <p class="md-ui-hero__lede">Брокер, топики и привязки к объектам в одном рабочем пространстве. Выберите устройство или ветку пути, чтобы не листать весь журнал.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-router" aria-hidden="true"></i>Брокер: <strong>[#MQTT_BROKER_LABEL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-filter" aria-hidden="true"></i>Запрос: <strong>[#MQTT_QUERY_LABEL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-lock" aria-hidden="true"></i>Авторизация: <strong>[#if MQTT_AUTH_STATE="1"#]да[#else#]нет[#endif#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-shield-lock" aria-hidden="true"></i>TLS: <strong>[#if MQTT_TLS_STATE="1"#]включён[#else#]выключен[#endif#]</strong></span>
+                [#if LAST_UPDATE_HUMAN!="—"#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>Обновлено: <strong title="[#LAST_UPDATE_EXACT#]">[#LAST_UPDATE_HUMAN#]</strong></span>
+                [#endif#]
+            </div>
         </div>
-        <button type="button" class="btn-close" aria-label="<#LANG_CLOSE#>" data-md-mqtt-drawer-close></button>
-    </div>
-
-    <div class="md-mqtt-drawer__tabs" role="tablist" aria-label="Настройки MQTT">
-        <button type="button" class="md-mqtt-drawer__tab is-active" data-md-mqtt-drawer-tab="settings" aria-pressed="true">Настройки брокера</button>
-        <button type="button" class="md-mqtt-drawer__tab" data-md-mqtt-drawer-tab="filter" aria-pressed="false">Фильтр топиков</button>
-    </div>
-
-    <div class="md-mqtt-drawer__body">
-        <section class="md-mqtt-drawer__panel is-active" data-md-mqtt-drawer-panel="settings">
-            <form action="?" method="post" enctype="multipart/form-data" name="frmEdit" class="md-admin-form-grid md-mqtt-settings-form">
-                <div class="md-mqtt-form-section">
-                    <div class="md-mqtt-form-section__title">Подключение к брокеру</div>
-                    <div class="row g-3 align-items-start">
-                        <div class="col-lg-6">
-                            <label class="form-label"><#LANG_NEW_MQTT_CLIENT#></label>
-                            <input type="text" name="mqtt_client" value="<#MQTT_CLIENT#>" class="form-control">
-                        </div>
-                        <div class="col-lg-6">
-                            <label class="form-label"><#LANG_NEW_MQTT_HOST#></label>
-                            <input type="text" name="mqtt_host" value="<#MQTT_HOST#>" class="form-control">
-                        </div>
-                    </div>
-                    <div class="row g-3 align-items-start mt-1">
-                        <div class="col-lg-4">
-                            <label class="form-label"><#LANG_NEW_MQTT_PORT#></label>
-                            <input type="text" name="mqtt_port" value="<#MQTT_PORT#>" class="form-control">
-                        </div>
-                        <div class="col-lg-8">
-                            <label class="form-label"><#LANG_NEW_MQTT_QUERY#></label>
-                            <input type="text" name="mqtt_query" value="<#MQTT_QUERY#>" class="form-control">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="md-mqtt-form-section">
-                    <div class="md-mqtt-form-section__title">Авторизация и TLS</div>
-                    <div class="row g-3 align-items-start">
-                        <div class="col-lg-4">
-                            <label class="form-label"><#LANG_NEW_MQTT_REQ_AUTH#></label>
-                            <div class="pt-2">
-                                <label class="checkbox-inline">
-                                    <input type="checkbox" name="mqtt_auth" value="1" [#if MQTT_AUTH="1" #] checked[#endif#]>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-lg-8">
-                            <div id="mqtt_req_pass"[#if MQTT_AUTH!="1"#] hidden[#endif#]>
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label"><#LANG_NEW_MQTT_USERNAME#></label>
-                                        <input type="text" name="mqtt_username" value="<#MQTT_USERNAME#>" class="form-control">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label"><#LANG_NEW_MQTT_PASSWORD#></label>
-                                        <input type="text" name="mqtt_password" value="<#MQTT_PASSWORD#>" class="form-control">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 align-items-start mt-1">
-                        <div class="col-lg-4">
-                            <label class="form-label">TLS/SSL</label>
-                            <div class="pt-2">
-                                <label class="checkbox-inline">
-                                    <input type="checkbox" name="mqtt_tls_enable" value="1" [#if MQTT_TLS_ENABLE="1" #] checked[#endif#]>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-lg-8">
-                            <div id="mqtt_tls_options"[#if MQTT_TLS_ENABLE!="1"#] hidden[#endif#]>
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Путь к сертификату</label>
-                                        <input type="text" name="mqtt_tls_certpath" value="<#MQTT_TLS_CERTPATH#>" class="form-control" placeholder="/etc/mqtt/ca.crt">
-                                        <div class="form-text">Файл CA для проверки TLS-соединения.</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Игнорировать проверку сертификата</label>
-                                        <div class="pt-2">
-                                            <label class="checkbox-inline">
-                                                <input type="checkbox" name="mqtt_tls_ignore_cert" value="1" [#if MQTT_TLS_IGNORE_CERT="1" #] checked[#endif#]>
-                                            </label>
-                                        </div>
-                                        <div class="form-text text-danger">Нужно только для self-signed сертификатов.</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="md-mqtt-form-section">
-                    <div class="md-mqtt-form-section__title">Поведение записи</div>
-                    <div class="row g-3 align-items-start">
-                        <div class="col-lg-4">
-                            <label class="form-label">Режим отладки</label>
-                            <div class="pt-2">
-                                <label class="radio-inline"><input type="radio" name="debug_mode" value="1"[#if DEBUG_MODE="1"#] checked[#endif#]> <#LANG_YES#></label>
-                                <label class="radio-inline"><input type="radio" name="debug_mode" value="0"[#if DEBUG_MODE!="1"#] checked[#endif#]> <#LANG_NO#></label>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label">Способ записи</label>
-                            <div class="pt-2">
-                                <label class="radio-inline"><input type="radio" name="mqtt_write_method" value="0"[#if MQTT_WRITE_METHOD="0" || MQTT_WRITE_METHOD=""#] checked[#endif#]> Новое соединение</label>
-                                <label class="radio-inline"><input type="radio" name="mqtt_write_method" value="2"[#if MQTT_WRITE_METHOD="2"#] checked[#endif#]> Очередь</label>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label">Только известные топики</label>
-                            <div class="pt-2">
-                                <label class="checkbox-inline">
-                                    <input type="checkbox" name="mqtt_stripmode" value="1" [#if MQTT_STRIPMODE="1" #] checked[#endif#]>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row g-3 align-items-start mt-1">
-                        <div class="col-lg-4">
-                            <label class="form-label">Задержка повторов, сек</label>
-                            <input type="text" name="mqtt_delay" value="<#MQTT_DELAY#>" placeholder="5" class="form-control">
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label">Обновлять непривязанные топики, сек</label>
-                            <input type="text" name="mqtt_unlinked_update_interval" value="<#MQTT_UNLINKED_UPDATE_INTERVAL#>" placeholder="3600" class="form-control">
-                            <div class="form-text">Работает только с режимом "Только известные топики". 0 отключает фоновые обновления.</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="md-admin-form-actions">
-                    <button type="submit" name="subm" value="Submit" class="btn btn-primary">
-                        <i class="glyphicon glyphicon-floppy-saved"></i> <#LANG_UPDATE#>
-                    </button>
-                    <input type="hidden" name="view_mode" value="update_settings">
-                    <input type="hidden" name="mode" value="update">
-                </div>
-            </form>
-        </section>
-
-        <section class="md-mqtt-drawer__panel" data-md-mqtt-drawer-panel="filter" hidden>
-            <form action="?" method="get" name="frmFilter" class="md-admin-form-grid md-mqtt-filter-form">
-                <div class="md-mqtt-form-section">
-                    <div class="md-mqtt-form-section__title">Фильтр топиков</div>
-                    <div class="row g-3 align-items-start">
-                        <div class="col-lg-4">
-                            <label class="form-label">Поиск</label>
-                            <input type="text" name="title" value="<#TITLE#>" class="form-control" placeholder="Название, путь, значение">
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label">По классу / пути</label>
-                            <select class="form-control form-select" name="searchpath">
-                                <option value="0"><#LANG_FILTER_BY_CLASS#> (<#LANG_ALL#>)</option>
-                                [#begin PATHS#]
-                                <option value="[#path#]" [#if path="<#SEARCH#>" #] selected[#endif#]>[#path#]</option>
-                                [#end PATHS#]
-                            </select>
-                        </div>
-                        <div class="col-lg-4">
-                            <label class="form-label">По локации</label>
-                            <select class="form-control form-select" name="location_id">
-                                <option value="0"><#LANG_FILTER_BY_LOCATION#> (<#LANG_ALL#>)</option>
-                                [#begin LOCATIONS#]
-                                <option value="[#ID#]" [#if ID="<#LOCATION_ID#>" #] selected[#endif#]>[#TITLE#]</option>
-                                [#end LOCATIONS#]
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="md-admin-form-actions">
-                    <button type="submit" name="submit" class="btn btn-info">
-                        <i class="glyphicon glyphicon-search"></i> Применить фильтр
-                    </button>
-                    <a href="<#ROOTHTML#>panel/mqtt.html" class="btn btn-light">Сбросить</a>
-                </div>
-            </form>
-        </section>
-    </div>
-</aside>
-
-    [#if MQTT_ROOT!=""#]
-    <section class="md-admin-section-card md-admin-section-card--compact md-mqtt-breadcrumbs-card">
-        <div class="md-admin-section-card__body">
-            <h3 class="md-mqtt-breadcrumbs-card__title">
-                <a href="<#ROOTHTML#>panel/mqtt.html"><#LANG_ALL#></a>
-                <span>/</span>
-                [#BREADCRUMBS#]
-            </h3>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=edit_mqtt" class="md-btn md-btn--primary">
+                <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label">Добавить топик</span>
+            </a>
+            <a href="?view_mode=settings" class="md-btn md-btn--secondary">
+                <i class="ti ti-settings" aria-hidden="true"></i><span class="md-btn__label">Настройки</span>
+            </a>
+            <div class="dropdown">
+                <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="md-btn__label">Ещё</span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    <li><a class="dropdown-item" href="?view_mode=optimize" data-md-confirm="Сократить историю MQTT до последних 20 событий на топик?"><i class="ti ti-history" aria-hidden="true"></i>Оптимизировать историю</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="?view_mode=clear_trash" data-md-confirm="Удалить все топики без привязки и записи с несуществующими объектами?"><i class="ti ti-trash" aria-hidden="true"></i>Очистить мусор</a></li>
+                </ul>
+            </div>
         </div>
-    </section>
+    </header>
+
+    [#if OK_MSG!=""#]
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">[#OK_MSG#]</div></div>
+    </div>
     [#endif#]
 
-    <section class="md-admin-section-card">
-        <div class="md-admin-section-card__body">
-            [#if RESULT#]
-            [#if TREE="1"#]
-            [#inc tree_view.tpl#]
-            [#else TREE#]
-            [#inc list_view.html#]
-            [#endif TREE#]
-            [#else RESULT#]
-            <div class="md-admin-empty-state">
-                <#LANG_NO_RECORDS_FOUND#>
+    <section class="md-card md-mqtt-cycle-card" aria-labelledby="mdMqttCycleTitle">
+        <header class="md-card__head">
+            <div class="md-card__titles">
+                <div class="md-card__eyebrow">Соединение</div>
+                <h2 class="md-card__title" id="mdMqttCycleTitle"><i class="ti ti-activity" aria-hidden="true"></i>Состояние цикла</h2>
+                <p class="md-card__subtitle">Подписка MQTT и доступность брокера обновляются циклом <code>mqtt</code>.</p>
             </div>
-            [#endif RESULT#]
+            <div class="md-card__actions">
+                <span class="md-badge md-badge--outline">[#MQTT_BROKER_LABEL#]</span>
+            </div>
+        </header>
+        <div class="md-card__body md-mqtt-cycle-card__body">
+            [#module name="xray" action="service" cycle="mqtt"#]
         </div>
     </section>
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top"><span class="md-kpi__icon"><i class="ti ti-list" aria-hidden="true"></i></span><span class="md-kpi__label">Всего топиков</span></div>
+            <div class="md-kpi__value">[#ALL_TOTAL#]</div>
+            <div class="md-kpi__meta">В журнале брокера</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top"><span class="md-kpi__icon"><i class="ti ti-device-desktop" aria-hidden="true"></i></span><span class="md-kpi__label">Устройств</span></div>
+            <div class="md-kpi__value">[#DEVICES_TOTAL#]</div>
+            <div class="md-kpi__meta">С привязкой: [#LINKED_TOTAL#]</div>
+        </div>
+        <div class="md-kpi md-kpi--warning">
+            <div class="md-kpi__top"><span class="md-kpi__icon"><i class="ti ti-unlink" aria-hidden="true"></i></span><span class="md-kpi__label">Без привязки</span></div>
+            <div class="md-kpi__value">[#UNLINKED_TOTAL#]</div>
+            <div class="md-kpi__meta">Кандидаты на очистку</div>
+        </div>
+        <div class="md-kpi md-kpi--success">
+            <div class="md-kpi__top"><span class="md-kpi__icon"><i class="ti ti-bolt" aria-hidden="true"></i></span><span class="md-kpi__label">Активны за 24 ч</span></div>
+            <div class="md-kpi__value">[#ACTIVE_24H#]</div>
+            <div class="md-kpi__meta">Последнее: [#LAST_UPDATE_HUMAN#]</div>
+        </div>
+    </div>
+
+    <div class="md-mqtt-workspace">
+        <aside class="md-card md-mqtt-sidebar" data-md-mqtt-sidebar>
+            <header class="md-card__head md-mqtt-sidebar__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Навигация</div>
+                    <h2 class="md-card__title">Группы</h2>
+                </div>
+                <button type="button" class="md-btn md-btn--ghost md-btn--sm md-mqtt-sidebar__toggle" data-md-mqtt-sidebar-toggle aria-expanded="false">
+                    <i class="ti ti-layout-sidebar" aria-hidden="true"></i><span>Выбрать</span><i class="ti ti-chevron-down" aria-hidden="true"></i>
+                </button>
+            </header>
+            <div class="md-card__body md-mqtt-sidebar__body" data-md-mqtt-sidebar-body>
+                <nav class="md-tabs md-tabs--compact md-mqtt-mode-tabs" aria-label="Группировка топиков">
+                    <a class="nav-link [#if GROUP_BY_DEVICE="1"#]active[#endif#]" [#if GROUP_BY_DEVICE="1"#]aria-current="page"[#endif#] href="[#MODE_DEVICE_URL#]">
+                        <i class="ti ti-device-desktop" aria-hidden="true"></i><span>Устройства</span>
+                    </a>
+                    <a class="nav-link [#if GROUP_BY_PATH="1"#]active[#endif#]" [#if GROUP_BY_PATH="1"#]aria-current="page"[#endif#] href="[#MODE_PATH_URL#]">
+                        <i class="ti ti-folder" aria-hidden="true"></i><span>Пути</span>
+                    </a>
+                </nav>
+
+                <label class="md-mqtt-group-search" for="mdMqttGroupSearch">
+                    <i class="ti ti-search" aria-hidden="true"></i>
+                    <input type="search" id="mdMqttGroupSearch" data-md-mqtt-group-search placeholder="Найти устройство или путь" autocomplete="off">
+                </label>
+
+                <div class="md-mqtt-group-list" data-md-mqtt-group-list>
+                    <a class="md-mqtt-group [#if IS_GROUP_ALL="1"#]is-active[#endif#]" href="[#ALL_URL#]" data-md-mqtt-group>
+                        <span class="md-mqtt-group__icon"><i class="ti ti-layout-grid" aria-hidden="true"></i></span>
+                        <span class="md-mqtt-group__main"><strong>Все топики</strong><small>Весь журнал</small></span>
+                        <span class="md-mqtt-group__count">[#ALL_TOTAL#]</span>
+                    </a>
+                    <a class="md-mqtt-group [#if IS_GROUP_UNLINKED="1"#]is-active[#endif#]" href="[#UNLINKED_URL#]" data-md-mqtt-group>
+                        <span class="md-mqtt-group__icon md-mqtt-group__icon--warning"><i class="ti ti-unlink" aria-hidden="true"></i></span>
+                        <span class="md-mqtt-group__main"><strong>Без привязки</strong><small>Без объекта и свойства</small></span>
+                        <span class="md-mqtt-group__count">[#UNLINKED_TOTAL#]</span>
+                    </a>
+
+                    [#if GROUPS#]
+                    <div class="md-mqtt-group-list__label">[#GROUP_MODE_TITLE#]</div>
+                    [#begin GROUPS#]
+                    <a class="md-mqtt-group [#if SELECTED="1"#]is-active[#endif#]" href="[#URL#]" data-md-mqtt-group>
+                        <span class="md-mqtt-group__icon"><i class="ti ti-[#ICON#]" aria-hidden="true"></i></span>
+                        <span class="md-mqtt-group__main">
+                            <strong>[#TITLE#]</strong>
+                            <small>[#LAST_UPDATE_HUMAN#]</small>
+                        </span>
+                        <span class="md-mqtt-group__count">[#COUNT#]</span>
+                    </a>
+                    [#end GROUPS#]
+                    [#endif#]
+
+                    <div class="md-mqtt-group-list__empty" data-md-mqtt-group-empty hidden>Ничего не найдено. Измените запрос.</div>
+                </div>
+
+                [#if GROUPS_LIMITED="1"#]
+                <div class="md-field__hint">Показаны первые 300 групп. Уточните поиск по топикам.</div>
+                [#endif#]
+            </div>
+        </aside>
+
+        <section class="md-mqtt-content" aria-labelledby="mdMqttTopicsTitle">
+            <div class="md-card md-mqtt-toolbar">
+                <header class="md-mqtt-toolbar__head">
+                    <div class="md-mqtt-toolbar__titles">
+                        <div class="md-card__eyebrow">[#GROUP_MODE_TITLE#]</div>
+                        <h2 class="md-mqtt-toolbar__title" id="mdMqttTopicsTitle">[#SELECTED_GROUP_TITLE#]</h2>
+                        <p class="md-mqtt-toolbar__subtitle">[#SELECTED_GROUP_META#] · топиков: <strong>[#TOTAL#]</strong></p>
+                    </div>
+                    <div class="md-mqtt-toolbar__actions">
+                        <button type="button" class="md-mqtt-live is-active" data-md-mqtt-live aria-pressed="true" title="Автообновление значений">
+                            <span class="md-mqtt-live__dot"></span><span>LIVE</span>
+                        </button>
+                    </div>
+                </header>
+
+                <form action="?" method="get" class="md-mqtt-filters" name="frmFilter">
+                    <input type="hidden" name="group_by" value="[#GROUP_BY#]">
+                    [#if GROUP!=""#]<input type="hidden" name="group" value="[#GROUP#]">[#endif#]
+                    [#if HAS_PATH_PREFIX="1"#]<input type="hidden" name="path_prefix" value="[#FILTER_PATH_PREFIX#]">[#endif#]
+
+                    <label class="md-mqtt-filter-search">
+                        <i class="ti ti-search" aria-hidden="true"></i>
+                        <input type="search" name="q" value="[#FILTER_Q#]" placeholder="Путь, название, значение, объект" aria-label="Поиск по топикам" autocomplete="off">
+                    </label>
+
+                    <select name="linked" class="md-select" aria-label="Фильтр по привязке">
+                        <option value="" [#if FILTER_LINKED=""#]selected[#endif#]>Все привязки</option>
+                        <option value="1" [#if FILTER_LINKED="1"#]selected[#endif#]>С привязкой</option>
+                        <option value="0" [#if FILTER_LINKED="0"#]selected[#endif#]>Без привязки</option>
+                    </select>
+
+                    <select name="location_id" class="md-select" aria-label="Фильтр по локации">
+                        <option value="">Все локации</option>
+                        [#begin LOCATIONS#]
+                        <option value="[#ID#]" [#if SELECTED="1"#]selected[#endif#]>[#TITLE#]</option>
+                        [#end LOCATIONS#]
+                    </select>
+
+                    <select name="sort" class="md-select" aria-label="Сортировка">
+                        <option value="updated" [#if FILTER_SORT="updated"#]selected[#endif#]>Сначала обновлённые</option>
+                        <option value="path" [#if FILTER_SORT="path"#]selected[#endif#]>По пути</option>
+                        <option value="title" [#if FILTER_SORT="title"#]selected[#endif#]>По названию</option>
+                        <option value="value" [#if FILTER_SORT="value"#]selected[#endif#]>По значению</option>
+                    </select>
+
+                    <button type="submit" class="md-btn md-btn--primary md-btn--sm"><i class="ti ti-filter" aria-hidden="true"></i>Применить</button>
+                    <a href="[#RESET_URL#]" class="md-btn md-btn--ghost md-btn--sm">Сбросить</a>
+                </form>
+
+                [#if HAS_FILTERS="1"#]
+                <div class="md-mqtt-active-filters">
+                    [#begin FILTERS#]
+                    <a href="[#URL#]" class="md-badge md-badge--outline md-mqtt-filter-chip">[#LABEL#]<i class="ti ti-x" aria-hidden="true"></i></a>
+                    [#end FILTERS#]
+                </div>
+                [#endif#]
+            </div>
+
+            [#if RESULT#]
+            <div class="md-table-wrap md-mqtt-table-wrap">
+                <div class="md-table__scroll">
+                    <table class="md-table md-mqtt-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Топик</th>
+                                <th scope="col" class="md-mqtt-col-value">Значение</th>
+                                <th scope="col" class="md-mqtt-col-link">Привязка</th>
+                                <th scope="col" class="md-mqtt-col-actions text-end"><span class="md-visually-hidden">Действия</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            [#begin RESULT#]
+                            <tr data-md-mqtt-row data-topic-id="[#ID#]">
+                                <td class="md-mqtt-col-topic">
+                                    <div class="md-mqtt-topic">
+                                        <div class="md-mqtt-topic__head">
+                                            <a href="[#EDIT_URL#]" class="md-mqtt-topic__title" title="[#PATH_FULL#]">[#TITLE_DISPLAY#]</a>
+                                            <span class="md-badge md-badge--outline">[#DIRECTION_LABEL#]</span>
+                                        </div>
+                                        <div class="md-mqtt-topic__sub">
+                                            [#if HAS_CUSTOM_TITLE="1"#]
+                                            <code class="md-mqtt-topic__path" title="[#PATH_FULL#]">[#PATH_DISPLAY#]</code>
+                                            [#endif#]
+                                            <span class="md-mqtt-topic__flags">
+                                                [#if HAS_WRITE="1"#]<span class="md-mqtt-flag" title="Запись: [#WRITE_DISPLAY#]"><i class="ti ti-send" aria-hidden="true"></i>[#if IS_HTTP_WRITE="1"#]HTTP[#endif#]</span>[#endif#]
+                                                [#if LOGGING="1"#]<span class="md-mqtt-flag" title="Подробное логирование"><i class="ti ti-list-details" aria-hidden="true"></i></span>[#endif#]
+                                                [#if QOS!="0"#]<span class="md-mqtt-flag">QoS [#QOS#]</span>[#endif#]
+                                                [#if RETAIN="1"#]<span class="md-mqtt-flag" title="Retain">retain</span>[#endif#]
+                                            </span>
+                                        </div>
+                                        <div class="md-mqtt-topic__mobile">
+                                            <span class="md-mqtt-value__text [#if VALUE_EMPTY="1"#]is-empty[#endif#]" data-md-mqtt-value="[#ID#]" title="[#VALUE_FULL#]">[#if VALUE_EMPTY="1"#]—[#else#][#VALUE_DISPLAY#][#endif#]</span>
+                                            <span class="md-mqtt-freshness md-mqtt-freshness--[#FRESHNESS#]"><span class="md-mqtt-freshness__dot"></span><span data-md-mqtt-updated="[#ID#]">[#UPDATED_HUMAN#]</span></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="md-mqtt-col-value">
+                                    <div class="md-mqtt-value">
+                                        <span class="md-mqtt-value__text [#if VALUE_EMPTY="1"#]is-empty[#endif#]" data-md-mqtt-value="[#ID#]" title="[#VALUE_FULL#]">[#if VALUE_EMPTY="1"#]—[#else#][#VALUE_DISPLAY#][#endif#]</span>
+                                    </div>
+                                    <small class="md-mqtt-value__time" title="[#UPDATED_EXACT#]" data-md-mqtt-updated="[#ID#]">[#UPDATED_HUMAN#]</small>
+                                </td>
+                                <td class="md-mqtt-col-link">
+                                    [#if HAS_LINK="1"#]
+                                    <div class="md-mqtt-link">
+                                        <strong>[#LINKED_DEVICE#]</strong>
+                                        [#if LINKED_TARGET!=""#]<small>[#LINKED_KIND#]: [#LINKED_TARGET#]</small>[#endif#]
+                                    </div>
+                                    [#else#]
+                                    <span class="md-mqtt-unlinked" title="Без привязки"><i class="ti ti-unlink" aria-hidden="true"></i></span>
+                                    [#endif#]
+                                    [#if LOCATION_TITLE!=""#]
+                                    <small class="md-mqtt-location"><i class="ti ti-map-pin" aria-hidden="true"></i>[#LOCATION_TITLE#]</small>
+                                    [#endif#]
+                                </td>
+                                <td class="md-mqtt-col-actions">
+                                    <div class="md-table__actions">
+                                        <a href="[#EDIT_URL#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="Редактировать" aria-label="Редактировать топик">
+                                            <i class="ti ti-pencil" aria-hidden="true"></i>
+                                        </a>
+                                        <a href="[#DELETE_URL#]" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="Удалить" aria-label="Удалить топик" data-md-confirm="Удалить топик [#PATH_FULL#]?">
+                                            <i class="ti ti-trash" aria-hidden="true"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            [#end RESULT#]
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="md-table__footer">
+                    <span>Показано [#SHOW_FROM#]–[#SHOW_TO#] из [#TOTAL#]</span>
+                    [#if HAS_PAGES="1"#]
+                    <ul class="pagination md-pagination mb-0">
+                        <li class="page-item [#if PAGE_PREV=""#]disabled[#endif#]">
+                            [#if PAGE_PREV!=""#]<a class="page-link" href="[#PAGE_PREV#]" aria-label="Назад"><i class="ti ti-chevron-left" aria-hidden="true"></i></a>[#else#]<span class="page-link"><i class="ti ti-chevron-left" aria-hidden="true"></i></span>[#endif#]
+                        </li>
+                        [#begin PAGE_ITEMS#]
+                        [#if ELLIPSIS="1"#]
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                        [#else#]
+                        <li class="page-item [#if SELECTED="1"#]active[#endif#]"><a class="page-link" href="[#URL#]">[#NUM#]</a></li>
+                        [#endif#]
+                        [#end PAGE_ITEMS#]
+                        <li class="page-item [#if PAGE_NEXT=""#]disabled[#endif#]">
+                            [#if PAGE_NEXT!=""#]<a class="page-link" href="[#PAGE_NEXT#]" aria-label="Вперёд"><i class="ti ti-chevron-right" aria-hidden="true"></i></a>[#else#]<span class="page-link"><i class="ti ti-chevron-right" aria-hidden="true"></i></span>[#endif#]
+                        </li>
+                    </ul>
+                    [#endif#]
+                </div>
+            </div>
+            [#else#]
+            <div class="md-card">
+                <div class="md-card__body">
+                    <div class="md-empty">
+                        <span class="md-empty__icon"><i class="ti ti-antenna" aria-hidden="true"></i></span>
+                        <div class="md-empty__title">[#if HAS_FILTERS="1"#]Ничего не найдено[#else#]Топиков пока нет[#endif#]</div>
+                        <p class="md-empty__text">[#if HAS_FILTERS="1"#]Измените запрос или сбросьте фильтры, чтобы увидеть другие топики.[#else#]Топики появятся здесь, когда MQTT-цикл получит первое сообщение.[#endif#]</p>
+                        <div class="md-empty__actions">
+                            [#if HAS_FILTERS="1"#]
+                            <a href="[#RESET_URL#]" class="md-btn md-btn--secondary md-btn--sm">Сбросить фильтры</a>
+                            [#else#]
+                            <a href="?view_mode=edit_mqtt" class="md-btn md-btn--primary md-btn--sm"><i class="ti ti-plus" aria-hidden="true"></i>Добавить топик</a>
+                            [#endif#]
+                        </div>
+                    </div>
+                </div>
+            </div>
+            [#endif#]
+        </section>
+    </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var body = document.body;
-        var drawer = document.getElementById('mqttDrawer');
-        var backdrop = document.querySelector('[data-md-mqtt-drawer-close]');
-        var title = document.getElementById('mqttDrawerTitle');
-        var subtitle = document.getElementById('mqttDrawerSubtitle');
-        var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-md-mqtt-drawer-tab]'));
-        var panels = Array.prototype.slice.call(document.querySelectorAll('[data-md-mqtt-drawer-panel]'));
-
-        function setActiveTab(name) {
-            tabs.forEach(function (tab) {
-                var isActive = tab.getAttribute('data-md-mqtt-drawer-tab') === name;
-                tab.classList.toggle('is-active', isActive);
-                tab.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-            });
-
-            panels.forEach(function (panel) {
-                var isActive = panel.getAttribute('data-md-mqtt-drawer-panel') === name;
-                panel.hidden = !isActive;
-                panel.classList.toggle('is-active', isActive);
-            });
-
-            if (title) {
-                title.textContent = name === 'filter' ? 'Фильтр топиков' : 'Настройки MQTT';
-            }
-            if (subtitle) {
-                subtitle.textContent = name === 'filter'
-                    ? 'Быстро сузьте список по имени, пути или локации.'
-                    : 'Изменяйте брокер, авторизацию, TLS и параметры записи.';
-            }
-        }
-
-        function openDrawer(name) {
-            if (!drawer) {
-                return;
-            }
-            body.classList.add('md-mqtt-drawer-open');
-            if (backdrop) {
-                backdrop.hidden = false;
-            }
-            drawer.hidden = false;
-            drawer.setAttribute('aria-hidden', 'false');
-            setActiveTab(name || 'settings');
-        }
-
-        function closeDrawer() {
-            if (!drawer) {
-                return;
-            }
-            body.classList.remove('md-mqtt-drawer-open');
-            if (backdrop) {
-                backdrop.hidden = true;
-            }
-            drawer.hidden = true;
-            drawer.setAttribute('aria-hidden', 'true');
-        }
-
-        document.querySelectorAll('[data-md-mqtt-drawer-open]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                openDrawer(button.getAttribute('data-md-mqtt-drawer-open'));
-            });
-        });
-
-        document.querySelectorAll('[data-md-mqtt-drawer-close]').forEach(function (element) {
-            element.addEventListener('click', closeDrawer);
-        });
-
-        tabs.forEach(function (tab) {
-            tab.addEventListener('click', function () {
-                setActiveTab(tab.getAttribute('data-md-mqtt-drawer-tab'));
-            });
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && body.classList.contains('md-mqtt-drawer-open')) {
-                closeDrawer();
-            }
-        });
-
-        if (drawer) {
-            setActiveTab('settings');
-        }
-
-        var authToggle = document.querySelector('input[name="mqtt_auth"]');
-        var tlsToggle = document.querySelector('input[name="mqtt_tls_enable"]');
-        var authPanel = document.getElementById('mqtt_req_pass');
-        var tlsPanel = document.getElementById('mqtt_tls_options');
-
-        if (authToggle && authPanel) {
-            authToggle.addEventListener('change', function () {
-                authPanel.hidden = !authToggle.checked;
-            });
-            authPanel.hidden = !authToggle.checked;
-        }
-
-        if (tlsToggle && tlsPanel) {
-            tlsToggle.addEventListener('change', function () {
-                tlsPanel.hidden = !tlsToggle.checked;
-            });
-            tlsPanel.hidden = !tlsToggle.checked;
-        }
-    });
-</script>

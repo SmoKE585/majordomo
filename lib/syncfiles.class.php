@@ -1140,7 +1140,7 @@ function getDirFiles($dir, &$results = array())
         $files = scandir($dir);
         foreach ($files as $key => $value) {
             $path = realpath($dir . "/" . $value);
-            if (!is_dir($path) && $value != ".htaccess" && $value != "." && $value != "..") {
+            if (!is_dir($path) && $value != "." && $value != "..") {
                 $results[] = array('NAME' => $value, 'FILENAME' => $path, 'DT' => date('Y-m-d H:i:s', filemtime($path)), 'TM' => filemtime($path), 'SIZE' => filesize($path));
             }
         }
