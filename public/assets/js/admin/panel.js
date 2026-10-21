@@ -258,6 +258,7 @@ function loadInProgress() {
     $('.sp-replacer').remove();
     $('.sp-container').remove();
     $('#preloader').show('fast');
+    document.dispatchEvent(new Event('md:before-part-content-replace'));
     $('#partLoadContent').html('');
     $('#stopLoadBtnPreloader').attr('href', urlInProgress);
     return false;
@@ -293,6 +294,7 @@ function partLoad(link) {
     var cachedContent = localStorage.getItem(cachedKey);
     if (typeof cachedContent == 'string') {
         window.history.pushState('', window.title, link);
+        document.dispatchEvent(new Event('md:before-part-content-replace'));
         $('#partLoadContent').html(cachedContent);
         if (window.MDJAdminUI) {
             window.MDJAdminUI.boot(document.getElementById('partLoadContent'));
@@ -324,6 +326,7 @@ function partLoad(link) {
         } else {
             window.history.pushState('', window.title, link);
             if (cachedContent != obj.CONTENT) {
+                document.dispatchEvent(new Event('md:before-part-content-replace'));
                 $('#partLoadContent').html(obj.CONTENT);
                 if (window.MDJAdminUI) {
                     window.MDJAdminUI.boot(document.getElementById('partLoadContent'));

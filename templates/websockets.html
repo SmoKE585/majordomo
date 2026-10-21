@@ -48,6 +48,7 @@
 			startedWebSockets=1;
 			clearTimeout(wsTimer);
 			$.publish('wsConnected');
+			document.dispatchEvent(new Event('md:ws-connected'));
 			
 			$('#wsStatus').html('<#LANG_NEWDASH_CONNECTED#>');
 			$('#wsStatus').removeClass('md-admin-status-badge--danger').addClass('md-admin-status-badge--success');
@@ -61,6 +62,7 @@
 			console.log('%c%s', 'color: blue;', '⟶ Получены данные: ' + response.action + ' ', wsRespArr );
 			
 			$.publish('wsData', response);
+			document.dispatchEvent(new CustomEvent('md:ws-data', {detail: response}));
 			return;
 		};
 		wsSocket.onclose = function(msg) {

@@ -326,7 +326,7 @@ class MajordomoApplication extends Application
             }
 
             if ($data['TYPE'] == 'objects') {
-                if ($data['OBJECT_ID'] == '') {
+                if (($data['OBJECT_ID'] ?? '') === '') {
                     $data['OBJECT_ID'] = '0';
                 }
                 if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
@@ -388,7 +388,7 @@ class MajordomoApplication extends Application
             }
 
             if ($data['TYPE'] == 'events') {
-                if ($data['EVENTS'] == '') {
+                if (($data['EVENTS'] ?? '') === '') {
                     return;
                 }
                 if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {

@@ -303,7 +303,8 @@
 [#PROPERTY_HISTORY_DRAWER#]
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+(function () {
+function initObjectPropertiesPage() {
     var filterInput = document.getElementById('filterProp');
     var propertiesPage = document.querySelector('[data-md-object-properties-page]');
     var objectTitle = propertiesPage ? (propertiesPage.getAttribute('data-md-object-title') || '').trim() : '';
@@ -668,12 +669,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (propertiesPage && objectTitle) {
-        $.subscribe('wsConnected', function () {
+        var wsListeners = new AbortController();
+        document.addEventListener('md:ws-connected', function () {
             wsSubscribed = false;
             subscribeToObjectProperties();
-        });
+        }, {signal: wsListeners.signal});
 
-        $.subscribe('wsData', function (_, response) {
+        document.addEventListener('md:ws-data', function (event) {
+            var response = event.detail;
             if (!response || response.action !== 'properties') {
                 return;
             }
@@ -701,9 +704,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     updatePropertyCardValue(card, item.VALUE);
                 }
             });
-        });
+        }, {signal: wsListeners.signal});
+
+        document.addEventListener('md:before-part-content-replace', function () {
+            wsListeners.abort();
+            if (wsSubscribed && window.wsSocket && wsSocket.readyState === WebSocket.OPEN) {
+                wsSocket.send(JSON.stringify({action: 'Unsubscribe', data: {TYPE: 'properties', PROPERTIES: objectTitle}}));
+            }
+        }, {once: true, signal: wsListeners.signal});
 
         subscribeToObjectProperties();
     }
-});
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initObjectPropertiesPage, {once: true});
+} else {
+    initObjectPropertiesPage();
+}
+})();
 </script>
