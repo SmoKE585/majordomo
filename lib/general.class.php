@@ -14,7 +14,7 @@ use PHPMailer\PHPMailer\Exception;
 
 if (isset($_SERVER['REQUEST_METHOD'])) {
     $blocked = array('_SERVER', '_COOKIE', 'HTTP_POST_VARS', 'HTTP_GET_VARS', 'HTTP_SERVER_VARS',
-        '_FILES', '_REQUEST', '_ENV');
+        '_FILES', '_REQUEST', '_ENV', 'GLOBALS');
 
     if ($_SERVER['REQUEST_METHOD'] == "POST") {
         $blocked[] = '_GET';
@@ -56,8 +56,12 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
     //    stripit($params);
     //}
 
+    // Use $GLOBALS instead of ${$k}: legacy entry points used to include this
+    // file at global scope, but Application::bootLibraries() includes it from a
+    // method. Modules still read request parameters through `global $action`,
+    // `global $view_mode`, `global $ajax_panel`, etc.
     foreach ($params as $k => $v) {
-        ${$k} = $v;
+        $GLOBALS[$k] = $v;
     }
 
     if (isset($_FILES) && count($_FILES) > 0) {
@@ -67,8 +71,8 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
         for ($i = 0; $i < $ksCnt; $i++) {
             $k = $ks[$i];
 
-            ${"$k"} = $_FILES[$k]['tmp_name'];
-            ${"$k" . "_name"} = $_FILES[$k]['name'];
+            $GLOBALS[$k] = $_FILES[$k]['tmp_name'];
+            $GLOBALS[$k . "_name"] = $_FILES[$k]['name'];
         }
     }
 }

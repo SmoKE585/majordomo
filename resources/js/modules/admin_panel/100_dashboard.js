@@ -7,7 +7,6 @@
     var runtime = {
         node: null,
         refreshTimer: 0,
-        blockTimer: 0,
         loading: false,
         data: null,
         hasData: false,
@@ -27,8 +26,7 @@
             dashboard: root + 'admin.php?ajax_panel=1&op=dashboard',
             scripts: root + 'admin.php?action=xray&md=xray&inst=adm&view_mode=scripts&ajax=1&op=getcontent',
             properties: root + 'admin.php?action=xray&md=xray&inst=adm&view_mode=properties&ajax=1&op=getcontent',
-            updates: root + 'ajax/saverestore.html?op=check_updates',
-            myBlock: root + 'objects/?script=dash_my_block'
+            updates: root + 'ajax/saverestore.html?op=check_updates'
         };
     }
 
@@ -1006,69 +1004,8 @@
     }
 
     // ---------------------------------------------------------------------
-    // Custom block and update check
+    // Update check
     // ---------------------------------------------------------------------
-
-    function renderMyBlock(data) {
-        if (!runtime.node) {
-            return;
-        }
-        var card = runtime.node.querySelector('#myBlockOnDash');
-        if (!card) {
-            return;
-        }
-        if (!data || Number(data.status) !== 1) {
-            card.hidden = true;
-            return;
-        }
-
-        card.hidden = false;
-        var title = runtime.node.querySelector('#myBlockOnDash_title');
-        var body = runtime.node.querySelector('#myBlockOnDash_body');
-        var more = runtime.node.querySelector('#more_myBlockOnDash_body');
-
-        if (title) {
-            title.textContent = text(data.name, 'Мой блок');
-        }
-        if (body) {
-            body.innerHTML = data.data && data.data.data ? data.data.data : '';
-        }
-        if (more) {
-            more.innerHTML = '';
-            if (data.moreinfo && typeof data.moreinfo === 'object') {
-                Object.keys(data.moreinfo).forEach(function (label) {
-                    var raw = String(data.moreinfo[label] || '');
-                    var parts = raw.split('|color:');
-                    var value = parts[0] || '—';
-                    var color = parts[1] || '';
-
-                    var item = document.createElement('li');
-                    var name = document.createElement('span');
-                    name.textContent = label;
-                    item.appendChild(name);
-
-                    var badge = document.createElement('span');
-                    badge.className = 'badge';
-                    badge.textContent = value;
-                    if (color) {
-                        badge.style.setProperty('--md-badge-bg', color);
-                    }
-                    item.appendChild(badge);
-                    more.appendChild(item);
-                });
-            }
-        }
-
-        if (window.MDJAdminUI && typeof window.MDJAdminUI.initBootstrapWidgets === 'function') {
-            window.MDJAdminUI.initBootstrapWidgets(card);
-        }
-
-        if (data.reload == true) {
-            var delay = Math.max(10, number(data.reload_time) || 60) * 1000;
-            clearTimeout(runtime.blockTimer);
-            runtime.blockTimer = setTimeout(loadMyBlock, delay);
-        }
-    }
 
     async function loadUpdates() {
         try {
@@ -1163,24 +1100,13 @@
         }
     }
 
-    async function loadMyBlock() {
-        try {
-            var data = await fetchJson(urls().myBlock);
-            renderMyBlock(data);
-        } catch (error) {
-            renderMyBlock(null);
-        }
-    }
-
     async function loadAll(manual) {
         if (!runtime.node) {
             return;
         }
         if (!document.body.contains(runtime.node)) {
             clearInterval(runtime.refreshTimer);
-            clearTimeout(runtime.blockTimer);
             runtime.refreshTimer = 0;
-            runtime.blockTimer = 0;
             runtime.node = null;
             return;
         }
@@ -1208,7 +1134,6 @@
                 runtime.loadFailed = true;
             }),
             loadActivity().catch(function () {}),
-            loadMyBlock().catch(function () {}),
             loadUpdates().catch(function () {})
         ]);
         setLoading(false);
@@ -1229,7 +1154,6 @@
         }
 
         clearInterval(runtime.refreshTimer);
-        clearTimeout(runtime.blockTimer);
         if (window.MDJDashboardCharts && typeof window.MDJDashboardCharts.destroy === 'function') {
             window.MDJDashboardCharts.destroy();
         }

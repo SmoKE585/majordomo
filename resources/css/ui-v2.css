@@ -1397,46 +1397,7 @@ body.md-admin-shell .md-admin-sidebar__badge {
 }
 
 /* --------------------------------------------------------------------------
-   12. Custom dashboard block (myBlock)
-   -------------------------------------------------------------------------- */
-
-.md-dash-block {
-  overflow: hidden;
-}
-
-.md-dash-block__body {
-  color: var(--md-ui-text-soft);
-  font-size: .86rem;
-}
-
-.md-dash-block__body img {
-  max-width: 100%;
-  height: auto;
-}
-
-.md-dash-block__more {
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.md-dash-block__more li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 0;
-  border-top: 1px solid var(--md-ui-border);
-  font-size: .8rem;
-}
-
-.md-dash-block__more .badge {
-  color: #fff;
-  background: var(--md-badge-bg, var(--md-ui-primary));
-}
-
-/* --------------------------------------------------------------------------
-   12b. Dashboard v2: attention, charts, resources, cycles and errors
+   12. Dashboard v2: attention, charts, resources, cycles and errors
    -------------------------------------------------------------------------- */
 
 .md-dash__live-dot {

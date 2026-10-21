@@ -1216,10 +1216,6 @@ body > [id],
   text-decoration: none;
 }
 
-#myBlockOnDash {
-  display: none;
-}
-
 .md-admin-dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, .9fr);
