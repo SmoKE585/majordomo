@@ -11,6 +11,8 @@ final class SiteApplication extends Application
     {
         $this->bootConfiguration();
 
+        \MajorDoMo\Core\Install\InstallGate::redirectIfRequired($this->root);
+
         startMeasure('prepare');
         $this->bootLibraries();
 

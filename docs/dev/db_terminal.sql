@@ -1,3 +1,5 @@
+-- DEV/DEMO dump: contains historical demo data.
+-- The setup wizard imports the clean schema from lib/core/Install/schema.sql instead.
 -- phpMyAdmin SQL Dump
 -- version 5.0.2
 -- https://www.phpmyadmin.net/
@@ -36,32 +38,6 @@ CREATE TABLE `actions_log` (
   `TERMINAL` varchar(255) NOT NULL DEFAULT '',
   `IP` varchar(100) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
--- --------------------------------------------------------
-
---
--- Структура таблицы `admin_users`
---
-
-CREATE TABLE `admin_users` (
-  `ID` tinyint(3) UNSIGNED NOT NULL,
-  `NAME` varchar(100) NOT NULL DEFAULT '',
-  `LOGIN` varchar(100) NOT NULL DEFAULT '',
-  `PASSWORD` varchar(100) NOT NULL DEFAULT '',
-  `EMAIL` varchar(100) NOT NULL DEFAULT '',
-  `COMMENTS` text DEFAULT NULL,
-  `ACCESS` text DEFAULT NULL,
-  `PRIVATE` tinyint(3) UNSIGNED NOT NULL DEFAULT 0,
-  `EMAIL_ORDERS` tinyint(3) UNSIGNED NOT NULL DEFAULT 0,
-  `EMAIL_INVENTORY` tinyint(3) UNSIGNED NOT NULL DEFAULT 0
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
---
--- Дамп данных таблицы `admin_users`
---
-
-INSERT INTO `admin_users` (`ID`, `NAME`, `LOGIN`, `PASSWORD`, `EMAIL`, `COMMENTS`, `ACCESS`, `PRIVATE`, `EMAIL_ORDERS`, `EMAIL_INVENTORY`) VALUES
-(1, 'Administrator', 'admin', '21232f297a57a5a743894a0e4a801fc3', 'webmaster@domain.com', '', 'control_modules,control_access,master,cms_docs,news,statistic,newsletter,backup,edit_templates,newslist,saverestore,skins,settings,footercode,holdingpage,events,users,classes,history,locations,methods,properties,objects,pvalues,shoutbox,jobs,btweather,app_products,app_tdwiki,app_weather,scripts,rss_channels,languages,pinghosts,watchfolders,app_gpstrack,webvars,onewire,app_calendar,xray', 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -893,8 +869,6 @@ CREATE TABLE `project_modules` (
 INSERT INTO `project_modules` (`ID`, `NAME`, `TITLE`, `CATEGORY`, `PARENT_NAME`, `DATA`, `HIDDEN`, `PRIORITY`, `ADDED`) VALUES
 (1, 'control_modules', '<#LANG_MODULE_MODULES#>', '<#LANG_SECTION_SYSTEM#>', '', '', 0, 0, '2015-01-29 08:24:27'),
 (67, 'scripts', '<#LANG_MODULE_SCRIPTS#>', '<#LANG_SECTION_OBJECTS#>', '', '', 0, 0, '2010-09-13 15:12:16'),
-(4, 'control_access', 'Control Access', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2011-09-29 18:16:01'),
-(7, 'master', '<#LANG_MODULE_MASTER_LOGIN#>', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2014-10-30 11:57:40'),
 (70, 'pinghosts', '<#LANG_MODULE_PINGHOSTS#>', '<#LANG_SECTION_DEVICES#>', '', '', 0, 0, '2011-01-05 22:02:57'),
 (20, 'saverestore', '<#LANG_MODULE_SAVERESTORE#>', '<#LANG_SECTION_SYSTEM#>', '', 'a:1:{s:17:\"LATEST_UPDATED_ID\";s:40:\"14d4bd4fd3c4cfc18f28094d3cb9eaa4861c62c1\";}', 0, 0, '2009-02-07 11:35:05'),
 (21, 'userlog', '<#LANG_MODULE_USERLOG#>', '<#LANG_SECTION_SYSTEM#>', '', '', 1, 0, '2009-02-07 11:45:52'),
@@ -1450,12 +1424,6 @@ ALTER TABLE `actions_log`
   ADD KEY `ACTION_TYPE` (`ACTION_TYPE`);
 
 --
--- Индексы таблицы `admin_users`
---
-ALTER TABLE `admin_users`
-  ADD PRIMARY KEY (`ID`);
-
---
 -- Индексы таблицы `blockly_code`
 --
 ALTER TABLE `blockly_code`
@@ -1715,12 +1683,6 @@ ALTER TABLE `users`
 --
 ALTER TABLE `actions_log`
   MODIFY `ID` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT для таблицы `admin_users`
---
-ALTER TABLE `admin_users`
-  MODIFY `ID` tinyint(3) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT для таблицы `blockly_code`

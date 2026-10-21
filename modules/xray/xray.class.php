@@ -13,6 +13,8 @@
 //
 class xray extends module
 {
+    private ?\MajorDoMo\Core\Cycles\CycleManager $cycleManagerInstance = null;
+
     /**
      * blank
      *
@@ -127,6 +129,14 @@ class xray extends module
         $this->result = $p->result;
     }
 
+    private function cycleManager(): \MajorDoMo\Core\Cycles\CycleManager
+    {
+        if (!$this->cycleManagerInstance instanceof \MajorDoMo\Core\Cycles\CycleManager) {
+            $this->cycleManagerInstance = new \MajorDoMo\Core\Cycles\CycleManager(ROOT);
+        }
+        return $this->cycleManagerInstance;
+    }
+
     function normalizeCycleTitle($cycle)
     {
         $cycle = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$cycle);
@@ -141,8 +151,7 @@ class xray extends module
 
     function ensureCycleRuntimeTables()
     {
-        SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycles` (`TITLE` char(100) NOT NULL,`VALUE` char(255) NOT NULL,PRIMARY KEY (`TITLE`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
-        SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycle_logs` (`ID` int(10) unsigned NOT NULL AUTO_INCREMENT,`CYCLE` char(100) NOT NULL,`ADDED` int(10) unsigned NOT NULL,`MESSAGE` varchar(1024) NOT NULL,PRIMARY KEY (`ID`),KEY `CYCLE_ADDED` (`CYCLE`,`ADDED`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
+        $this->cycleManager()->ensureRuntimeTables();
     }
 
     function addCycleRuntimeLog($cycleTitle, $message)
@@ -162,24 +171,29 @@ class xray extends module
 
     function queueCycleCommand($cycleTitle, $command)
     {
-        $this->ensureCycleRuntimeTables();
-        if ($command == 'start') {
-            sg($cycleTitle . 'Run', '');
-            sg($cycleTitle . 'Control', 'start');
-            saveCycleToCache($cycleTitle . 'Status', 'starting');
-        } elseif ($command == 'stop') {
-            sg($cycleTitle . 'Control', 'stop');
-            saveCycleToCache($cycleTitle . 'Status', 'stopping');
-        } elseif ($command == 'restart') {
-            sg($cycleTitle . 'Run', '');
-            sg($cycleTitle . 'Control', 'restart');
-            saveCycleToCache($cycleTitle . 'Status', 'stopping');
-        } else {
-            return;
+        $manager = $this->cycleManager();
+        switch ($command) {
+            case 'start':
+                $result = $manager->start($cycleTitle);
+                break;
+            case 'stop':
+                $result = $manager->stop($cycleTitle);
+                break;
+            case 'restart':
+                $result = $manager->restart($cycleTitle);
+                break;
+            case 'disable':
+                $result = $manager->disable($cycleTitle);
+                break;
+            case 'enable':
+                $result = $manager->enable($cycleTitle);
+                break;
+            default:
+                return;
         }
-        saveCycleToCache($cycleTitle . 'StatusUpdated', time());
-        saveCycleToCache($cycleTitle . 'StatusDetails', 'Command queued in XRAY: ' . $command);
-        $this->addCycleRuntimeLog($cycleTitle, 'XRAY command queued: ' . $command);
+        if (!empty($result['ok'])) {
+            $this->addCycleRuntimeLog($cycleTitle, 'XRAY command queued: ' . $command);
+        }
     }
 
     function getCycleLogPath()
@@ -296,7 +310,7 @@ class xray extends module
 
         if ($ajax) {
             $this->ensureCycleRuntimeTables();
-            if ($service != '' && ($op == 'start' || $op == 'stop' || $op == 'restart')) {
+            if ($service != '' && in_array($op, array('start', 'stop', 'restart', 'disable', 'enable'), true)) {
                 $this->queueCycleCommand($service, $op);
             }
 
@@ -307,10 +321,13 @@ class xray extends module
                 'STATUS' => $state['status'],
                 'STATUS_TEXT' => $this->getCycleStatusText($state['status']),
                 'ONLINE' => $state['online'] ? 1 : 0,
+                'DISABLED' => !empty($state['disabled']) ? 1 : 0,
+                'DESIRED' => $state['desired'],
                 'BODY' => ($state['online'] ? '<font color="green">ONLINE</font>' : '<font color="red">OFFLINE</font>')
                     . ($state['updated'] > 0 ? ' (' . date('Y-m-d H:i:s', $state['updated']) . ')' : '')
                     . ($state['control'] !== '' ? ' ' . $state['control'] : '')
-                    . ' status: ' . htmlspecialchars($state['status']),
+                    . ' status: ' . htmlspecialchars($state['status'])
+                    . ' desired: ' . htmlspecialchars($state['desired']),
             );
 
             header("HTTP/1.0 200 OK\n");
@@ -333,6 +350,7 @@ class xray extends module
                 'online' => $state['online'],
                 'updated' => $updatedLabel,
                 'auto_restart' => $autoRestart,
+                'disabled' => !empty($state['disabled']),
                 'compact' => true,
                 'poll' => true,
                 'endpoint' => ROOTHTML . 'ajax/xray.html?action=service',
@@ -348,29 +366,15 @@ class xray extends module
      */
     private function getCycleState($service)
     {
-        $updated = (int)gg($service . 'Run');
-        $control = (string)gg($service . 'Control');
-        $status = checkCycleFromCache($service . 'Status');
-        $statusUpdated = (int)checkCycleFromCache($service . 'StatusUpdated');
-        $cycleHangTimeout = 10 * 60;
-
-        if ($updated > 0 && (time() - $updated) < $cycleHangTimeout) {
-            $status = 'running';
-        } elseif ($updated > 0) {
-            $status = 'hang';
-        } elseif ($status == 'starting' && $statusUpdated > 0 && (time() - $statusUpdated) < $cycleHangTimeout) {
-            $status = 'starting';
-        } elseif ($status == 'stopping' && $statusUpdated > 0 && (time() - $statusUpdated) < $cycleHangTimeout) {
-            $status = 'stopping';
-        } else {
-            $status = 'stopped';
-        }
-
+        $managerState = $this->cycleManager()->state($service);
         return array(
-            'status' => $status,
-            'updated' => $updated,
-            'online' => $updated > 0 && (time() - $updated) < $cycleHangTimeout,
-            'control' => $control,
+            'status' => $managerState['status'],
+            'updated' => $managerState['updated'],
+            'online' => $managerState['online'],
+            'control' => (string)gg($service . 'Control'),
+            'desired' => $managerState['desired'],
+            'disabled' => $managerState['status'] === 'disabled',
+            'details' => $managerState['details'],
         );
     }
 
@@ -386,6 +390,7 @@ class xray extends module
             'stopping' => 'Выключается',
             'hang' => 'Завис',
             'stopped' => 'Остановлен',
+            'disabled' => 'Отключён',
         );
         return isset($map[$status]) ? $map[$status] : 'Неизвестно';
     }
@@ -642,7 +647,7 @@ class xray extends module
             $this->ensureCycleRuntimeTables();
             $cmd = gr('cmd');
             $service = $this->normalizeCycleTitle(gr('service'));
-            if (($cmd == 'start' || $cmd == 'stop' || $cmd == 'restart') && $service != '') {
+            if (in_array($cmd, array('start', 'stop', 'restart', 'disable', 'enable'), true) && $service != '') {
                 $this->queueCycleCommand($service, $cmd);
                 /*
                } elseif ($cmd=='switch_restart' && $service!='') {
@@ -1276,81 +1281,40 @@ class xray extends module
                 }
 
                 if ($this->view_mode == 'services') {
-                    $qry = "OBJECT_ID=" . getObject('Computer.ThisComputer')->id . " AND TITLE LIKE 'cycle%Run'";
-                    $res = SQLSelect("SELECT properties.* FROM properties WHERE $qry ORDER BY TITLE");
-                    $total = count($res);
-
-                    $seen = array();
-                    for ($i = 0; $i < $total; $i++) {
-                        $title = $res[$i]['TITLE'];
-                        $title = preg_replace('/Run$/', '', $title);
-                        $seen[$title] = 1;
-                    }
-
-                    $path = ROOT . 'scripts';
-                    $files = array();
-                    if ($handle = opendir($path)) {
-                        $files = array();
-                        while (false !== ($entry = readdir($handle))) {
-                            if (preg_match('/^cycle/is', $entry)) {
-                                $title = preg_replace('/\.php$/', '', $entry);
-                                if (!isset($seen[$title])) {
-                                    $res[] = array('TITLE' => $title . 'Run');
-                                }
-                            }
-                        }
-                    }
-
-
-                    $total = count($res);
+                    $manager = $this->cycleManager();
+                    $manager->ensureRuntimeTables();
+                    $names = $manager->names();
+                    $total = count($names);
 
                     $responce = [];
                     $responce['MODE'] = 'services';
                     $responce['TOTAL'] = $total;
                     $responce['TOTAL_ALIVE'] = 0;
-                    $cycleHangTimeout = 10 * 60;
                     $onDisabled = ' - ';
-                    $onEnable = ' - ';
 
                     for ($i = 0; $i < $total; $i++) {
-                        $responce['LIST'][$i]['TITLE'] = preg_replace('/Run$/', '', $res[$i]['TITLE']);
+                        $title = $names[$i];
+                        $state = $manager->state($title);
+                        $url = ROOTHTML . 'panel/xray.html?view_mode=services&service=' . urlencode($title);
 
-                        $url = ROOTHTML . 'panel/xray.html?view_mode=services&service=' . urlencode($responce['LIST'][$i]['TITLE']);
-
-                        $tm = (int)getGlobal($responce['LIST'][$i]['TITLE'] . 'Run');
-                        $runtimeStatus = checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'Status');
-                        $runtimeStatusUpdated = (int)checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'StatusUpdated');
-                        if ($tm > 0 && (time() - $tm) < $cycleHangTimeout) {
-                            $runtimeStatus = 'running';
-                        } elseif ($tm > 0) {
-                            $runtimeStatus = 'hang';
-                        } elseif ($runtimeStatus == 'starting' && $runtimeStatusUpdated > 0 && (time() - $runtimeStatusUpdated) < $cycleHangTimeout) {
-                            $runtimeStatus = 'starting';
-                        } elseif ($runtimeStatus == 'stopping' && $runtimeStatusUpdated > 0 && (time() - $runtimeStatusUpdated) < $cycleHangTimeout) {
-                            $runtimeStatus = 'stopping';
-                        } else {
-                            $runtimeStatus = 'stopped';
-                        }
-                        $responce['LIST'][$i]['STATUS'] = $runtimeStatus;
-                        $responce['LIST'][$i]['STATUS_DETAILS'] = htmlspecialchars((string)checkCycleFromCache($responce['LIST'][$i]['TITLE'] . 'StatusDetails'));
-                        $responce['LIST'][$i]['LOG_LINK'] = $responce['LIST'][$i]['TITLE'];
-                        if ($tm > 0) {
-                            if ((time() - $tm) < $cycleHangTimeout) {
-                                $responce['LIST'][$i]['WAIT'] = 0;
-                            } else {
-                                $responce['LIST'][$i]['WAIT'] = 1;
-                            }
-                            $responce['LIST'][$i]['UPDATE'] = date('d.m.Y H:i:s', $tm);
-
-                            $responce['LIST'][$i]['CNT_STOP'] = $url . '&cmd=stop';
-                            $responce['LIST'][$i]['CNT_RESTART'] = $url . '&cmd=restart';
-                            $responce['LIST'][$i]['ALIVE'] = 1;
+                        $responce['LIST'][$i]['TITLE'] = $title;
+                        $responce['LIST'][$i]['STATUS'] = $state['status'];
+                        $responce['LIST'][$i]['STATUS_DETAILS'] = htmlspecialchars($state['details']);
+                        $responce['LIST'][$i]['DESIRED'] = $state['desired'];
+                        $responce['LIST'][$i]['DISABLED'] = $state['status'] === 'disabled' ? 1 : 0;
+                        $responce['LIST'][$i]['LOG_LINK'] = $title;
+                        $responce['LIST'][$i]['WAIT'] = $state['status'] === 'hang' ? 1 : 0;
+                        $responce['LIST'][$i]['UPDATE'] = $state['updated'] > 0 ? date('d.m.Y H:i:s', $state['updated']) : '';
+                        $responce['LIST'][$i]['ALIVE'] = $state['online'] ? 1 : 0;
+                        $responce['LIST'][$i]['CNT_START'] = $url . '&cmd=start';
+                        $responce['LIST'][$i]['CNT_STOP'] = $url . '&cmd=stop';
+                        $responce['LIST'][$i]['CNT_RESTART'] = $url . '&cmd=restart';
+                        $responce['LIST'][$i]['CNT_DISABLE'] = $url . '&cmd=disable';
+                        $responce['LIST'][$i]['CNT_ENABLE'] = $url . '&cmd=enable';
+                        if ($state['online']) {
                             $responce['TOTAL_ALIVE']++;
                         } else {
-                            $responce['LIST'][$i]['UPDATE'] = '';
-                            $responce['LIST'][$i]['ALIVE'] = 0;
-                            $responce['LIST'][$i]['CNT_START'] = $url . '&cmd=start';
-                            $onDisabled .= $responce['LIST'][$i]['TITLE'] . ', ';
+                            $onDisabled .= $title . ', ';
                         }
                     }
 

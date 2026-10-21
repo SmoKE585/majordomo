@@ -1,0 +1,117 @@
+<!--#
+ @version 0.1 (knowledge base)
+#-->
+<div class="md-ui-page md-kb-article" data-kb-article>
+    <nav aria-label="Хлебные крошки">
+        <ol class="breadcrumb md-breadcrumb">
+            <li class="breadcrumb-item"><a href="?">База знаний</a></li>
+            <li class="breadcrumb-item"><a href="?cat=[#DOC_CATEGORY_QUERY#]">[#DOC_CATEGORY_LABEL#]</a></li>
+            <li class="breadcrumb-item active" aria-current="page">[#DOC_TITLE#]</li>
+        </ol>
+    </nav>
+
+    <header class="md-ui-hero md-kb-article__hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-[#DOC_CATEGORY_ICON#]" aria-hidden="true"></i>[#DOC_CATEGORY_LABEL#]</div>
+            <h1 class="md-ui-hero__title">[#DOC_TITLE#]</h1>
+            [#if DOC_DESCRIPTION!=""#]
+            <p class="md-ui-hero__lede">[#DOC_DESCRIPTION#]</p>
+            [#endif#]
+            <div class="md-ui-hero__meta">
+                [#if DOC_AUDIENCE_USER="1"#]<span class="md-badge md-badge--primary"><i class="ti ti-user" aria-hidden="true"></i>Пользователю</span>[#endif#]
+                [#if DOC_AUDIENCE_AGENT="1"#]<span class="md-badge md-badge--info"><i class="ti ti-robot" aria-hidden="true"></i>Агентам</span>[#endif#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>Чтение: <strong>[#DOC_READING#] мин</strong></span>
+                [#if DOC_UPDATED!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-calendar" aria-hidden="true"></i>Обновлено: <strong><time datetime="[#DOC_UPDATED_ISO#]">[#DOC_UPDATED#]</time></strong></span>
+                [#endif#]
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label">К списку</span>
+            </a>
+            <button type="button" class="md-btn md-btn--ghost" data-kb-scroll-top aria-label="К началу материала">
+                <i class="ti ti-arrow-up" aria-hidden="true"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="md-kb-article__layout">
+        <article class="md-kb-prose md-prose">
+            [#DOC_HTML#]
+        </article>
+
+        <aside class="md-kb-article__aside">
+            [#if DOC_TOC#]
+            <section class="md-kb-panel md-kb-toc" aria-label="Содержание">
+                <h2 class="md-kb-panel__title"><i class="ti ti-list" aria-hidden="true"></i>Содержание</h2>
+                <nav>
+                    <ul class="md-kb-toc__list">
+                        [#begin DOC_TOC#]
+                        <li class="md-kb-toc__item[#if IS_SUB="1"#] md-kb-toc__item--sub[#endif#]">
+                            <a class="md-kb-toc__link" href="#[#ID#]" data-kb-toc-link="[#ID#]">[#TITLE#]</a>
+                        </li>
+                        [#end DOC_TOC#]
+                    </ul>
+                </nav>
+            </section>
+            [#endif DOC_TOC#]
+
+            <section class="md-kb-panel md-kb-meta" aria-label="О материале">
+                <h2 class="md-kb-panel__title"><i class="ti ti-info-circle" aria-hidden="true"></i>О материале</h2>
+                <dl class="md-kb-meta__list">
+                    <div>
+                        <dt>Категория</dt>
+                        <dd>[#DOC_CATEGORY_LABEL#]</dd>
+                    </div>
+                    <div>
+                        <dt>Аудитория</dt>
+                        <dd>[#DOC_AUDIENCE_LABEL#]</dd>
+                    </div>
+                    <div>
+                        <dt>Объём</dt>
+                        <dd>[#DOC_WORDS#] слов · [#DOC_READING#] мин</dd>
+                    </div>
+                    [#if DOC_UPDATED!=""#]
+                    <div>
+                        <dt>Обновлено</dt>
+                        <dd><time datetime="[#DOC_UPDATED_ISO#]">[#DOC_UPDATED#]</time></dd>
+                    </div>
+                    [#endif#]
+                </dl>
+
+                [#if DOC_TAGS#]
+                <div class="md-kb-meta__tags">
+                    [#begin DOC_TAGS#]<span class="md-badge md-badge--outline">[#TAG#]</span>[#end DOC_TAGS#]
+                </div>
+                [#endif#]
+
+                <a class="md-kb-source" href="[#DOC_SOURCE_URL#]" target="_blank" rel="noopener noreferrer">
+                    <i class="ti ti-file-code" aria-hidden="true"></i>
+                    <span>
+                        <strong>Исходный Markdown</strong>
+                        <small>[#DOC_SOURCE_LABEL#]</small>
+                    </span>
+                    <i class="ti ti-external-link" aria-hidden="true"></i>
+                </a>
+            </section>
+
+            [#if HAS_PREV="1" || HAS_NEXT="1"#]
+            <nav class="md-kb-panel md-kb-neighbors" aria-label="Соседние материалы">
+                [#if HAS_PREV="1"#]
+                <a class="md-kb-neighbor" href="[#PREV_URL#]">
+                    <span class="md-kb-neighbor__hint"><i class="ti ti-arrow-left" aria-hidden="true"></i>Предыдущий</span>
+                    <strong>[#PREV_TITLE#]</strong>
+                </a>
+                [#endif#]
+                [#if HAS_NEXT="1"#]
+                <a class="md-kb-neighbor md-kb-neighbor--next" href="[#NEXT_URL#]">
+                    <span class="md-kb-neighbor__hint">Следующий<i class="ti ti-arrow-right" aria-hidden="true"></i></span>
+                    <strong>[#NEXT_TITLE#]</strong>
+                </a>
+                [#endif#]
+            </nav>
+            [#endif#]
+        </aside>
+    </div>
+</div>

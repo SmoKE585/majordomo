@@ -1,0 +1,15 @@
+<!--#
+ @version 0.1 (knowledge base)
+#-->
+<link rel="stylesheet" href="<#ROOTHTML#>assets/modules/knowledge_base/knowledge_base.css?v=2026-10-21-1">
+<script src="<#ROOTHTML#>assets/modules/knowledge_base/knowledge_base.js?v=2026-10-21-1" defer></script>
+
+[#if KB_MODE="doc"#]
+[#inc action_doc.html#]
+[#else#]
+[#if KB_MODE="missing"#]
+[#inc action_missing.html#]
+[#else#]
+[#inc action_admin.html#]
+[#endif#]
+[#endif#]

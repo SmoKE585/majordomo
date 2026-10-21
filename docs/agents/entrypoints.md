@@ -11,6 +11,8 @@ public/index.php   ─┼─> bootstrap.php ─> MajorDoMo\Core\Application
 public/nf.php      ─┘                         │
                                               ├─ AdminApplication  (panel)
                                               └─ SiteApplication   (сайт)
+
+public/install.php ───> InstallApplication (config only, без loader/settings)
 ```
 
 - `bootstrap.php` только выставляет `MD_APP_ROOT`, делает `chdir` в корень и
@@ -44,8 +46,8 @@ public/nf.php      ─┘                         │
 
 `Application::bootSettings()`:
 
-1. `load_settings.php` — `SETTINGS_*`, timezone, basic auth;
-2. может вызвать `exit` (main cycle down, 401) — это ожидаемо.
+1. `load_settings.php` — `SETTINGS_*`, timezone, токены WebSocket;
+2. может вызвать `exit` (main cycle down) — это ожидаемо. Авторизацию выполняет reverse proxy, встроенной Basic Auth больше нет.
 
 `Application::startSession('prj')`:
 
@@ -60,17 +62,18 @@ public/nf.php      ─┘                         │
 
 | Глобал | Кто использует | Кто обязан выставить |
 | --- | --- | --- |
-| `$session` | почти все модули, `panel`, `control_access` | `Application::startSession()` |
+| `$session` | почти все модули, `panel` | `Application::startSession()` |
 | `$db` | `objects`, `control_modules` | `lib/loader.php` |
 | `$md` | `jTemplate`, модули | `AdminApplication` / `SiteApplication` |
-| `$action` | `panel`, `control_access`, `control_modules` | роутер `nf.php` или `AdminApplication` |
+| `$action` | `panel`, `control_modules` | роутер `nf.php` или `AdminApplication` |
 | `$view_mode` | модули | роутер/`$_REQUEST` (как раньше) |
 | `$fake_doc` | `AdminApplication`, `SiteApplication` | `nf.php` |
 | `$filterblock` | postprocess | никто (обычно пусто) |
 | `$wsClient` | `index.php` при закрытии | `lib/caching.class.php` |
 
 Если переносите код в метод, объявляйте `global $session` и т.п. **до**
-использования. Иначе `panel::run()` создаст вторую сессию и логин сломается.
+использования. Иначе `panel::run()` создаст вторую сессию и сломает
+пользовательские сценарии.
 
 ## 4. Как добавить новую точку входа
 
@@ -88,6 +91,17 @@ public/nf.php      ─┘                         │
 4. Не добавляйте в `public/*.php` `include config.php`, `include loader.php`
    или `include load_settings.php` — это снова размажет boot.
 5. Проверьте `global $session`, вывод, `exit`-пути и таймеры.
+
+### Мастер первого запуска
+
+`public/install.php` → `MajorDoMo\Core\InstallApplication`. Это осознанное
+исключение из обычного порядка: вызывается только `bootConfiguration()`, без
+`lib/loader.php` и `load_settings.php`. Причина — база может быть недоступна или
+ещё не содержать таблиц, а мастер обязан показать диагностику и форму, а не
+`Fatal error`. `InstallGate` при этом подключён в обычных `AdminApplication`,
+`SiteApplication`, `public/api.php` и `objects/index.php`, поэтому до завершения
+настройки пользователь не попадёт в остальные разделы. Подробно —
+[`install.md`](install.md).
 
 ## 5. Правила для правок
 

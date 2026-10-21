@@ -146,6 +146,10 @@ if (!function_exists('settingsBuildLanguageOptions')) {
     }
 }
 
+$systemSettings = new \MajorDoMo\Core\Settings\SettingsManager(ROOT);
+$systemSections = \MajorDoMo\Core\Settings\SettingsSchema::sections();
+$settings_sections = $systemSections + $settings_sections;
+
 $sectionKeys = array_keys($settings_sections);
 $defaultSection = isset($sectionKeys[0]) ? $sectionKeys[0] : '';
 
@@ -158,8 +162,11 @@ if (!isset($this->filter_name) || $this->filter_name == '' || !isset($settings_s
 }
 
 $activeSection = $this->filter_name;
+$isSystemSection = \MajorDoMo\Core\Settings\SettingsSchema::hasSection($activeSection);
 $activeSectionData = isset($settings_sections[$activeSection]) ? $settings_sections[$activeSection] : array('title' => '', 'description' => '', 'settings' => array());
-$options = $activeSectionData['settings'];
+$options = $isSystemSection
+    ? \MajorDoMo\Core\Settings\SettingsSchema::fieldsForSection($activeSection)
+    : $activeSectionData['settings'];
 $specialOptions = array(
     'SITE_LANGUAGE' => settingsBuildLanguageOptions(),
     'VOICE_LANGUAGE' => settingsBuildLanguageOptions(),
@@ -176,7 +183,7 @@ foreach ($settings_sections as $sectionId => $sectionData) {
     );
 }
 
-$settingsTotal = 0;
+$settingsTotal = count(\MajorDoMo\Core\Settings\SettingsSchema::fields());
 foreach ($settings_sections as $sectionData) {
     $settingsTotal += isset($sectionData['settings']) ? count($sectionData['settings']) : 0;
 }
@@ -189,6 +196,48 @@ $out['ACTIVE_SECTION_COUNT'] = count($options);
 $out['SECTION_COUNT'] = count($sections);
 $out['SETTINGS_TOTAL'] = $settingsTotal;
 $out['CHANGED_IN_SECTION'] = 0;
+$out['SYSTEM_SECTION'] = $isSystemSection ? 1 : 0;
+$out['CAN_RESET'] = $activeSection === \MajorDoMo\Core\Settings\SettingsSchema::SECTION_DATABASE ? 0 : 1;
+
+if ($isSystemSection) {
+    if (!empty($_SESSION['md_settings_warnings']) && is_array($_SESSION['md_settings_warnings'])) {
+        $out['WARN_MSG'] = implode(' ', $_SESSION['md_settings_warnings']);
+        unset($_SESSION['md_settings_warnings']);
+    }
+    if ($this->mode == 'update') {
+        $saveResult = $systemSettings->save($_POST);
+        if (!empty($saveResult['ok'])) {
+            $warnings = !empty($saveResult['warnings']) ? $saveResult['warnings'] : array();
+            if (!empty($saveResult['reload'])) {
+                $warnings[] = 'Подключение к базе изменено. Основной цикл завершится, чтобы переподключиться; служба (systemd) должна запустить его снова.';
+            }
+            if ($warnings !== array()) {
+                $_SESSION['md_settings_warnings'] = $warnings;
+            }
+            $this->redirect('?updated=1&filter_name=' . urlencode($activeSection));
+        }
+        $out['ERR_MSG'] = implode(' ', array_values($saveResult['errors']));
+    } elseif ($this->mode == 'reset') {
+        $resetResult = $systemSettings->resetSection($activeSection);
+        if (!empty($resetResult['ok'])) {
+            $this->redirect('?updated=1&filter_name=' . urlencode($activeSection));
+        }
+        $out['ERR_MSG'] = implode(' ', array_values($resetResult['errors']));
+    }
+
+    if (gr('updated')) {
+        $out['UPDATED'] = 1;
+    }
+    $out['RESULT'] = $systemSettings->formRows($activeSection);
+    $out['ACTIVE_SECTION_COUNT'] = count($out['RESULT']);
+    $out['CHANGED_IN_SECTION'] = $systemSettings->sectionChangedCount($activeSection);
+    return;
+}
+
+if (!empty($_SESSION['md_settings_warnings']) && is_array($_SESSION['md_settings_warnings'])) {
+    $out['WARN_MSG'] = implode(' ', $_SESSION['md_settings_warnings']);
+    unset($_SESSION['md_settings_warnings']);
+}
 
 foreach ($options as $settingName => $meta) {
     $existing = SQLSelectOne("SELECT * FROM settings WHERE NAME='" . DBSafe($settingName) . "'");
@@ -368,20 +417,11 @@ if ($res) {
     $out['RESULT'] = $res;
 }
 
-if ($this->mode == 'update') {
-    if ($activeSection == 'system' && file_exists(ROOT . 'scripts/cycle_db_save.php')) {
-        $service = 'cycle_db_save';
-        sg($service . 'Run', '');
-        sg($service . 'Control', 'restart');
-    }
-    $this->redirect("?updated=1&filter_name=" . urlencode($activeSection));
-}
-
-if ($this->mode == 'reset') {
-    if ($activeSection == 'system' && file_exists(ROOT . 'scripts/cycle_db_save.php')) {
-        $service = 'cycle_db_save';
-        sg($service . 'Run', '');
-        sg($service . 'Control', 'restart');
+if ($this->mode == 'update' || $this->mode == 'reset') {
+    $cycleManager = new \MajorDoMo\Core\Cycles\CycleManager(ROOT);
+    $cycleManager->restartAll();
+    if (!$cycleManager->isSupervisorRunning()) {
+        $_SESSION['md_settings_warnings'] = array('Основной цикл (cycle.php) сейчас не запущен. Настройки сохранены, но фоновые процессы подхватят их при следующем запуске.');
     }
     $this->redirect("?updated=1&filter_name=" . urlencode($activeSection));
 }

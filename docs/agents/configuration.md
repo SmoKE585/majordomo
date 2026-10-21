@@ -174,9 +174,9 @@ Config::safeAll();                   // массив без secret-ключей
    потом меняйте `.env.example`.
 5. Для `null`/пустой строки сохраняйте прежнюю семантику. Не превращайте
    «не задано» в `0` или `''` без проверки всех веток.
-6. Секреты (`DB_PASSWORD`, `REDIS_PASSWORD`, `EXT_ACCESS_PASSWORD`,
-   `WEBSOCKETS_AUTH_TOKEN`, `WEBSOCKETS_TLS_PEM_PASSPHRASE`) не логируйте, не
-   выводите в UI и не добавляйте в audit-отчёт.
+6. Секреты (`DB_PASSWORD`, `REDIS_PASSWORD`, `WEBSOCKETS_AUTH_TOKEN`,
+   `WEBSOCKETS_TLS_PEM_PASSPHRASE`) не логируйте, не выводите в UI и не
+   добавляйте в audit-отчёт.
 7. Прогоните `php tools/config-audit.php` повторно: число обращений к этому
    ключу должно уменьшиться.
 
@@ -297,7 +297,7 @@ if (Config::get('USE_REDIS', false)) { ... }
 **Что с `SETTINGS_*`?**
 Это пользовательские настройки из таблицы `settings` (тема, язык, время).
 Они остаются в БД и определяются в `load_settings.php`; в `.env` их нет.
-Приоритет для `HOME_NETWORK`, `EXT_ACCESS_*`, websocket-токена:
+Приоритет для websocket-токена:
 настройка из БД > `.env` > default.
 
 **Как переопределить значение только на этой машине?**

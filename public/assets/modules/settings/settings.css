@@ -43,6 +43,25 @@ body.md-admin-shell .md-settings-card .md-card__title {
 
 body.md-admin-shell .md-settings-card .md-card__head {
   padding-bottom: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+body.md-admin-shell .md-settings-storage {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-settings-storage--env {
+  color: var(--md-ui-info);
+  border-color: color-mix(in srgb, var(--md-ui-info) 45%, transparent);
+}
+
+body.md-admin-shell .md-settings-clear-secret {
+  margin-top: 2px;
+  font-size: var(--md-ui-fs-xs);
 }
 
 body.md-admin-shell .md-settings-card .md-card__subtitle {

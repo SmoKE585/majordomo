@@ -100,6 +100,8 @@ function mdj_admin_route_table($rootHtml = null)
             => '?(panel:{action=system_errors})&md=system_errors&view_mode=delete_system_errors&id=\1',
         '/^' . $root . 'panel\/system_errors\/(\d+)\.html/is'
             => '?(panel:{action=system_errors})&md=system_errors&view_mode=edit_system_errors&id=\1',
+        '/^' . $root . 'panel\/knowledge_base\/([\w.-]+(?:\/[\w.-]+)*)\.html/is'
+            => '?(panel:{action=knowledge_base})&md=knowledge_base&view_mode=view_doc&doc=\1',
         '/^' . $root . 'panel\/mqtt\/settings\.html/is'
             => '?(panel:{action=mqtt})&md=mqtt&view_mode=settings',
         '/^' . $root . 'panel\/mqtt\/add\.html/is'
@@ -1008,6 +1010,37 @@ function mdj_admin_build_pretty($state)
             );
         }
         return null;
+    }
+
+    if ($module === 'knowledge_base') {
+        if ($parents) {
+            return null;
+        }
+
+        $doc = isset($params['doc']) && is_scalar($params['doc']) ? trim((string)$params['doc']) : '';
+        if ($doc !== '') {
+            if (!preg_match('/^[\w.-]+(?:\/[\w.-]+)*$/', $doc)) {
+                return null;
+            }
+            unset($extra['doc']);
+            $dropView = true;
+            $encodedDoc = implode('/', array_map('rawurlencode', explode('/', $doc)));
+
+            return array(
+                'path' => '/panel/knowledge_base/' . $encodedDoc . '.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+
+        if ($view !== '' && $view !== 'search_knowledge_base') {
+            return null;
+        }
+        $dropView = $view === 'search_knowledge_base';
+
+        return array(
+            'path' => '/panel/knowledge_base.html',
+            'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+        );
     }
 
     if ($module === 'mqtt') {

@@ -29,26 +29,40 @@ class Threads
 
 
    public function closeThread($id) {
+      if (!isset($this->handles[$id])) {
+         return;
+      }
       $pstatus = proc_get_status($this->handles[$id]);
+      if (empty($pstatus['running'])) {
+         return;
+      }
       $pid = $pstatus['pid'];
       $cmd = $pstatus['command'];
       DebMes("Closing thread $pid ($cmd)",'threads');
-      //if (!proc_terminate($this->handles[$id])) {
-         //DebMes("Cannot close process $pid ($cmd) with proc_terminate",'threads');
-         if (IsWindowsOS()) {
-            $exec_str="taskkill /F /T /PID $pid";
-         } else {
-            $exec_str="kill -9 $pid";
+
+      // Ask the cycle to exit first. Cycles keep their own state on disk, so a
+      // graceful termination is safe and much less likely to leave a half-written
+      // backup or a locked queue behind.
+      @proc_terminate($this->handles[$id]);
+      for ($i = 0; $i < 15; $i++) {
+         usleep(200000);
+         $status = proc_get_status($this->handles[$id]);
+         if (empty($status['running'])) {
+            DebMes("Process $pid ($cmd) stopped after SIGTERM",'threads');
+            return;
          }
-         DebMes("Executing: ".$exec_str,'threads');
-         $output = array();
-         $result = exec($exec_str,$output);
-         DebMes("Result: ".implode("\n",$output),'threads');
-         /*
-      } else {
-         DebMes("Process $pid ($cmd) closed with proc_terminate",'threads');
       }
-         */
+
+      // Fall back to a forced kill for cycles that ignore SIGTERM.
+      if (IsWindowsOS()) {
+         $exec_str = "taskkill /F /T /PID $pid";
+      } else {
+         $exec_str = "kill -9 $pid";
+      }
+      DebMes("Executing: " . $exec_str,'threads');
+      $output = array();
+      $result = exec($exec_str, $output);
+      DebMes("Result: " . implode("\n", $output),'threads');
    }
 
    /**

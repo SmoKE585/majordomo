@@ -1,58 +1,19 @@
 <?php
 
+/**
+ * Legacy DB-backed settings that are not part of the first-run schema.
+ *
+ * The main sections (database, identity, performance, logging, Redis,
+ * WebSockets, security, integrations) come from
+ * `MajorDoMo\Core\Settings\SettingsSchema`. Keeping only the unique legacy
+ * sections here avoids showing the same option twice after the wizard settings
+ * moved into "Общие настройки".
+ */
 $settings_sections = array(
-    'interface' => array(
-        'title' => 'Интерфейс',
-        'description' => 'Основные параметры внешнего вида и локализации системы.',
-        'settings' => array(
-            'GENERAL_ALICE_NAME' => array(
-                'title' => 'Имя системы',
-                'notes' => 'Так система представляется в интерфейсе, API и голосовых сообщениях.',
-                'default' => '',
-                'priority' => 40,
-            ),
-            'SITE_LANGUAGE' => array(
-                'title' => 'Язык интерфейса',
-                'notes' => 'Определяет язык административной панели и основных системных сообщений.',
-                'type' => 'select',
-                'default' => 'en',
-                'priority' => 39,
-            ),
-            'SITE_TIMEZONE' => array(
-                'title' => 'Часовой пояс',
-                'notes' => 'Используется для расписаний, журналов, таймеров и отображения времени.',
-                'type' => 'select',
-                'default' => 'Europe/Moscow',
-                'priority' => 38,
-            ),
-            'THEME' => array(
-                'title' => 'Тема оформления',
-                'notes' => 'Переключает светлую и тёмную тему интерфейса.',
-                'type' => 'select',
-                'default' => 'dark',
-                'data' => 'light=Светлая|dark=Тёмная',
-                'priority' => 37,
-            ),
-        ),
-    ),
     'voice' => array(
-        'title' => 'Голос и озвучивание',
-        'description' => 'Параметры синтеза речи и код, который выполняется до и после озвучивания.',
+        'title' => 'Голос: хуки',
+        'description' => 'Пользовательский код, который выполняется до и после озвучивания. Базовые язык и сигнал вынесены в раздел «Основные».',
         'settings' => array(
-            'VOICE_LANGUAGE' => array(
-                'title' => 'Язык голосовых уведомлений',
-                'notes' => 'Язык по умолчанию для голосовых уведомлений и ответов.',
-                'type' => 'select',
-                'default' => 'en',
-                'priority' => 30,
-            ),
-            'SPEAK_SIGNAL' => array(
-                'title' => 'Звуковой сигнал перед фразой',
-                'notes' => 'Добавляет короткий сигнал перед озвучиванием, чтобы сообщение было заметнее.',
-                'type' => 'onoff',
-                'default' => '1',
-                'priority' => 29,
-            ),
             'HOOK_BEFORE_SAY' => array(
                 'title' => 'Код перед озвучиванием',
                 'notes' => 'Код выполняется непосредственно перед вызовом `say()` и может менять поведение озвучки.',
@@ -157,45 +118,6 @@ $settings_sections = array(
             ),
         ),
     ),
-    'system' => array(
-        'title' => 'Система',
-        'description' => 'Параметры журналирования, сохранения базы и служебного доступа.',
-        'settings' => array(
-            'SYSTEM_DISABLE_DEBMES' => array(
-                'title' => 'Отключить журнал DebMes',
-                'notes' => 'Полностью выключает запись в DebMes. Полезно только для очень нагруженных систем.',
-                'type' => 'onoff',
-                'default' => '0',
-                'priority' => 16,
-            ),
-            'SYSTEM_DEBMES_PATH' => array(
-                'title' => 'Папка журналов DebMes',
-                'notes' => 'Каталог, в котором хранятся файлы журналов DebMes.',
-                'type' => 'path',
-                'default' => '',
-                'priority' => 15,
-            ),
-            'SYSTEM_DB_MAIN_SAVE_PERIOD' => array(
-                'title' => 'Период сохранения основной БД, минут',
-                'notes' => 'Как часто сохранять основную базу данных на диск.',
-                'default' => '15',
-                'priority' => 14,
-            ),
-            'SYSTEM_DB_HISTORY_SAVE_PERIOD' => array(
-                'title' => 'Период сохранения истории, минут',
-                'notes' => 'Как часто сохранять исторические данные и значения.',
-                'default' => '60',
-                'priority' => 13,
-            ),
-            'SYSTEM_WEBSOCKETS_TOKEN' => array(
-                'title' => 'Токен доступа к WebSocket',
-                'notes' => 'Если задан, WebSocket-клиенты должны передавать этот токен при подключении.',
-                'type' => 'password',
-                'default' => '',
-                'priority' => 12,
-            ),
-        ),
-    ),
     'editor' => array(
         'title' => 'Редактор кода',
         'description' => 'Параметры встроенного редактора для скриптов, методов и других кодовых полей.',
@@ -262,31 +184,6 @@ $settings_sections = array(
             ),
         ),
     ),
-    'access' => array(
-        'title' => 'Удалённый доступ',
-        'description' => 'Параметры домашней сети и базовой авторизации при внешнем доступе.',
-        'settings' => array(
-            'REMOTE_HOME_NETWORK' => array(
-                'title' => 'Домашняя сеть',
-                'notes' => 'Маска локальной сети, например `192.168.0.*`, чтобы отделять домашний доступ от внешнего.',
-                'default' => '',
-                'priority' => 2,
-            ),
-            'REMOTE_EXT_ACCESS_USERNAME' => array(
-                'title' => 'Логин внешнего доступа',
-                'notes' => 'Имя пользователя для удалённого входа, если он включён.',
-                'default' => '',
-                'priority' => 1,
-            ),
-            'REMOTE_EXT_ACCESS_PASSWORD' => array(
-                'title' => 'Пароль внешнего доступа',
-                'notes' => 'Пароль для удалённого входа. Оставляйте сложный пароль.',
-                'type' => 'password',
-                'default' => '',
-                'priority' => 0,
-            ),
-        ),
-    ),
     'mail' => array(
         'title' => 'Почта',
         'description' => 'Настройки отправки почтовых уведомлений через SMTP или Sendmail.',
@@ -332,19 +229,6 @@ $settings_sections = array(
                 'type' => 'select',
                 'data' => '=Без шифрования|ssl=SSL|tls=TLS',
                 'priority' => 4,
-            ),
-        ),
-    ),
-    'backup' => array(
-        'title' => 'Резервные копии',
-        'description' => 'Папка для хранения резервных копий системы.',
-        'settings' => array(
-            'BACKUP_PATH' => array(
-                'title' => 'Папка для резервных копий',
-                'notes' => 'Если путь задан, резервные копии будут складываться в этот каталог.',
-                'type' => 'path',
-                'default' => '',
-                'priority' => 10,
             ),
         ),
     ),

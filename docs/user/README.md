@@ -37,6 +37,15 @@ Any help is much appreciated.
 Docs for shared CodeMirror integration:
 - [docs/agents/codemirror-module-integration.md](docs/agents/codemirror-module-integration.md)
 
+First run
+=========
+On a fresh installation open `/install.php` (or just `/panel/` — it redirects to
+the wizard). The wizard checks PHP/extensions/file permissions, connects to the
+database, writes `.env`, saves interface settings (theme, system name, language,
+timezone) and creates the first administrator when needed. Until the wizard is
+finished, `/panel/`, the site, `/api/` and direct module endpoints stay behind
+the setup gate. Details: `docs/agents/install.md`.
+
 Admin asset build
 =========
 The admin panel assets are built with npm + Vite into `public/assets/admin/` and committed, so PHP hosting does not need Node.js at runtime.

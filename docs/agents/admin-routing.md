@@ -71,6 +71,8 @@
 | `/panel/mqtt/settings.html` | настройки брокера |
 | `/panel/mqtt/clear-trash.html` | очистка непривязанных топиков |
 | `/panel/mqtt/optimize.html` | оптимизация истории MQTT |
+| `/panel/knowledge_base.html` | база знаний (список материалов) |
+| `/panel/knowledge_base/<path>.html` | материал базы знаний (путь без `.md`) |
 | `/panel/settings.html?filter_name=codeeditor` | настройки с фильтром |
 | `/panel/<module>.html` | список любого модуля |
 | `/panel/<module>/<id>.html` | карточка любого модуля (generic) |

@@ -4857,6 +4857,13 @@ body.md-admin-shell .md-cycle-card.is-stopped {
   --md-cycle-tone: var(--md-ui-danger);
 }
 
+body.md-admin-shell .md-cycle-card.is-disabled {
+  --md-cycle-accent: var(--md-ui-muted);
+  --md-cycle-soft: var(--md-ui-surface-muted);
+  --md-cycle-tone: var(--md-ui-muted);
+  opacity: 0.86;
+}
+
 body.md-admin-shell .md-cycle-card__signal {
   display: inline-block;
   flex: 0 0 auto;
@@ -5159,6 +5166,13 @@ body.md-admin-shell .md-cycle-table__row.is-stopped {
   --md-cycle-accent: var(--md-ui-danger);
   --md-cycle-soft: var(--md-ui-danger-soft);
   --md-cycle-tone: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-cycle-table__row.is-disabled {
+  --md-cycle-accent: var(--md-ui-muted);
+  --md-cycle-soft: var(--md-ui-surface-muted);
+  --md-cycle-tone: var(--md-ui-muted);
+  opacity: 0.86;
 }
 
 body.md-admin-shell .md-cycle-table__identity {

@@ -598,9 +598,11 @@ class saverestore extends module
     {
         return array(
             'connect',
+            'control_access',
             'dashboard',
             'dateselect',
             'layouts',
+            'master',
             'myblocks',
             'security_rules',
             'shoutrooms',
@@ -796,38 +798,6 @@ class saverestore extends module
 
         SQLExec("DELETE FROM project_modules WHERE NAME IN (" . $in_list . ")");
         SQLExec("DELETE FROM ignore_updates WHERE NAME IN (" . $in_list . ")");
-
-        $users = SQLSelect("SELECT ID, ACCESS FROM admin_users");
-        $total_users = count($users);
-        $changed_users = 0;
-        for ($i = 0; $i < $total_users; $i++) {
-            $access = trim((string)$users[$i]['ACCESS']);
-            if ($access == '') {
-                continue;
-            }
-
-            $parts = array_filter(array_map('trim', explode(',', $access)), 'strlen');
-            $filtered = array();
-            $changed = false;
-            foreach ($parts as $part) {
-                if (in_array($part, $modules, true)) {
-                    $changed = true;
-                    continue;
-                }
-                $filtered[] = $part;
-            }
-
-            if ($changed) {
-                $new_access = implode(',', $filtered);
-                SQLExec("UPDATE admin_users SET ACCESS='" . DBSafe($new_access) . "' WHERE ID=" . (int)$users[$i]['ID']);
-                DebMes('Removed obsolete module access from admin user ID ' . (int)$users[$i]['ID'], 'restore');
-                $changed_users++;
-            }
-        }
-
-        if ($iframe && $changed_users > 0) {
-            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Updated admin user access for obsolete modules</div>');
-        }
     }
 
     function cleanupObsoleteSystemModules($iframe = 0)
@@ -1815,7 +1785,6 @@ class saverestore extends module
                 if (is_dir($d . '/' . $file)
                     && ($file != '..')
                     && ($file != '.')
-                    && ($file != 'control_access')
                     && ($file != 'control_modules')
                 ) {
                     $res[] = $file;

@@ -16,7 +16,7 @@ Reusable cycle UI for module pages and X-Ray.
 <?= MDJUI::cycleCard([
     'name' => 'cycle_mqtt',
     'label' => 'Состояние цикла',
-    'status' => 'stopped',          // running|starting|stopping|hang|stopped|unknown
+    'status' => 'stopped',          // running|starting|stopping|hang|stopped|disabled|unknown
     'status_text' => 'Остановлен',
     'online' => false,
     'updated' => '08.07.2020 17:55:07',
@@ -30,8 +30,11 @@ Reusable cycle UI for module pages and X-Ray.
 
 Rendering rules:
 
-- stopped/unknown — only **Запуск**.
-- running/starting/stopping/hang — **Рестарт** and **Остановить**.
+- stopped/unknown — **Запуск** and **Отключить**.
+- running/starting/stopping/hang — **Рестарт**, **Остановить** and **Отключить**.
+- disabled — only **Включить** (and **Лог**, if configured).
+- `disabled` is a persisted state: the process is stopped and is not restarted
+  until an administrator enables it. It is not a UI pause.
 - status badge and signal dot are both driven by the state; do not hardcode colors in module templates.
 - compact strip is limited to `500px` so it does not turn into an empty full-width card.
 - full card shows label, details, updated and auto-restart; compact shows name, state, online, updated and actions.
@@ -60,7 +63,7 @@ Columns: **цикл**, **состояние**, **обновлено**, **дей�
 - `data-md-cycle-name` — cycle name sent to the endpoint.
 - `data-md-cycle-endpoint` — JSON endpoint; default is `ROOTHTML + ajax/xray.html?action=service`.
 - `data-md-cycle-poll="1|0"` — enable/disable periodic refresh. X-Ray rows are refreshed by the page poller; the module mini widget polls itself.
-- `data-md-cycle-command="start|stop|restart"` — action buttons.
+- `data-md-cycle-command="start|stop|restart|disable|enable"` — action buttons.
 - `data-md-cycle-status` — status badge.
 - `data-md-cycle-online` — ONLINE/OFFLINE indicator.
 - `data-md-cycle-updated` — last activity text.
@@ -76,11 +79,16 @@ Columns: **цикл**, **состояние**, **обновлено**, **дей�
   "STATUS_TEXT": "Работает",
   "UPDATED": 1594216507,
   "ONLINE": 1,
+  "DISABLED": 0,
+  "DESIRED": "running",
   "BODY": "…legacy summary…"
 }
 ```
 
-Commands are queued through the same endpoint (`op=start|stop|restart`). Do not create a second control API for a module; pass the same endpoint to the component.
+Commands are queued through the same endpoint
+(`op=start|stop|restart|disable|enable`). They go through
+`MajorDoMo\Core\Cycles\CycleManager`; do not create a second control API for a
+module. See `docs/agents/cycles.md` for persistence and supervisor behaviour.
 
 ## Files
 

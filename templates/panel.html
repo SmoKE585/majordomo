@@ -8,7 +8,6 @@
 	</head>
 
 <body class="md-admin-shell [#if PRINT=="1"#]md-admin-print[#endif#]">
-	[#if AUTHORIZED#]
 	<script>
 	window.MDJAdminConfig = window.MDJAdminConfig || {};
 	window.MDJAdminConfig.flashNotifications = [#if FLASH_NOTIFICATIONS_JSON!=""#][#FLASH_NOTIFICATIONS_JSON#][#else#][][#endif#];
@@ -379,9 +378,6 @@
 			</div>
 		</div>
 	</div><!--partloadend-->
-	[#else AUTHORIZED#]
-	[#module name="control_access" action="enter" instance="auth"#]
-	[#endif AUTHORIZED#]
 
 
 	<script language="javascript">

@@ -92,17 +92,6 @@ if ($mode2 == 'download') {
     setEvalCode($code);
     @eval($code);
     setEvalCode();
-    // add module to control access
-    global $session;
-    $user = SQLSelectOne("SELECT * FROM admin_users WHERE LOGIN='" . DBSafe($session->data["USER_NAME"]) . "'");
-    if ($user['ID'] && !Is_Integer(strpos($user["ACCESS"], $name))) {
-        if ($user["ACCESS"] != '') {
-            $user["ACCESS"] .= ",$name";
-        } else {
-            $user["ACCESS"] = $name;
-        }
-        SQLUpdate('admin_users', $user);
-    }
     SQLExec("UPDATE project_modules SET HIDDEN='" . (int)$rec['HIDDEN'] . "' WHERE NAME='" . $name . "'");
     // redirect to edit
     $this->redirect("?name=$name&mode=edit");

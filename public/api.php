@@ -3,6 +3,10 @@ require dirname(__DIR__) . '/bootstrap.php';
 
 include_once("./config.php");
 
+// API clients cannot complete the browser wizard; return a machine-readable
+// 503 with the setup URL instead of redirecting to HTML.
+\MajorDoMo\Core\Install\InstallGate::redirectIfRequired(MD_APP_ROOT, true);
+
 if (isset($argv[0]) && $argv[0] != '') {
     set_time_limit(60);
     ignore_user_abort(1);

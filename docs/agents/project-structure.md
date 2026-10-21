@@ -14,10 +14,12 @@
 │   ├── admin.php               # админка, part-load, канонизация URL
 │   ├── nf.php                  # pretty URL, legacy pd, 404
 │   ├── api.php                 # REST API
+│   ├── install.php             # мастер первичной настройки
 │   ├── 404.php                 # error_page 404
 │   ├── favicon.ico  robots.txt
 │   └── assets/                 # публикуется как /assets/
 │       ├── admin/              # Vite-бандл (собирается, коммитится)
+│       ├── install/            # page-only CSS/JS мастера
 │       ├── css/                # legacy-стили: stl.css, темы, jQuery UI
 │       ├── js/                 # legacy-скрипты: scripts.js, panel.js
 │       ├── img/                # иконки, логотипы, флаги, иконки модулей
@@ -36,15 +38,19 @@
 │   ├── README.md  agents/  user/  deploy/  dev/  archive/  ui-redesign/
 ├── modules/                    # PHP-модули и их веб-эндпоинты (/modules/...)
 ├── templates/                  # include-only разметка (*.html), PHP-партиалы
+│   └── install/                # разметка мастера первичной настройки
 ├── lib/                        # ядро, include-only PHP
+│   ├── core/Install/           # мастер: состояние, gate, .env, схема, schema.sql
+│   ├── core/Settings/          # общие настройки: схема, manager, presenter
+│   └── core/Cycles/            # состояние, супервизор и публичный API циклов
 ├── languages/                  # переводы интерфейса
 ├── cms/                        # рантайм-данные и медиа (/cms/...)
 ├── backup/                     # резервные копии saverestore (runtime, gitignored)
 ├── 3rdparty/                   # PHP-библиотеки и elFinder (/3rdparty/...)
 ├── objects/                    # /objects/?script=…
 ├── scripts/                    # CLI-циклы и smoke-тесты (/scripts/…)
-├── tools/                      # dev-инструменты (скриншоты, иконки, сканер ассетов)
-├── tests/                      # smoke/regression: routing, core runtime, cycle
+├── tools/                      # dev-инструменты (скриншоты, иконки, config, install)
+├── tests/                      # smoke/regression: routing, config, install, settings/cycles, core runtime
 ├── package.json / vite.*.js    # сборка статики
 └── AGENTS.md  README.md        # короткие указатели в корне
 ```
@@ -60,6 +66,8 @@
 | `/` | `public/index.php` |
 | `/admin.php`, `/admin.php?...` | `public/admin.php` |
 | `/panel/...` (pretty URL) | `public/nf.php` + `lib/admin_router.php` |
+| `/install.php` | `public/install.php` (канонический URL мастера) |
+| `/install`, `/install/` | 302 → `/install.php` (nginx/dev_server) |
 | `/api/...` | `public/api.php` |
 | `/404.php` | `public/404.php` |
 | `/assets/...` | `public/assets/...` |

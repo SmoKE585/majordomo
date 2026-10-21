@@ -1,0 +1,1582 @@
+/* ==========================================================================
+   First-run setup wizard
+   Page-only styles. Components come from the shared admin bundle (md-*).
+   ========================================================================== */
+
+body.md-install-shell {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--md-ui-text);
+  background:
+    radial-gradient(1100px 520px at 8% -8%, var(--md-ui-primary-soft), transparent 65%),
+    radial-gradient(900px 480px at 100% 0%, var(--md-ui-info-soft), transparent 60%),
+    var(--md-ui-bg);
+  font-family: var(--md-ui-font);
+}
+
+body.md-install-shell::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  opacity: .35;
+  background-image:
+    linear-gradient(to right, var(--md-ui-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--md-ui-border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 70%);
+}
+
+.md-install {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+   Top bar
+   -------------------------------------------------------------------------- */
+
+.md-install__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px clamp(16px, 3vw, 40px);
+  border-bottom: 1px solid var(--md-ui-border);
+  background: color-mix(in srgb, var(--md-ui-bg) 82%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.md-install__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--md-ui-text);
+  text-decoration: none;
+}
+
+.md-install__brand:hover {
+  color: var(--md-ui-text);
+}
+
+.md-install__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: var(--md-ui-primary-contrast);
+  background: linear-gradient(145deg, var(--md-ui-primary), var(--md-ui-primary-strong));
+  border-radius: 13px;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--md-ui-primary) 26%, transparent);
+  font-size: 21px;
+}
+
+.md-install__brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.md-install__brand-text strong {
+  font-size: var(--md-ui-fs-md);
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.md-install__brand-text small {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+.md-install__topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.md-install__step-badge {
+  font-variant-numeric: tabular-nums;
+}
+
+.md-install__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  cursor: pointer;
+  transition: color var(--md-ui-transition), border-color var(--md-ui-transition), background var(--md-ui-transition);
+}
+
+.md-install__icon-btn:hover {
+  color: var(--md-ui-text);
+  background: var(--md-ui-surface-2);
+  border-color: var(--md-ui-border-strong);
+}
+
+.md-install__icon-btn i {
+  font-size: 18px;
+}
+
+/* --------------------------------------------------------------------------
+   Layout
+   -------------------------------------------------------------------------- */
+
+.md-install__layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 56px);
+  width: min(1400px, 100%);
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 48px) clamp(16px, 3vw, 40px) 80px;
+}
+
+.md-install__aside {
+  position: sticky;
+  top: 92px;
+  align-self: start;
+  min-width: 0;
+}
+
+.md-install__intro {
+  margin-bottom: 26px;
+}
+
+.md-install__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  color: var(--md-ui-primary);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.md-install__eyebrow i {
+  font-size: 14px;
+}
+
+.md-install__intro h1 {
+  margin: 0 0 14px;
+  color: var(--md-ui-text);
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -.045em;
+}
+
+.md-install__intro p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-sm);
+  line-height: 1.65;
+}
+
+.md-install__intro code,
+.md-install-step__head code,
+.md-install-note code,
+.md-install-success code {
+  padding: 1px 5px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 5px;
+  font-family: var(--md-ui-font-mono);
+  font-size: .86em;
+}
+
+/* --------------------------------------------------------------------------
+   Step navigation
+   -------------------------------------------------------------------------- */
+
+.md-install__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.md-install__step-link {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 22px;
+  gap: 11px;
+  align-items: center;
+  width: 100%;
+  padding: 11px 12px;
+  color: var(--md-ui-text-soft);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--md-ui-radius-md);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--md-ui-transition), border-color var(--md-ui-transition), transform var(--md-ui-transition);
+}
+
+.md-install__step-link:hover {
+  background: var(--md-ui-surface);
+  border-color: var(--md-ui-border);
+}
+
+.md-install__step-link.is-active {
+  background: var(--md-ui-surface);
+  border-color: color-mix(in srgb, var(--md-ui-primary) 36%, var(--md-ui-border));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--md-ui-primary) 8%, transparent);
+}
+
+.md-install__step-link.is-done .md-install__step-num {
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft);
+}
+
+.md-install__step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 11px;
+  font-family: var(--md-ui-font-mono);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 700;
+}
+
+.md-install__step-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.md-install__step-text strong {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+}
+
+.md-install__step-text small {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.md-install__step-check {
+  display: none;
+  color: var(--md-ui-success);
+  font-size: 17px;
+}
+
+.md-install__step-link.is-done .md-install__step-check {
+  display: inline-flex;
+}
+
+.md-install__aside-note {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 13px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-install__aside-note-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft);
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.md-install__aside-note strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 600;
+}
+
+.md-install__aside-note p {
+  margin: 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Main column
+   -------------------------------------------------------------------------- */
+
+.md-install__main {
+  min-width: 0;
+  width: min(100%, 980px);
+}
+
+.md-install--success .md-install__layout {
+  display: block;
+  width: min(1040px, 100%);
+  padding-top: clamp(24px, 4vw, 44px);
+}
+
+.md-install__main--success {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.md-install-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.md-install-js .md-install-step {
+  display: none;
+}
+
+.md-install-js .md-install-step.is-active {
+  display: block;
+  animation: mdInstallStepIn .28s ease both;
+}
+
+@keyframes mdInstallStepIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.md-install-step {
+  padding: clamp(18px, 3vw, 30px);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-lg);
+  box-shadow: var(--md-ui-shadow);
+}
+
+.md-install-step__head {
+  margin-bottom: 22px;
+}
+
+.md-install-step__eyebrow {
+  color: var(--md-ui-muted-2);
+  font-family: var(--md-ui-font-mono);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.md-install-step__head h2 {
+  margin: 8px 0 8px;
+  color: var(--md-ui-text);
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+}
+
+.md-install-step__head p {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-sm);
+  line-height: 1.65;
+}
+
+.md-install-step .md-alert {
+  margin-bottom: 18px;
+}
+
+/* --------------------------------------------------------------------------
+   Fields
+   -------------------------------------------------------------------------- */
+
+.md-install-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+  margin: 0 0 20px;
+}
+
+.md-install-field {
+  min-width: 0;
+}
+
+.md-install-field--full {
+  grid-column: 1 / -1;
+}
+
+.md-install-field .md-field {
+  gap: 7px;
+}
+
+.md-install-field .md-field__label {
+  font-size: var(--md-ui-fs-xs);
+}
+
+.md-install-field--full .md-field__control {
+  width: 100%;
+}
+
+.md-install-field__note {
+  margin-top: 2px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+.md-install-field .md-switch {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  cursor: pointer;
+}
+
+.md-install-field .md-switch__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.md-install-field .md-switch__label {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.md-install-field .md-switch__desc {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+}
+
+.md-install-field .md-choice-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.md-install-field .md-choice__surface {
+  min-height: 76px;
+}
+
+.md-install-clear {
+  margin-top: 9px;
+}
+
+/* --------------------------------------------------------------------------
+   Step 01 — environment checks
+   -------------------------------------------------------------------------- */
+
+.md-install-checks {
+  display: grid;
+  gap: 14px;
+}
+
+.md-install-check-group {
+  padding: 14px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-install-check-group__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 8px;
+}
+
+.md-install-check-group__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.md-install-check-group__head h3 {
+  margin: 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+}
+
+.md-install-check-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.md-install-check {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 10px;
+  background: var(--md-ui-surface);
+  border: 1px solid transparent;
+  border-radius: var(--md-ui-radius-sm);
+}
+
+.md-install-check--warn {
+  background: color-mix(in srgb, var(--md-ui-warning-soft) 65%, var(--md-ui-surface));
+  border-color: color-mix(in srgb, var(--md-ui-warning) 22%, transparent);
+}
+
+.md-install-check--fail {
+  background: color-mix(in srgb, var(--md-ui-danger-soft) 70%, var(--md-ui-surface));
+  border-color: color-mix(in srgb, var(--md-ui-danger) 24%, transparent);
+}
+
+.md-install-check__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.md-install-check--ok .md-install-check__icon {
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft);
+}
+
+.md-install-check--warn .md-install-check__icon {
+  color: var(--md-ui-warning);
+  background: var(--md-ui-warning-soft);
+}
+
+.md-install-check--fail .md-install-check__icon {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+.md-install-check__body {
+  min-width: 0;
+}
+
+.md-install-check__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.md-install-check__label {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 600;
+}
+
+.md-install-check__value {
+  margin-top: 2px;
+  color: var(--md-ui-text-soft);
+  font-family: var(--md-ui-font-mono);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.md-install-check__hint {
+  margin: 3px 0 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Notes, warnings, DB status
+   -------------------------------------------------------------------------- */
+
+.md-install-note {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding: 11px 13px;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-primary-soft);
+  border-radius: var(--md-ui-radius-sm);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.55;
+}
+
+.md-install-note i {
+  margin-top: 1px;
+  color: var(--md-ui-primary);
+}
+
+.md-install-note--warning {
+  background: var(--md-ui-warning-soft);
+}
+
+.md-install-note--warning i {
+  color: var(--md-ui-warning);
+}
+
+.md-install-note--success {
+  background: var(--md-ui-success-soft);
+}
+
+.md-install-note--success i {
+  color: var(--md-ui-success);
+}
+
+.md-install-warnings {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  background: var(--md-ui-warning-soft);
+  border: 1px solid color-mix(in srgb, var(--md-ui-warning) 24%, transparent);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-install-warnings--top {
+  margin-bottom: 0;
+}
+
+.md-install-warnings__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--md-ui-warning);
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 600;
+}
+
+.md-install-warnings ul {
+  display: grid;
+  gap: 4px;
+  margin: 7px 0 0;
+  padding-left: 20px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.55;
+}
+
+.md-install-global-errors {
+  display: grid;
+  gap: 10px;
+}
+
+.md-install-db-card {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  padding: 14px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-install-db-card.is-online {
+  background: color-mix(in srgb, var(--md-ui-success-soft) 55%, var(--md-ui-surface));
+  border-color: color-mix(in srgb, var(--md-ui-success) 26%, transparent);
+}
+
+.md-install-db-card__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface);
+  border-radius: 11px;
+  font-size: 19px;
+}
+
+.md-install-db-card.is-online .md-install-db-card__icon {
+  color: var(--md-ui-success);
+}
+
+.md-install-db-card__body {
+  min-width: 0;
+}
+
+.md-install-db-card__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.md-install-db-card__line strong {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+}
+
+.md-install-db-card p {
+  margin: 4px 0 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.55;
+}
+
+.md-install-db-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 6px;
+  color: var(--md-ui-muted);
+  font-family: var(--md-ui-font-mono);
+  font-size: var(--md-ui-fs-caption);
+}
+
+.md-install-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.md-install-toolbar__hint {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+/* --------------------------------------------------------------------------
+   Sections and accordions
+   -------------------------------------------------------------------------- */
+
+.md-install-section {
+  margin-bottom: 22px;
+  padding-bottom: 4px;
+}
+
+.md-install-section + .md-install-section {
+  padding-top: 22px;
+  border-top: 1px solid var(--md-ui-border);
+}
+
+.md-install-section__head {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.md-install-section__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+.md-install-section--admin .md-install-section__icon {
+  color: var(--md-ui-warning);
+  background: var(--md-ui-warning-soft);
+}
+
+.md-install-section__head h3 {
+  margin: 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-md);
+  font-weight: 600;
+}
+
+.md-install-section__head p {
+  margin: 3px 0 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.55;
+}
+
+.md-install-accordions {
+  display: grid;
+  gap: 9px;
+}
+
+.md-install-accordion {
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  overflow: hidden;
+}
+
+.md-install-accordion[open] {
+  background: var(--md-ui-surface);
+  border-color: color-mix(in srgb, var(--md-ui-primary) 24%, var(--md-ui-border));
+  box-shadow: var(--md-ui-shadow-xs);
+}
+
+.md-install-accordion__summary {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 14px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.md-install-accordion__summary::-webkit-details-marker {
+  display: none;
+}
+
+.md-install-accordion__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.md-install-accordion__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.md-install-accordion__text strong {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+}
+
+.md-install-accordion__text small {
+  margin-top: 2px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.45;
+}
+
+.md-install-accordion__chevron {
+  color: var(--md-ui-muted);
+  font-size: 16px;
+  transition: transform var(--md-ui-transition);
+}
+
+.md-install-accordion[open] .md-install-accordion__chevron {
+  transform: rotate(180deg);
+}
+
+.md-install-accordion__body {
+  padding: 4px 14px 16px;
+  border-top: 1px solid var(--md-ui-border);
+}
+
+.md-install-accordion__body .md-install-fields {
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Review
+   -------------------------------------------------------------------------- */
+
+.md-install-review {
+  margin-bottom: 14px;
+  padding: 14px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-install-review__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.md-install-review__head h3 {
+  margin: 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+}
+
+.md-install-review__list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.md-install-review__row {
+  display: grid;
+  grid-template-columns: minmax(150px, 42%) minmax(0, 1fr);
+  gap: 14px;
+  padding: 8px 0;
+  border-top: 1px dashed var(--md-ui-border);
+}
+
+.md-install-review__row:first-child {
+  border-top: 0;
+}
+
+.md-install-review__row dt {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+.md-install-review__row dd {
+  margin: 0;
+  color: var(--md-ui-text);
+  font-family: var(--md-ui-font-mono);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.md-install-review__hint {
+  margin: -2px 0 18px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.55;
+}
+
+.md-install-final {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--md-ui-success-soft);
+  border: 1px solid color-mix(in srgb, var(--md-ui-success) 24%, transparent);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-install-final__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--md-ui-success);
+  background: var(--md-ui-surface);
+  border-radius: 10px;
+  font-size: 18px;
+}
+
+.md-install-final strong {
+  display: block;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+}
+
+.md-install-final p {
+  margin: 3px 0 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Footer actions
+   -------------------------------------------------------------------------- */
+
+.md-install-actions {
+  position: sticky;
+  bottom: 14px;
+  z-index: 15;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  background: color-mix(in srgb, var(--md-ui-surface) 92%, transparent);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  box-shadow: var(--md-ui-shadow-pop);
+  backdrop-filter: blur(12px);
+}
+
+.md-install-actions__prev {
+  margin-right: auto;
+}
+
+.md-install-actions__progress {
+  display: flex;
+  flex: 1 1 160px;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 120px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.md-install-progress {
+  width: 100%;
+  height: 5px;
+  background: var(--md-ui-surface-3);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.md-install-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--md-ui-primary), var(--md-ui-success));
+  border-radius: inherit;
+  transition: width .25s ease;
+}
+
+.md-install-js .md-install-actions__finish {
+  display: none;
+}
+
+.md-install-js .md-install-step[data-install-step="4"].is-active ~ .md-install-actions .md-install-actions__finish,
+.md-install-actions.is-last .md-install-actions__finish {
+  display: inline-flex;
+}
+
+.md-install-actions.is-last .md-install-actions__next {
+  display: none;
+}
+
+.md-install-actions.is-first .md-install-actions__prev {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Success
+   -------------------------------------------------------------------------- */
+
+.md-install-success {
+  position: relative;
+  padding: clamp(22px, 4vw, 40px);
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-lg);
+  box-shadow: var(--md-ui-shadow-pop);
+  overflow: hidden;
+  text-align: center;
+}
+
+.md-install-success__glow {
+  position: absolute;
+  top: -180px;
+  left: 50%;
+  width: 720px;
+  height: 420px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, var(--md-ui-success-soft), transparent 68%);
+  pointer-events: none;
+}
+
+.md-install-success__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  margin: 4px auto 16px;
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft);
+  border: 1px solid color-mix(in srgb, var(--md-ui-success) 26%, transparent);
+  border-radius: 24px;
+  font-size: 38px;
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--md-ui-success) 16%, transparent);
+}
+
+.md-install-success__eyebrow {
+  position: relative;
+  color: var(--md-ui-success);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.md-install-success h1 {
+  position: relative;
+  margin: 8px 0 10px;
+  color: var(--md-ui-text);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -.04em;
+}
+
+.md-install-success__lead {
+  position: relative;
+  max-width: 62ch;
+  margin: 0 auto;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-md);
+  line-height: 1.6;
+}
+
+.md-install-success__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 26px;
+  text-align: left;
+}
+
+.md-install-success__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 13px 14px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-install-success__stat-label {
+  color: var(--md-ui-muted-2);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.md-install-success__stat strong {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.md-install-success__stat small {
+  color: var(--md-ui-muted);
+  font-family: var(--md-ui-font-mono);
+  font-size: var(--md-ui-fs-caption);
+  overflow-wrap: anywhere;
+}
+
+.md-install-success__checks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px 16px;
+  margin-top: 18px;
+  padding: 13px;
+  background: var(--md-ui-success-soft);
+  border-radius: var(--md-ui-radius-md);
+}
+
+.md-install-success__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+}
+
+.md-install-success__check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--md-ui-success);
+  background: var(--md-ui-surface);
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.md-install-warnings--success {
+  text-align: left;
+}
+
+.md-install-success__next {
+  margin-top: 28px;
+  text-align: left;
+}
+
+.md-install-success__next h2 {
+  margin: 0 0 10px;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-md);
+  font-weight: 600;
+}
+
+.md-install-success__next-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.md-install-next-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  color: var(--md-ui-text);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+  text-decoration: none;
+  transition: border-color var(--md-ui-transition), transform var(--md-ui-transition), background var(--md-ui-transition);
+}
+
+.md-install-next-card:hover {
+  color: var(--md-ui-text);
+  background: var(--md-ui-surface);
+  border-color: color-mix(in srgb, var(--md-ui-primary) 36%, var(--md-ui-border));
+  transform: translateY(-1px);
+}
+
+.md-install-next-card__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+.md-install-next-card span:nth-child(2) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.md-install-next-card strong {
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 600;
+}
+
+.md-install-next-card small {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+}
+
+.md-install-next-card > i:last-child {
+  color: var(--md-ui-muted-2);
+  font-size: 15px;
+}
+
+.md-install-success__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.md-install-success__details {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--md-ui-border);
+  text-align: left;
+}
+
+.md-install-success__details summary {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  cursor: pointer;
+}
+
+.md-install-success__details p {
+  max-width: 72ch;
+  margin: 10px 0 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.6;
+}
+
+.md-install-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+}
+
+.md-install-code code {
+  padding: 0;
+  color: var(--md-ui-text);
+  background: transparent;
+  font-family: var(--md-ui-font-mono);
+  font-size: var(--md-ui-fs-xs);
+}
+
+.md-install-code__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border: 0;
+  border-radius: 7px;
+  font-size: var(--md-ui-fs-caption);
+  cursor: pointer;
+}
+
+.md-install-success__backup {
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .md-install__layout {
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+
+@media (max-width: 980px) {
+  .md-install__layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding-top: 20px;
+  }
+
+  .md-install__aside {
+    position: static;
+  }
+
+  .md-install__intro h1 {
+    font-size: 1.65rem;
+  }
+
+  .md-install__intro p {
+    max-width: none;
+  }
+
+  .md-install__steps {
+    flex-direction: row;
+    gap: 7px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+
+  .md-install__steps li {
+    flex: 0 0 auto;
+  }
+
+  .md-install__step-link {
+    grid-template-columns: 28px minmax(0, 1fr);
+    min-width: 196px;
+    padding: 9px 10px;
+    background: var(--md-ui-surface);
+    border-color: var(--md-ui-border);
+  }
+
+  .md-install__step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+  }
+
+  .md-install__step-check {
+    display: none !important;
+  }
+
+  .md-install__step-text small {
+    display: none;
+  }
+
+  .md-install__aside-note {
+    display: none;
+  }
+
+  .md-install__main {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .md-install__topbar {
+    padding: 10px 14px;
+  }
+
+  .md-install__brand-text small {
+    display: none;
+  }
+
+  .md-install__step-badge {
+    display: none;
+  }
+
+  .md-install__layout {
+    padding: 14px 12px 52px;
+  }
+
+  .md-install-step {
+    padding: 16px 14px;
+    border-radius: var(--md-ui-radius-md);
+  }
+
+  .md-install-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 15px;
+  }
+
+  .md-install-field--full {
+    grid-column: auto;
+  }
+
+  .md-install-field .md-choice-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .md-install-review__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .md-install-accordion__summary .md-badge {
+    display: none;
+  }
+
+  .md-install-actions {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 10px;
+    box-shadow: var(--md-ui-shadow);
+  }
+
+  .md-install-actions__progress {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+
+  .md-install-actions__prev {
+    margin-right: 0;
+  }
+
+  .md-install-actions .md-btn {
+    justify-content: center;
+  }
+
+  .md-install-actions__finish {
+    grid-column: 1 / -1;
+  }
+
+  .md-install-success {
+    padding: 20px 15px;
+    text-align: left;
+  }
+
+  .md-install-success__icon,
+  .md-install-success__eyebrow,
+  .md-install-success h1,
+  .md-install-success__lead {
+    text-align: center;
+  }
+
+  .md-install-success__grid,
+  .md-install-success__next-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .md-install-success__checks {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .md-install-success__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .md-install-success__actions .md-btn,
+  .md-install-success__actions a {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .md-install__brand-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .md-install__step-link {
+    min-width: 168px;
+  }
+
+  .md-install-step__head h2 {
+    font-size: 1.3rem;
+  }
+
+  .md-install-toolbar .md-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-install-js .md-install-step.is-active {
+    animation: none;
+  }
+
+  .md-install-progress span,
+  .md-install-accordion__chevron,
+  .md-install-next-card,
+  .md-install__step-link {
+    transition: none;
+  }
+}

@@ -1,0 +1,182 @@
+<!--#
+ @version 0.1 (knowledge base)
+#-->
+<div class="md-ui-page md-ui-page--stack md-kb-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-book" aria-hidden="true"></i>База знаний</div>
+            <h1 class="md-ui-hero__title">База знаний</h1>
+            <p class="md-ui-hero__lede">Инструкции для пользователя и техническая документация для агентов. Материалы читаются прямо из папки <code>docs/</code>: новый Markdown-файл появляется здесь автоматически.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-files" aria-hidden="true"></i>Материалов: <strong>[#KB_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-user" aria-hidden="true"></i>Для пользователя: <strong>[#KB_USER_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-robot" aria-hidden="true"></i>Для агентов: <strong>[#KB_AGENT_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-category" aria-hidden="true"></i>Категорий: <strong>[#KB_CATEGORY_TOTAL#]</strong></span>
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            [#if KB_HAS_README="1"#]
+            <a href="?view_mode=view_doc&amp;doc=README" class="md-btn md-btn--primary">
+                <i class="ti ti-info-circle" aria-hidden="true"></i><span class="md-btn__label">Начните здесь</span>
+            </a>
+            [#endif#]
+            [#if KB_HAS_COMMANDS="1"#]
+            <a href="?view_mode=view_doc&amp;doc=user%2Fcommands" class="md-btn md-btn--secondary">
+                <i class="ti ti-terminal-2" aria-hidden="true"></i><span class="md-btn__label">Команды</span>
+            </a>
+            [#endif#]
+        </div>
+    </header>
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-books" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Всего материалов</span>
+            </div>
+            <div class="md-kpi__value">[#KB_TOTAL#]</div>
+            <div class="md-kpi__meta">Markdown-файлов в docs/</div>
+        </div>
+        <div class="md-kpi md-kpi--success">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-user" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Пользователю</span>
+            </div>
+            <div class="md-kpi__value">[#KB_USER_TOTAL#]</div>
+            <div class="md-kpi__meta">Понятные инструкции</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-robot" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Агентам</span>
+            </div>
+            <div class="md-kpi__value">[#KB_AGENT_TOTAL#]</div>
+            <div class="md-kpi__meta">Правила и техническая база</div>
+        </div>
+        <div class="md-kpi md-kpi--neutral">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-category" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Категории</span>
+            </div>
+            <div class="md-kpi__value">[#KB_CATEGORY_TOTAL#]</div>
+            <div class="md-kpi__meta">Разделы документации</div>
+        </div>
+    </div>
+
+    <section class="md-kb-toolbar" aria-label="Поиск и фильтры базы знаний">
+        <div class="md-searchbar md-kb-search">
+            <i class="ti ti-search md-searchbar__icon" aria-hidden="true"></i>
+            <input type="search" class="md-searchbar__input" data-kb-search
+                   placeholder="Поиск по названию, тексту и меткам"
+                   aria-label="Поиск по базе знаний" autocomplete="off">
+        </div>
+
+        <div class="md-kb-audience" role="group" aria-label="Кому предназначен материал">
+            <button type="button" class="md-btn md-btn--ghost md-btn--sm is-active" data-kb-audience="all" aria-pressed="true">
+                Все <span class="md-kb-count">[#KB_TOTAL#]</span>
+            </button>
+            <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-kb-audience="user" aria-pressed="false">
+                Пользователю <span class="md-kb-count">[#KB_USER_TOTAL#]</span>
+            </button>
+            <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-kb-audience="agent" aria-pressed="false">
+                Агентам <span class="md-kb-count">[#KB_AGENT_TOTAL#]</span>
+            </button>
+        </div>
+
+        <div class="md-kb-toolbar__meta">
+            <span aria-live="polite">Показано <strong data-kb-visible>[#KB_TOTAL#]</strong> из <span data-kb-total>[#KB_TOTAL#]</span></span>
+            <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-kb-reset hidden>
+                <i class="ti ti-filter-off" aria-hidden="true"></i><span class="md-btn__label">Сбросить</span>
+            </button>
+        </div>
+    </section>
+
+    <div class="md-kb-layout" data-kb-list>
+        <aside class="md-kb-side" aria-label="Категории">
+            <div class="md-kb-side__head">
+                <h2 class="md-kb-side__title">Категории</h2>
+                <span class="md-badge md-badge--outline">[#KB_CATEGORY_TOTAL#]</span>
+            </div>
+            <div class="md-kb-chips">
+                <button type="button" class="md-kb-chip is-active" data-kb-category="all" aria-pressed="true">
+                    <i class="ti ti-layout-grid" aria-hidden="true"></i>
+                    <span class="md-kb-chip__label">Все материалы</span>
+                    <span class="md-kb-chip__count">[#KB_TOTAL#]</span>
+                </button>
+                [#begin CATEGORIES#]
+                <button type="button" class="md-kb-chip" data-kb-category="[#KEY#]" aria-pressed="false">
+                    <i class="ti ti-[#ICON#]" aria-hidden="true"></i>
+                    <span class="md-kb-chip__label">[#LABEL#]</span>
+                    <span class="md-kb-chip__count">[#COUNT#]</span>
+                </button>
+                [#end CATEGORIES#]
+            </div>
+            <div class="md-kb-side__note">
+                <i class="ti ti-folder" aria-hidden="true"></i>
+                <span>Источник: <code>docs/</code></span>
+            </div>
+        </aside>
+
+        <div class="md-kb-content">
+            [#if GROUPS#]
+            [#begin GROUPS#]
+            <section class="md-kb-group" data-kb-group data-category="[#KEY#]">
+                <header class="md-kb-group__head">
+                    <span class="md-kb-group__icon"><i class="ti ti-[#ICON#]" aria-hidden="true"></i></span>
+                    <h2 class="md-kb-group__title">[#LABEL#]</h2>
+                    <span class="md-badge md-badge--neutral" data-kb-group-count>[#COUNT#]</span>
+                </header>
+
+                <div class="md-kb-grid">
+                    [#begin DOCS#]
+                    <a class="md-kb-card" href="[#URL#]"
+                       data-kb-card
+                       data-category="[#CATEGORY_KEY#]"
+                       data-audiences="[#AUDIENCE_DATA#]"
+                       data-search="[#SEARCH#]">
+                        <span class="md-kb-card__top">
+                            <span class="md-kb-card__icon"><i class="ti ti-[#ICON#]" aria-hidden="true"></i></span>
+                            <span class="md-kb-card__badges">
+                                [#if AUDIENCE_USER="1"#]<span class="md-badge md-badge--primary">Пользователю</span>[#endif#]
+                                [#if AUDIENCE_AGENT="1"#]<span class="md-badge md-badge--info">Агентам</span>[#endif#]
+                            </span>
+                        </span>
+                        <span class="md-kb-card__title">[#TITLE#]</span>
+                        [#if DESCRIPTION!=""#]
+                        <span class="md-kb-card__desc">[#DESCRIPTION#]</span>
+                        [#endif#]
+                        [#if TAG_TEXT!=""#]
+                        <span class="md-kb-card__tags">[#TAG_TEXT#]</span>
+                        [#endif#]
+                        <span class="md-kb-card__meta">
+                            <span><i class="ti ti-clock" aria-hidden="true"></i>[#READING#] мин</span>
+                            [#if UPDATED!=""#]<span><i class="ti ti-calendar" aria-hidden="true"></i>[#UPDATED#]</span>[#endif#]
+                        </span>
+                        <span class="md-kb-card__footer">
+                            <span>Открыть материал</span>
+                            <i class="ti ti-arrow-up-right" aria-hidden="true"></i>
+                        </span>
+                    </a>
+                    [#end DOCS#]
+                </div>
+            </section>
+            [#end GROUPS#]
+            [#else#]
+            <div class="md-empty">
+                <span class="md-empty__icon"><i class="ti ti-book-off" aria-hidden="true"></i></span>
+                <div class="md-empty__title">В docs/ пока нет Markdown-файлов</div>
+                <p class="md-empty__text">Добавьте материал в папку <code>docs/</code> — он появится здесь автоматически.</p>
+            </div>
+            [#endif GROUPS#]
+
+            <div class="md-kb-empty" data-kb-empty hidden>
+                <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+                <div class="md-empty__title">Ничего не найдено</div>
+                <p class="md-empty__text">Попробуйте изменить запрос, категорию или аудиторию.</p>
+                <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-kb-reset>
+                    <i class="ti ti-filter-off" aria-hidden="true"></i><span class="md-btn__label">Сбросить фильтры</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

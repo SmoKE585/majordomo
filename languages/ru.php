@@ -106,6 +106,7 @@ $dictionary = array(
     'SECTION_DEVICES' => 'Устройства',
     'SECTION_SETTINGS' => 'Настройки',
     'SECTION_SYSTEM' => 'Система',
+    'SECTION_HELP' => 'Помощь',
     'SECTION_PANEL'=>'Панель',
 
     /* end general */
@@ -127,6 +128,7 @@ $dictionary = array(
     'APP_CHATBOX' => 'Сообщения',
 
     'MODULE_OBJECTS_HISTORY' => 'История объектов',
+    'MODULE_KNOWLEDGE_BASE' => 'База знаний',
     'MODULE_BT_DEVICES' => 'Bluetooth-устройства',
     'MODULE_CONTROL_MENU' => 'Меню управления',
     'MODULE_OBJECTS' => 'Объекты',

@@ -231,13 +231,14 @@ try {
     // Exercise both real counter queries in strict SQL mode, including legacy
     // zero dates stored before strict mode was enabled.
     execTest('CREATE TABLE IF NOT EXISTS scripts (ID int NOT NULL AUTO_INCREMENT PRIMARY KEY,EXECUTED datetime NULL) ENGINE=InnoDB');
+    $beforeExecuted=(int)SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE EXECUTED >= '1000-01-01 00:00:00'")['TOTAL'];
     execTest("SET SESSION sql_mode=''");
     execTest("INSERT INTO scripts (EXECUTED) VALUES (NULL),('0000-00-00 00:00:00'),('2026-10-21 11:25:19')");
     execTest("SET SESSION sql_mode='STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
     foreach (array('modules/scripts/scripts_search.inc.php','modules/scripts/scripts.class.php') as $counterFile) {
         $counterSource=file_get_contents(ROOT.$counterFile);
         if (!preg_match('/\$executed_total = SQLSelectOne\("([^"]+)"\);/', $counterSource, $counterMatch)) throw new RuntimeException('Script counter query not found');
-        check((int)SQLSelectOne($counterMatch[1])['TOTAL']===1, "script execution count accepts strict DATETIME mode ($counterFile)");
+        check((int)SQLSelectOne($counterMatch[1])['TOTAL']===$beforeExecuted+1, "script execution count accepts strict DATETIME mode ($counterFile)");
     }
     $beforePending=(int)SQLSelectOne('SELECT COUNT(*) AS C FROM phistory_queue')['C'];
     $admin->query("SELECT GET_LOCK('mjd:history-writer',0)");

@@ -280,12 +280,9 @@ class application extends module
         }
 
         if (gr('logoff')) {
-            unset($session->data['AUTHORIZED']);
-            unset($session->data['USER_NAME']);
             unset($session->data['USERNAME']);
             unset($session->data['SITE_USERNAME']);
             unset($session->data['SITE_USER_ID']);
-            unset($session->data["cp_requested_url"]);
             $this->redirect(ROOTHTML);
         }
 
@@ -303,10 +300,6 @@ class application extends module
         } else {
             Define('USER_TITLE', '');
             Define('USER_AVATAR', '');
-        }
-
-        if (isset($session->data["AUTHORIZED"]) && $session->data["AUTHORIZED"]) {
-            $out['AUTHORIZED_ADMIN'] = 1;
         }
 
         if ($this->action == '' || $this->action == 'pages') {

@@ -338,6 +338,9 @@
 		if (status === 'stopped') {
 			return { state: 'stopped', text: config.statusStopped || 'Остановлен', tone: 'danger' };
 		}
+		if (status === 'disabled') {
+			return { state: 'disabled', text: config.statusDisabled || 'Отключён', tone: 'neutral' };
+		}
 		return { state: 'unknown', text: config.statusUnknown || 'Неизвестно', tone: 'neutral' };
 	}
 
@@ -352,6 +355,7 @@
 
 	function createCycleRow(item, view) {
 		var alive = item.ALIVE == 1;
+		var disabled = item.DISABLED == 1 || view.state === 'disabled';
 		var title = item.TITLE || '';
 		var endpoint = (window.XRayConfig && window.XRayConfig.rootHtml ? window.XRayConfig.rootHtml : '/') + 'ajax/xray.html?action=service';
 		var badges = '<span class="md-badge' + (view.tone !== 'neutral' ? ' md-badge--' + view.tone : '') + '" data-md-cycle-status>' + escapeHtml(view.text) + '</span>' +
@@ -363,9 +367,11 @@
 			'<button type="button" class="md-icon-btn md-icon-btn--sm md-icon-btn--ghost js-cycle-log" data-cycle="' + escapeHtml(item.LOG_LINK || '') + '" title="' + escapeHtml(config.langLog || 'Лог') + '" aria-label="' + escapeHtml(config.langLog || 'Лог') + '">' +
 				'<i class="ti ti-file-text" aria-hidden="true"></i>' +
 			'</button>' +
-			cycleIconButton(config.langStart || 'Запуск', 'ti-player-play', 'start', alive, 'md-icon-btn--primary') +
-			cycleIconButton(config.langRestart || 'Рестарт', 'ti-refresh', 'restart', !alive, 'md-icon-btn--secondary') +
-			cycleIconButton(config.langStop || 'Остановить', 'ti-player-stop', 'stop', !alive, 'md-icon-btn--danger');
+			cycleIconButton(config.langStart || 'Запуск', 'ti-player-play', 'start', alive || disabled, 'md-icon-btn--primary') +
+			cycleIconButton(config.langRestart || 'Рестарт', 'ti-refresh', 'restart', !alive || disabled, 'md-icon-btn--secondary') +
+			cycleIconButton(config.langStop || 'Остановить', 'ti-player-stop', 'stop', !alive || disabled, 'md-icon-btn--danger') +
+			cycleIconButton(config.langDisable || 'Отключить', 'ti-power', 'disable', disabled, 'md-icon-btn--ghost') +
+			cycleIconButton(config.langEnable || 'Включить', 'ti-power', 'enable', !disabled, 'md-icon-btn--primary');
 		return '<div class="md-cycle-table__row is-' + view.state + '"' +
 			' data-md-cycle data-md-cycle-name="' + escapeHtml(title) + '"' +
 			' data-md-cycle-state="' + view.state + '"' +

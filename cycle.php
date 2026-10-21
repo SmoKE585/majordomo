@@ -18,8 +18,12 @@ DebMes('Main cycle starting, pid=' . getmypid() . ', root=' . ROOT, 'boot');
 $mainCycleStarted = time();
 $mainCycleShutdownExpected = false;
 $threads = null;
+$cycleSupervisor = null;
 
-register_shutdown_function(function () use (&$threads, &$mainCycleStarted, &$mainCycleShutdownExpected) {
+register_shutdown_function(function () use (&$threads, &$mainCycleStarted, &$mainCycleShutdownExpected, &$cycleSupervisor) {
+    if ($cycleSupervisor instanceof \MajorDoMo\Core\Cycles\CycleSupervisor) {
+        $cycleSupervisor->shutdown();
+    }
     $error = error_get_last();
     $reason = $mainCycleShutdownExpected ? 'expected' : 'unexpected';
     $details = 'Main cycle shutdown, pid=' . getmypid()
@@ -478,6 +482,17 @@ if (is_dir("./scripts")) {
     }
 }
 
+$cycleTitles = array();
+foreach ($cycles as $cyclePath) {
+    if (preg_match('/(cycle_.+?)\.php/is', $cyclePath, $cycleMatch)) {
+        $cycleTitles[] = $cycleMatch[1];
+    }
+}
+
+$cycleStateStore = new \MajorDoMo\Core\Cycles\CycleStateStore(ROOT);
+$cycleSupervisor = new \MajorDoMo\Core\Cycles\CycleSupervisor($cycleStateStore);
+$cycleSupervisor->bootstrap($cycleTitles);
+
 $threads = new Threads;
 
 if (defined('PATH_TO_PHP'))
@@ -491,8 +506,13 @@ foreach ($cycles as $path) {
 
         if (preg_match('/(cycle_.+?)\.php/is', $path, $m)) {
             $title = $m[1];
-            if (getGlobal($title . 'Disabled')) {
-                DebMes("Cycle " . $title . " disabled. Skipping.", 'boot');
+            if (getGlobal($title . 'Disabled') || !$cycleSupervisor->shouldStartAtBoot($title)) {
+                $reason = $cycleSupervisor->isDisabled($title) ? 'disabled' : 'stopped';
+                DebMes("Cycle " . $title . " " . $reason . ". Skipping.", 'boot');
+                setCycleRuntimeStatus($title, $cycleSupervisor->isDisabled($title) ? 'disabled' : 'stopped', 'Not started by supervisor: ' . $reason);
+                if ($cycleSupervisor->isDisabled($title)) {
+                    setGlobal($title . 'Disabled', 1);
+                }
                 continue;
             }
             if (getGlobal($title . 'Control') != '') {
@@ -540,6 +560,7 @@ echo "ALL CYCLES STARTED" . PHP_EOL;
 $last_restart = array();
 
 $last_cycles_control_check = time();
+$cycleReloadStarted = 0;
 
 $auto_restarts = array();
 $to_start = array();
@@ -564,7 +585,7 @@ while (true) {
                 continue;
             }
             $title = $m[1];
-            if (getGlobal($title . 'Disabled')) {
+            if ($cycleReloadStarted || !$cycleSupervisor->isDesiredRunning($title) || getGlobal($title . 'Disabled')) {
                 continue;
             }
             if (!isset($to_start[$title])) {
@@ -608,6 +629,11 @@ while (true) {
                 DebMes("Got control command '$control' for " . $title, 'boot');
                 addCycleRuntimeLog($title, "Got control command: " . $control);
                 if ($control == 'stop') {
+                    // `disable` writes both the desired state and a legacy stop
+                    // command; do not downgrade "disabled" to "stopped".
+                    if ($cycleStateStore->desired($title) !== \MajorDoMo\Core\Cycles\CycleStateStore::DISABLED) {
+                        $cycleStateStore->set($title, \MajorDoMo\Core\Cycles\CycleStateStore::STOPPED);
+                    }
                     $to_stop[$title] = time();
                     setCycleRuntimeStatus($title, 'stopping');
                     // Explicit stop must cancel any delayed start/restart requests.
@@ -618,6 +644,8 @@ while (true) {
                         $auto_restarts = array_values($auto_restarts);
                     }
                 } elseif ($control == 'start') {
+                    $cycleStateStore->set($title, \MajorDoMo\Core\Cycles\CycleStateStore::RUNNING);
+                    unset($to_stop[$title]);
                     if (!isset($is_running[$title])) {
                         $to_start[$title] = time() + 2;
                         setCycleRuntimeStatus($title, 'starting');
@@ -625,6 +653,7 @@ while (true) {
                         setCycleRuntimeStatus($title, 'running');
                     }
                 } elseif ($control == 'restart') {
+                    $cycleStateStore->set($title, \MajorDoMo\Core\Cycles\CycleStateStore::RUNNING);
                     $to_stop[$title] = time();
                     $to_start[$title] = time() + 30;
                     setCycleRuntimeStatus($title, isset($is_running[$title]) ? 'stopping' : 'starting');
@@ -651,12 +680,12 @@ while (true) {
                 } else {
                     setCycleRuntimeStatus($title, 'starting');
                 }
-                if ((time() - $started_when[$title]) > 30 && !in_array($title, $auto_restarts)) {
+                if ($cycleSupervisor->isDesiredRunning($title) && (time() - $started_when[$title]) > 30 && !in_array($title, $auto_restarts)) {
                     DebMes("Adding $title to auto-recovery list", 'boot');
                     $auto_restarts[] = $title;
                 }
 
-                if (!isset($to_start[$title]) && $cycle_updated_timestamp && in_array($title, $auto_restarts) && ((time() - $cycle_updated_timestamp) > 30 * 60)) { //
+                if ($cycleSupervisor->isDesiredRunning($title) && !isset($to_start[$title]) && $cycle_updated_timestamp && in_array($title, $auto_restarts) && ((time() - $cycle_updated_timestamp) > 30 * 60)) { //
                     DebMes("Looks like $title is dead (updated: " . date('Y-m-d H:i:s', $cycle_updated_timestamp) . "). Need to recovery", 'boot');
                     setCycleRuntimeStatus($title, 'hang', 'Last update: ' . date('Y-m-d H:i:s', $cycle_updated_timestamp));
                     addCycleRuntimeLog($title, 'Detected hang, requesting restart');
@@ -664,6 +693,25 @@ while (true) {
                     setGlobal($title . 'Control', 'restart');
                 }
             }
+        }
+
+        $cycleSupervisor->touch();
+        $cycleSupervisor->reconcile($cycleTitles, $is_running, $to_start, $to_stop);
+
+        if ($cycleSupervisor->reloadRequested() && !$cycleReloadStarted) {
+            $cycleReloadStarted = time();
+            $to_start = array();
+            foreach ($is_running as $reloadTitle => $reloadId) {
+                $to_stop[$reloadTitle] = time();
+            }
+            DebMes('Supervisor reload requested: stopping cycles before exit', 'boot');
+            addCycleRuntimeLog('cycle_controller', 'Supervisor reload requested: stopping cycles before exit');
+        }
+        if ($cycleReloadStarted && empty($is_running)) {
+            DebMes('Supervisor reload complete: exiting for restart with new settings', 'boot');
+            $mainCycleShutdownExpected = true;
+            $cycleSupervisor->shutdown();
+            exit;
         }
     }
 
@@ -690,7 +738,7 @@ while (true) {
                         continue;
                     }
                     $title = $m[1];
-                    if (getGlobal($title . 'Disabled')) {
+                    if (!$cycleSupervisor->isDesiredRunning($title) || getGlobal($title . 'Disabled')) {
                         continue;
                     }
                     $to_start[$title] = time() + 5;
@@ -718,12 +766,18 @@ while (true) {
                 setCycleRuntimeStatus($title, 'stopping');
                 addCycleRuntimeLog($title, 'Force closing service');
                 $threads->closeThread($id);
+                unset($is_running[$title]);
+                unset($started_when[$title]);
             }
             unset($to_stop[$title]);
         }
     }
 
     foreach ($to_start as $title => $tm) {
+        if ($cycleReloadStarted) {
+            unset($to_start[$title]);
+            continue;
+        }
         if ($tm <= time()) {
             if (!isset($is_running[$title])) {
                 $cmd = './scripts/' . $title . '.php';
@@ -775,6 +829,24 @@ while (true) {
                     setGlobal($cycle_title . 'Run', '');
                     setCycleRuntimeStatus($cycle_title, 'stopped', 'Thread closed');
                     addCycleRuntimeLog($cycle_title, 'Thread closed. Exit code: ' . (string)$exit_code . ', term signal: ' . (string)$term_sig);
+                    if (!$cycleSupervisor->isDesiredRunning($cycle_title)) {
+                        // Intentional stop/disable: this is not a crash and must
+                        // not create system errors or trigger auto-recovery.
+                        $key = array_search($cycle_title, $auto_restarts);
+                        if ($key !== false) {
+                            unset($auto_restarts[$key]);
+                            $auto_restarts = array_values($auto_restarts);
+                        }
+                        unset($to_start[$cycle_title], $to_stop[$cycle_title], $started_when[$cycle_title]);
+                        $desired = $cycleSupervisor->desired($cycle_title);
+                        setCycleRuntimeStatus(
+                            $cycle_title,
+                            $desired === \MajorDoMo\Core\Cycles\CycleStateStore::DISABLED ? 'disabled' : 'stopped',
+                            $desired === \MajorDoMo\Core\Cycles\CycleStateStore::DISABLED ? 'Disabled by administrator' : 'Stopped by administrator'
+                        );
+                        addCycleRuntimeLog($cycle_title, 'Process stopped by administrator');
+                        continue;
+                    }
                     if (!$stop_requested) {
                         $key = array_search($cycle_title, $auto_restarts);
                         if ($key !== false) {
@@ -786,7 +858,7 @@ while (true) {
                         }
                     }
                 }
-                if ($need_restart && $cycle_title) {
+                if ($need_restart && $cycle_title && !$cycleReloadStarted) {
                     if (!isset($to_start[$cycle_title])) {
                         DebMes("AUTO-RECOVERY: " . $closed_thread, 'boot');
                         setCycleRuntimeStatus($cycle_title, 'starting', 'Auto recovery scheduled');

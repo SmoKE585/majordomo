@@ -125,6 +125,8 @@ $cases = [
     '/panel/mqtt/settings.html' => ['module' => 'mqtt', 'params' => ['view_mode' => 'settings']],
     '/panel/mqtt/clear-trash.html' => ['module' => 'mqtt', 'params' => ['view_mode' => 'clear_trash']],
     '/panel/mqtt/optimize.html' => ['module' => 'mqtt', 'params' => ['view_mode' => 'optimize']],
+    '/panel/knowledge_base.html' => ['module' => 'knowledge_base', 'params' => []],
+    '/panel/knowledge_base/user/commands.html' => ['module' => 'knowledge_base', 'params' => ['view_mode' => 'view_doc', 'doc' => 'user/commands']],
 ];
 
 foreach ($cases as $path => $expected) {
@@ -289,6 +291,18 @@ routingCheck(
     mdj_admin_pretty_url('/admin.php?action=mqtt&view_mode=optimize') === '/panel/mqtt/optimize.html',
     '[PRETTY] mqtt optimize'
 );
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=knowledge_base') === '/panel/knowledge_base.html',
+    '[PRETTY] knowledge base list'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=knowledge_base&cat=user') === '/panel/knowledge_base.html?cat=user',
+    '[PRETTY] knowledge base category'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=knowledge_base&view_mode=view_doc&doc=user%2Fcommands') === '/panel/knowledge_base/user/commands.html',
+    '[PRETTY] knowledge base document'
+);
 
 // Unsupported state must stay on the legacy URL.
 $noParentObject = '/admin.php?md=objects&view_mode=edit_objects&id=7';
@@ -297,7 +311,7 @@ $printUrl = '/admin.php?pd=cGFuZWw6e2FjdGlvbj1jbGFzc2VzfQ%3D%3Dpz_&md=classes&vi
 routingCheck(mdj_admin_pretty_url($printUrl) === $printUrl, '[FALLBACK] print URL must stay legacy');
 
 // Every pretty URL we emit must resolve back to the same state.
-foreach (array($objectPath, '/panel/class/10/objects.html', '/panel/class/10/methods/45.html', '/panel/script/10.html', '/panel/users/5.html', '/panel/users/add.html', '/panel/users/5/delete.html', '/panel/pinghosts/5.html', '/panel/pinghosts/add.html', '/panel/pinghosts/5/delete.html', '/panel/locations/5.html', '/panel/locations/5/logic.html', '/panel/locations/add.html', '/panel/locations/5/up.html', '/panel/system_errors/10.html', '/panel/system_errors/10/history.html', '/panel/system_errors/readall.html', '/panel/system_errors/test.html', '/panel/mqtt/10.html', '/panel/mqtt/add.html', '/panel/mqtt/10/delete.html', '/panel/mqtt/settings.html', '/panel/mqtt/clear-trash.html', '/panel/mqtt/optimize.html') as $pretty) {
+foreach (array($objectPath, '/panel/class/10/objects.html', '/panel/class/10/methods/45.html', '/panel/script/10.html', '/panel/users/5.html', '/panel/users/add.html', '/panel/users/5/delete.html', '/panel/pinghosts/5.html', '/panel/pinghosts/add.html', '/panel/pinghosts/5/delete.html', '/panel/locations/5.html', '/panel/locations/5/logic.html', '/panel/locations/add.html', '/panel/locations/5/up.html', '/panel/system_errors/10.html', '/panel/system_errors/10/history.html', '/panel/system_errors/readall.html', '/panel/system_errors/test.html', '/panel/mqtt/10.html', '/panel/mqtt/add.html', '/panel/mqtt/10/delete.html', '/panel/mqtt/settings.html', '/panel/mqtt/clear-trash.html', '/panel/mqtt/optimize.html', '/panel/knowledge_base.html', '/panel/knowledge_base/user/commands.html') as $pretty) {
     $query = routingResolve($pretty);
     routingCheck($query !== null, "[ROUNDTRIP] {$pretty} did not resolve");
     if ($query !== null) {
@@ -309,6 +323,8 @@ foreach (array($objectPath, '/panel/class/10/objects.html', '/panel/class/10/met
 // --- nginx / deployment contract -----------------------------------------
 
 $nginxChecks = [
+    'location = /install {' => 'setup wizard alias',
+    'return 302 /install.php;' => 'setup wizard alias target',
     'location = /panel {' => 'admin root redirect',
     'return 301 /panel/;' => 'admin root redirect target',
     'location ^~ /panel/ {' => 'admin pretty URL location',
@@ -356,7 +372,7 @@ routingCheck(
 
 // --- public docroot contract ---------------------------------------------
 
-foreach (['index.php', 'admin.php', 'nf.php', 'api.php', '404.php'] as $entry) {
+foreach (['index.php', 'admin.php', 'nf.php', 'api.php', 'install.php', '404.php'] as $entry) {
     routingCheck(
         is_file($rootDir . '/public/' . $entry),
         "[PUBLIC] /{$entry} must live in public/"
@@ -367,6 +383,9 @@ foreach (['index.php', 'admin.php', 'nf.php', 'api.php', '404.php'] as $entry) {
     );
 }
 routingCheck(is_file($rootDir . '/bootstrap.php'), '[PUBLIC] bootstrap.php must define the application root');
+routingCheck(is_file($rootDir . '/public/assets/install/install.css'), '[SETUP] page CSS must live in public/assets/install');
+routingCheck(is_file($rootDir . '/public/assets/install/install.js'), '[SETUP] page JS must live in public/assets/install');
+routingCheck(is_file($rootDir . '/templates/install/install.php'), '[SETUP] wizard template must exist');
 routingCheck(!is_dir($rootDir . '/rc'), '[PUBLIC] rc/ is removed (redirected to /panel/)');
 routingCheck(!is_dir($rootDir . '/pChart'), '[PUBLIC] pChart/ is removed (unused chart library)');
 

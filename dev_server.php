@@ -25,7 +25,12 @@ if (PHP_SAPI === 'cli') {
 
 $devEntrypoint = devServerRoute($projectRoot);
 if (is_string($devEntrypoint)) {
-    if (devEnsureDatabaseAvailable($projectRoot)) {
+    // The setup wizard must render even when MySQL is down or not configured;
+    // that is exactly the state it exists to fix.
+    $devRequestPath = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
+    $devIsInstall = is_string($devRequestPath)
+        && (bool)preg_match('#/install(?:\.php)?/?$#i', $devRequestPath);
+    if ($devIsInstall || devEnsureDatabaseAvailable($projectRoot)) {
         // php-fpm runs a request with the working directory set to the script
         // directory; legacy entry points rely on that (objects/modules
         // do their own chdir("../..")). Mirror it before including the script.
@@ -119,6 +124,12 @@ function devServerRoute($projectRoot)
 
     if (strpos($path, '/api/') === 0) {
         return devSetScript($publicRoot . DIRECTORY_SEPARATOR . 'api.php', '/api.php');
+    }
+
+    // Canonical setup URL and its pretty alias. The canonical install.php is
+    // used by the gate, so both must work without nginx rewrites.
+    if (preg_match('#^/install(?:\.php)?/?$#i', $path)) {
+        return devSetScript($publicRoot . DIRECTORY_SEPARATOR . 'install.php', '/install.php');
     }
 
     if ($path === '/' || $path === '') {
@@ -373,7 +384,7 @@ function devIsDeniedPath($path)
     if (str_starts_with($basename, '.env')) {
         return true;
     }
-    if (preg_match('#^/cms/(?:cached|debmes)/#i', $path)) {
+    if (preg_match('#^/cms/(?:cached|debmes|modules_installed|saverestore)/#i', $path)) {
         return true;
     }
 

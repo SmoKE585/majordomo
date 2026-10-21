@@ -41,6 +41,7 @@ $statusMap = array(
     'stopping' => array('Выключается', 'warning'),
     'hang' => array('Завис', 'warning'),
     'stopped' => array('Остановлен', 'danger'),
+    'disabled' => array('Отключён', 'neutral'),
     'unknown' => array('Неизвестно', 'neutral'),
 );
 
@@ -48,8 +49,8 @@ $status = isset($statusMap[$props['status']]) ? $props['status'] : 'unknown';
 $statusText = $props['status_text'] !== '' ? $props['status_text'] : $statusMap[$status][0];
 $statusTone = $statusMap[$status][1];
 $title = $props['title'] !== '' ? $props['title'] : $props['name'];
+$isDisabled = $status === 'disabled' || !empty($props['disabled']);
 $isStopped = $status === 'stopped' || $status === 'unknown';
-$actionsDisabled = !empty($props['disabled']);
 
 $attrs = is_array($props['attrs']) ? $props['attrs'] : array();
 $attrs['data-md-cycle'] = true;
@@ -75,7 +76,7 @@ $onlineText = $props['online'] === null ? '' : ($props['online'] ? 'ONLINE' : 'O
 $onlineClass = $props['online'] === null ? '' : ($props['online'] ? 'is-online' : 'is-offline');
 $autoRestartText = $props['auto_restart'] === null ? '' : ($props['auto_restart'] ? 'вкл.' : 'выкл.');
 
-$renderActions = function ($withLabels) use ($props, $isStopped, $actionsDisabled) {
+$renderActions = function ($withLabels) use ($props, $isStopped, $isDisabled) {
     ob_start();
     if ($props['log_url'] !== '') {
         if ($withLabels) {
@@ -85,15 +86,24 @@ $renderActions = function ($withLabels) use ($props, $isStopped, $actionsDisable
         }
     }
 
-    if ($withLabels) {
-        echo '<button type="button" class="md-btn md-btn--primary md-btn--sm" data-md-cycle-command="start"' . (($isStopped && !$actionsDisabled) ? '' : ' hidden') . '>' . MDJUI::icon('player-play') . '<span class="md-btn__label">Запуск</span></button>';
-        echo '<button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-cycle-command="restart"' . ((!$isStopped && !$actionsDisabled) ? '' : ' hidden') . '>' . MDJUI::icon('refresh') . '<span class="md-btn__label">Рестарт</span></button>';
-        echo '<button type="button" class="md-btn md-btn--danger md-btn--sm" data-md-cycle-command="stop"' . ((!$isStopped && !$actionsDisabled) ? '' : ' hidden') . '>' . MDJUI::icon('player-stop') . '<span class="md-btn__label">Остановить</span></button>';
-    } else {
-        echo '<button type="button" class="md-icon-btn md-icon-btn--sm md-icon-btn--primary" data-md-cycle-command="start" title="Запуск" aria-label="Запуск"' . (($isStopped && !$actionsDisabled) ? '' : ' hidden') . '>' . MDJUI::icon('player-play') . '</button>';
-        echo '<button type="button" class="md-icon-btn md-icon-btn--sm md-icon-btn--secondary" data-md-cycle-command="restart" title="Рестарт" aria-label="Рестарт"' . ((!$isStopped && !$actionsDisabled) ? '' : ' hidden') . '>' . MDJUI::icon('refresh') . '</button>';
-        echo '<button type="button" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-md-cycle-command="stop" title="Остановить" aria-label="Остановить"' . ((!$isStopped && !$actionsDisabled) ? '' : ' hidden') . '>' . MDJUI::icon('player-stop') . '</button>';
-    }
+    $button = function (string $command, string $label, string $icon, string $variant, bool $hidden) use ($withLabels): void {
+        $hiddenAttr = $hidden ? ' hidden' : '';
+        if ($withLabels) {
+            echo '<button type="button" class="md-btn md-btn--' . $variant . ' md-btn--sm" data-md-cycle-command="' . $command . '"' . $hiddenAttr . '>'
+                . MDJUI::icon($icon) . '<span class="md-btn__label">' . MDJUI::e($label) . '</span></button>';
+            return;
+        }
+        echo '<button type="button" class="md-icon-btn md-icon-btn--sm md-icon-btn--' . $variant . '" data-md-cycle-command="' . $command . '"'
+            . ' title="' . MDJUI::e($label) . '" aria-label="' . MDJUI::e($label) . '"' . $hiddenAttr . '>'
+            . MDJUI::icon($icon) . '</button>';
+    };
+
+    $button('start', 'Запуск', 'player-play', 'primary', !$isStopped || $isDisabled);
+    $button('restart', 'Рестарт', 'refresh', 'secondary', $isStopped || $isDisabled);
+    $button('stop', 'Остановить', 'player-stop', 'danger', $isStopped || $isDisabled);
+    $button('disable', 'Отключить', 'power', 'ghost', $isDisabled);
+    $button('enable', 'Включить', 'power', 'primary', !$isDisabled);
+
     return ob_get_clean();
 };
 ?>

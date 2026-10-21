@@ -15,6 +15,14 @@ if (isset($_SERVER['REQUEST_URI'])) {
     Define("THIS_URL", $_SERVER['REQUEST_URI']);
 }
 
+// Direct module/script endpoints include the loader without going through a
+// public/Application entry point. Keep them behind the setup gate too. CLI
+// cycles are deliberately excluded: they must keep running on a fresh system.
+// The guard runs before library includes and the DB connection.
+if (PHP_SAPI !== 'cli' && class_exists('\\MajorDoMo\\Core\\Install\\InstallGate')) {
+    \MajorDoMo\Core\Install\InstallGate::redirectIfRequired(dirname(__DIR__));
+}
+
 $ignore_libs = array();
 if (function_exists('mysqli_connect')) {
     $ignore_libs[] = 'mysql.class.php';

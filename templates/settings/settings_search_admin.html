@@ -10,6 +10,13 @@
     </div>
     [#endif ERR_MSG#]
 
+    [#if WARN_MSG!=""#]
+    <div class="md-alert md-alert--warning" role="status">
+        <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">[#WARN_MSG#]</div></div>
+    </div>
+    [#endif WARN_MSG#]
+
     <section class="md-ui-hero">
         <div>
             <div class="md-ui-hero__eyebrow"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i> Настройки MajorDoMo</div>
@@ -17,10 +24,12 @@
             <p class="md-ui-hero__lede">Параметры системы собраны по разделам. Активный раздел открывается сразу, а локальный поиск помогает найти нужную настройку без перезагрузки страницы.</p>
         </div>
         <div class="md-ui-hero__actions">
+            [#if CAN_RESET="1"#]
             <a class="md-btn md-btn--secondary" href="?mode=reset&amp;filter_name=<#FILTER_NAME#>" data-md-confirm="Вернуть значения по умолчанию для этого раздела?">
                 <i class="ti ti-rotate-clockwise" aria-hidden="true"></i>
                 <span class="md-btn__label">Сбросить раздел</span>
             </a>
+            [#endif#]
         </div>
     </section>
 
@@ -64,6 +73,13 @@
     </div>
     [#endif UPDATED#]
 
+    [#if SYSTEM_SECTION#]
+    <div class="md-alert md-alert--info" role="status">
+        <i class="ti ti-refresh md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">После сохранения фоновые циклы будут перезапущены. Если изменяется подключение к базе, основной цикл перезапустится целиком.</div></div>
+    </div>
+    [#endif SYSTEM_SECTION#]
+
     <div class="md-section-head md-settings-section-head">
         <div class="md-section-head__text">
             <div class="md-section-head__eyebrow">Раздел настроек</div>
@@ -82,7 +98,7 @@
     <form action="?" method="post" name="frmList_settings" id="mdSettingsForm" autocomplete="off">
         <div class="md-settings-grid">
             [#begin RESULT#]
-            <article class="md-card md-card--compact md-settings-card [#if IS_WIDE="1"#]is-wide[#endif#]" data-settings-card data-settings-search="[#SEARCH_TEXT#]">
+            <article class="md-card md-card--compact md-settings-card [#if IS_WIDE="1"#]is-wide[#endif#]" data-settings-card data-settings-search="[#SEARCH_TEXT#]"[#if DEPENDS!=""#] data-settings-depends="[#DEPENDS#]"[#endif#]>
                 <div class="md-card__head">
                     <div class="md-card__titles">
                         <h3 class="md-card__title" id="settingsTitle_[#ID#]">[#TITLE#]</h3>
@@ -90,6 +106,9 @@
                         <div class="md-card__subtitle">[#NOTES#]</div>
                         [#endif#]
                     </div>
+                    [#if STORAGE!=""#]
+                    <span class="md-badge md-badge--outline md-settings-storage md-settings-storage--[#STORAGE_CLASS#]">[#STORAGE#]</span>
+                    [#endif#]
                 </div>
 
                 <div class="md-card__body">
@@ -98,11 +117,26 @@
                         <input type="text" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">
                         [#endif TYPE#]
 
+                        [#if TYPE="number"#]
+                        <input type="number" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" inputmode="decimal" aria-labelledby="settingsTitle_[#ID#]"[#if MIN!=""#] min="[#MIN#]"[#endif#][#if MAX!=""#] max="[#MAX#]"[#endif#][#if STEP!=""#] step="[#STEP#]"[#endif#]>
+                        [#endif TYPE#]
+
+                        [#if TYPE="url"#]
+                        <input type="url" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">
+                        [#endif TYPE#]
+
                         [#if TYPE="password"#]
                         <div class="md-settings-secret">
-                            <input type="password" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="new-password" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">
+                            <input type="password" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="new-password" spellcheck="false" placeholder="[#if HAS_SECRET="1"#]•••••••• (сохранён)[#endif#]" aria-labelledby="settingsTitle_[#ID#]">
                             <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-settings-toggle-secret="value_[#ID#]">Показать</button>
                         </div>
+                        [#if HAS_SECRET="1"#]
+                        <label class="md-check md-check--compact md-settings-clear-secret">
+                            <input class="md-check__input" type="checkbox" name="clear_[#ID#]" value="1" data-md-raw-checkbox>
+                            <span class="md-check__box" aria-hidden="true"></span>
+                            <span class="md-check__text">Очистить сохранённое значение</span>
+                        </label>
+                        [#endif#]
                         [#endif TYPE#]
 
                         [#if TYPE="textarea"#]
@@ -198,7 +232,7 @@
                         [#endif TYPE#]
 
                         [#if TYPE="select"#][#if IS_SELECT_DROPDOWN="1"#]
-                        <select class="md-select" id="value_[#ID#]" name="value_[#ID#]" autocomplete="off" aria-labelledby="settingsTitle_[#ID#]"[#if NAME="SITE_TIMEZONE" || NAME="SITE_LANGUAGE" || NAME="VOICE_LANGUAGE"#] data-md-searchable[#endif#]>
+                        <select class="md-select" id="value_[#ID#]" name="value_[#ID#]" autocomplete="off" aria-labelledby="settingsTitle_[#ID#]"[#if IS_SEARCHABLE="1" || NAME="SITE_TIMEZONE" || NAME="SITE_LANGUAGE" || NAME="VOICE_LANGUAGE"#] data-md-searchable[#endif#]>
                             [#begin OPTIONS#]
                             <option value="[#OPTION_VALUE#]"[#if SELECTED="1"#] selected[#endif#]>[#OPTION_TITLE#]</option>
                             [#end OPTIONS#]

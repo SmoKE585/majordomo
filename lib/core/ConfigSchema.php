@@ -56,7 +56,6 @@ final class ConfigSchema
             'APP_ENV' => array('type' => 'string', 'optional' => true),
             'TIMEZONE' => array('type' => 'string', 'optional' => true, 'constant' => false),
             'UPDATES_REPOSITORY_NAME' => array('type' => 'string', 'optional' => true),
-            'DISABLE_USERS_LIST' => array('type' => 'boolean', 'optional' => true),
 
             // Updates --------------------------------------------------------
             'GIT_URL' => array('type' => 'string', 'optional' => true),
@@ -99,11 +98,9 @@ final class ConfigSchema
             'REDIS_TIMEOUT' => array('type' => 'decimal', 'optional' => true),
             'REDIS_PREFIX' => array('type' => 'string', 'optional' => true),
 
-            // Network and remote access -------------------------------------
+            // Network and proxy ---------------------------------------------
             'LOCAL_IP' => array('type' => 'string', 'optional' => true),
             'HOME_NETWORK' => array('type' => 'string', 'optional' => true),
-            'EXT_ACCESS_USERNAME' => array('type' => 'string', 'optional' => true),
-            'EXT_ACCESS_PASSWORD' => array('type' => 'string', 'optional' => true, 'secret' => true),
             'USE_PROXY' => array('type' => 'string', 'optional' => true),
             'USE_PROXY_AUTH' => array('type' => 'string', 'optional' => true, 'secret' => true),
             'TRUSTED_PROXIES' => array('type' => 'string', 'optional' => true),
@@ -147,6 +144,7 @@ final class ConfigSchema
             'ENABLE_FORK' => 'historical option, never read',
             'DROPBOX_SHOPPING_LIST' => 'feature removed',
             'ONEWIRE_SERVER' => 'OWFS integration removed',
+            'DISABLE_USERS_LIST' => 'user list on the login form removed; normal authentication will replace it',
         );
     }
 }

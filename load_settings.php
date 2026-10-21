@@ -171,56 +171,6 @@ if (!defined('WEBSOCKETS_AUTH_TOKEN_JSON')) {
     Define('WEBSOCKETS_AUTH_TOKEN_JSON', json_encode((string)$websocketsAuthToken));
 }
 
-// check external access
-$home_network = '';
-if (defined('SETTINGS_REMOTE_HOME_NETWORK') && SETTINGS_REMOTE_HOME_NETWORK != '') {
-    $home_network = SETTINGS_REMOTE_HOME_NETWORK;
-} elseif (defined('HOME_NETWORK') && HOME_NETWORK != '') {
-    $home_network = HOME_NETWORK;
-}
-
-$ext_access_username = '';
-if (defined('SETTINGS_REMOTE_EXT_ACCESS_USERNAME') && SETTINGS_REMOTE_EXT_ACCESS_USERNAME != '') {
-    $ext_access_username = SETTINGS_REMOTE_EXT_ACCESS_USERNAME;
-} elseif (defined('EXT_ACCESS_USERNAME') && EXT_ACCESS_USERNAME != '') {
-    $ext_access_username = EXT_ACCESS_USERNAME;
-}
-
-$ext_access_password = '';
-if (defined('SETTINGS_REMOTE_EXT_ACCESS_PASSWORD') && SETTINGS_REMOTE_EXT_ACCESS_PASSWORD != '') {
-    $ext_access_password = SETTINGS_REMOTE_EXT_ACCESS_PASSWORD;
-} elseif (defined('EXT_ACCESS_PASSWORD') && EXT_ACCESS_PASSWORD != '') {
-    $ext_access_password = EXT_ACCESS_PASSWORD;
-}
-
-if ($home_network != ''
-    && !isset($argv[0])
-    && isset($_SERVER['REQUEST_URI'])
-) {
-    $remoteAddr = \MajorDoMo\Core\Core::network()->clientIp(
-        $_SERVER['REMOTE_ADDR'] ?? '',
-        $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
-        defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : ''
-    );
-    $local_ip = defined('LOCAL_IP') && LOCAL_IP !== '' ? LOCAL_IP : '127.0.0.1';
-    if (!\MajorDoMo\Core\Core::network()->inNetworks($remoteAddr, $home_network) && $remoteAddr !== $local_ip && $remoteAddr !== '::1') {
-        $php_auth_user = isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : '';
-        $php_auth_pw = isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : '';
-        if ($ext_access_username && $ext_access_password && $php_auth_user == $ext_access_username && $php_auth_pw == $ext_access_password) {
-            $data_message = $remoteAddr . " " . date("[d/m/Y:H:i:s]") . " Username and/or password valid. Login: " . $php_auth_user . "\n";
-            //DebMes($data_message, 'auth');
-        } elseif (!$ext_access_username && !$ext_access_password) {
-            $data_message = $remoteAddr . " " . date("[d/m/Y:H:i:s]") . " Username and/or password dont defined and dont needed" . "\n";
-            //DebMes($data_message, 'auth');
-        } else {
-            if (!headers_sent()) {
-                header("WWW-Authenticate: Basic realm=\"" . PROJECT_TITLE . "\"");
-                header("HTTP/1.0 401 Unauthorized");
-            }
-            echo "Authorization required\n";
-            $data_message = $remoteAddr . " " . date("[d/m/Y:H:i:s]") . " Username and/or password invalid. Login: " . $php_auth_user . "\n";
-            DebMes($data_message, 'auth');
-            exit;
-        }
-    }
-}
+// Access control is delegated to the reverse proxy (nginx basic auth).
+// The built-in HTTP Basic Auth check was removed together with the old
+// control_access layer; EXT_ACCESS_* / REMOTE_* settings are no longer read.

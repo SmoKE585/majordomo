@@ -19,6 +19,10 @@ final class AdminApplication extends Application
 
         $this->bootConfiguration();
 
+        // A fresh installation must not expose the panel (or module AJAX)
+        // before the setup wizard has written .env and the install marker.
+        \MajorDoMo\Core\Install\InstallGate::redirectIfRequired($this->root);
+
         require_once $this->root . '/lib/admin_router.php';
 
         // Legacy admin URLs carry the whole navigation state in `pd`. Redirect

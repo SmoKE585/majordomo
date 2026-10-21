@@ -7,6 +7,7 @@
         stopping: { text: 'Выключается', tone: 'warning' },
         hang: { text: 'Завис', tone: 'warning' },
         stopped: { text: 'Остановлен', tone: 'danger' },
+        disabled: { text: 'Отключён', tone: 'neutral' },
         unknown: { text: 'Неизвестно', tone: 'neutral' }
     };
 
@@ -53,7 +54,7 @@
         var online = card.querySelector('[data-md-cycle-online]');
 
         card.dataset.mdCycleState = state;
-        ['running', 'starting', 'stopping', 'hang', 'stopped', 'unknown'].forEach(function (name) {
+        ['running', 'starting', 'stopping', 'hang', 'stopped', 'disabled', 'unknown'].forEach(function (name) {
             card.classList.toggle('is-' + name, name === state);
         });
         setBadge(statusBadge, data.STATUS_TEXT || view.text, view.tone);
@@ -68,18 +69,27 @@
             online.classList.toggle('is-offline', !isOnline);
         }
 
+        var disabled = state === 'disabled' || !!Number(data.DISABLED || 0);
         var stopped = state === 'stopped' || state === 'unknown';
         var start = card.querySelector('[data-md-cycle-command="start"]');
         var restart = card.querySelector('[data-md-cycle-command="restart"]');
         var stop = card.querySelector('[data-md-cycle-command="stop"]');
+        var disable = card.querySelector('[data-md-cycle-command="disable"]');
+        var enable = card.querySelector('[data-md-cycle-command="enable"]');
         if (start) {
-            start.hidden = !stopped;
+            start.hidden = !stopped || disabled;
         }
         if (restart) {
-            restart.hidden = stopped;
+            restart.hidden = stopped || disabled;
         }
         if (stop) {
-            stop.hidden = stopped;
+            stop.hidden = stopped || disabled;
+        }
+        if (disable) {
+            disable.hidden = disabled;
+        }
+        if (enable) {
+            enable.hidden = !disabled;
         }
     }
 
@@ -150,8 +160,15 @@
 
         function command(op) {
             setBusy(true);
+            var labels = {
+                start: 'Команда запуска отправлена',
+                stop: 'Команда остановки отправлена',
+                restart: 'Команда перезапуска отправлена',
+                disable: 'Цикл отключён',
+                enable: 'Цикл включён'
+            };
             fetchState(op).then(function () {
-                toast(op === 'stop' ? 'Команда остановки отправлена' : (op === 'restart' ? 'Команда перезапуска отправлена' : 'Команда запуска отправлена'), 'info');
+                toast(labels[op] || 'Команда отправлена', 'info');
                 schedule(600);
             }).catch(function () {
                 toast('Не удалось отправить команду цикла', 'error');
@@ -168,7 +185,7 @@
             }
             event.preventDefault();
             var op = button.getAttribute('data-md-cycle-command');
-            if (op === 'start' || op === 'stop' || op === 'restart') {
+            if (op === 'start' || op === 'stop' || op === 'restart' || op === 'disable' || op === 'enable') {
                 command(op);
             }
         });

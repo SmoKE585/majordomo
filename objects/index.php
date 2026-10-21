@@ -46,6 +46,11 @@ if (defined('MASTER_URL') && MASTER_URL != '') {
 chdir(dirname(__FILE__) . '/..');
 
 include_once("./config.php");
+
+// A fresh installation has no settings/objects yet. Keep direct object
+// endpoints behind the setup gate as well; CLI invocations are skipped inside.
+\MajorDoMo\Core\Install\InstallGate::redirectIfRequired(dirname(__FILE__) . '/..', true);
+
 include_once("./lib/loader.php");
 
 startMeasure('TOTAL'); // start calculation of execution time

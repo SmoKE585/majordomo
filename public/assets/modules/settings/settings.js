@@ -24,8 +24,9 @@
             cards.forEach(function (card) {
                 var haystack = (card.getAttribute('data-settings-search') || '').toLowerCase();
                 var isVisible = query === '' || haystack.indexOf(query) !== -1;
-                card.hidden = !isVisible;
-                if (isVisible) {
+                var dependencyHidden = card.getAttribute('data-settings-dependency-hidden') === '1';
+                card.hidden = !isVisible || dependencyHidden;
+                if (isVisible && !dependencyHidden) {
                     visibleCount += 1;
                 }
             });
@@ -35,9 +36,56 @@
             }
         }
 
+        function fieldValue(name) {
+            var inputs = page.querySelectorAll('[name="value_' + name + '"]');
+            for (var i = 0; i < inputs.length; i++) {
+                var input = inputs[i];
+                if (input.type === 'radio' || input.type === 'checkbox') {
+                    if (input.checked) {
+                        return input.value;
+                    }
+                    continue;
+                }
+                return input.value;
+            }
+            return '';
+        }
+
+        function updateDependencies() {
+            cards.forEach(function (card) {
+                var raw = card.getAttribute('data-settings-depends');
+                if (!raw) {
+                    return;
+                }
+                var hidden = false;
+                try {
+                    var dependency = JSON.parse(raw);
+                    hidden = String(fieldValue(dependency.field)) !== String(dependency.value);
+                } catch (e) {
+                    hidden = false;
+                }
+                card.setAttribute('data-settings-dependency-hidden', hidden ? '1' : '0');
+            });
+            applySearch();
+        }
+
+        page.addEventListener('change', function (event) {
+            var target = event.target;
+            if (target && target.name && target.name.indexOf('value_') === 0) {
+                updateDependencies();
+            }
+        });
+
         if (searchInput) {
             searchInput.addEventListener('input', applySearch);
-            applySearch();
+        }
+
+        updateDependencies();
+
+        var activeTab = page.querySelector('.md-settings-tabs .nav-link.active');
+        var tabs = page.querySelector('.md-settings-tabs');
+        if (activeTab && tabs && tabs.scrollWidth > tabs.clientWidth) {
+            tabs.scrollLeft = Math.max(0, activeTab.offsetLeft - 12);
         }
 
         page.querySelectorAll('[data-settings-toggle-secret]').forEach(function (button) {

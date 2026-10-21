@@ -52,6 +52,9 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - сценарии переведены на общую систему: таблица с поиском/фильтром, KPI, категории, импорт/экспорт, карточки сценария и категории;
 - редактор кода переведён на CodeMirror 6 и отдельный lazy-chunk: единый toolbar, light/dark, авто-высота, поиск, F11/Esc, история версий, ошибки с подсветкой строки, мобильная вёрстка; старый `3rdparty/codemirror` удалён;
 - настройки переведены на общую систему: KPI, `md-tabs` разделов, карточки настроек, `md-field`/`md-input`/`md-select`, локальный поиск;
+- добавлен мастер первичной настройки `/install.php` на новой схеме `lib/core/Install/`: проверка PHP/расширений/прав/БД, запись `.env` с резервной копией, настройки интерфейса в `settings`, создание администратора при необходимости; при пустой базе мастер импортирует чистую схему `lib/core/Install/schema.sql` (только структура, без демо-данных и пользователей); `InstallGate` перенаправляет админку, сайт, API и object-эндпоинты, пока маркер `cms/modules_installed/install.installed` не завершён (старые установки с `control_modules.installed` считаются настроенными); документация — `docs/agents/install.md`, CLI — `tools/install.php`; встроенная авторизация панели удалена (доступ закрывает reverse proxy, новая авторизация будет на модуле «Пользователи»), старый список пользователей на фронтенде и `DISABLE_USERS_LIST` удалены;
+- настройки мастера перенесены в «Общие настройки» (`lib/core/Settings/`): схема переиспользует `InstallSchema`, пишет `.env` и `settings`, проверяет смену БД, сохраняет старые DB-настройки отдельными разделами; после сохранения перезапускает циклы, при смене БД делает полный reload супервизора; документация — `docs/agents/settings.md`;
+- управление циклами переведено на OOP-схему (`lib/core/Cycles/`): персистентное состояние `cms/cycles/state.json` (`running`/`stopped`/`disabled`), поколения для надёжного рестарта, `CycleManager` + `CycleSupervisor`, отключение без ошибок и авто-рестарта, совместимость с `cycle_*Control`/`Disabled` для старых модулей и кнопки `disable`/`enable` в X-Ray; документация — `docs/agents/cycles.md`;
 - «Обновление системы» (saverestore) переведено на общую систему: hero, KPI, карточки обновления/журнала/автоматизации, сценарии восстановления на `md-tabs`, модалка прогресса на `md-*` — этапы, проверки, журнал с копированием и автоскроллом, отдельные состояния успеха/ошибки; при ошибке модалка остаётся открытой, URL очищается от `mode=getlatest_iframe`;
 - X-Ray переведён на общую систему: KPI, вкладки режимов, тулбар с фильтрами по дате и имени файла, консоль, карточки циклов и таблицы; генерация карточек/таблиц в `xray.js` использует `md-*`;
 - консоль X-Ray выводит структурированные записи: дата, время, файл, уровень и краткое сообщение; полный текст раскрывается по клику, абсолютные пути проекта сокращаются;
@@ -67,7 +70,8 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - модуль «Расположение» (`locations`) переведён на общую систему: hero и KPI, таблица помещений с поиском, фильтром по объектам, приоритетом и кнопками ↑/↓, карточка помещения и вкладка «Логика» с выбором метода room-объекта и CodeMirror 6; чистые URL `/panel/locations.html`, `/panel/locations/add.html`, `/panel/locations/<id>.html`, `/panel/locations/<id>/logic.html`, `/panel/locations/<id>/up.html`, `/panel/locations/<id>/down.html` и `/panel/locations/<id>/delete.html`;
 - модуль «Ошибки системы» (`system_errors`) переведён на общую систему: hero и KPI, статус активных ошибок, таблица групп с поиском/фильтром, переключателем хранения истории, отдельная страница истории с раскрываемыми событиями, настройки хранения в модалке; отметка «просмотрено» больше не удаляет историю; история показывает источник ошибки (модуль, файл, строку, вызов) и для новых записей — URL/метод/IP запроса, а сырой backtrace разбирается на читаемый стек кадров с короткими путями; чистые URL `/panel/system_errors.html`, `/panel/system_errors/<id>.html`, `/panel/system_errors/<id>/history.html`, `/panel/system_errors/<id>/read.html`, `/panel/system_errors/<id>/delete.html`, `/panel/system_errors/readall.html` и `/panel/system_errors/test.html`;
 - модуль MQTT переделан в рабочее пространство для больших журналов: hero и KPI, состояние цикла, группировка по устройствам или корневым путям, поиск и фильтры, серверная пагинация, live-обновление значений, отдельная страница настроек брокера и редактор топика с привязкой, публикацией и историей сообщений; page-CSS/JS — `public/assets/modules/mqtt/mqtt.css` и `public/assets/modules/mqtt/mqtt.js`; чистые URL `/panel/mqtt.html`, `/panel/mqtt/add.html`, `/panel/mqtt/<id>.html`, `/panel/mqtt/<id>/delete.html`, `/panel/mqtt/settings.html`, `/panel/mqtt/clear-trash.html` и `/panel/mqtt/optimize.html`;
-- компонент `linkedobject` переведён на общую систему и собственный стабильный контроллер `MDLinkedObjectUI`: native input сохраняет `name/id/onchange`, свободный ввод, атомарная загрузка свойств/методов с кэшем, portal-dropdown, повторная инициализация после `partLoad`, поддержка клонированных строк и таблиц; демо — `?action=ui_kit#linkedobject`.
+- компонент `linkedobject` переведён на общую систему и собственный стабильный контроллер `MDLinkedObjectUI`: native input сохраняет `name/id/onchange`, свободный ввод, атомарная загрузка свойств/методов с кэшем, portal-dropdown, повторная инициализация после `partLoad`, поддержка клонированных строк и таблиц; демо — `?action=ui_kit#linkedobject`;
+- добавлен раздел «База знаний» (`/panel/knowledge_base.html`): читает `docs/**/*.md` без отдельной таблицы в БД, показывает категории, метки аудитории (`user`/`agent`), поиск, карточки и статью с оглавлением; Markdown рендерится безопасным серверным рендерером, относительные ссылки и картинки переписываются на базу знаний/`/docs/`; пользовательская инструкция по CLI — `docs/user/commands.md`, правила разметки — `docs/agents/knowledge-base.md`; чистые URL `/panel/knowledge_base.html` и `/panel/knowledge_base/<path>.html`.
 
 Следующий этап — **полировка мобильных деталей объектов** (длинные значения в редакторах, компактные формы), затем остальные модули.
 
@@ -81,8 +85,10 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 6. `docs/agents/third-party.md` — что лежит в `3rdparty/`, зачем, план перехода на Composer.
 7. `docs/agents/configuration.md` — `.env`, `Config`, типы, легаси-константы и правила для модулей.
 8. `docs/agents/entrypoints.md` — точки входа, `Application`, `AdminApplication`, `SiteApplication` и контракт глобалов.
-9. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
-10. Этот файл — текущее состояние и ограничения.
+9. `docs/agents/install.md` — мастер первичной настройки, маркер установки и gate.
+10. `docs/agents/knowledge-base.md` — как добавить инструкцию в базу знаний, метки и категории.
+11. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
+12. Этот файл — текущее состояние и ограничения.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 
@@ -106,10 +112,18 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `public/nf.php` | Inbound-роутинг pretty URL, legacy `pd`, 404 |
 | `public/index.php` | Тонкий адаптер: создаёт `SiteApplication` |
 | `public/api.php` | REST API (`/api/...`) |
+| `public/install.php` | Мастер первичной настройки (тонкий адаптер `InstallApplication`) |
 | `bootstrap.php` | `chdir` в корень и autoloader `MajorDoMo\Core\*` |
 | `lib/core/Application.php` | Общий boot: config → loader → settings, таймеры, сессия |
 | `lib/core/AdminApplication.php` | Админка: canonicalize, part_load, `panel`, вывод |
 | `lib/core/SiteApplication.php` | Сайт: `application`, 404, postprocess, вывод |
+| `lib/core/InstallApplication.php` | Мастер: сессия/CSRF, `Installer`, рендер шагов и экрана успеха |
+| `lib/core/Install/` | `InstallState`, `InstallGate`, `Installer`, `InstallSchema`, `EnvFile`, `InstallDatabase`, `InstallEnvironment`, `InstallFormRenderer`, `schema.sql` |
+| `lib/core/Settings/` | `SettingsSchema`, `SettingsManager`, `SettingsPresenter` — общие настройки поверх мастера |
+| `lib/core/Cycles/` | `CycleStateStore`, `CycleSupervisor`, `CycleManager` — персистентное управление циклами |
+| `templates/install/install.php` | Разметка мастера (MDJUI, шаги, обзор) |
+| `public/assets/install/` | Page-only CSS/JS мастера |
+| `tools/install.php` | CLI: `status`, `check`, `test-db`, `reset`, `complete` |
 | `lib/admin_router.php` | Единая таблица маршрутов и преобразование legacy ↔ pretty |
 | `lib/error_page.php` | Общий рендер 404 (HTML/JSON, светлая/тёмная тема) |
 | `public/404.php` | Публичная точка входа для nginx `error_page 404` |
@@ -127,6 +141,11 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `templates/ui/components/` | Разметка переиспользуемых компонентов |
 | `templates/ui_kit/` | Страница UI Kit и её секции |
 | `modules/ui_kit/` | Модуль админки `?action=ui_kit` |
+| `lib/knowledge_base.php` | Реестр документов базы знаний: front matter, категории, аудитория, поиск |
+| `lib/markdown.php` | Безопасный серверный рендерер Markdown для базы знаний |
+| `modules/knowledge_base/` | Модуль админки «База знаний» (`/panel/knowledge_base.html`) |
+| `templates/knowledge_base/` | Список материалов, статья, состояние «не найдено» |
+| `public/assets/modules/knowledge_base/` | Page-only CSS/JS базы знаний (не входят в общий бандл) |
 | `docs/agents/DESIGN_SYSTEM.md` | Обязательная документация дизайн-системы |
 | `resources/js/modules/admin_panel/` | Модули shell: core, drawer, search, console, notifications, init, dashboard, controls, header search, objects, data table, alpine, shared UI components, dashboard charts |
 | `resources/js/modules/admin_panel/100_chart_runtime.js` | Общий lazy-loader ApexCharts (`window.MDJCharts`) для дашборда и истории |
@@ -250,7 +269,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - Совместимость с модулями, которые не переписаны: не удаляйте их CSS/JS, пока не проверены входящие ссылки.
 - PHP 8.4: новые предупреждения/ошибки недопустимы.
 - Конфигурацию: `.env`, `Config::get()`, легаси-мост. Не добавлять `define()` и не читать `getenv()` в модулях.
-- Права доступа/авторизацию (`control_access`, `panel.class.php`) без явной задачи.
+- Авторизацию в приложении: сейчас её нет, доступ закрывает reverse proxy (nginx basic auth). Новую строить на модуле «Пользователи» и таблице `users`.
 - Формат данных и API старых модулей.
 - Таблицу маршрутов и round-trip-проверку в `lib/admin_router.php`: без неё
   старые ссылки начнут терять состояние.
@@ -266,7 +285,9 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - Новая библиотека: `npm install`, импорт в `resources/js/app.js` (или отдельный entry, если библиотека тяжёлая), при необходимости `window.X = ...`, `npm run build`. Тяжёлые библиотеки вроде CodeMirror и ApexCharts держите в отдельных lazy-chunk, а не в основном бандле.
 - Новая иконка модуля: добавить в `$sidebarIcons` в `modules/panel.class.php` (значение — `ti-*` из Tabler).
 - Новая настройка: `ConfigSchema` + `.env.example` + `Config::get()`; не добавлять константу. Подробно — `docs/agents/configuration.md`.
+- Новая настройка первого запуска: поле в `lib/core/Install/InstallSchema.php`, при необходимости — правило в `Installer`, вариант в `InstallFormRenderer`/`templates/install/install.php`; секреты помечать `secret`, env-ключ обязан быть в `ConfigSchema`.
 - Новая страница UI Kit не нужна: используйте `/admin.php?action=ui_kit`.
+- Новая инструкция для пользователя: Markdown-файл в `docs/user/`; для агента — в `docs/agents/`. Метки аудитории, категория и порядок задаются во front matter, см. `docs/agents/knowledge-base.md`.
 
 ## 10. Дорожная карта
 
@@ -286,8 +307,12 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `npm run build` после изменений в `resources/`.
 - `php tests/routing_smoke.php` — контракт friendly URL, round-trip и nginx-конфига.
 - `php tests/config_smoke.php` — парсер `.env`, типы, кеш и легаси-мост.
+- `php tests/install_smoke.php` — `.env`-писатель, маркер установки, схема, gate и рендер мастера.
+- `php tests/settings_cycles_smoke.php` — схема «Общих настроек», персистентные состояния и reconcile циклов.
+- `php tests/knowledge_base_smoke.php` — сканирование `docs/`, front matter, безопасный Markdown, ссылки и категории базы знаний.
 - `php tools/config-audit.php` — не выросло ли число обращений к легаси-константам.
 - Открыть `/panel/` и затронутые страницы: console/exceptions, 390 px, светлая и тёмная темы.
+- После чистой установки проверить, что `/panel/` открывается без формы входа (доступ закрывает reverse proxy), а созданный пользователь есть в `users`.
 - Проверить старую `pd`-ссылку: 302 на `/panel/...` и то же состояние.
 - Проверить 404: `/nonexistent.html`, `/panel/does_not_exist.html`, `/nonexistent`.
 - Проверить `partLoad`-переход между страницами.
@@ -328,4 +353,6 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `rc/` — архаичный пульт (Windows-бинарники + `rc/index.php`); URL `/rc/...` теперь 301 на `/panel/`;
 - `.tmp-p.json`, `obj.bat`, `templates_alt/`, `lib/_vimage_tahoma.ttf`, `cms/icons/1_iPhone_MUSIC_5_sm.png` — мусор без ссылок (аватар `cms/avatars/1_ver-logo_any_tickets-large.png` оставлен: он привязан к пользователю в БД);
 - `.htaccess` (корень и подкаталоги `lib/`, `templates/`, `cms/`, `backup/`, `3rdparty/elFinder/php/.tmp/`) — правила перенесены в `docs/deploy/nginx.conf.sample`, деплой только на nginx; каталоги, которые держались на этих файлах, сохранены через `.gitkeep`;
+- `modules/control_access/`, `templates/control_access/`, `modules/master/`, `templates/master/` — старые вход и ACL панели; авторизация делегирована reverse proxy, новая будет на модуле «Пользователи»;
+- таблица `admin_users` удалена из схемы/установщика, встроенная проверка HTTP Basic Auth в `load_settings.php` (`EXT_ACCESS_*`, `REMOTE_*`) удалена; в существующих БД таблица может остаться как неиспользуемая; доступ закрывает nginx;
 - `config.php.sample` — заменён документированным `.env.example`; настройки больше не живут в PHP-файле.

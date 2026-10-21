@@ -118,35 +118,12 @@ class panel extends module
         }
 
 
-        if (!isset($session->data["AUTHORIZED"]) && isset($session->data['SITE_USERNAME'])) {
-            $user = SQLSelectOne("SELECT * FROM users WHERE USERNAME LIKE '" . DBSafe($session->data['SITE_USERNAME']) . "'");
-            if ($user['IS_ADMIN']) {
-                $user = SQLSelectOne("SELECT * FROM admin_users WHERE LOGIN='admin'");
-                $session->data['USER_NAME'] = $user['LOGIN'];
-                $session->data['USER_LEVEL'] = $user['PRIVATE'];
-                $session->data['USER_ID'] = $user['ID'];
-                $session->data["AUTHORIZED"] = 1;
-                logAction('control_panel_enter', $session->data['USER_NAME']);
-            }
-        }
-
-        if (isset($session->data["AUTHORIZED"]) || defined('NO_DATABASE_CONNECTION')) {
-            $this->authorized = 1;
-        } else {
-            $tmp = SQLSelectOne("SELECT ID FROM users WHERE IS_ADMIN=1");
-            if ($tmp['ID']) {
-                redirect("/");
-                exit;
-            }
-        }
+        // Authentication is delegated to the reverse proxy (nginx basic auth).
+        // The in-app login/ACL layer was removed together with control_access;
+        // the new user-based layer will be built on top of the users module.
 
         global $ajax_panel;
         if ($ajax_panel) {
-            if (!$this->authorized) {
-                header('HTTP/1.0 403 Forbidden');
-                echo 'Authentication required';
-                exit;
-            }
             include_once(DIR_MODULES . 'inc_panel_ajax.php');
         }
 
@@ -156,7 +133,6 @@ class panel extends module
         }
 
         $out["TODAY"] = date('l, F d, Y');
-        $out["AUTHORIZED"] = $this->authorized;
         $flash_notifications = mdjConsumeFlashNotifications('admin');
         $request_flash_notifications = mdjCollectRequestFlashNotifications('admin');
         if (!empty($request_flash_notifications)) {
@@ -165,153 +141,159 @@ class panel extends module
         }
         $out['FLASH_NOTIFICATIONS_JSON'] = json_encode($flash_notifications, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        if ($this->authorized) {
 
-            include_once(DIR_MODULES . "control_access/control_access.class.php");
-            $acc = new control_access();
-
-            $requestedAction = isset($this->action) && is_scalar($this->action) ? trim((string)$this->action) : '';
-            $requestedModuleValue = gr('md');
-            $requestedModule = is_scalar($requestedModuleValue) ? trim((string)$requestedModuleValue) : '';
-            $moduleMissing = false;
-            if (isset($this->action) && !is_scalar($this->action)) {
-                $moduleMissing = true;
-            }
-            if (isset($_REQUEST['md']) && !is_scalar($_REQUEST['md'])) {
-                $moduleMissing = true;
-            }
-            if ($requestedAction !== '' && !mdj_admin_module_exists($requestedAction)) {
-                $moduleMissing = true;
-            }
-            if ($requestedModule !== '' && $requestedModule !== 'panel' && !mdj_admin_module_exists($requestedModule)) {
-                $moduleMissing = true;
-            }
-
-            if ($moduleMissing) {
-                http_response_code(404);
-                $out['NOT_FOUND'] = 1;
-                $out['NOT_FOUND_PATH'] = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '';
-                $out['ACTION'] = '';
-                $this->action = '';
-            } elseif (!$acc->checkAccess($this->action, 1)) {
-                $this->redirect("?");
-            }
-
-            $this->registerPanelActivityLog();
-
-            if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-                clearCache(0);
-            }
-
-            $sqlQuery = "SELECT *
-                  FROM project_modules
-                 WHERE (`HIDDEN`='0' OR NAME='control_modules')
-                 ORDER BY FIELD(CATEGORY, '<#LANG_SECTION_OBJECTS#>', '<#LANG_SECTION_APPLICATIONS#>',
-                                '<#LANG_SECTION_SETTINGS#>', '<#LANG_SECTION_SYSTEM#>'),
-                          FIELD(`NAME`,'classes','settings','system_errors','xray','saverestore','market') DESC,
-                          `PRIORITY`, `TITLE`";
-
-            $modules = SQLSelect($sqlQuery);
-
-            $sidebarIcons = array(
-                'panel' => 'ti-home',
-                'objects' => 'ti-box-seam',
-                'classes' => 'ti-hierarchy',
-                'scripts' => 'ti-code',
-                'settings' => 'ti-adjustments-horizontal',
-                'locations' => 'ti-map-pin',
-                'users' => 'ti-users',
-                'market' => 'ti-shopping-bag',
-                'saverestore' => 'ti-repeat',
-                'xray' => 'ti-activity',
-                'system_errors' => 'ti-alert-triangle',
-                'actions_log' => 'ti-history',
-                'events' => 'ti-bell',
-                'control_modules' => 'ti-layout-grid',
-                'control_access' => 'ti-shield-lock',
-                'master' => 'ti-home-cog',
-                'methods' => 'ti-braces',
-                'properties' => 'ti-list-check',
-                'history' => 'ti-history',
-                'pvalues' => 'ti-chart-bar',
-                'jobs' => 'ti-calendar-check',
-                'linkedobject' => 'ti-link',
-                'mqtt' => 'ti-broadcast',
-                'pinghosts' => 'ti-server',
-                'duration_input' => 'ti-hourglass',
-                'blockly_code' => 'ti-puzzle',
-                'shoutbox' => 'ti-messages',
-                'ui_kit' => 'ti-palette'
-            );
-
-            $old_cat = 'some_never_should_be_category_name';
-            $modulesCnt = count($modules);
-
-            $notifications = array();
-            if (SQLTableExists('module_notifications')) {
-                $getNotifications = SQLSelect("select * from module_notifications WHERE IS_READ = 0 ORDER BY ADDED DESC");
-                foreach ($getNotifications as $notification) {
-                    $notifications[$notification['MODULE_NAME']][] = $notification;
+        // Register the knowledge base once on existing installations. New
+        // modules normally install on first access, but this section is
+        // content-driven and users should see it in the menu right away.
+        if (!defined('NO_DATABASE_CONNECTION') && !isModuleInstalled('knowledge_base')) {
+            $knowledgeBaseModule = DIR_MODULES . 'knowledge_base/knowledge_base.class.php';
+            if (is_file($knowledgeBaseModule)) {
+                require_once($knowledgeBaseModule);
+                if (class_exists('knowledge_base', false)) {
+                    new knowledge_base();
                 }
             }
-
-            for ($i = 0; $i < $modulesCnt; $i++) {
-                if ($modules[$i]['NAME'] == $this->action) {
-                    $modules[$i]['SELECTED'] = 1;
-                }
-                $modules[$i]['CATEGORY_ID'] = substr(md5($modules[$i]['CATEGORY']), 0, 4);
-                if ($modules[$i]['CATEGORY'] != $old_cat) {
-                    $modules[$i]['NEW_CATEGORY'] = 1;
-                    $old_cat = $modules[$i]['CATEGORY'];
-                    if ($i > 0) {
-                        //echo $last_allow."<br>";
-                        $modules[$last_allow]['LAST_IN_CATEGORY'] = 1;
-                    }
-                }
-
-                if (!$acc->checkAccess($modules[$i]['NAME'])) {
-                    $modules[$i]['DENIED'] = 1;
-                } else {
-                    $last_allow = $i;
-                }
-
-                if (isset($notifications[$modules[$i]["NAME"]])) {
-                    $modules[$i]["NOTIFICATIONS"] = $notifications[$modules[$i]["NAME"]];
-                    $modules[$i]["NOTIFICATIONS_COUNT"] = count($modules[$i]["NOTIFICATIONS"]);
-                    $modules[$i]["NOTIFICATIONS_TYPE"] = $modules[$i]["NOTIFICATIONS"][0]['TYPE'];
-                    $notyForJs = array();
-                    foreach ($modules[$i]["NOTIFICATIONS"] as $noty) {
-                        $notyType = $noty['TYPE'];
-                        if ($notyType == 'default') {
-                            $notyType = 'info';
-                        }
-                        $notyForJs[] = array(
-                            'id'   => (int)$noty['ID'],
-                            'type' => $notyType,
-                            'msg'  => $noty['MESSAGE'],
-                            'time' => date('d.m.Y H:i:s', strtotime($noty['ADDED']))
-                        );
-                    }
-                    $modules[$i]["NOTIFICATIONS_JSON"] = htmlspecialchars(
-                        json_encode($notyForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                        ENT_QUOTES, 'UTF-8'
-                    );
-                } else {
-                    $modules[$i]["NOTIFICATIONS_COUNT"] = 0;
-                }
-
-                if (file_exists(ROOT . 'public/assets/img/modules/' . $modules[$i]['NAME'] . '.png')) {
-                    $modules[$i]['ICON_SM'] = ROOTHTML . 'assets/img/modules/' . $modules[$i]['NAME'] . '.png';
-                } else {
-                    $modules[$i]['ICON_SM'] = ROOTHTML . 'assets/img/modules/default.png';
-                }
-                if (isset($sidebarIcons[$modules[$i]['NAME']])) {
-                    $modules[$i]['ICON_BI'] = $sidebarIcons[$modules[$i]['NAME']];
-                }
-            }
-            $modules[$last_allow]['LAST_IN_CATEGORY'] = 1;
-            $out["SUB_MODULES"] = $modules;
         }
+
+        $requestedAction = isset($this->action) && is_scalar($this->action) ? trim((string)$this->action) : '';
+        $requestedModuleValue = gr('md');
+        $requestedModule = is_scalar($requestedModuleValue) ? trim((string)$requestedModuleValue) : '';
+        $moduleMissing = false;
+        if (isset($this->action) && !is_scalar($this->action)) {
+            $moduleMissing = true;
+        }
+        if (isset($_REQUEST['md']) && !is_scalar($_REQUEST['md'])) {
+            $moduleMissing = true;
+        }
+        if ($requestedAction !== '' && !mdj_admin_module_exists($requestedAction)) {
+            $moduleMissing = true;
+        }
+        if ($requestedModule !== '' && $requestedModule !== 'panel' && !mdj_admin_module_exists($requestedModule)) {
+            $moduleMissing = true;
+        }
+
+        if ($moduleMissing) {
+            http_response_code(404);
+            $out['NOT_FOUND'] = 1;
+            $out['NOT_FOUND_PATH'] = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '';
+            $out['ACTION'] = '';
+            $this->action = '';
+        }
+
+        $this->registerPanelActivityLog();
+
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            clearCache(0);
+        }
+
+        $sqlQuery = "SELECT *
+              FROM project_modules
+             WHERE (`HIDDEN`='0' OR NAME='control_modules')
+             ORDER BY FIELD(CATEGORY, '<#LANG_SECTION_OBJECTS#>', '<#LANG_SECTION_APPLICATIONS#>',
+                            '<#LANG_SECTION_SETTINGS#>', '<#LANG_SECTION_SYSTEM#>', '<#LANG_SECTION_HELP#>'),
+                      FIELD(`NAME`,'classes','settings','system_errors','xray','saverestore','market') DESC,
+                      `PRIORITY`, `TITLE`";
+
+        $modules = SQLSelect($sqlQuery);
+
+        $sidebarIcons = array(
+            'panel' => 'ti-home',
+            'objects' => 'ti-box-seam',
+            'classes' => 'ti-hierarchy',
+            'scripts' => 'ti-code',
+            'settings' => 'ti-adjustments-horizontal',
+            'locations' => 'ti-map-pin',
+            'users' => 'ti-users',
+            'market' => 'ti-shopping-bag',
+            'saverestore' => 'ti-repeat',
+            'xray' => 'ti-activity',
+            'system_errors' => 'ti-alert-triangle',
+            'actions_log' => 'ti-history',
+            'events' => 'ti-bell',
+            'control_modules' => 'ti-layout-grid',
+            'methods' => 'ti-braces',
+            'properties' => 'ti-list-check',
+            'history' => 'ti-history',
+            'pvalues' => 'ti-chart-bar',
+            'jobs' => 'ti-calendar-check',
+            'linkedobject' => 'ti-link',
+            'mqtt' => 'ti-broadcast',
+            'pinghosts' => 'ti-server',
+            'duration_input' => 'ti-hourglass',
+            'blockly_code' => 'ti-puzzle',
+            'shoutbox' => 'ti-messages',
+            'ui_kit' => 'ti-palette',
+            'knowledge_base' => 'ti-book'
+        );
+
+        $old_cat = 'some_never_should_be_category_name';
+        $last_allow = 0;
+        $modulesCnt = count($modules);
+
+        $notifications = array();
+        if (SQLTableExists('module_notifications')) {
+            $getNotifications = SQLSelect("select * from module_notifications WHERE IS_READ = 0 ORDER BY ADDED DESC");
+            foreach ($getNotifications as $notification) {
+                $notifications[$notification['MODULE_NAME']][] = $notification;
+            }
+        }
+
+        for ($i = 0; $i < $modulesCnt; $i++) {
+            if ($modules[$i]['NAME'] == $this->action) {
+                $modules[$i]['SELECTED'] = 1;
+            }
+            $modules[$i]['CATEGORY_ID'] = substr(md5($modules[$i]['CATEGORY']), 0, 4);
+            if ($modules[$i]['CATEGORY'] != $old_cat) {
+                $modules[$i]['NEW_CATEGORY'] = 1;
+                $old_cat = $modules[$i]['CATEGORY'];
+                if ($i > 0) {
+                    //echo $last_allow."<br>";
+                    $modules[$last_allow]['LAST_IN_CATEGORY'] = 1;
+                }
+            }
+
+            if (isset($acc) && is_object($acc) && !$acc->checkAccess($modules[$i]['NAME'])) {
+                $modules[$i]['DENIED'] = 1;
+            } else {
+                $last_allow = $i;
+            }
+
+            if (isset($notifications[$modules[$i]["NAME"]])) {
+                $modules[$i]["NOTIFICATIONS"] = $notifications[$modules[$i]["NAME"]];
+                $modules[$i]["NOTIFICATIONS_COUNT"] = count($modules[$i]["NOTIFICATIONS"]);
+                $modules[$i]["NOTIFICATIONS_TYPE"] = $modules[$i]["NOTIFICATIONS"][0]['TYPE'];
+                $notyForJs = array();
+                foreach ($modules[$i]["NOTIFICATIONS"] as $noty) {
+                    $notyType = $noty['TYPE'];
+                    if ($notyType == 'default') {
+                        $notyType = 'info';
+                    }
+                    $notyForJs[] = array(
+                        'id'   => (int)$noty['ID'],
+                        'type' => $notyType,
+                        'msg'  => $noty['MESSAGE'],
+                        'time' => date('d.m.Y H:i:s', strtotime($noty['ADDED']))
+                    );
+                }
+                $modules[$i]["NOTIFICATIONS_JSON"] = htmlspecialchars(
+                    json_encode($notyForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    ENT_QUOTES, 'UTF-8'
+                );
+            } else {
+                $modules[$i]["NOTIFICATIONS_COUNT"] = 0;
+            }
+
+            if (file_exists(ROOT . 'public/assets/img/modules/' . $modules[$i]['NAME'] . '.png')) {
+                $modules[$i]['ICON_SM'] = ROOTHTML . 'assets/img/modules/' . $modules[$i]['NAME'] . '.png';
+            } else {
+                $modules[$i]['ICON_SM'] = ROOTHTML . 'assets/img/modules/default.png';
+            }
+            if (isset($sidebarIcons[$modules[$i]['NAME']])) {
+                $modules[$i]['ICON_BI'] = $sidebarIcons[$modules[$i]['NAME']];
+            }
+        }
+        $modules[$last_allow]['LAST_IN_CATEGORY'] = 1;
+        $out["SUB_MODULES"] = $modules;
 
         if ($this->action && isset($notifications[$this->action])) {
             $total = count($notifications[$this->action]);

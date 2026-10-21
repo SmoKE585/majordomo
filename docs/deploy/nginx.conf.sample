@@ -72,6 +72,16 @@ server {
     # disable_symlinks if_not_owner from=/var/www/example/data/www/example.com;
 
     # --- Точки входа -----------------------------------------------------
+    # Setup wizard: the canonical URL is install.php (it must work even when
+    # rewrites are stale), the pretty alias is a convenience.
+    location = /install {
+        return 302 /install.php;
+    }
+
+    location = /install/ {
+        return 302 /install.php;
+    }
+
     location = /panel {
         return 301 /panel/;
     }
@@ -277,6 +287,16 @@ server {
 
     root /var/www/example/data/www/example.com/public;
     index index.php;
+
+    # Setup wizard: the canonical URL is install.php (it must work even when
+    # rewrites are stale), the pretty alias is a convenience.
+    location = /install {
+        return 302 /install.php;
+    }
+
+    location = /install/ {
+        return 302 /install.php;
+    }
 
     location = /panel {
         return 301 /panel/;
