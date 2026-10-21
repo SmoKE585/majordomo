@@ -30,6 +30,8 @@ final class Config
     private static array $sources = array();
     /** @var array<string, string> */
     private static array $process = array();
+    /** @var string[] Diagnostics collected before paths/constants are resolved. */
+    private static array $pendingWarnings = array();
 
     public static function boot(?string $root = null): void
     {
@@ -56,6 +58,10 @@ final class Config
         self::defineConstants();
 
         self::$booted = true;
+        foreach (self::$pendingWarnings as $message) {
+            self::log($message);
+        }
+        self::$pendingWarnings = array();
     }
 
     public static function root(): string
@@ -423,15 +429,27 @@ final class Config
 
     private static function log(string $message): void
     {
-        $directory = self::$root . '/cms/debmes';
-        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+        if (!self::$booted) {
+            self::$pendingWarnings[] = $message;
+            return;
+        }
+        if (function_exists('DebMes')) {
+            DebMes($message, 'config', 'warning');
+            return;
+        }
+        // Config boots before the general library on CLI/public entry points.
+        $path = self::string('LOG_DIRECTORY');
+        $directory = ($path !== '' ? rtrim($path, '/\\') : self::$root . '/cms/debmes') . '/' . date('Y-m-d');
+        if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
             error_log('MajorDoMo config: ' . $message);
             return;
         }
-        @file_put_contents(
-            $directory . '/config.log',
-            date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL,
+        if (file_put_contents(
+            $directory . '/errors.log',
+            date('H:i:s') . ' ' . explode(' ', microtime())[0] . ' [WARNING] [config] ' . $message . PHP_EOL,
             FILE_APPEND | LOCK_EX
-        );
+        ) === false) {
+            error_log('MajorDoMo config: ' . $message);
+        }
     }
 }

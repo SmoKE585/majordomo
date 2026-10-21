@@ -27,7 +27,7 @@ $handle = opendir('/dev/');
 
 if (!$handle)
 {
-   DebMes("Support only *nux system" . basename(__FILE__));
+   DebMes("Support only *nux system" . basename(__FILE__), 'arduino', 'error');
    exit;
 }
 
@@ -41,7 +41,7 @@ while (false !== ($entry = readdir($handle)))
 
 if (empty($tty))
 {
-   DebMes("/dev/ttyACM* not found" . basename(__FILE__));
+   DebMes("/dev/ttyACM* not found" . basename(__FILE__), 'arduino', 'error');
    exit;
 }
 
@@ -93,13 +93,13 @@ try
    }
    else
    {
-      DebMes("Not open device " . end($tty) . ": " . basename(__FILE__));
+      DebMes("Not open device " . end($tty) . ": " . basename(__FILE__), 'arduino', 'error');
    }
 }
 catch (Exception $e)
 {
-   DebMes("Not open device " . end($tty) . " " . $e->getMessage() . ": " . basename(__FILE__));
+   DebMes("Not open device " . end($tty) . " " . $e->getMessage() . ": " . basename(__FILE__), 'arduino', 'error');
 }
 
-DebMes("Unexpected close of cycle: " . basename(__FILE__));
+DebMes("Unexpected close of cycle: " . basename(__FILE__), 'arduino', 'error');
 
