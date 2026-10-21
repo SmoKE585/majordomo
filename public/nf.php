@@ -1,4 +1,5 @@
 <?php
+require dirname(__DIR__) . '/bootstrap.php';
 
 /*
  * @version 0.1 (auto-set)
@@ -57,7 +58,7 @@ $requests = mdj_admin_route_table($rootHTML);
 $requestPath = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
 $panelRoot = rtrim(ROOTHTML, '/') . '/panel/';
 if ($requestPath === $panelRoot || $requestPath === rtrim($panelRoot, '/')) {
-    include_once("admin.php");
+    include_once(__DIR__ . "/admin.php");
     exit;
 }
 
@@ -125,6 +126,6 @@ if (!isset($_REQUEST['pd'])) {
 }
 
 if (preg_match('/^' . preg_quote($rootHTML, '/') . 'panel\//is', $_SERVER['REQUEST_URI']))
-   include_once("admin.php");
+   include_once(__DIR__ . "/admin.php");
 else
-   include_once("index.php");
+   include_once(__DIR__ . "/index.php");

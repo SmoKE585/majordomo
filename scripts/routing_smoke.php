@@ -314,15 +314,21 @@ $nginxChecks = [
     'location ^~ /panel/ {' => 'admin pretty URL location',
     'try_files $uri $uri/ /nf.php?$query_string;' => 'nf.php fallback',
     'error_page 404 /404.php;' => 'styled 404 error_page',
-    'location ^~ /lib/' => 'lib/ protection',
-    'location ~* ^/templates/.*\.html$' => 'templates html protection',
-    'location = /config.php' => 'config.php protection',
-    'location ^~ /assets/' => 'static assets alias',
-    'public/assets/' => 'static assets live in public/assets',
-    'location ^~ /public/ { deny all; }' => 'public/ direct access denied',
+    'root /var/www/example/data/www/example.com/public;' => 'public/ is the document root',
+    'location ^~ /assets/' => 'static assets location',
+    'location ~ ^/public/(.*)$' => 'old docroot prefix redirect',
     'return 301 /assets/$1/$2$is_args$args;' => 'legacy css/js/img redirect',
     '/assets/vendor/$1/$2$is_args$args;' => '3rdparty browser libs redirect',
     '/assets/modules/$1/$2$is_args$args;' => 'module page css/js redirect',
+    'location = /rc {' => 'removed rc redirect',
+    'location ^~ /modules/ {' => 'module endpoints location',
+    'location ^~ /objects/ {' => 'objects entry location',
+    'location ^~ /pChart/ {' => 'pChart entry location',
+    'location ^~ /scripts/ {' => 'scripts entry location',
+    'location ^~ /3rdparty/ {' => '3rdparty location',
+    'location ^~ /cms/ {' => 'cms media location',
+    'location ^~ /docs/ {' => 'documentation location',
+    'location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ { deny all; }' => 'cms runtime data is private',
 ];
 
 foreach ($nginxChecks as $needle => $name) {
@@ -348,6 +354,21 @@ routingCheck(
     is_dir($rootDir . '/3rdparty/smarty3') && is_dir($rootDir . '/3rdparty/php-mailer'),
     '[LAYOUT] PHP libraries must stay in 3rdparty'
 );
+
+// --- public docroot contract ---------------------------------------------
+
+foreach (['index.php', 'admin.php', 'nf.php', 'api.php', '404.php'] as $entry) {
+    routingCheck(
+        is_file($rootDir . '/public/' . $entry),
+        "[PUBLIC] /{$entry} must live in public/"
+    );
+    routingCheck(
+        !is_file($rootDir . '/' . $entry),
+        "[PUBLIC] /{$entry} must not stay in the project root"
+    );
+}
+routingCheck(is_file($rootDir . '/bootstrap.php'), '[PUBLIC] bootstrap.php must define the application root');
+routingCheck(!is_dir($rootDir . '/rc'), '[PUBLIC] rc/ is removed (redirected to /panel/)');
 
 foreach (findHtaccessLeftovers($rootDir) as $htaccess) {
     $failures[] = "[LEGACY] {$htaccess} — web server config lives in docs/deploy/nginx.conf.sample only";

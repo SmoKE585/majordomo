@@ -86,20 +86,26 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 
 Раскладка проекта (подробно — `docs/agents/project-structure.md`):
 
+- `public/` — document root: точки входа (`index.php`, `admin.php`, `nf.php`, `api.php`,
+  `404.php`), `assets/`, `favicon.ico`, `robots.txt`. Остальное по HTTP недоступно;
 - `public/assets/` — всё, что браузер скачивает напрямую, публикуется как `/assets/`
   (`admin/` — бандл, `css/` и `js/` — legacy-статика, `img/`, `vendor/` — браузерные
   библиотеки, `modules/<name>/` — CSS/JS страниц модулей);
 - `src/admin/` — исходники Vite (`main.js`, `css/`, `js/`), в бандл, не отдаются напрямую;
-- корень проекта — PHP-точки входа, `modules/`, `lib/`, `templates/`, `cms/`, `3rdparty/`
-  (PHP-библиотеки и elFinder).
+- `bootstrap.php` — `chdir` в корень приложения; его подключает каждый public-вход;
+- `modules/`, `cms/`, `objects/`, `pChart/`, `scripts/`, `3rdparty/`, `docs/` — вне
+  document root, отдаются nginx через `root`-override (URL не меняются).
 
 | Путь | Назначение |
 | --- | --- |
-| `admin.php` | Точка входа админки, part-load, language-константы, 302 на чистый URL |
-| `nf.php` | Inbound-роутинг pretty URL, legacy `pd`, 404 |
+| `public/admin.php` | Точка входа админки, part-load, language-константы, 302 на чистый URL |
+| `public/nf.php` | Inbound-роутинг pretty URL, legacy `pd`, 404 |
+| `public/index.php` | Фронт-контроллер сайта (`/`) |
+| `public/api.php` | REST API (`/api/...`) |
+| `bootstrap.php` | `chdir` в корень приложения для public-входов |
 | `lib/admin_router.php` | Единая таблица маршрутов и преобразование legacy ↔ pretty |
 | `lib/error_page.php` | Общий рендер 404 (HTML/JSON, светлая/тёмная тема) |
-| `404.php` | Публичная точка входа для nginx `error_page 404` |
+| `public/404.php` | Публичная точка входа для nginx `error_page 404` |
 | `modules/panel.class.php` | Сборка shell: меню, иконки, уведомления, данные панели, 404 для модулей |
 | `lib/dashboard_data.php` | Сбор данных дашборда: ресурсы, БД, счётчики, циклы, ошибки, активность |
 | `modules/inc_panel_ajax.php` | AJAX панели; `op=dashboard` отдаёт JSON дашборда |
@@ -158,7 +164,7 @@ php dev_server.php --host=127.0.0.1 --port=8080
 
 Нужен MySQL/MariaDB. `config.php` локальный и не коммитится. Для чистой локальной базы можно импортировать `docs/dev/db_terminal.sql` (в нём схема + демо-данные; часть данных историческая).
 
-Локально `dev_server.php` умеет отдавать `objects/` через `index.php` — это нужно для `objects/?script=dash_my_block`.
+Локально `dev_server.php` отдаёт `public/` как document root, а `modules/`, `cms/`, `objects/`, `pChart/`, `scripts/`, `3rdparty/`, `docs/` — из корня проекта (как nginx). CWD перед запуском скрипта = каталог скрипта, как в php-fpm.
 
 ### Деплой
 
@@ -304,5 +310,6 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `js/builder.js`, `js/effects.js`, `js/dragdrop.js`, `js/slider.js`, `js/system.js`, `js/gmaps.js`, `js/jquery.autocomplete.js`, `js/jquery.betterTooltip.js`, `js/jquery.bgiframe.js`, `js/jquery.event.drag-2.2.js`, `js/jquery.gritter.js`, `js/ui.core.js`, `js/ui.draggable.js`, `js/ui.resizable.js` — мёртвая legacy-фронтенд-цепочка (script.aculo.us, jQuery UI-дубли, неиспользуемые плагины);
 - `css/jquery.autocomplete.css`, `css/jquery.betterTooltip.css`, `css/jquery.gritter.css`, `css/ui-*/jquery-ui-1.9.1.custom.min.css` — парные к удалённым скриптам и min-дубли;
 - `templates/scripts.js`, `templates/debug_templates.js`, `templates/scripts/scripts_widgets.css` — не подключались ни из одного шаблона;
+- `rc/` — архаичный пульт (Windows-бинарники + `rc/index.php`); URL `/rc/...` теперь 301 на `/panel/`;
 - `.tmp-p.json`, `obj.bat`, `templates_alt/`, `lib/_vimage_tahoma.ttf`, `cms/icons/1_iPhone_MUSIC_5_sm.png` — мусор без ссылок (аватар `cms/avatars/1_ver-logo_any_tickets-large.png` оставлен: он привязан к пользователю в БД);
 - `.htaccess` (корень и подкаталоги `lib/`, `templates/`, `cms/`, `backup/`, `3rdparty/elFinder/php/.tmp/`) — правила перенесены в `docs/deploy/nginx.conf.sample`, деплой только на nginx; каталоги, которые держались на этих файлах, сохранены через `.gitkeep`.

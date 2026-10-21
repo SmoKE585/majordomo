@@ -5,6 +5,8 @@ Self-hosted система умного дома на PHP. Идёт поэтап
 
 ## Быстрый старт
 
+Document root — `public/` (структура «а-ля Laravel»): точки входа и статика лежат там, код приложения — уровнем выше.
+
 ```bash
 npm install
 npm run build                  # админ-бандл + редактор + графики в public/assets/admin

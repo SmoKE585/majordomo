@@ -54,7 +54,7 @@ server {
     set $root_path /var/www/majordomo_usr/data/www/may-13.ru/$subdomain;
     index index.php;
 
-    root $root_path;
+    root $root_path/public;
     disable_symlinks if_not_owner from=$root_path;
 
     # --- Красивые URL админки ------------------------------------------
@@ -117,15 +117,13 @@ server {
     # --- Статика: public/assets -> /assets/ ------------------------------
     # ^~ обязателен: иначе regex-локации ниже (php/статика) перехватят путь.
     location ^~ /assets/ {
-        alias $root_path/public/assets/;
         expires 30d;
         access_log off;
     }
 
-    # public/ — источник для /assets/, напрямую не отдаём: иначе у каждого
-    # файла появляется второй канонический URL.
-    location ^~ /public/ {
-        deny all;
+    # Кто-то открыл файл через старый префикс docroot — отправляем на канон.
+    location ~ ^/public/(.*)$ {
+        return 301 /$1$is_args$args;
     }
 
     # --- Старые пути ассетов: 301 на /assets/ ---------------------------
@@ -146,6 +144,120 @@ server {
         return 301 /assets/modules/$1/$2$is_args$args;
     }
 
+    # --- Удалённая функция ----------------------------------------------
+    location = /rc {
+        return 301 /panel/;
+    }
+    location ^~ /rc/ {
+        return 301 /panel/;
+    }
+
+    # --- PHP-эндпоинты вне document root --------------------------------
+    # ^~ перекрывает regex-локации, поэтому PHP обрабатывается вложенной
+    # локацией: иначе nginx отдал бы исходники modules/*.php как текст.
+    location ^~ /modules/ {
+        root $root_path;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT $root_path/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param HTTPS on;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+    }
+
+    location ^~ /objects/ {
+        root $root_path;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT $root_path/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param HTTPS on;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+    }
+
+    location ^~ /pChart/ {
+        root $root_path;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT $root_path/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param HTTPS on;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+    }
+
+    location ^~ /scripts/ {
+        root $root_path;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT $root_path/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param HTTPS on;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+    }
+
+    location ^~ /3rdparty/ {
+        root $root_path;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT $root_path/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param HTTPS on;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+        location ~* \.(sql|log|sh|py|ini|phps|fla|htaccess|htpasswd)$ { deny all; }
+    }
+
+    # Медиа (аватары, картинки, звуки), но не runtime-данные.
+    location ^~ /cms/ {
+        root $root_path;
+        location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ { deny all; }
+        location ~* \.(gif|jpe?g|png|svg|webp|ico)$ { expires 7d; }
+    }
+
+    # Документация (на неё ссылается UI Kit). SQL-дампы закрыты.
+    location ^~ /docs/ {
+        root $root_path;
+        location ~* \.(sql|log|sh|py|ini|phps|fla)$ { deny all; }
+    }
     # --- PHP ------------------------------------------------------------
     # [^/]\.php(/|$) + split_path_info — чтобы работали и /api.php/...,
     # и обычные /admin.php, /nf.php.
@@ -258,7 +370,7 @@ server {
 
     charset utf-8;
 
-    root /var/www/majordomo_usr/data/www/may-13.ru;
+    root /var/www/majordomo_usr/data/www/may-13.ru/public;
     index index.php;
 
     location = /panel {
@@ -307,13 +419,13 @@ server {
 
     # --- Статика: public/assets -> /assets/ ------------------------------
     location ^~ /assets/ {
-        alias /var/www/majordomo_usr/data/www/may-13.ru/public/assets/;
         expires 30d;
         access_log off;
     }
 
-    location ^~ /public/ {
-        deny all;
+    # Кто-то открыл файл через старый префикс docroot — отправляем на канон.
+    location ~ ^/public/(.*)$ {
+        return 301 /$1$is_args$args;
     }
 
     # --- Старые пути ассетов: 301 на /assets/ ---------------------------
@@ -329,6 +441,113 @@ server {
         return 301 /assets/modules/$1/$2$is_args$args;
     }
 
+    # --- Удалённая функция ----------------------------------------------
+    location = /rc {
+        return 301 /panel/;
+    }
+    location ^~ /rc/ {
+        return 301 /panel/;
+    }
+
+    # --- PHP-эндпоинты вне document root --------------------------------
+    # ^~ перекрывает regex-локации, поэтому PHP обрабатывается вложенной
+    # локацией: иначе nginx отдал бы исходники modules/*.php как текст.
+    location ^~ /modules/ {
+        root /var/www/majordomo_usr/data/www/may-13.ru;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT /var/www/majordomo_usr/data/www/may-13.ru/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+    }
+
+    location ^~ /objects/ {
+        root /var/www/majordomo_usr/data/www/may-13.ru;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT /var/www/majordomo_usr/data/www/may-13.ru/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+    }
+
+    location ^~ /pChart/ {
+        root /var/www/majordomo_usr/data/www/may-13.ru;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT /var/www/majordomo_usr/data/www/may-13.ru/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+    }
+
+    location ^~ /scripts/ {
+        root /var/www/majordomo_usr/data/www/may-13.ru;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT /var/www/majordomo_usr/data/www/may-13.ru/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+    }
+
+    location ^~ /3rdparty/ {
+        root /var/www/majordomo_usr/data/www/may-13.ru;
+        location ~ [^/]\.php(/|$) {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+            fastcgi_pass unix:/var/run/may-13.ru.sock;
+
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT /var/www/majordomo_usr/data/www/may-13.ru/public;
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
+            client_max_body_size 512m;
+        }
+        location ~* \.(sql|log|sh|py|ini|phps|fla|htaccess|htpasswd)$ { deny all; }
+    }
+
+    location ^~ /cms/ {
+        root /var/www/majordomo_usr/data/www/may-13.ru;
+        location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ { deny all; }
+        location ~* \.(gif|jpe?g|png|svg|webp|ico)$ { expires 7d; }
+    }
+
+    location ^~ /docs/ {
+        root /var/www/majordomo_usr/data/www/may-13.ru;
+        location ~* \.(sql|log|sh|py|ini|phps|fla)$ { deny all; }
+    }
     location ~ [^/]\.php(/|$) {
         include /etc/nginx/fastcgi_params;
         fastcgi_split_path_info ^(.+\.php)(/.*)$;

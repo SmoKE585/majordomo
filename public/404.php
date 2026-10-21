@@ -1,4 +1,5 @@
 <?php
+require dirname(__DIR__) . '/bootstrap.php';
 
 /**
  * Public 404 entry point (nginx `error_page 404 /404.php`).
@@ -7,14 +8,14 @@
  */
 
 $root = '/';
-if (is_file(__DIR__ . '/config.php')) {
-    include_once(__DIR__ . '/config.php');
+if (is_file(dirname(__DIR__) . '/config.php')) {
+    include_once(dirname(__DIR__) . '/config.php');
     if (defined('ROOTHTML')) {
         $root = ROOTHTML;
     }
 }
 
-require_once(__DIR__ . '/lib/error_page.php');
+require_once(dirname(__DIR__) . '/lib/error_page.php');
 
 mdj_render_404(array(
     'root' => $root,

@@ -26,6 +26,10 @@ if (PHP_SAPI === 'cli') {
 $devEntrypoint = devServerRoute($projectRoot);
 if (is_string($devEntrypoint)) {
     if (devEnsureDatabaseAvailable($projectRoot)) {
+        // php-fpm runs a request with the working directory set to the script
+        // directory; legacy entry points rely on that (pChart/objects/modules
+        // do their own chdir("../..")). Mirror it before including the script.
+        chdir(dirname($devEntrypoint));
         try {
             require $devEntrypoint;
         } catch (Throwable $e) {
@@ -76,18 +80,15 @@ function devServerRoute($projectRoot)
 
     devRegisterFatalHandler();
 
+    $publicRoot = $projectRoot . DIRECTORY_SEPARATOR . 'public';
     $path = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
     $path = $path === null || $path === false ? '/' : $path;
 
-    // Static assets live in public/assets and are served under /assets/.
-    // Mirrors the nginx `location ^~ /assets/` block.
-    if (strpos($path, '/assets/') === 0) {
-        $publicRoot = realpath($projectRoot . DIRECTORY_SEPARATOR . 'public');
-        $assetFile = $publicRoot ? realpath($publicRoot . str_replace('/', DIRECTORY_SEPARATOR, $path)) : false;
-        if ($assetFile !== false && stripos($assetFile, $publicRoot) === 0 && is_file($assetFile)) {
-            devServeStaticFile($assetFile);
-            return true;
-        }
+    if (devIsDeniedPath($path)) {
+        http_response_code(403);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Forbidden';
+        return true;
     }
 
     // Legacy asset URLs: permanent redirect to the canonical /assets/ paths.
@@ -100,59 +101,70 @@ function devServerRoute($projectRoot)
         return true;
     }
 
-    $relativePath = ltrim(rawurldecode($path), '/\\');
-    $file = realpath($projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath));
+    // Old docroot prefix: nginx redirects /public/... to the canonical path.
+    if (preg_match('#^/public/(.+)$#', $path, $matches)) {
+        if (!headers_sent()) {
+            header('Location: /' . $matches[1] . devQuerySuffix(), true, 301);
+        }
+        return true;
+    }
 
-    if (devIsDeniedPath($path)) {
-        http_response_code(403);
-        header('Content-Type: text/plain; charset=utf-8');
-        echo 'Forbidden';
+    // rc/ was removed: keep old bookmarks working.
+    if ($path === '/rc' || strpos($path, '/rc/') === 0) {
+        if (!headers_sent()) {
+            header('Location: /panel/', true, 301);
+        }
         return true;
     }
 
     if (strpos($path, '/api/') === 0) {
-        return $projectRoot . DIRECTORY_SEPARATOR . 'api.php';
+        return devSetScript($publicRoot . DIRECTORY_SEPARATOR . 'api.php', '/api.php');
     }
 
     if ($path === '/' || $path === '') {
-        return $projectRoot . DIRECTORY_SEPARATOR . 'index.php';
+        return devSetScript($publicRoot . DIRECTORY_SEPARATOR . 'index.php', '/index.php');
     }
 
     // Admin pretty URLs and the admin root are resolved by nf.php.
     if ($path === '/panel' || $path === '/panel/' || strpos($path, '/panel/') === 0) {
-        return $projectRoot . DIRECTORY_SEPARATOR . 'nf.php';
+        return devSetScript($publicRoot . DIRECTORY_SEPARATOR . 'nf.php', '/nf.php');
     }
 
-    $phpEntrypoints = array('index.php', 'admin.php', 'api.php', 'diagnostic.php', 'backup.php', 'command.php', 'nf.php', 'print_all.php', '404.php');
-    $basename = basename($path);
-    if (in_array($basename, $phpEntrypoints, true) && is_file($projectRoot . DIRECTORY_SEPARATOR . $basename)) {
-        return $projectRoot . DIRECTORY_SEPARATOR . $basename;
+    // Legacy application directories live outside public/ and are served from
+    // the project root (mirrors the nginx `root` overrides).
+    if (preg_match('#^/(modules|objects|pChart|scripts|3rdparty|cms|docs)/#i', $path)) {
+        $legacyFile = realpath($projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim(rawurldecode($path), '/\\')));
+        if ($legacyFile !== false && strpos($legacyFile, $projectRoot) === 0) {
+            if (is_file($legacyFile)) {
+                if (strtolower(pathinfo($legacyFile, PATHINFO_EXTENSION)) === 'php') {
+                    return devSetScript($legacyFile, $path);
+                }
+                devServeStaticFile($legacyFile);
+                return true;
+            }
+            if (is_dir($legacyFile) && is_file($legacyFile . DIRECTORY_SEPARATOR . 'index.php')) {
+                return devSetScript($legacyFile . DIRECTORY_SEPARATOR . 'index.php', rtrim($path, '/') . '/index.php');
+            }
+        }
     }
 
-    if ($file !== false && strpos($file, realpath($projectRoot)) === 0 && is_file($file)) {
-        $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-        // Module AJAX endpoints (autosave/checkcode/etc.) are real PHP entry
-        // points. Let the built-in server execute them instead of serving the
-        // source as a static file.
-        if ($extension === 'php' && preg_match('#^/modules/#i', $path)) {
-            return $file;
+    // Entry points and static files from the document root (public/).
+    $file = realpath($publicRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim(rawurldecode($path), '/\\')));
+    if ($file !== false && strpos($file, realpath($publicRoot)) === 0 && is_file($file)) {
+        if (strtolower(pathinfo($file, PATHINFO_EXTENSION)) === 'php') {
+            return devSetScript($file, $path);
         }
         devServeStaticFile($file);
         return true;
     }
 
-    if ($file !== false && is_dir($file) && is_file($file . DIRECTORY_SEPARATOR . 'index.php')) {
-        return $file . DIRECTORY_SEPARATOR . 'index.php';
-    }
-
     if (preg_match('/\.(html|xml)$/i', $path) || preg_match('#/module/app_mediabrowser\.#i', $path)) {
-        return $projectRoot . DIRECTORY_SEPARATOR . 'nf.php';
+        return devSetScript($publicRoot . DIRECTORY_SEPARATOR . 'nf.php', '/nf.php');
     }
 
     http_response_code(404);
-    if (is_file($projectRoot . DIRECTORY_SEPARATOR . '404.php')) {
-        require $projectRoot . DIRECTORY_SEPARATOR . '404.php';
-        return true;
+    if (is_file($publicRoot . DIRECTORY_SEPARATOR . '404.php')) {
+        return devSetScript($publicRoot . DIRECTORY_SEPARATOR . '404.php', '/404.php');
     }
 
     header('Content-Type: text/plain; charset=utf-8');
@@ -160,6 +172,17 @@ function devServerRoute($projectRoot)
     return true;
 }
 
+/**
+ * Mirror nginx: expose the real script name to the application instead of the
+ * dev router path, so link helpers (PHP_SELF/SCRIPT_NAME) behave like production.
+ */
+function devSetScript($file, $scriptName)
+{
+    $_SERVER['SCRIPT_FILENAME'] = $file;
+    $_SERVER['SCRIPT_NAME'] = $scriptName;
+    $_SERVER['PHP_SELF'] = $scriptName;
+    return $file;
+}
 function devLegacyAssetRedirect($path, $projectRoot)
 {
     if (preg_match('#^/(css|js|img)/(.+)$#', $path, $matches)) {
@@ -179,6 +202,12 @@ function devLegacyAssetRedirect($path, $projectRoot)
     }
 
     return null;
+}
+
+function devQuerySuffix()
+{
+    $query = isset($_SERVER['QUERY_STRING']) ? (string)$_SERVER['QUERY_STRING'] : '';
+    return $query === '' ? '' : '?' . $query;
 }
 
 function devWithQueryString($target)
@@ -344,10 +373,6 @@ function devIsDeniedPath($path)
         return true;
     }
 
-    // public/ is the source for /assets/ only; direct access is denied in nginx too.
-    if (preg_match('#^/public/#i', $path)) {
-        return true;
-    }
 
     return (bool)preg_match('/\.(htaccess|htpasswd|ini|phps|fla|sql|log|sh|py)$/i', $path);
 }

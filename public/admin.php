@@ -1,4 +1,5 @@
 <?php
+require dirname(__DIR__) . '/bootstrap.php';
 /**
  * This file is part of MajorDoMo system. More details at https://majordomohome.com/
  *

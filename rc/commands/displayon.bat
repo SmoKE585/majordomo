@@ -1,1 +1,0 @@
-nircmd monitor on

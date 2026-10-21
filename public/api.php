@@ -1,4 +1,5 @@
 <?php
+require dirname(__DIR__) . '/bootstrap.php';
 
 include_once("./config.php");
 

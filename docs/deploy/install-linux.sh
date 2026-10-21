@@ -1,6 +1,6 @@
 #!/bin/bash
 
-folders=( cached cms debmes modules templates objects rc saverestore)
+folders=( cached cms debmes modules templates objects saverestore)
 
 for i in "${folders[@]}"
 do
