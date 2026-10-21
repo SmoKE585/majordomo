@@ -227,9 +227,98 @@ class MajordomoApplication extends Application
         $this->_clients[$client_id]->send($encodedData);
     }
 
+    private function clearSubscriptionType(object $client, string $type): void
+    {
+        unset($client->subscribedTo[$type]);
+        if ($type === 'events') return;
+        foreach ($client->watchedProperties as $name => &$watch) {
+            unset($watch[$type]);
+            if (!$watch) unset($client->watchedProperties[$name]);
+        }
+        unset($watch);
+    }
+
+    private function subscriptionNames($list): array
+    {
+        if (!is_string($list) && !is_numeric($list)) throw new \InvalidArgumentException('Subscription list must be a string');
+        $names = explode(',', (string)$list, $this->maxSubscriptions + 1);
+        if (count($names) > $this->maxSubscriptions) throw new \InvalidArgumentException('WebSocket subscription limit exceeded');
+        return array_values(array_unique(array_filter(array_map('trim', $names), static fn($name) => $name !== '')));
+    }
+
+    private function prepareSubscription(array $data, $client_id): array
+    {
+        $type = $data['TYPE'] ?? '';
+        if (!in_array($type, array('properties', 'objects', 'events'), true)) throw new \InvalidArgumentException('Unknown subscription type');
+        $client = $this->_clients[$client_id];
+        // Stage changes first: a rejected subscription must retain the old one.
+        $pending = new \stdClass();
+        $pending->subscribedTo = $client->subscribedTo;
+        $pending->watchedProperties = $client->watchedProperties;
+        if ($type === 'objects' || in_array($data['REPLACE'] ?? false, array(true, 1, '1'), true)) $this->clearSubscriptionType($pending, $type);
+        $objectProperties = array();
+        if ($type === 'objects') {
+            $ids = $this->subscriptionNames($data['OBJECT_ID'] ?? '0');
+            global $objects_module;
+            $objectProperties = $objects_module->getWatchedProperties(implode(',', $ids) ?: '0');
+            if (count($objectProperties) > $this->maxSubscriptions) throw new \InvalidArgumentException('WebSocket subscription limit exceeded');
+            $pending->subscribedTo['objects']['OBJECT_ID'] = implode(',', $ids) ?: '0';
+            foreach ($objectProperties as $property) $pending->watchedProperties[$property['PROPERTY']]['objects'][$property['OBJECT_ID']] = 1;
+        } else {
+            $names = $this->subscriptionNames($data[$type === 'properties' ? 'PROPERTIES' : 'EVENTS'] ?? '');
+            if (!$names && $type === 'properties') $names = array('*');
+            foreach ($names as $name) {
+                $name = mb_strtolower($name, 'UTF-8');
+                $pending->subscribedTo[$type][$name] = 1;
+                if ($type === 'properties') $pending->watchedProperties[$name]['properties'] = 1;
+            }
+        }
+        $count = count($pending->subscribedTo['events'] ?? array());
+        foreach ($pending->watchedProperties as $watch) $count += count($watch['objects'] ?? array()) + (isset($watch['properties']) ? 1 : 0);
+        if ($count > $this->maxSubscriptions) throw new \InvalidArgumentException('WebSocket subscription limit exceeded');
+        $client->subscribedTo = $pending->subscribedTo;
+        $client->watchedProperties = $pending->watchedProperties;
+        return $objectProperties;
+    }
+
+    private function _actionUnsubscribe($data, $client_id)
+    {
+        if (!is_array($data) || !isset($this->_clients[$client_id])) return;
+        $type = $data['TYPE'] ?? '';
+        if (!in_array($type, array('properties', 'objects', 'events'), true)) return;
+        $client = $this->_clients[$client_id];
+        try {
+            $names = $this->subscriptionNames($data[$type === 'properties' ? 'PROPERTIES' : 'EVENTS'] ?? '');
+        } catch (\InvalidArgumentException $e) {
+            DebMes($e->getMessage(), 'websockets', 'warning');
+            return;
+        }
+        if ($type === 'objects' || !$names) {
+            $this->clearSubscriptionType($client, $type);
+        } else {
+            foreach ($names as $name) {
+                $name = mb_strtolower($name, 'UTF-8');
+                unset($client->subscribedTo[$type][$name]);
+                if ($type === 'properties') {
+                    unset($client->watchedProperties[$name]['properties']);
+                    if (empty($client->watchedProperties[$name])) unset($client->watchedProperties[$name]);
+                }
+            }
+        }
+        $client->send($this->_encodeData('unsubscribed', json_encode($data)));
+    }
+
     private function _actionSubscribe($data, $client_id)
     {
         $this->cycleAlive();
+        if (!is_array($data) || !isset($this->_clients[$client_id])) return;
+        try {
+            $objectProperties = $this->prepareSubscription($data, $client_id);
+        } catch (\InvalidArgumentException $e) {
+            DebMes($e->getMessage(), 'websockets', 'warning');
+            $this->_clients[$client_id]->send($this->_encodeData('subscribed', json_encode(array('SUCCESS' => 0, 'ERROR' => $e->getMessage()))));
+            return;
+        }
         if ($data['TYPE']) {
 
             if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
@@ -243,15 +332,10 @@ class MajordomoApplication extends Application
                 if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
                     DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to object: " . $data['OBJECT_ID'], 'websockets');
                 }
-                $this->_clients[$client_id]->subscribedTo['objects']['OBJECT_ID'] = $data['OBJECT_ID'];
-                global $objects_module;
-                $properties = $objects_module->getWatchedProperties($this->_clients[$client_id]->subscribedTo['objects']['OBJECT_ID']);
+                $properties = $objectProperties;
                 if (is_array($properties)) {
                     if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
                         DebMes($this->_clients[$client_id]->getClientIp() . " Watching:\n" . json_encode($properties), 'websockets');
-                    }
-                    foreach ($properties as $v) {
-                        $this->_clients[$client_id]->watchedProperties[$v['PROPERTY']]['objects'][$v['OBJECT_ID']] = 1;
                     }
                 }
             }
@@ -259,8 +343,6 @@ class MajordomoApplication extends Application
             if ($data['TYPE'] == 'properties') {
                 $properties_list = isset($data['PROPERTIES']) ? trim((string)$data['PROPERTIES']) : '';
                 if ($properties_list == '') {
-                    $this->_clients[$client_id]->subscribedTo['properties']['*'] = 1;
-                    $this->_clients[$client_id]->watchedProperties['*']['properties'] = 1;
                     if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
                         DebMes($this->_clients[$client_id]->getClientIp() . " Subscribing to all properties", 'websockets');
                     }
@@ -284,8 +366,6 @@ class MajordomoApplication extends Application
                         continue;
                     }
                     $property_name_lc = mb_strtolower($property, 'UTF-8');
-                    $this->_clients[$client_id]->subscribedTo['properties'][$property_name_lc] = 1;
-                    $this->_clients[$client_id]->watchedProperties[$property_name_lc]['properties'] = 1;
                     // If only object name is passed (without Object.Property),
                     // do not query getGlobal(Object): it always produces empty values.
                     if (strpos($property_name_lc, '.') === false) {
@@ -317,9 +397,6 @@ class MajordomoApplication extends Application
                 $tmp = explode(',', $data['EVENTS']);
                 if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
                     DebMes($this->_clients[$client_id]->getClientIp() . " Watching:\n" . json_encode($tmp), 'websockets');
-                }
-                foreach ($tmp as $event) {
-                    $this->_clients[$client_id]->subscribedTo['events'][mb_strtolower($event, 'UTF-8')] = 1;
                 }
             }
 
