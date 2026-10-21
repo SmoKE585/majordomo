@@ -127,6 +127,10 @@ $mqtt->processMessage('unlimited', '1', false, array());
 $mqtt->processMessage('unlimited', '2', false, array());
 check($writes === $before + 2, 'Zero interval must disable throttling');
 $mqtt->config['MQTT_UNLINKED_UPDATE_INTERVAL'] = 3600;
+$mqtt->processMessage('nullable', '{"empty":null,"off":false,"on":true}', false, array());
+check($pdo->query("SELECT VALUE FROM mqtt WHERE PATH='nullable/empty'")->fetchColumn() === '', 'JSON null must be accepted without PHP deprecations');
+check($pdo->query("SELECT VALUE FROM mqtt WHERE PATH='nullable/off'")->fetchColumn() === '0', 'JSON false must remain zero');
+check($pdo->query("SELECT VALUE FROM mqtt WHERE PATH='nullable/on'")->fetchColumn() === '1', 'JSON true must remain one');
 
 // A linked JSON descendant must remain responsive while its parent and siblings are throttled.
 $pdo->exec("INSERT INTO mqtt(PATH, LINKED_OBJECT, LINKED_PROPERTY) VALUES ('device/temperature','Room','temperature')");
@@ -184,6 +188,18 @@ check($queries - $before === 30001, '30,000 discovered topics must require only 
 $before = $queries;
 for ($i = 0; $i < 30000; $i++) $bulk->processMessage('bulk/' . $i, '2', false, array());
 check($queries === $before, '30,000 repeated unlinked messages must make zero SQL calls');
+$pdo->beginTransaction();
+$insert = $pdo->prepare("INSERT INTO mqtt(PATH, LINKED_OBJECT, LINKED_PROPERTY, LINKED_METHOD) VALUES (?, 'Room', ?, ?)");
+for ($i = 0; $i < 160; $i++) $insert->execute(array('linked/' . $i, $i % 2 ? 'value' : '', $i % 2 ? '' : 'setValue'));
+$pdo->commit();
+$paths = $bulk->getLinkedPathsSnapshot(true);
+$before = $writes;
+$beforeActions = count($actions);
+for ($i = 0; $i < 160; $i++) {
+    $bulk->processMessage('linked/' . $i, '1', false, $paths);
+    $bulk->processMessage('linked/' . $i, '2', false, $paths);
+}
+check($writes === $before + 320 && count($actions) === $beforeActions + 320, 'All 160 linked sensors must process both values without throttling');
 $bounded = new TestMqttThrottle(new RedisConnection(), 32);
 for ($i = 0; $i < 1000; $i++) $bounded->allow('bounded/' . $i, 3600);
 check($bounded->count() === 32, 'Memory fallback must have a hard entry limit');
@@ -233,7 +249,9 @@ check($fake->calls[0][1] === array('nx', 'ex' => 3600), 'Redis reservations must
 $first->clock = $second->clock = $fake->clock = 4600;
 check($second->allow('Case/Topic', 3600), 'Redis reservation must expire at the window boundary');
 $second->cancel('Case/Topic', 3600);
-check((new TestMqttThrottle(fakeConnection($fake)))->allow('Case/Topic', 3600), 'Cancellation must release the Redis reservation');
+$third = new TestMqttThrottle(fakeConnection($fake));
+$third->clock = $fake->clock;
+check($third->allow('Case/Topic', 3600), 'Cancellation must release the Redis reservation');
 check($first->allow('different-interval', 3600) && $first->allow('different-interval', 60), 'Interval changes must take effect immediately');
 $fake->broken = true;
 $connection = fakeConnection($fake);

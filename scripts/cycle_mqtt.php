@@ -34,7 +34,7 @@ while (1) {
     }
     try {
         mqttRunOnce();
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         DebMes("MQTT cycle error: " . $e->getMessage(), 'mqtt_error');
         echo date('Y-m-d H:i:s') . " MQTT cycle error: " . $e->getMessage() . PHP_EOL;
     }
@@ -94,13 +94,15 @@ function procmsg($topic, $msg)
     $_SERVER['REQUEST_URI'] = $source_url;
     try {
         $mqtt->processMessage($topic, $msg, false, $mqtt_linked_paths);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        if (isset($topic_key)) unset($mqtt_repeating_cache[$topic_key]);
         DebMes("Error processing MQTT message $topic: " . $e->getMessage(), 'mqtt_error');
-    }
-    if ($has_request_uri) {
-        $_SERVER['REQUEST_URI'] = $old_request_uri;
-    } else {
-        unset($_SERVER['REQUEST_URI']);
+    } finally {
+        if ($has_request_uri) {
+            $_SERVER['REQUEST_URI'] = $old_request_uri;
+        } else {
+            unset($_SERVER['REQUEST_URI']);
+        }
     }
 }
 

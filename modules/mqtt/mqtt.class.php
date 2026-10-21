@@ -225,7 +225,7 @@ class mqtt extends module
 
     function buildIncomingSource($topic, $msg)
     {
-        return '/api.php/module/mqtt?topic=' . urlencode($topic) . '&msg=' . urlencode($msg) . '&no_session=1';
+        return '/api.php/module/mqtt?topic=' . urlencode((string)$topic) . '&msg=' . urlencode((string)$msg) . '&no_session=1';
     }
 
     function decodeJsonObjectPayload($value)
@@ -608,10 +608,10 @@ class mqtt extends module
         }
 
         $original_value = $value;
-        $source_url = $this->buildIncomingSource($path, $original_value);
 
         if ($value === false) $value = 0;
         elseif ($value === true) $value = 1;
+        elseif ($value === null) $value = '';
 
         // The cycle supplies its snapshot; recursive JSON processing reuses it.
         if (!is_array($linked_paths)) {
@@ -642,7 +642,7 @@ class mqtt extends module
             }
             if (!$process_record) return false;
 
-            $result = $this->processMessageValue($path, $value, $original_value, $source_url);
+            $result = $this->processMessageValue($path, $value, $original_value, $this->buildIncomingSource($path, $original_value));
             if ($result === false && $throttled) $this->getUnlinkedThrottle()->cancel($path, $interval);
             return $result;
         } catch (Throwable $error) {
