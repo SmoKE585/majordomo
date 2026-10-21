@@ -205,6 +205,6 @@ function md_ui_label($text)
         </template>
     </div>
 </div>
-<script src="<?= ROOTHTML ?>js/admin/ui_kit.js?v=2026-10-21-2"></script>
+<script src="<?= ROOTHTML ?>assets/js/admin/ui_kit.js?v=2026-10-21-2"></script>
 
 

@@ -114,6 +114,38 @@ server {
         deny all;
     }
 
+    # --- Статика: public/assets -> /assets/ ------------------------------
+    # ^~ обязателен: иначе regex-локации ниже (php/статика) перехватят путь.
+    location ^~ /assets/ {
+        alias $root_path/public/assets/;
+        expires 30d;
+        access_log off;
+    }
+
+    # public/ — источник для /assets/, напрямую не отдаём: иначе у каждого
+    # файла появляется второй канонический URL.
+    location ^~ /public/ {
+        deny all;
+    }
+
+    # --- Старые пути ассетов: 301 на /assets/ ---------------------------
+    # Старые темы, закэшированные страницы админки и пользовательские сцены
+    # продолжают работать через постоянный редирект.
+    location ~ ^/(css|js|img)/(.+)$ {
+        return 301 /assets/$1/$2$is_args$args;
+    }
+
+    # Браузерные библиотеки переехали из 3rdparty в public/assets/vendor
+    # (PHP-библиотеки остались в 3rdparty).
+    location ~ ^/3rdparty/(bootstrap|bootstrap-datetimepicker|duration-picker|fancybox|jquery|jquery\.toast|jquerymobile|long-press-event|moment)/(.*)$ {
+        return 301 /assets/vendor/$1/$2$is_args$args;
+    }
+
+    # CSS/JS страниц модулей переехали из templates/ в public/assets/modules.
+    location ~ ^/templates/([a-z0-9_-]+)/(.+\.(?:css|js))$ {
+        return 301 /assets/modules/$1/$2$is_args$args;
+    }
+
     # --- PHP ------------------------------------------------------------
     # [^/]\.php(/|$) + split_path_info — чтобы работали и /api.php/...,
     # и обычные /admin.php, /nf.php.
@@ -271,6 +303,30 @@ server {
 
     location ~* \.(htaccess|htpasswd|ini|phps|fla|sql|log|sh|py)$ {
         deny all;
+    }
+
+    # --- Статика: public/assets -> /assets/ ------------------------------
+    location ^~ /assets/ {
+        alias /var/www/majordomo_usr/data/www/may-13.ru/public/assets/;
+        expires 30d;
+        access_log off;
+    }
+
+    location ^~ /public/ {
+        deny all;
+    }
+
+    # --- Старые пути ассетов: 301 на /assets/ ---------------------------
+    location ~ ^/(css|js|img)/(.+)$ {
+        return 301 /assets/$1/$2$is_args$args;
+    }
+
+    location ~ ^/3rdparty/(bootstrap|bootstrap-datetimepicker|duration-picker|fancybox|jquery|jquery\.toast|jquerymobile|long-press-event|moment)/(.*)$ {
+        return 301 /assets/vendor/$1/$2$is_args$args;
+    }
+
+    location ~ ^/templates/([a-z0-9_-]+)/(.+\.(?:css|js))$ {
+        return 301 /assets/modules/$1/$2$is_args$args;
     }
 
     location ~ [^/]\.php(/|$) {

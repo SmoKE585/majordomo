@@ -51,7 +51,7 @@ if ($this->app_action) {
         } else {
             $rec['TITLE'] = $rec['NAME'];
         }
-        if (file_exists(ROOT . 'img/modules/' . $rec['NAME'] . '.png')) {
+        if (file_exists(ROOT . 'public/assets/img/modules/' . $rec['NAME'] . '.png')) {
             $rec['ICON'] = $rec['NAME'] . '.png';
         } else {
             $rec['ICON'] = 'default.png';

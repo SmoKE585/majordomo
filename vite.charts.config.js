@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
  *
  * ApexCharts is shared by the dashboard and the history drawer. A separate
  * IIFE chunk keeps the main admin bundle lean;
- * js/admin/modules/admin_panel/100_chart_runtime.js loads assets/admin/charts.js
+ * src/admin/js/modules/admin_panel/100_chart_runtime.js loads /assets/admin/charts.js
  * on first use.
  *
  * `emptyOutDir` must stay false — the main build owns the directory.
@@ -14,7 +14,7 @@ export default defineConfig({
   base: './',
   publicDir: false,
   build: {
-    outDir: 'assets/admin',
+    outDir: 'public/assets/admin',
     emptyOutDir: false,
     cssCodeSplit: false,
     sourcemap: false,

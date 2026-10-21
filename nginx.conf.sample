@@ -8,15 +8,35 @@
 #   # adjust root, server_name and the php-fpm socket below
 #   ln -s /etc/nginx/sites-available/majordomo /etc/nginx/sites-enabled/
 #   nginx -t && systemctl reload nginx
+#
+# ---------------------------------------------------------------------------
+# Layout (see docs/project-structure.md)
+# ---------------------------------------------------------------------------
+#   <project>/                 PHP entry points (index/admin/nf/api/404),
+#                              modules/, lib/, templates/, cms/, 3rdparty/
+#   <project>/public/assets/   all static resources, published as /assets/
+#
+# Why `root` points at the project root and not at public/:
+#   the marketplace installs modules together with their PHP endpoints
+#   (modules/<name>/*.php) and entry points rely on relative includes
+#   ('./config.php'). So public/ is the static directory served through the
+#   /assets/ alias, not the document root. Moving entry points into public/ is
+#   a separate stage that requires reworking the module ecosystem.
+#
+# URL types:
+#   /assets/...              static from public/assets (canonical)
+#   /css|/js|/img/...        301 to /assets/... (old links and scenes)
+#   /3rdparty/<lib>/         301 to /assets/vendor/<lib>/ for browser libs;
+#                            other 3rdparty packages (PHP libs) are served as before
+#   /templates/<m>/*.css|js  301 to /assets/modules/<m>/*
+#   /panel/...               admin through nf.php
+#   anything else            real file, otherwise nf.php/index.php
 
 server {
     listen 127.0.0.1:80;
     server_name example.com www.example.com localhost;
 
-    # Current layout (legacy):
     root /var/www/example/data/www/example.com;
-    # Future hardened layout (when entrypoints moved):
-    # root /var/www/example/data/www/example.com/public;
 
     index index.php index.html index.htm;
     charset utf-8;
@@ -41,6 +61,34 @@ server {
     # UI component/page templates are include-only PHP.
     location ^~ /templates/ui/ { deny all; }
     location ^~ /templates/ui_kit/ { deny all; }
+
+    # public/ is the source for /assets/ only. Serving it directly would
+    # create a second canonical URL for every asset.
+    location ^~ /public/ { deny all; }
+
+    # --- Static assets (public/assets -> /assets/) -------------------------
+    # `^~` keeps the generic cache/static regex locations below from winning.
+    location ^~ /assets/ {
+        alias /var/www/example/data/www/example.com/public/assets/;
+        expires 30d;
+        access_log off;
+    }
+
+    # --- Legacy asset URLs: permanent redirects to /assets/ ----------------
+    # Old themes, cached admin pages and user scenes keep working through 301.
+    location ~ ^/(css|js|img)/(.+)$ {
+        return 301 /assets/$1/$2$is_args$args;
+    }
+
+    # Browser libraries moved out of 3rdparty (PHP libraries stay there).
+    location ~ ^/3rdparty/(bootstrap|bootstrap-datetimepicker|duration-picker|fancybox|jquery|jquery\.toast|jquerymobile|long-press-event|moment)/(.*)$ {
+        return 301 /assets/vendor/$1/$2$is_args$args;
+    }
+
+    # Module page CSS/JS moved out of templates/ (markup stays there).
+    location ~ ^/templates/([a-z0-9_-]+)/(.+\.(?:css|js))$ {
+        return 301 /assets/modules/$1/$2$is_args$args;
+    }
 
     # --- Friendly URL routing ---------------------------------------------
     # Admin shell and admin pretty URLs (/panel/, /panel/classes.html, ...).

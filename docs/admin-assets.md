@@ -1,6 +1,6 @@
 # Сборка админских ассетов
 
-Админка MajorDoMo собирается одним Vite-бандлом. PHP-приложению Node.js в runtime не нужен: готовые файлы лежат в `assets/admin/` и коммитятся вместе с кодом.
+Админка MajorDoMo собирается одним Vite-бандлом. PHP-приложению Node.js в runtime не нужен: готовые файлы лежат в `public/assets/admin/` и коммитятся вместе с кодом.
 
 ## Быстрый старт
 
@@ -14,17 +14,17 @@ npm run watch:charts  # пересборка чанка графиков (вто
 
 Результат:
 
-- `assets/admin/admin.js` — jQuery, Bootstrap 5, Alpine.js, плагины, модули admin shell;
-- `assets/admin/admin.css` — Bootstrap, Bootstrap Icons, Tabler Icons, Rubik, legacy admin CSS, `ui-v2.css` и `ui-system.css`;
-- `assets/admin/codeeditor.js` + `assets/admin/codeeditor.css` — отдельный lazy-chunk редактора кода (CodeMirror 6);
-- `assets/admin/charts.js` + `assets/admin/charts.css` — отдельный lazy-chunk графиков (ApexCharts);
-- `assets/admin/fonts/*` — шрифты Bootstrap Icons, Tabler Icons и Rubik.
+- `public/assets/admin/admin.js` — jQuery, Bootstrap 5, Alpine.js, плагины, модули admin shell;
+- `public/assets/admin/admin.css` — Bootstrap, Bootstrap Icons, Tabler Icons, Rubik, legacy admin CSS, `ui-v2.css` и `ui-system.css`;
+- `public/assets/admin/codeeditor.js` + `public/assets/admin/codeeditor.css` — отдельный lazy-chunk редактора кода (CodeMirror 6);
+- `public/assets/admin/charts.js` + `public/assets/admin/charts.css` — отдельный lazy-chunk графиков (ApexCharts);
+- `public/assets/admin/fonts/*` — шрифты Bootstrap Icons, Tabler Icons и Rubik.
 
-Шаблон `templates/common_header_admin.html` подключает только `admin.css` и `admin.js`. Отдельные подключения Bootstrap, jQuery, Bootstrap Icons, Tom Select, fancybox, toast, duration-picker, codeeditor и модулей `js/admin/modules/admin_panel/*` из шаблонов убраны.
+Шаблон `templates/common_header_admin.html` подключает только `admin.css` и `admin.js`. Отдельные подключения Bootstrap, jQuery, Bootstrap Icons, Tom Select, fancybox, toast, duration-picker, codeeditor и модулей `src/admin/js/modules/admin_panel/*` из шаблонов убраны.
 
-`codeeditor.js` не входит в основной бандл. `js/admin/codeeditor-loader.js` загружает его только когда на странице есть `[data-code-editor]` (или когда открывается консоль). Поэтому dashboard и другие страницы без редактора не скачивают CodeMirror и языковые парсеры.
+`codeeditor.js` не входит в основной бандл. `src/admin/js/codeeditor-loader.js` загружает его только когда на странице есть `[data-code-editor]` (или когда открывается консоль). Поэтому dashboard и другие страницы без редактора не скачивают CodeMirror и языковые парсеры.
 
-`charts.js` не входит в основной бандл. `js/admin/modules/admin_panel/101_dashboard_charts.js` загружает его при первом построении графика, поэтому остальные страницы не скачивают ApexCharts.
+`charts.js` не входит в основной бандл. `src/admin/js/modules/admin_panel/101_dashboard_charts.js` загружает его при первом построении графика, поэтому остальные страницы не скачивают ApexCharts.
 
 ## Что уже в бандле
 
@@ -38,27 +38,27 @@ npm run watch:charts  # пересборка чанка графиков (вто
 - `@fancyapps/fancybox`;
 - `html-duration-picker`;
 - `jquery.cookie`, `jquery.tiny-pubsub` (локальные плагины);
-- загрузчик редактора `js/admin/codeeditor-loader.js` (сам редактор — отдельный lazy-chunk);
-- `apexcharts` — отдельный lazy-chunk `assets/admin/charts.js` + `charts.css` для дашборда и будущих страниц с графиками;
-- admin shell modules из `js/admin/modules/admin_panel/`, включая `101_dashboard_charts.js` (графики дашборда) и `120_linkedobject.js` (компонент связей объектов);
-- `css/admin/admin_panel.css` (legacy), `css/admin/ui-v2.css` (shell/dashboard) и `css/admin/ui-system.css` (дизайн-система, включая LinkedObject).
+- загрузчик редактора `src/admin/js/codeeditor-loader.js` (сам редактор — отдельный lazy-chunk);
+- `apexcharts` — отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css` для дашборда и будущих страниц с графиками;
+- admin shell modules из `src/admin/js/modules/admin_panel/`, включая `101_dashboard_charts.js` (графики дашборда) и `120_linkedobject.js` (компонент связей объектов);
+- `src/admin/css/admin_panel.css` (legacy), `src/admin/css/ui-v2.css` (shell/dashboard) и `src/admin/css/ui-system.css` (дизайн-система, включая LinkedObject).
 
 ## Что пока не в бандле
 
-- `js/scripts.js` — legacy-хелперы, которые вызываются из inline-обработчиков старых шаблонов. Загружается одним классическим `<script>` после бандла.
-- `js/admin/panel.js` — legacy-хелперы shell (`partLoad`, фильтр меню, collapse, file browser). Загружается классическим `<script>` после `scripts.js`, потому что функции вызываются из inline-атрибутов старых шаблонов.
-- CSS/JS конкретных модулей (`templates/settings/settings.css`, `templates/scripts/scripts.js` и т.п.). Они **сознательно остаются локальными** и подключаются только на страницах своих модулей — чтобы не грузить код всех установленных модулей сразу. В общий бандл их не переносить.
-- `js/admin/ui_kit.js` — page-only JS страницы UI Kit (каталог иконок, copy, scrollspy). Подключается только на `?action=ui_kit`; общие Alpine-компоненты и toast store находятся в бандле (`116_ui_components.js`).
+- `public/assets/js/scripts.js` — legacy-хелперы, которые вызываются из inline-обработчиков старых шаблонов. Загружается одним классическим `<script>` после бандла.
+- `public/assets/js/admin/panel.js` — legacy-хелперы shell (`partLoad`, фильтр меню, collapse, file browser). Загружается классическим `<script>` после `scripts.js`, потому что функции вызываются из inline-атрибутов старых шаблонов.
+- CSS/JS конкретных модулей (`public/assets/modules/settings/settings.css`, `public/assets/modules/scripts/scripts.js` и т.п.). Они **сознательно остаются локальными** и подключаются только на страницах своих модулей — чтобы не грузить код всех установленных модулей сразу. В общий бандл их не переносить.
+- `public/assets/js/admin/ui_kit.js` — page-only JS страницы UI Kit (каталог иконок, copy, scrollspy). Подключается только на `?action=ui_kit`; общие Alpine-компоненты и toast store находятся в бандле (`116_ui_components.js`).
 
-`templates/panel_js_scripts.html` удалён: его содержимое перенесено в `js/admin/panel.js` без шаблонных директив. Фильтр меню теперь работает по DOM-атрибутам `data-md-module` / `data-md-title` / `data-md-category`, а не по серверной генерации JS.
+`templates/panel_js_scripts.html` удалён: его содержимое перенесено в `public/assets/js/admin/panel.js` без шаблонных директив. Фильтр меню теперь работает по DOM-атрибутам `data-md-module` / `data-md-title` / `data-md-category`, а не по серверной генерации JS.
 
 ## Редактор кода
 
-Редактор — CodeMirror 6, собранный Vite в `assets/admin/codeeditor.js` и `assets/admin/codeeditor.css`:
+Редактор — CodeMirror 6, собранный Vite в `public/assets/admin/codeeditor.js` и `public/assets/admin/codeeditor.css`:
 
-- исходники: `js/admin/codeeditor.js` (обвязка и рендер), `css/admin/codeeditor.css`;
+- исходники: `src/admin/js/codeeditor.js` (обвязка и рендер), `src/admin/css/codeeditor.css`;
 - entry: `src/admin/codeeditor-entry.js`, конфиг: `vite.codeeditor.config.js`;
-- загрузка: `js/admin/codeeditor-loader.js` в основном бандле;
+- загрузка: `src/admin/js/codeeditor-loader.js` в основном бандле;
 - разметка: `data-code-editor` + `templates/*` (methods, objects, scripts, blockly_code, settings, console).
 
 Страницы без редактора не загружают chunk. Консоль в shell помечена `data-code-editor-lazy="1"` и инициализируется при открытии drawer. Для новых модулей используйте существующую разметку `data-code-editor`; отдельные `<script>`/`<link>` для CodeMirror не добавляйте.
@@ -81,7 +81,7 @@ npm run watch:charts  # пересборка чанка графиков (вто
 
 ## UI Kit и компоненты
 
-Новые страницы собирайте из готовых компонентов: `MDJUI` + `templates/ui/components/` + классы `md-*` из `css/admin/ui-system.css`. Полный каталог, токены и правила — в `DESIGN_SYSTEM.md`; живая документация — `/admin.php?action=ui_kit`.
+Новые страницы собирайте из готовых компонентов: `MDJUI` + `templates/ui/components/` + классы `md-*` из `src/admin/css/ui-system.css`. Полный каталог, токены и правила — в `DESIGN_SYSTEM.md`; живая документация — `/admin.php?action=ui_kit`.
 
 Не создавайте альтернативные кнопки, поля, селекты, карточки и модалки. Если компонента нет, добавьте его в общий слой и продемонстрируйте в UI Kit.
 
@@ -99,7 +99,7 @@ Tom Select уже в бандле. Чтобы превратить обычны�
 </select>
 ```
 
-Инициализация выполняется автоматически в `js/admin/modules/admin_panel/70_controls.js` при загрузке страницы и при `partLoad`.
+Инициализация выполняется автоматически в `src/admin/js/modules/admin_panel/70_controls.js` при загрузке страницы и при `partLoad`.
 
 `linkedobject` — отдельный случай: это не searchable select, а редактор связей со свободным вводом. Его контроллер `120_linkedobject.js` и стили в `ui-system.css` входят в общий бандл, потому что компонент используется многими старыми модулями. Native input остаётся полем формы; не заменяйте его на `data-md-searchable`.
 

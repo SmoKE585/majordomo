@@ -26,22 +26,22 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - админ-оболочка переведена на Bootstrap 5;
 - главная страница переделана: KPI, активность, циклы, БД, система, быстрый доступ;
 - дашборд v2: живые KPI (объекты, устройства, циклы, БД), полоса важных предупреждений, график активности за 24 часа, ресурсы сервера (CPU/память/диск), донат циклов, ошибки системы и системные параметры; данные собирает `lib/dashboard_data.php` через `admin.php?ajax_panel=1&op=dashboard`;
-- ApexCharts подключён как отдельный lazy-chunk `assets/admin/charts.js` + `charts.css`, основной бандл не растёт;
+- ApexCharts подключён как отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css`, основной бандл не растёт;
 - добавлены компоненты `MDJUI::meter()` и `MDJUI::chartCard()` с демо в UI Kit;
 - верхняя панель и левое меню обновлены;
 - иконки меню переведены на Tabler Icons через карту в `modules/panel.class.php` (Bootstrap Icons остаётся только для legacy-`glyphicon`);
-- добавлен Vite-бандл: `assets/admin/admin.css` + `assets/admin/admin.js`; тяжёлый редактор кода вынесен в отдельный lazy-chunk `codeeditor.js/css`;
+- добавлен Vite-бандл: `public/assets/admin/admin.css` + `public/assets/admin/admin.js`; тяжёлый редактор кода вынесен в отдельный lazy-chunk `codeeditor.js/css`;
 - jQuery обновлён до 3.7.1, подключён jQuery Migrate 3.4.1;
 - Tom Select вынесен в бандл, появился `data-md-searchable`;
 - удалены неиспользуемые вендорные копии (`amcharts`, `bootstrap5`, `bootstrap-icons`, `tom-select`);
-- legacy inline-скрипт `templates/panel_js_scripts.html` вынесен в `js/admin/panel.js`;
+- legacy inline-скрипт `templates/panel_js_scripts.html` вынесен в `public/assets/js/admin/panel.js`;
 - тёмная тема доведена для главной, настроек, классов и объектов;
 - модуль «Объекты» переведён на новый UI: таблица с поиском и фильтром по классу, карточка объекта, вкладки, форма, компактные свойства и методы;
 - хедер переделан в отдельную карточку с inline-поиском и popup-результатами; endpoint поиска изолирован в `80_header_search.js` — позже сюда подключается Meilisearch;
 - UI-паттерны объектов: таблица с поиском/фильтром, segmented-табы с иконками, компактные value-контролы высотой с input, единые иконочные action-меню и общий стиль dropdown;
-- создана UI Kit / дизайн-система: `?action=ui_kit`, `DESIGN_SYSTEM.md`, `css/admin/ui-system.css`, PHP-компоненты `MDJUI` + `templates/ui/components/`, Alpine.js для локальных состояний;
-- классы переведены на общую систему: страница-дерево с KPI, поиском, фильтром и раскрытием объектов, карточка класса, вкладки и форма; JS вынесен в `templates/classes/classes.js`;
-- свойства и методы классов переведены на общую систему: таблицы с поиском, сортировкой и склоняемым счётчиком, `md-badge` для истории/валидации/обработчиков, компактные формы на `md-field`/`md-input`/`md-select`, отдельные секции унаследованных свойств и методов; page-JS вынесен в `templates/properties/properties.js` и `templates/methods/methods.js`;
+- создана UI Kit / дизайн-система: `?action=ui_kit`, `DESIGN_SYSTEM.md`, `src/admin/css/ui-system.css`, PHP-компоненты `MDJUI` + `templates/ui/components/`, Alpine.js для локальных состояний;
+- классы переведены на общую систему: страница-дерево с KPI, поиском, фильтром и раскрытием объектов, карточка класса, вкладки и форма; JS вынесен в `public/assets/modules/classes/classes.js`;
+- свойства и методы классов переведены на общую систему: таблицы с поиском, сортировкой и склоняемым счётчиком, `md-badge` для истории/валидации/обработчиков, компактные формы на `md-field`/`md-input`/`md-select`, отдельные секции унаследованных свойств и методов; page-JS вынесен в `public/assets/modules/properties/properties.js` и `public/assets/modules/methods/methods.js`;
 - история объектов переведена на общую систему: таблица с датой, событием, объектом и значениями, фильтр по объекту, пагинация `md-pagination`, empty-state и современная форма правки записи; дата в форме приведена к формату `type=date`;
 - вкладки объекта доведены до `md-*`: детали, список/редактор методов, карточки свойств, модалка создания свойства и панель настройки; убраны светлые `btn-light`/`alert`/`form-control` из тёмной темы;
 - свойства объекта получили UX-слой: поиск и фильтры (класс/объект/история/источник/метод), группы «Свойства класса» и «Свойства объекта» с количеством, явные метаданные «Меняет / Обновлено / Где», ссылка на источник и метод-обработчик, переходы «В классе» и к истории;
@@ -62,10 +62,10 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - админ-роутинг переведён на чистые URL `/panel/...`: единая таблица маршрутов `lib/admin_router.php`, outbound-преобразование в `parseLinks()`/`redirect()` с round-trip-проверкой, 302 с legacy `pd`-ссылок на канонические URL;
 - добавлены нормальные 404: `lib/error_page.php` + `404.php` + nginx `error_page`, 404 внутри shell для неизвестных модулей, JSON для AJAX/part_load; удалён catch-all `*.html` → docs, который отдавал 200 на любую опечатку;
 - модуль «Пользователи» переведён на общую систему: hero и KPI, таблица с поиском и фильтром ролей, карточка пользователя, форма профиля, пароля и прав, привязка к объекту; чистые URL `/panel/users.html`, `/panel/users/add.html`, `/panel/users/<id>.html` и `/panel/users/<id>/delete.html`;
-- модуль «Устройства Online» (`pinghosts`) переведён на общую систему: hero и KPI со статусами, таблица с поиском и фильтром, карточка хоста с типом проверки, расписанием, привязкой к объекту, online/offline-действиями на цветных вкладках и журналом; редактор PHP-кода — CodeMirror 6 lazy-chunk, page-JS — `templates/pinghosts/pinghosts.js`; чистые URL `/panel/pinghosts.html`, `/panel/pinghosts/add.html`, `/panel/pinghosts/<id>.html` и `/panel/pinghosts/<id>/delete.html`;
+- модуль «Устройства Online» (`pinghosts`) переведён на общую систему: hero и KPI со статусами, таблица с поиском и фильтром, карточка хоста с типом проверки, расписанием, привязкой к объекту, online/offline-действиями на цветных вкладках и журналом; редактор PHP-кода — CodeMirror 6 lazy-chunk, page-JS — `public/assets/modules/pinghosts/pinghosts.js`; чистые URL `/panel/pinghosts.html`, `/panel/pinghosts/add.html`, `/panel/pinghosts/<id>.html` и `/panel/pinghosts/<id>/delete.html`;
 - модуль «Расположение» (`locations`) переведён на общую систему: hero и KPI, таблица помещений с поиском, фильтром по объектам, приоритетом и кнопками ↑/↓, карточка помещения и вкладка «Логика» с выбором метода room-объекта и CodeMirror 6; чистые URL `/panel/locations.html`, `/panel/locations/add.html`, `/panel/locations/<id>.html`, `/panel/locations/<id>/logic.html`, `/panel/locations/<id>/up.html`, `/panel/locations/<id>/down.html` и `/panel/locations/<id>/delete.html`;
 - модуль «Ошибки системы» (`system_errors`) переведён на общую систему: hero и KPI, статус активных ошибок, таблица групп с поиском/фильтром, переключателем хранения истории, отдельная страница истории с раскрываемыми событиями, настройки хранения в модалке; отметка «просмотрено» больше не удаляет историю; история показывает источник ошибки (модуль, файл, строку, вызов) и для новых записей — URL/метод/IP запроса, а сырой backtrace разбирается на читаемый стек кадров с короткими путями; чистые URL `/panel/system_errors.html`, `/panel/system_errors/<id>.html`, `/panel/system_errors/<id>/history.html`, `/panel/system_errors/<id>/read.html`, `/panel/system_errors/<id>/delete.html`, `/panel/system_errors/readall.html` и `/panel/system_errors/test.html`;
-- модуль MQTT переделан в рабочее пространство для больших журналов: hero и KPI, состояние цикла, группировка по устройствам или корневым путям, поиск и фильтры, серверная пагинация, live-обновление значений, отдельная страница настроек брокера и редактор топика с привязкой, публикацией и историей сообщений; page-CSS/JS — `templates/mqtt/mqtt.css` и `templates/mqtt/mqtt.js`; чистые URL `/panel/mqtt.html`, `/panel/mqtt/add.html`, `/panel/mqtt/<id>.html`, `/panel/mqtt/<id>/delete.html`, `/panel/mqtt/settings.html`, `/panel/mqtt/clear-trash.html` и `/panel/mqtt/optimize.html`;
+- модуль MQTT переделан в рабочее пространство для больших журналов: hero и KPI, состояние цикла, группировка по устройствам или корневым путям, поиск и фильтры, серверная пагинация, live-обновление значений, отдельная страница настроек брокера и редактор топика с привязкой, публикацией и историей сообщений; page-CSS/JS — `public/assets/modules/mqtt/mqtt.css` и `public/assets/modules/mqtt/mqtt.js`; чистые URL `/panel/mqtt.html`, `/panel/mqtt/add.html`, `/panel/mqtt/<id>.html`, `/panel/mqtt/<id>/delete.html`, `/panel/mqtt/settings.html`, `/panel/mqtt/clear-trash.html` и `/panel/mqtt/optimize.html`;
 - компонент `linkedobject` переведён на общую систему и собственный стабильный контроллер `MDLinkedObjectUI`: native input сохраняет `name/id/onchange`, свободный ввод, атомарная загрузка свойств/методов с кэшем, portal-dropdown, повторная инициализация после `partLoad`, поддержка клонированных строк и таблиц; демо — `?action=ui_kit#linkedobject`.
 
 Следующий этап — **полировка мобильных деталей объектов** (длинные значения в редакторах, компактные формы), затем остальные модули.
@@ -73,15 +73,25 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 ## 3. Что читать перед изменениями
 
 1. `DESIGN_SYSTEM.md` — **обязательно** перед любым UI-изменением: компоненты, токены, примеры, правила.
-2. `docs/admin-assets.md` — сборка, бандл, как добавлять пакеты.
-3. `docs/admin-module-ui-guidelines.md` — UI-правила для модулей.
-4. `docs/admin-routing.md` — контракт чистых URL, legacy `pd` и 404.
-5. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
-6. Этот файл — текущее состояние и ограничения.
+2. `docs/project-structure.md` — раскладка каталогов, URL → файл, nginx-редиректы.
+3. `docs/admin-assets.md` — сборка, бандл, как добавлять пакеты.
+4. `docs/admin-module-ui-guidelines.md` — UI-правила для модулей.
+5. `docs/admin-routing.md` — контракт чистых URL, legacy `pd` и 404.
+6. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
+7. Этот файл — текущее состояние и ограничения.
 
 Если документы противоречат друг другу, приоритет у `AGENTS.md` и фактического кода.
 
 ## 4. Карта админки
+
+Раскладка проекта (подробно — `docs/project-structure.md`):
+
+- `public/assets/` — всё, что браузер скачивает напрямую, публикуется как `/assets/`
+  (`admin/` — бандл, `css/` и `js/` — legacy-статика, `img/`, `vendor/` — браузерные
+  библиотеки, `modules/<name>/` — CSS/JS страниц модулей);
+- `src/admin/` — исходники Vite (`main.js`, `css/`, `js/`), в бандл, не отдаются напрямую;
+- корень проекта — PHP-точки входа, `modules/`, `lib/`, `templates/`, `cms/`, `3rdparty/`
+  (PHP-библиотеки и elFinder).
 
 | Путь | Назначение |
 | --- | --- |
@@ -97,29 +107,29 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `templates/panel_default.html` | Главная страница (dashboard v2) |
 | `templates/panel_nav_left.html` | Левое меню |
 | `templates/common_header_admin.html` | Подключение бандла, тема, legacy-скрипты |
-| `css/admin/admin_panel.css` | Legacy CSS (~8 тыс. строк), ещё используется |
-| `css/admin/ui-v2.css` | Новый слой shell/dashboard: токены, верхняя панель, меню, тёмная тема |
-| `css/admin/ui-system.css` | Канонический слой дизайн-системы: токены, `md-*` компоненты, состояния |
+| `src/admin/css/admin_panel.css` | Legacy CSS (~8 тыс. строк), ещё используется |
+| `src/admin/css/ui-v2.css` | Новый слой shell/dashboard: токены, верхняя панель, меню, тёмная тема |
+| `src/admin/css/ui-system.css` | Канонический слой дизайн-системы: токены, `md-*` компоненты, состояния |
 | `lib/ui/MDJUI.php` | Серверный API UI-компонентов + демо-данные |
 | `templates/ui/components/` | Разметка переиспользуемых компонентов |
 | `templates/ui_kit/` | Страница UI Kit и её секции |
 | `modules/ui_kit/` | Модуль админки `?action=ui_kit` |
 | `DESIGN_SYSTEM.md` | Обязательная документация дизайн-системы |
-| `js/admin/modules/admin_panel/` | Модули shell: core, drawer, search, console, notifications, init, dashboard, controls, header search, objects, data table, alpine, shared UI components, dashboard charts |
-| `js/admin/modules/admin_panel/100_chart_runtime.js` | Общий lazy-loader ApexCharts (`window.MDJCharts`) для дашборда и истории |
-| `js/admin/modules/admin_panel/101_dashboard_charts.js` | Графики дашборда поверх общего chart runtime |
-| `js/admin/ui_kit.js` | Page-only JS UI Kit: каталог иконок, copy, scrollspy; подключается только на `?action=ui_kit` |
-| `js/admin/panel.js` | Legacy-глобалы shell (`partLoad`, фильтр меню, file browser) |
-| `js/scripts.js` | Legacy-глобальные хелперы старых шаблонов |
+| `src/admin/js/modules/admin_panel/` | Модули shell: core, drawer, search, console, notifications, init, dashboard, controls, header search, objects, data table, alpine, shared UI components, dashboard charts |
+| `src/admin/js/modules/admin_panel/100_chart_runtime.js` | Общий lazy-loader ApexCharts (`window.MDJCharts`) для дашборда и истории |
+| `src/admin/js/modules/admin_panel/101_dashboard_charts.js` | Графики дашборда поверх общего chart runtime |
+| `public/assets/js/admin/ui_kit.js` | Page-only JS UI Kit: каталог иконок, copy, scrollspy; подключается только на `?action=ui_kit` |
+| `public/assets/js/admin/panel.js` | Legacy-глобалы shell (`partLoad`, фильтр меню, file browser) |
+| `public/assets/js/scripts.js` | Legacy-глобальные хелперы старых шаблонов |
 | `src/admin/main.js` | Единственный entry point Vite |
 | `src/admin/charts-entry.js` | Entry отдельного Vite-chunk графиков (ApexCharts) |
-| `vite.charts.config.js` | Сборка `assets/admin/charts.js` + `charts.css` |
-| `assets/admin/` | Сгенерированный бандл, коммитится |
-| `js/admin/codeeditor.js` | Обвязка CodeMirror 6 и рендер редактора; отдельный lazy-chunk |
-| `js/admin/codeeditor-loader.js` | Lazy-загрузка редактора; входит в основной бандл |
-| `css/admin/codeeditor.css` | Стили редактора, темы, поиск, drawer истории |
+| `vite.charts.config.js` | Сборка `public/assets/admin/charts.js` + `charts.css` |
+| `public/assets/admin/` | Сгенерированный бандл, коммитится |
+| `src/admin/js/codeeditor.js` | Обвязка CodeMirror 6 и рендер редактора; отдельный lazy-chunk |
+| `src/admin/js/codeeditor-loader.js` | Lazy-загрузка редактора; входит в основной бандл |
+| `src/admin/css/codeeditor.css` | Стили редактора, темы, поиск, drawer истории |
 | `src/admin/codeeditor-entry.js` | Entry отдельного Vite-chunk |
-| `vite.codeeditor.config.js` | Сборка `assets/admin/codeeditor.js/css` |
+| `vite.codeeditor.config.js` | Сборка `public/assets/admin/codeeditor.js/css` |
 | `tools/screenshot.mjs` | Локальная проверка страниц через headless Chrome + CDP |
 
 ## 5. Сборка и запуск
@@ -134,11 +144,11 @@ npm run watch:editor   # code editor (второй терминал)
 npm run watch:charts   # графики дашборда (второй терминал)
 ```
 
-- Не редактируйте `assets/admin/*` вручную.
+- Не редактируйте `public/assets/admin/*` вручную.
 - После `npm run build` при необходимости поднимите версию в `templates/common_header_admin.html` (`?v=...`), `window.MDCodeEditorConfig` и `window.MDChartsConfig`.
 - Бандл коммитится; на продакшене Node.js не нужен.
-- Редактор кода — отдельный lazy-chunk `assets/admin/codeeditor.js/css`; его собирает `vite.codeeditor.config.js`.
-- Графики — отдельный lazy-chunk `assets/admin/charts.js` + `charts.css` (ApexCharts); его собирает `vite.charts.config.js`, загрузка идёт из общего `100_chart_runtime.js` (дашборд и история).
+- Редактор кода — отдельный lazy-chunk `public/assets/admin/codeeditor.js/css`; его собирает `vite.codeeditor.config.js`.
+- Графики — отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css` (ApexCharts); его собирает `vite.charts.config.js`, загрузка идёт из общего `100_chart_runtime.js` (дашборд и история).
 
 ### Локальный сервер
 
@@ -166,10 +176,10 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 
 - **Перед созданием или изменением интерфейса сначала изучите `DESIGN_SYSTEM.md` и существующие UI-компоненты.** Используйте готовые компоненты. Запрещено создавать альтернативные реализации кнопок, полей ввода, селектов, карточек, модальных окон и других стандартных элементов без явной необходимости. Новые компоненты должны соответствовать существующей дизайн-системе.
 - Bootstrap 5 — база. Новые компоненты — Bootstrap 5 API + `md-*` классы.
-- Новый общий CSS — только в `css/admin/ui-system.css` (канонический слой дизайн-системы). `ui-v2.css` отвечает за shell/dashboard и не разрастается новыми компонентами.
+- Новый общий CSS — только в `src/admin/css/ui-system.css` (канонический слой дизайн-системы). `ui-v2.css` отвечает за shell/dashboard и не разрастается новыми компонентами.
 - Legacy `admin_panel.css` не разрастается новыми компонентами; только точечные правки.
 - PHP-компоненты: `MDJUI` + `templates/ui/components/`; не дублируйте их разметку на страницах.
-- Новый JS — модуль в `js/admin/modules/admin_panel/`, регистрация через `MDJAdminUI.registerModuleUI`.
+- Новый JS — модуль в `src/admin/js/modules/admin_panel/`, регистрация через `MDJAdminUI.registerModuleUI`.
 - CSS/JS конкретного модуля не добавляйте в общий `admin.css`/`admin.js`: держите локально и подключайте только в шаблоне этого модуля. Общий бандл — shell, дизайн-система, общие библиотеки и общие компоненты.
 - Локальные состояния — Alpine.js; `Alpine.start()` вызывает только `115_alpine.js`. Не запускайте Alpine повторно в шаблонах.
 - Никакого нового jQuery-кода и новых jQuery-плагинов.
@@ -199,7 +209,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `window.TomSelect`;
 - `window.HtmlDurationPicker`;
 - `window.MDJAdminUI`;
-- глобальные функции из `js/scripts.js` и `js/admin/panel.js`.
+- глобальные функции из `public/assets/js/scripts.js` и `public/assets/js/admin/panel.js`.
 
 Контракт shell:
 
@@ -234,10 +244,10 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 
 ## 9. Куда что добавлять
 
-- Общий компонент: `css/admin/ui-system.css` + метод в `lib/ui/MDJUI.php` + partial в `templates/ui/components/`.
-- Общее поведение: модуль в `js/admin/modules/admin_panel/`, импорт в `src/admin/main.js`, регистрация через `MDJAdminUI`.
-- Страничный CSS/JS: рядом с модулем (`templates/<module>/...`), только на его страницах; **не переносить в общий бандл** без отдельной явной задачи.
-- Демо компонента: секция в `templates/ui_kit/sections/` и запись в `DESIGN_SYSTEM.md`; page-only JS UI Kit — `js/admin/ui_kit.js`.
+- Общий компонент: `src/admin/css/ui-system.css` + метод в `lib/ui/MDJUI.php` + partial в `templates/ui/components/`.
+- Общее поведение: модуль в `src/admin/js/modules/admin_panel/`, импорт в `src/admin/main.js`, регистрация через `MDJAdminUI`.
+- Страничный CSS/JS: в `public/assets/modules/<module>/`, только на страницах своего модуля; **не переносить в общий бандл** без отдельной явной задачи.
+- Демо компонента: секция в `templates/ui_kit/sections/` и запись в `DESIGN_SYSTEM.md`; page-only JS UI Kit — `public/assets/js/admin/ui_kit.js`.
 - Новая библиотека: `npm install`, импорт в `src/admin/main.js` (или отдельный entry, если библиотека тяжёлая), при необходимости `window.X = ...`, `npm run build`. Тяжёлые библиотеки вроде CodeMirror и ApexCharts держите в отдельных lazy-chunk, а не в основном бандле.
 - Новая иконка модуля: добавить в `$sidebarIcons` в `modules/panel.class.php` (значение — `ti-*` из Tabler).
 - Новая страница UI Kit не нужна: используйте `/admin.php?action=ui_kit`.
@@ -267,14 +277,14 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 
 ## 12. Известный технический долг
 
-- `css/admin/admin_panel.css` — ~8 тыс. строк, много дублей и «финальных полировок».
-- `js/scripts.js` и `js/admin/panel.js` — глобальные legacy-скрипты.
-- CSS/JS части модулей (`templates/settings/settings.css`, `templates/scripts/scripts.js` и т.д.) сознательно остаются локальными: подключаются только на страницах своих модулей, чтобы не грузить код всех модулей сразу. В общий бандл их не переносить.
+- `src/admin/css/admin_panel.css` — ~8 тыс. строк, много дублей и «финальных полировок».
+- `public/assets/js/scripts.js` и `public/assets/js/admin/panel.js` — глобальные legacy-скрипты.
+- CSS/JS части модулей (`public/assets/modules/settings/settings.css`, `public/assets/modules/scripts/scripts.js` и т.д.) сознательно остаются локальными: подключаются только на страницах своих модулей, чтобы не грузить код всех модулей сразу. В общий бандл их не переносить.
 - `100_dashboard.js` и `110_objects.js` пока остаются в общем бандле как часть текущего shell/objects; это существующий долг, а не паттерн для новых модулей. При переделке этих модулей их page-specific JS выносить локально.
 - В `templates/objects/objects_edit_properties.html` остаётся большой inline-скрипт (редактирование значений, WebSocket) — кандидат на вынос в module UI.
 - Тёмная тема не проверена на отдельных legacy-страницах вне текущего этапа (старые вкладки и служебные модули).
-- ApexCharts грузится отдельным чанком `assets/admin/charts.js` через общий `100_chart_runtime.js`; на страницах без графиков чарт-рантайм не скачивается.
-- `js/window.js`, `js/builder.js`, `js/gmaps.js`, `js/jquery-ui-1.9.1.custom.min.js` и т.п. — legacy фронтенда; не трогать без проверки входящих ссылок.
+- ApexCharts грузится отдельным чанком `public/assets/admin/charts.js` через общий `100_chart_runtime.js`; на страницах без графиков чарт-рантайм не скачивается.
+- `public/assets/js/window.js`, `public/assets/js/jquery-ui-1.9.1.custom.min.js` и т.п. — legacy фронтенда; не трогать без проверки входящих ссылок.
 
 ## 13. Удалённые/неактуальные файлы
 
@@ -286,8 +296,13 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `3rdparty/tom-select/` — Tom Select в бандле;
 - `3rdparty/codemirror/` — CodeMirror 5 удалён; редактор теперь CodeMirror 6 в lazy-chunk `codeeditor.js`;
 - `js/admin/admin_panel.js` — старый загрузчик модулей, заменён импортами Vite;
-- `templates/panel_js_scripts.html` — содержимое перенесено в `js/admin/panel.js`;
+- `templates/panel_js_scripts.html` — содержимое перенесено в `public/assets/js/admin/panel.js`;
 - `css/admin.css` — не имел входящих ссылок;
 - `js/admin.js` — был помечен DEPRECATED, не использовался;
 - `js/datepicker.js` — не имел входящих ссылок, заменён современными date-подходами;
+- `3rdparty/d3`, `3rdparty/googleblockly`, `3rdparty/select2`, `3rdparty/spectrum`, `3rdparty/swiper`, `3rdparty/tinyslider`, `3rdparty/hammer`, `3rdparty/svg-pan-zoom`, `3rdparty/jquery.contextmenu` — 0 входящих ссылок, заменены npm-пакетами (ApexCharts, CodeMirror 6, Tom Select);
+- `js/builder.js`, `js/effects.js`, `js/dragdrop.js`, `js/slider.js`, `js/system.js`, `js/gmaps.js`, `js/jquery.autocomplete.js`, `js/jquery.betterTooltip.js`, `js/jquery.bgiframe.js`, `js/jquery.event.drag-2.2.js`, `js/jquery.gritter.js`, `js/ui.core.js`, `js/ui.draggable.js`, `js/ui.resizable.js` — мёртвая legacy-фронтенд-цепочка (script.aculo.us, jQuery UI-дубли, неиспользуемые плагины);
+- `css/jquery.autocomplete.css`, `css/jquery.betterTooltip.css`, `css/jquery.gritter.css`, `css/ui-*/jquery-ui-1.9.1.custom.min.css` — парные к удалённым скриптам и min-дубли;
+- `templates/scripts.js`, `templates/debug_templates.js`, `templates/scripts/scripts_widgets.css` — не подключались ни из одного шаблона;
+- `.tmp-p.json`, `obj.bat`, `templates_alt/`, `lib/_vimage_tahoma.ttf`, `cms/icons/1_iPhone_MUSIC_5_sm.png` — мусор без ссылок (аватар `cms/avatars/1_ver-logo_any_tickets-large.png` оставлен: он привязан к пользователю в БД);
 - `.htaccess` (корень и подкаталоги `lib/`, `templates/`, `cms/`, `backup/`, `3rdparty/elFinder/php/.tmp/`) — правила перенесены в `nginx.conf.sample`, деплой только на nginx; каталоги, которые держались на этих файлах, сохранены через `.gitkeep`.

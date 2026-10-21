@@ -317,6 +317,12 @@ $nginxChecks = [
     'location ^~ /lib/' => 'lib/ protection',
     'location ~* ^/templates/.*\.html$' => 'templates html protection',
     'location = /config.php' => 'config.php protection',
+    'location ^~ /assets/' => 'static assets alias',
+    'public/assets/' => 'static assets live in public/assets',
+    'location ^~ /public/ { deny all; }' => 'public/ direct access denied',
+    'return 301 /assets/$1/$2$is_args$args;' => 'legacy css/js/img redirect',
+    '/assets/vendor/$1/$2$is_args$args;' => '3rdparty browser libs redirect',
+    '/assets/modules/$1/$2$is_args$args;' => 'module page css/js redirect',
 ];
 
 foreach ($nginxChecks as $needle => $name) {
@@ -324,6 +330,24 @@ foreach ($nginxChecks as $needle => $name) {
         $failures[] = "[NGINX] missing: {$name}";
     }
 }
+
+// --- Static layout contract ----------------------------------------------
+
+routingCheck(is_dir($rootDir . '/public/assets'), '[LAYOUT] public/assets must exist');
+foreach (['css', 'js', 'img'] as $legacyDir) {
+    routingCheck(
+        !is_dir($rootDir . '/' . $legacyDir),
+        "[LAYOUT] legacy /{$legacyDir} must be moved to public/assets/{$legacyDir}"
+    );
+}
+routingCheck(
+    !is_dir($rootDir . '/3rdparty/bootstrap'),
+    '[LAYOUT] 3rdparty/bootstrap must be moved to public/assets/vendor/bootstrap'
+);
+routingCheck(
+    is_dir($rootDir . '/3rdparty/smarty3') && is_dir($rootDir . '/3rdparty/php-mailer'),
+    '[LAYOUT] PHP libraries must stay in 3rdparty'
+);
 
 foreach (findHtaccessLeftovers($rootDir) as $htaccess) {
     $failures[] = "[LEGACY] {$htaccess} — web server config lives in nginx.conf.sample only";

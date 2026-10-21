@@ -78,6 +78,28 @@ function devServerRoute($projectRoot)
 
     $path = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
     $path = $path === null || $path === false ? '/' : $path;
+
+    // Static assets live in public/assets and are served under /assets/.
+    // Mirrors the nginx `location ^~ /assets/` block.
+    if (strpos($path, '/assets/') === 0) {
+        $publicRoot = realpath($projectRoot . DIRECTORY_SEPARATOR . 'public');
+        $assetFile = $publicRoot ? realpath($publicRoot . str_replace('/', DIRECTORY_SEPARATOR, $path)) : false;
+        if ($assetFile !== false && stripos($assetFile, $publicRoot) === 0 && is_file($assetFile)) {
+            devServeStaticFile($assetFile);
+            return true;
+        }
+    }
+
+    // Legacy asset URLs: permanent redirect to the canonical /assets/ paths.
+    // Mirrors the nginx redirect rules.
+    $legacyRedirect = devLegacyAssetRedirect($path, $projectRoot);
+    if ($legacyRedirect !== null) {
+        if (!headers_sent()) {
+            header('Location: ' . $legacyRedirect, true, 301);
+        }
+        return true;
+    }
+
     $relativePath = ltrim(rawurldecode($path), '/\\');
     $file = realpath($projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath));
 
@@ -136,6 +158,67 @@ function devServerRoute($projectRoot)
     header('Content-Type: text/plain; charset=utf-8');
     echo "Not found: " . $path;
     return true;
+}
+
+function devLegacyAssetRedirect($path, $projectRoot)
+{
+    if (preg_match('#^/(css|js|img)/(.+)$#', $path, $matches)) {
+        $target = '/assets/' . $matches[1] . '/' . $matches[2];
+        return devAssetTargetExists($target, $projectRoot) ? devWithQueryString($target) : null;
+    }
+
+    if (preg_match('#^/templates/([a-z0-9_\-]+)/([^/]+\.(?:css|js))$#i', $path, $matches)) {
+        $target = '/assets/modules/' . $matches[1] . '/' . $matches[2];
+        return devAssetTargetExists($target, $projectRoot) ? devWithQueryString($target) : null;
+    }
+
+    if (preg_match('#^/3rdparty/([^/]+)/(.+)$#', $path, $matches)
+        && in_array($matches[1], devVendorPackages(), true)) {
+        $target = '/assets/vendor/' . $matches[1] . '/' . $matches[2];
+        return devAssetTargetExists($target, $projectRoot) ? devWithQueryString($target) : null;
+    }
+
+    return null;
+}
+
+function devWithQueryString($target)
+{
+    $query = isset($_SERVER['QUERY_STRING']) ? (string)$_SERVER['QUERY_STRING'] : '';
+    return $query === '' ? $target : $target . '?' . $query;
+}
+
+/**
+ * Browser libraries that moved from 3rdparty to public/assets/vendor.
+ * Keep in sync with nginx.conf.sample.
+ */
+function devVendorPackages()
+{
+    return array(
+        'bootstrap',
+        'bootstrap-datetimepicker',
+        'duration-picker',
+        'fancybox',
+        'jquery',
+        'jquery.toast',
+        'jquerymobile',
+        'long-press-event',
+        'moment',
+    );
+}
+
+function devAssetTargetExists($target, $projectRoot)
+{
+    $publicRoot = realpath($projectRoot . DIRECTORY_SEPARATOR . 'public');
+    if (!$publicRoot) {
+        return false;
+    }
+
+    $file = realpath($publicRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim($target, '/')));
+    if ($file === false || !is_file($file)) {
+        return false;
+    }
+
+    return stripos($file, $publicRoot) === 0;
 }
 
 function devEnsureDatabaseAvailable($projectRoot)
@@ -258,6 +341,11 @@ function devIsDeniedPath($path)
     }
 
     if (preg_match('#^/(?:templates/(?:ui|ui_kit)|lib/ui)/#i', $path)) {
+        return true;
+    }
+
+    // public/ is the source for /assets/ only; direct access is denied in nginx too.
+    if (preg_match('#^/public/#i', $path)) {
         return true;
     }
 

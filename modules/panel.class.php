@@ -300,10 +300,10 @@ class panel extends module
                     $modules[$i]["NOTIFICATIONS_COUNT"] = 0;
                 }
 
-                if (file_exists(ROOT . 'img/modules/' . $modules[$i]['NAME'] . '.png')) {
-                    $modules[$i]['ICON_SM'] = ROOTHTML . 'img/modules/' . $modules[$i]['NAME'] . '.png';
+                if (file_exists(ROOT . 'public/assets/img/modules/' . $modules[$i]['NAME'] . '.png')) {
+                    $modules[$i]['ICON_SM'] = ROOTHTML . 'assets/img/modules/' . $modules[$i]['NAME'] . '.png';
                 } else {
-                    $modules[$i]['ICON_SM'] = ROOTHTML . 'img/modules/default.png';
+                    $modules[$i]['ICON_SM'] = ROOTHTML . 'assets/img/modules/default.png';
                 }
                 if (isset($sidebarIcons[$modules[$i]['NAME']])) {
                     $modules[$i]['ICON_BI'] = $sidebarIcons[$modules[$i]['NAME']];

@@ -226,7 +226,7 @@ function updateConsoleDebug() {
         if (data.CONTENT) {
             $('#console_debug').html(data.CONTENT);
         } else {
-            $('#console_debug').html('<img style="background: white;border-radius: 50px;padding: 5px;" src="' + window.ROOTHTML + 'img/ajax-loader.gif"/> Консоль пуста. Дождитесь новых данных...');
+            $('#console_debug').html('<img style="background: white;border-radius: 50px;padding: 5px;" src="' + window.ROOTHTML + 'assets/img/ajax-loader.gif"/> Консоль пуста. Дождитесь новых данных...');
         }
     });
     consoleDebugTimer = setTimeout(updateConsoleDebug, 1000);

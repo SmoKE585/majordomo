@@ -152,9 +152,9 @@ $out['IS_HIDDEN'] = !empty($rec['HIDDEN']) ? 1 : 0;
 $out['HIDDEN_LABEL'] = $out['IS_HIDDEN'] ? 'Скрыт' : 'В меню';
 $out['HIDDEN_STATE'] = $out['IS_HIDDEN'] ? 'hidden' : 'visible';
 
-$icon_path = ROOT . 'img/modules/' . $name . '.png';
+$icon_path = ROOT . 'public/assets/img/modules/' . $name . '.png';
 $out['HAS_ICON'] = is_file($icon_path) ? 1 : 0;
-$out['ICON_URL'] = $out['HAS_ICON'] ? ROOTHTML . 'img/modules/' . rawurlencode($name) . '.png' : '';
+$out['ICON_URL'] = $out['HAS_ICON'] ? ROOTHTML . 'assets/img/modules/' . rawurlencode($name) . '.png' : '';
 
 // Получим конфиг модуля
 

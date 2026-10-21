@@ -3,14 +3,14 @@ import { defineConfig } from 'vite';
 /**
  * Admin bundle build.
  *
- * Output is committed to assets/admin so the PHP application does not need
+ * Output is committed to public/assets/admin so the PHP application does not need
  * Node.js at runtime. Run `npm run build` after changing src/admin.
  */
 export default defineConfig({
   base: './',
   publicDir: false,
   build: {
-    outDir: 'assets/admin',
+    outDir: 'public/assets/admin',
     // The code editor is a separate chunk in the same directory. The main
     // build must not wipe it when only `build:admin` is run.
     emptyOutDir: false,

@@ -11,7 +11,7 @@ export default defineConfig({
   base: './',
   publicDir: false,
   build: {
-    outDir: 'assets/admin',
+    outDir: 'public/assets/admin',
     emptyOutDir: false,
     cssCodeSplit: false,
     sourcemap: false,

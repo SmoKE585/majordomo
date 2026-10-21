@@ -39,7 +39,7 @@ Docs for shared CodeMirror integration:
 
 Admin asset build
 =========
-The admin panel assets are built with npm + Vite into `assets/admin/` and committed, so PHP hosting does not need Node.js at runtime.
+The admin panel assets are built with npm + Vite into `public/assets/admin/` and committed, so PHP hosting does not need Node.js at runtime.
 
 ```bash
 npm install

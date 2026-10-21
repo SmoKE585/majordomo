@@ -164,13 +164,13 @@ function getParams() {
          $new[$i]['NEWROW']=1;
       }
 
-      if (file_exists(ROOT.'img/admin/icons/ico_'.$new[$i]['NAME'].'.gif'))
+      if (file_exists(ROOT . 'public/assets/img/admin/icons/ico_'.$new[$i]['NAME'].'.gif'))
       {
-         $new[$i]['ICON']=ROOTHTML.'img/admin/icons/ico_'.$new[$i]['NAME'].'.gif';
+         $new[$i]['ICON']=ROOTHTML . 'assets/img/admin/icons/ico_'.$new[$i]['NAME'].'.gif';
       }
       else
       {
-         $new[$i]['ICON']=ROOTHTML.'img/admin/icons/ico_default.gif';
+         $new[$i]['ICON']=ROOTHTML . 'assets/img/admin/icons/ico_default.gif';
       }
    }
 

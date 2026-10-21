@@ -105,7 +105,7 @@ class control_modules extends module
                 $visible_total++;
             }
 
-            $icon_path = ROOT . 'img/modules/' . $row['FILENAME'] . '.png';
+            $icon_path = ROOT . 'public/assets/img/modules/' . $row['FILENAME'] . '.png';
             $has_icon = is_file($icon_path) ? 1 : 0;
 
             $lst[$i]['TITLE_PLAIN'] = $title;
@@ -121,7 +121,7 @@ class control_modules extends module
             $lst[$i]['ADDED_FORMATTED'] = $added_ts ? date('d.m.Y', $added_ts) : '';
             $lst[$i]['ADDED_ISO'] = $added_ts ? date('c', $added_ts) : '';
             $lst[$i]['HAS_ICON'] = $has_icon;
-            $lst[$i]['ICON_URL'] = $has_icon ? ROOTHTML . 'img/modules/' . rawurlencode($row['FILENAME']) . '.png' : '';
+            $lst[$i]['ICON_URL'] = $has_icon ? ROOTHTML . 'assets/img/modules/' . rawurlencode($row['FILENAME']) . '.png' : '';
             $lst[$i]['SEARCH_TEXT_HTML'] = htmlspecialchars(
                 $title . ' ' . $row['FILENAME'] . ' ' . $category . ' ' . ($added_ts ? date('d.m.Y', $added_ts) : ''),
                 ENT_QUOTES
