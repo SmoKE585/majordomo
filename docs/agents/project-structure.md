@@ -15,7 +15,6 @@
 │   ├── nf.php                  # pretty URL, legacy pd, 404
 │   ├── api.php                 # REST API
 │   ├── 404.php                 # error_page 404
-│   ├── backup.php  command.php  diagnostic.php  print_all.php  write_error.php
 │   ├── favicon.ico  robots.txt
 │   └── assets/                 # публикуется как /assets/
 │       ├── admin/              # Vite-бандл (собирается, коммитится)

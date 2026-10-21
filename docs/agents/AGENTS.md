@@ -311,6 +311,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `js/builder.js`, `js/effects.js`, `js/dragdrop.js`, `js/slider.js`, `js/system.js`, `js/gmaps.js`, `js/jquery.autocomplete.js`, `js/jquery.betterTooltip.js`, `js/jquery.bgiframe.js`, `js/jquery.event.drag-2.2.js`, `js/jquery.gritter.js`, `js/ui.core.js`, `js/ui.draggable.js`, `js/ui.resizable.js` — мёртвая legacy-фронтенд-цепочка (script.aculo.us, jQuery UI-дубли, неиспользуемые плагины);
 - `css/jquery.autocomplete.css`, `css/jquery.betterTooltip.css`, `css/jquery.gritter.css`, `css/ui-*/jquery-ui-1.9.1.custom.min.css` — парные к удалённым скриптам и min-дубли;
 - `templates/scripts.js`, `templates/debug_templates.js`, `templates/scripts/scripts_widgets.css` — не подключались ни из одного шаблона;
+- `public/diagnostic.php`, `public/print_all.php`, `public/write_error.php`, `public/command.php`, `public/backup.php` — неиспользуемые точки входа: ссылки на них убраны (страница ошибки, hero «Ошибок системы», X-Ray, `load_settings.php`, `scripts.js`); бэкапы делает saverestore;
 - `pChart/` и `3rdparty/jpgraph/` — 0 ссылок в коде и БД, графики давно на ApexCharts;
 - `3rdparty/freeboard/` — дашборды freeboard: эндпоинты-виджеты никуда не подключены;
 - `rc/` — архаичный пульт (Windows-бинарники + `rc/index.php`); URL `/rc/...` теперь 301 на `/panel/`;

@@ -115,7 +115,6 @@ if (isset($_SERVER['REQUEST_METHOD']) &&
     defined('WAIT_FOR_MAIN_CYCLE') &&
     WAIT_FOR_MAIN_CYCLE == 1 &&
     !preg_match('/clear_all_history\.php/', $_SERVER['REQUEST_URI']) &&
-    !preg_match('/diagnostic\.php/', $_SERVER['REQUEST_URI']) &&
     !preg_match('/\/ajax\//', $_SERVER['REQUEST_URI']) &&
     !preg_match('/\/api/', $_SERVER['REQUEST_URI']) &&
     !preg_match('/admin\.php/', $_SERVER['REQUEST_URI']) &&
@@ -140,7 +139,6 @@ if (isset($_SERVER['REQUEST_METHOD']) &&
 </head><body><div class=\"container\">";
             echo "&nbsp;<div class='alert alert-danger'>" . LANG_MAINCYCLEDOWN . "</div>";
             echo '<p>' . LANG_MAINCYCLEDOWN_DETAILS . '<br/>(timeout: ' . $maincycleTimePassed . ')</p>';
-            echo "<div><a href='" . ROOTHTML . "diagnostic.php' target='_blank' class='btn btn-default'>" . LANG_SUBMIT_DIAGNOSTIC . "</a></div>&nbsp;";
             echo "<div>" . LANG_CONTROL_PANEL . ": <a href='" . ROOTHTML . "panel/xray.html?view_mode=services' class='btn btn-default'>Services</a>&nbsp;";
             echo "<a href='" . ROOTHTML . "panel/xray.html?view_mode=database' class='btn btn-default'>Database</a>&nbsp;";
             echo "<a href='" . ROOTHTML . "admin.php?md=panel&action=saverestore' class='btn btn-default'>" . LANG_SAVE_BACKUP . " / " . LANG_RESTORE . "</a>&nbsp;";

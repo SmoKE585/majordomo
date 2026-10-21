@@ -1581,9 +1581,6 @@ function actionLogDetectSource($context = array())
     if (stripos($request_uri, '/api.php') !== false) {
         return 'api';
     }
-    if (stripos($request_uri, '/command.php') !== false) {
-        return 'command';
-    }
     if (stripos($request_uri, '/objects/') !== false) {
         return 'objects';
     }

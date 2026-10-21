@@ -244,7 +244,7 @@
 - `php -l lib/objects.class.php`
 - `php -l lib/sqlFunctions.class.php`
 - `php -l scripts/startup_maintenance.php`
-- `php -l index.php admin.php api.php cycle.php command.php`
+- `php -l public/index.php public/admin.php public/api.php cycle.php`
 - smoke-test со стабами `SQLSelect`, `SQLSelectOne`, `DBSafe` для `getObjectsByProperty()`, `getObjectsByClass()`, `getClassProperties()`.
 
 Ограничение проверки: реальные SQL-планы и поведение на живой БД не запускались. Перед релизом желательно прогнать на копии базы сценарии API `/api.php` по классам/свойствам, смену класса объекта в админке и очистку истории свойства.
