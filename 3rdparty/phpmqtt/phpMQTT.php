@@ -52,6 +52,60 @@ class phpMQTT
     protected $password;            /* stores password */
 
     public $cafile;
+    protected int $maxPacketBytes = 1048576;
+    protected float $packetTimeout = 5.0;
+    private ?int $incomingHeader = null;
+    private ?int $incomingLength = null;
+    private int $lengthBytes = 0;
+    private int $lengthMultiplier = 1;
+    private int $lengthValue = 0;
+    private int $receivedBytes = 0;
+    private string $incomingBody = '';
+    private float $packetDeadline = 0.0;
+    private bool $discardPacket = false;
+
+    public function setReadLimits(int $maxPacketBytes, float $packetTimeout): void
+    {
+        if ($maxPacketBytes < 1 || $maxPacketBytes > 268435455 || !is_finite($packetTimeout) || $packetTimeout <= 0) {
+            throw new \InvalidArgumentException('Invalid MQTT receive limits');
+        }
+        $this->maxPacketBytes = $maxPacketBytes;
+        $this->packetTimeout = $packetTimeout;
+    }
+
+    private function resetPacket(): void
+    {
+        $this->incomingHeader = $this->incomingLength = null;
+        $this->lengthBytes = $this->lengthValue = $this->receivedBytes = 0;
+        $this->lengthMultiplier = 1;
+        $this->incomingBody = '';
+        $this->packetDeadline = 0.0;
+        $this->discardPacket = false;
+    }
+
+    private function failRead(string $message): bool
+    {
+        $this->_errorMessage($message);
+        if (is_resource($this->socket)) fclose($this->socket);
+        $this->socket = null;
+        $this->resetPacket();
+        return false;
+    }
+
+    private function readAvailable(int $length, float $wait): string|false
+    {
+        if (!is_resource($this->socket)) return false;
+        $read = array($this->socket);
+        $write = $except = null;
+        $wait = max(0.0, $wait);
+        $seconds = (int)$wait;
+        $ready = stream_select($read, $write, $except, $seconds, (int)(($wait - $seconds) * 1000000));
+        if ($ready === false) return false;
+        if ($ready === 0) return '';
+        $chunk = fread($this->socket, min(8192, $length));
+        if ($chunk === false || ($chunk === '' && feof($this->socket))) return false;
+        return $chunk;
+    }
     protected static $known_commands = [
         1 => 'CONNECT',
         2 => 'CONNACK',
@@ -126,6 +180,8 @@ class phpMQTT
      */
     public function connect($clean = true, $will = null, $username = null, $password = null): bool
     {
+        if (is_resource($this->socket)) fclose($this->socket);
+        $this->resetPacket();
         if ($will) {
             $this->will = $will;
         }
@@ -234,12 +290,12 @@ class phpMQTT
             $head .= chr($encodedByte);
         }
 
-        fwrite($this->socket, $head, 2);
-        fwrite($this->socket, $buffer);
+        if ($this->_fwrite($head . $buffer) === false) return $this->failRead('Cannot send MQTT CONNECT');
 
         $string = $this->read(4);
 
-        if (ord($string[0]) >> 4 === 2 && $string[3] === chr(0)) {
+        if ($string === false || strlen($string) !== 4) return false;
+        if ($string[0] === chr(0x20) && $string[1] === chr(2) && $string[3] === chr(0)) {
             $this->_debugMessage('Connected to Broker');
         } else {
             $this->_errorMessage(
@@ -249,7 +305,7 @@ class phpMQTT
                     ord($string[3])
                 )
             );
-            return false;
+            return $this->failRead('Broker rejected MQTT connection');
         }
 
         $this->timesinceping = time();
@@ -267,17 +323,17 @@ class phpMQTT
      */
     public function read($int = 8192, $nb = false)
     {
+        if ($int < 1) return '';
+        if ($int > $this->maxPacketBytes) return $this->failRead('MQTT read exceeds packet size limit');
+        if ($nb) return $this->readAvailable((int)$int, 0.0);
         $string = '';
-        $togo = (int)$int;
-
-        if ($nb) {
-            return fread($this->socket, $togo);
-        }
-
-        while (!feof($this->socket) && $togo > 0) {
-            $fread = fread($this->socket, $togo);
-            $string .= $fread;
-            $togo = (int)($int - strlen($string));
+        $deadline = microtime(true) + $this->packetTimeout;
+        while (strlen($string) < $int) {
+            $remaining = $deadline - microtime(true);
+            if ($remaining <= 0) return $this->failRead('MQTT read timeout');
+            $chunk = $this->readAvailable((int)$int - strlen($string), $remaining);
+            if ($chunk === false) return $this->failRead('MQTT connection closed during read');
+            $string .= $chunk;
         }
 
         return $string;
@@ -338,13 +394,9 @@ class phpMQTT
 
         $head = chr($cmd);
         $head .= $this->setmsglength($i);
-        fwrite($this->socket, $head, strlen($head));
-
-        $this->_fwrite($buffer);
-        $string = $this->read(2);
-
-        $bytes = ord(substr($string, 1, 1));
-        $this->read($bytes);
+        // SUBACK and retained messages share the stream. Let proc() consume
+        // them in order instead of mistaking a retained PUBLISH for SUBACK.
+        return $this->_fwrite($head . $buffer) !== false;
     }
 
     /**
@@ -375,8 +427,12 @@ class phpMQTT
      */
     public function close()
     {
-        $this->disconnect();
-        stream_socket_shutdown($this->socket, STREAM_SHUT_WR);
+        if (is_resource($this->socket)) {
+            $this->disconnect();
+            fclose($this->socket);
+        }
+        $this->socket = null;
+        $this->resetPacket();
     }
 
     /**
@@ -434,11 +490,19 @@ class phpMQTT
     protected function _fwrite($buffer)
     {
         $buffer_length = strlen($buffer);
-        for ($written = 0; $written < $buffer_length; $written += $fwrite) {
-            $fwrite = fwrite($this->socket, substr($buffer, $written));
-            if ($fwrite === false) {
-                return false;
-            }
+        $deadline = microtime(true) + $this->packetTimeout;
+        for ($written = 0; $written < $buffer_length;) {
+            if (!is_resource($this->socket) || microtime(true) >= $deadline) return $this->failRead('MQTT write timeout or closed connection');
+            $read = $except = null;
+            $write = array($this->socket);
+            $wait = $deadline - microtime(true);
+            $seconds = (int)max(0, $wait);
+            $ready = stream_select($read, $write, $except, $seconds, max(0, (int)(($wait - $seconds) * 1000000)));
+            if ($ready === false) return $this->failRead('Cannot wait for MQTT socket write');
+            if ($ready === 0) continue;
+            $fwrite = fwrite($this->socket, substr($buffer, $written, 8192));
+            if ($fwrite === false) return $this->failRead('MQTT socket write failed');
+            $written += $fwrite;
         }
         return $buffer_length;
     }

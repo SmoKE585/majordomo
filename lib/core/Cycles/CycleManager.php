@@ -79,7 +79,7 @@ final class CycleManager
         $status = (string)$this->cycleValue($name . 'Status');
         $statusUpdated = (int)$this->cycleValue($name . 'StatusUpdated');
         $details = (string)$this->cycleValue($name . 'StatusDetails');
-        $watchdog = new CycleWatchdog(Config::int('CYCLE_HEARTBEAT_TIMEOUT', 120), Config::int('CYCLE_STARTUP_TIMEOUT', 180), Config::arrayValue('CYCLE_TIMEOUTS'));
+        $watchdog = new CycleWatchdog(Config::int('CYCLE_HEARTBEAT_TIMEOUT', 120), Config::int('CYCLE_STARTUP_TIMEOUT', 180), Config::arrayValue('CYCLE_TIMEOUTS'), defined('JOBS_EXECUTION_TIMEOUT') ? (int)JOBS_EXECUTION_TIMEOUT : 300);
         $online = $updated > 0 && $updated <= time() + 5 && (time() - $updated) < $watchdog->timeout($name);
 
         if ($desired === CycleStateStore::DISABLED) {
@@ -87,7 +87,7 @@ final class CycleManager
         } elseif ($desired === CycleStateStore::STOPPED) {
             $runtimeStatus = $online ? 'stopping' : 'stopped';
         } elseif ($status === 'error' && $statusUpdated >= $updated) {
-            $runtimeStatus = 'error';
+            $runtimeStatus = 'stopped';
             $online = false;
         } elseif ($online) {
             $runtimeStatus = 'running';

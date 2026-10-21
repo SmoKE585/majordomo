@@ -11,8 +11,8 @@ require_once './load_settings.php';
 $kind = $argv[1] ?? '';
 $id = $argv[2] ?? '';
 $token = $argv[3] ?? '';
-// Keep user output separate from the machine-readable completion record.
-ob_start();
+// Discard user output in chunks; keep only the machine-readable completion record.
+ob_start(static fn(string $output): string => '', 8192);
 $result = $kind === 'job' ? \MajorDoMo\Core\Core::scheduler()->execute($id, $token) : \MajorDoMo\Core\Core::worker()->execute($id, $token);
 ob_end_clean();
 echo 'MJD_WORKER_RESULT ' . json_encode($result, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE) . PHP_EOL;

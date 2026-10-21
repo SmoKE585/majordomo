@@ -496,10 +496,10 @@ function timeOutExists($title)
  * Summary of runScheduledJobs
  * @return void
  */
-function runScheduledJobs()
+function runScheduledJobs(?callable $progress = null)
 {
     // TODO: compatibility facade; new code uses Core::scheduler()->run().
-    return \MajorDoMo\Core\Core::scheduler()->run();
+    return \MajorDoMo\Core\Core::scheduler()->run(null, $progress);
 }
 
 /**

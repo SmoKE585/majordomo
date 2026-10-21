@@ -26,7 +26,7 @@ final class Scheduler
         }
     }
 
-    public function run($execute = null)
+    public function run($execute = null, ?callable $progress = null)
     {
         $now = date('Y-m-d H:i:s');
         $timeout = defined('JOBS_EXECUTION_TIMEOUT') ? max(1, (int)JOBS_EXECUTION_TIMEOUT) : 300;
@@ -36,6 +36,7 @@ final class Scheduler
         $this->db->requireExec("DELETE FROM jobs WHERE EXPIRE<='$now' LIMIT 1000");
         $jobs = $this->db->select("SELECT ID FROM jobs WHERE PROCESSED=0 AND EXPIRED=0 AND RUNTIME<='$now' AND (STARTED IS NULL OR STARTED<='$stale') ORDER BY RUNTIME,ID LIMIT $limit");
         foreach ($jobs as $row) {
+            if ($progress !== null) $progress();
             $id = (int)$row['ID'];
             $token = bin2hex(random_bytes(16));
             $this->db->requireExec("UPDATE jobs SET STARTED='$now',CLAIM_TOKEN='$token',ATTEMPTS=ATTEMPTS+1 WHERE ID=$id AND PROCESSED=0 AND EXPIRED=0 AND (STARTED IS NULL OR STARTED<='$stale')");
@@ -56,5 +57,6 @@ final class Scheduler
                 DebMes('Scheduled job ' . $id . ($expired ? ' failed permanently: ' : ' will retry: ') . $error, 'scheduled_jobs', $expired ? 'error' : 'warning');
             }
         }
+        if ($progress !== null) $progress();
     }
 }

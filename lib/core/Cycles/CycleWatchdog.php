@@ -8,11 +8,15 @@ final class CycleWatchdog
     private array $failures = array();
     private array $healthySince = array();
 
-    public function __construct(private int $heartbeatTimeout = 120, private int $startupTimeout = 180, private array $overrides = array()) {}
+    public function __construct(private int $heartbeatTimeout = 120, private int $startupTimeout = 180, private array $overrides = array(), private int $jobExecutionTimeout = 300) {}
 
     public function timeout(string $name, bool $startup = false): int
     {
-        return max(10, (int)($this->overrides[$name] ?? ($startup ? $this->startupTimeout : $this->heartbeatTimeout)));
+        $default = $startup ? $this->startupTimeout : $this->heartbeatTimeout;
+        // A scheduler job has its own enforced deadline; allow it to finish before
+        // declaring the parent stalled. Progress between jobs refreshes its heartbeat.
+        if ($name === 'cycle_scheduler') $default = max($default, max(1, $this->jobExecutionTimeout) + 60);
+        return max(10, (int)($this->overrides[$name] ?? $default));
     }
 
     public function stalled(string $name, int $started, int $heartbeat, int $now): ?string

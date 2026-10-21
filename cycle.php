@@ -524,7 +524,8 @@ else
 $cycleWatchdog = new \MajorDoMo\Core\Cycles\CycleWatchdog(
     \MajorDoMo\Core\Config::int('CYCLE_HEARTBEAT_TIMEOUT', 120),
     \MajorDoMo\Core\Config::int('CYCLE_STARTUP_TIMEOUT', 180),
-    \MajorDoMo\Core\Config::arrayValue('CYCLE_TIMEOUTS')
+    \MajorDoMo\Core\Config::arrayValue('CYCLE_TIMEOUTS'),
+    defined('JOBS_EXECUTION_TIMEOUT') ? (int)JOBS_EXECUTION_TIMEOUT : 300
 );
 $to_start = $to_stop = $started_when = $is_running = $expected_exits = array();
 

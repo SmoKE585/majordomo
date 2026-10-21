@@ -68,14 +68,24 @@ class Threads
             return false;
         }
         $id = ++$this->lastId;
-        fclose($pipes[0]);
-        unset($pipes[0]);
+        try {
+            if ($temporary !== null) {
+                $pipes[1] = fopen($temporary, 'rb');
+                if ($pipes[1] === false) throw new RuntimeException('Cannot read cycle output spool');
+            }
+            foreach ($pipes as $pipe) stream_set_blocking($pipe, false);
+        } catch (Throwable $error) {
+            proc_terminate($handle, 9);
+            foreach ($pipes as $pipe) if (is_resource($pipe)) fclose($pipe);
+            proc_close($handle);
+            if ($temporary !== null) unlink($temporary);
+            DebMes('Cannot initialise cycle pipes: ' . $error->getMessage(), 'threads');
+            return false;
+        }
         if ($temporary !== null) {
-            $pipes[1] = fopen($temporary, 'rb');
             $this->temporaryFiles[$id] = $temporary;
             $this->readOffsets[$id] = 0;
         }
-        foreach ($pipes as $pipe) stream_set_blocking($pipe, false);
         $this->handles[$id] = $handle;
         $this->pipes[$id] = $pipes;
         $this->commandLines[$id] = $command;
@@ -123,7 +133,8 @@ class Threads
     private function readOutput($id): string
     {
         $contents = '';
-        foreach ($this->pipes[$id] ?? array() as $pipe) {
+        foreach ($this->pipes[$id] ?? array() as $descriptor => $pipe) {
+            if ($descriptor !== 1) continue;
             if (isset($this->temporaryFiles[$id])) {
                 $size = fstat($pipe)['size'];
                 $offset = $this->readOffsets[$id];
