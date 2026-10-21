@@ -444,6 +444,7 @@ class mqtt extends module
 
         // Create MQTT client with TLS support
         $mqtt_client = new Bluerhinos\phpMQTT($host, $port, $client_name . ' Client');
+        $mqtt_client->setReadLimits(\MajorDoMo\Core\Config::int('MQTT_MAX_PACKET_BYTES'), \MajorDoMo\Core\Config::float('MQTT_PACKET_TIMEOUT'));
 
         // Set TLS context if TLS is enabled
         if ($tls_enabled) {

@@ -148,6 +148,8 @@ function mqttRunOnce()
     $mqtt_linked_paths = $mqtt->getLinkedPathsSnapshot(true);
 
     $mqtt_client = new Bluerhinos\phpMQTT($host, $port, $client_name);
+    $mqtt_client->setReadLimits(\MajorDoMo\Core\Config::int('MQTT_MAX_PACKET_BYTES'), \MajorDoMo\Core\Config::float('MQTT_PACKET_TIMEOUT'));
+    try {
     if (!empty($mqtt->config['MQTT_AUTH'])) {
         $connect = $mqtt_client->connect(true, NULL, $username, $password);
     } else {
@@ -222,7 +224,9 @@ function mqttRunOnce()
             }
         }
     }
-    $mqtt_client->close();
+    } finally {
+        $mqtt_client->close();
+    }
 }
 
 $db->Disconnect(); // closing database connection

@@ -63,6 +63,7 @@ class phpMQTT
     private string $incomingBody = '';
     private float $packetDeadline = 0.0;
     private bool $discardPacket = false;
+    private int $lastReceivedAt = 0;
 
     public function setReadLimits(int $maxPacketBytes, float $packetTimeout): void
     {
@@ -309,6 +310,7 @@ class phpMQTT
         }
 
         $this->timesinceping = time();
+        $this->lastReceivedAt = time();
 
         return true;
     }
@@ -406,9 +408,10 @@ class phpMQTT
     {
         $head = chr(0xc0);
         $head .= chr(0x00);
-        fwrite($this->socket, $head, 2);
+        if ($this->_fwrite($head) === false) return false;
         $this->timesinceping = time();
         $this->_debugMessage('ping sent');
+        return true;
     }
 
     /**
@@ -419,7 +422,8 @@ class phpMQTT
         $head = ' ';
         $head[0] = chr(0xe0);
         $head[1] = chr(0x00);
-        fwrite($this->socket, $head, 2);
+        if (is_resource($this->socket)) return $this->_fwrite($head);
+        return false;
     }
 
     /**
@@ -429,7 +433,7 @@ class phpMQTT
     {
         if (is_resource($this->socket)) {
             $this->disconnect();
-            fclose($this->socket);
+            if (is_resource($this->socket)) fclose($this->socket);
         }
         $this->socket = null;
         $this->resetPacket();
@@ -573,69 +577,73 @@ class phpMQTT
      */
     public function proc(bool $loop = true)
     {
-        if (feof($this->socket)) {
-            $this->_debugMessage('eof receive going to reconnect for good measure');
-            fclose($this->socket);
-            $this->connect_auto(false);
-            if (count($this->topics)) {
-                $this->subscribe($this->topics);
+        if (!is_resource($this->socket)) return false;
+        // Waits wake immediately on data. A partial packet yields to the cycle
+        // at least every 100ms, so heartbeats and outgoing commands still run.
+        $iterationDeadline = microtime(true) + ($loop ? 0.1 : 0.0);
+        do {
+            $now = microtime(true);
+            if ($this->packetDeadline > 0 && $now >= $this->packetDeadline) return $this->failRead('Incomplete MQTT packet timed out');
+            $wanted = $this->incomingLength === null ? 1 : $this->incomingLength - $this->receivedBytes;
+            $wait = max(0.0, $iterationDeadline - $now);
+            if ($this->packetDeadline > 0) $wait = min($wait, max(0.0, $this->packetDeadline - $now));
+            $chunk = $this->readAvailable($wanted, $wait);
+            if ($chunk === false) return $this->failRead('MQTT connection closed during packet');
+            if ($chunk === '') break;
+
+            if ($this->incomingHeader === null) {
+                $this->incomingHeader = ord($chunk);
+                $type = $this->incomingHeader >> 4;
+                if ($type < 1 || $type > 14) return $this->failRead('Invalid MQTT packet type');
+                $this->packetDeadline = microtime(true) + $this->packetTimeout;
+                continue;
             }
-        }
-
-        $byte = $this->read(1, true);
-
-        if ((string)$byte === '') {
-            if ($loop === true) {
-                usleep(100000);
-            }
-        } else {
-            $cmd = (int)(ord($byte) / 16);
-            $this->_debugMessage(
-                sprintf(
-                    'Received CMD: %d (%s)',
-                    $cmd,
-                    isset(static::$known_commands[$cmd]) === true ? static::$known_commands[$cmd] : 'Unknown'
-                )
-            );
-
-            $multiplier = 1;
-            $value = 0;
-            do {
-                $digit = ord($this->read(1));
-                $value += ($digit & 127) * $multiplier;
-                $multiplier *= 128;
-            } while (($digit & 128) !== 0);
-
-            $this->_debugMessage('Fetching: ' . $value . ' bytes');
-
-            $string = $value > 0 ? $this->read($value) : '';
-
-            if ($cmd) {
-                switch ($cmd) {
-                    case 3: //Publish MSG
-                        $return = $this->message($string);
-                        if (is_bool($return) === false) {
-                            return $return;
-                        }
-                        break;
+            if ($this->incomingLength === null) {
+                $digit = ord($chunk);
+                $this->lengthValue += ($digit & 127) * $this->lengthMultiplier;
+                $this->lengthBytes++;
+                if (($digit & 128) !== 0) {
+                    if ($this->lengthBytes >= 4) return $this->failRead('Invalid MQTT Remaining Length');
+                    $this->lengthMultiplier *= 128;
+                    continue;
                 }
+                $this->incomingLength = $this->lengthValue;
+                if ($this->incomingLength > $this->maxPacketBytes) {
+                    // QoS 0 sensor traffic can be drained without allocating
+                    // the body or reconnecting forever to a retained message.
+                    if (($this->incomingHeader & 6) !== 0) return $this->failRead('Oversized MQTT packet requiring acknowledgement');
+                    $this->discardPacket = true;
+                    $this->_errorMessage('MQTT packet exceeds ' . $this->maxPacketBytes . ' bytes; discarding ' . $this->incomingLength . ' bytes');
+                }
+            } else {
+                $this->receivedBytes += strlen($chunk);
+                if (!$this->discardPacket) $this->incomingBody .= $chunk;
             }
-        }
 
-        if ($this->timesinceping < (time() - $this->keepalive)) {
-            $this->_debugMessage('not had something in a while so ping');
-            $this->ping();
-        }
-
-        if ($this->timesinceping < (time() - ($this->keepalive * 2))) {
-            $this->_debugMessage('not seen a packet in a while, disconnecting/reconnecting');
-            fclose($this->socket);
-            $this->connect_auto(false);
-            if (count($this->topics)) {
-                $this->subscribe($this->topics);
+            if ($this->incomingLength === $this->receivedBytes) {
+                $header = $this->incomingHeader;
+                $body = $this->incomingBody;
+                $discarded = $this->discardPacket;
+                $this->resetPacket();
+                $this->lastReceivedAt = time();
+                if (!$discarded && ($header >> 4) === 3) {
+                    if (strlen($body) < 2) return $this->failRead('Truncated MQTT PUBLISH');
+                    $topicLength = (ord($body[0]) << 8) + ord($body[1]);
+                    $qos = ($header >> 1) & 3;
+                    if ($topicLength < 1 || strlen($body) < 2 + $topicLength + ($qos ? 2 : 0) || $qos > 1) return $this->failRead('Invalid or unsupported MQTT PUBLISH');
+                    $packetId = $qos ? substr($body, 2 + $topicLength, 2) : '';
+                    if ($qos) $body = substr($body, 0, 2 + $topicLength) . substr($body, 4 + $topicLength);
+                    $return = $this->message($body);
+                    if ($qos && $this->_fwrite(chr(0x40) . chr(2) . $packetId) === false) return false;
+                    if (!is_bool($return)) return $return;
+                }
+                return true;
             }
-        }
+        } while (!$loop || microtime(true) < $iterationDeadline);
 
+        if ($this->packetDeadline > 0 && microtime(true) >= $this->packetDeadline) return $this->failRead('Incomplete MQTT packet timed out');
+        if ($this->lastReceivedAt && $this->lastReceivedAt < time() - $this->keepalive * 2) return $this->failRead('MQTT broker keepalive timed out');
+        if ($this->timesinceping < time() - $this->keepalive && !$this->ping()) return false;
         return true;
     }
 
@@ -733,6 +741,10 @@ class phpMQTT
      */
     protected function _errorMessage(string $message)
     {
-        error_log('Error:' . $message);
+        if (function_exists('DebMes')) {
+            \DebMes($message, 'mqtt_error');
+        } else {
+            error_log('MQTT: ' . $message);
+        }
     }
 }

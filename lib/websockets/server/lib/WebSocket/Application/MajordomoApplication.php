@@ -2,6 +2,8 @@
 
 namespace WebSocket\Application;
 
+use MajorDoMo\Core\Config;
+
 /**
  * Websocket-Server demo and test application.
  *
@@ -14,9 +16,67 @@ class MajordomoApplication extends Application
     private $_filename = '';
     private $_latestAlive = 0;
     private $_started;
+    private array $cacheSizes = array();
+    private array $cacheExpires = array();
+    private int $cacheBytes = 0;
+    private int $cacheMaxEntries;
+    private int $cacheMaxBytes;
+    private int $cacheTtl;
+    private int $maxSubscriptions;
     
     public function __construct() {
         $this->_started = date("Y-m-d H:i:s");
+        $this->cacheMaxEntries = Config::int('WEBSOCKETS_CACHE_MAX_ENTRIES');
+        $this->cacheMaxBytes = Config::int('WEBSOCKETS_CACHE_MAX_BYTES');
+        $this->cacheTtl = Config::int('WEBSOCKETS_CACHE_TTL');
+        $this->maxSubscriptions = Config::int('WEBSOCKETS_MAX_SUBSCRIPTIONS');
+        if (min($this->cacheMaxEntries, $this->cacheMaxBytes, $this->cacheTtl, $this->maxSubscriptions) < 1) {
+            throw new \InvalidArgumentException('WebSocket cache and subscription limits must be positive');
+        }
+    }
+
+    private function forgetCachedProperty(string $name): void
+    {
+        $this->cacheBytes -= $this->cacheSizes[$name] ?? 0;
+        unset($this->_cachedProperties[$name], $this->cacheSizes[$name], $this->cacheExpires[$name]);
+    }
+
+    private function prunePropertyCache(): void
+    {
+        $now = time();
+        foreach ($this->cacheExpires as $name => $expires) {
+            if ($expires <= $now) $this->forgetCachedProperty($name);
+        }
+    }
+
+    private function hasCachedProperty(string $name): bool
+    {
+        if (!array_key_exists($name, $this->_cachedProperties)) return false;
+        if ($this->cacheExpires[$name] <= time()) {
+            $this->forgetCachedProperty($name);
+            return false;
+        }
+        // PHP arrays preserve insertion order: moving a hit to the end makes
+        // eviction LRU without keeping a second list of values.
+        $value = $this->_cachedProperties[$name];
+        unset($this->_cachedProperties[$name]);
+        $this->_cachedProperties[$name] = $value;
+        return true;
+    }
+
+    private function cacheProperty(string $name, $value): void
+    {
+        $size = strlen($name) + (is_string($value) ? strlen($value) : strlen(json_encode($value, JSON_THROW_ON_ERROR)));
+        $this->forgetCachedProperty($name);
+        // Large values are still delivered live; only the cache is bounded.
+        if ($size > $this->cacheMaxBytes) return;
+        while ($this->_cachedProperties && (count($this->_cachedProperties) >= $this->cacheMaxEntries || $this->cacheBytes + $size > $this->cacheMaxBytes)) {
+            $this->forgetCachedProperty(array_key_first($this->_cachedProperties));
+        }
+        $this->_cachedProperties[$name] = $value;
+        $this->cacheSizes[$name] = $size;
+        $this->cacheExpires[$name] = time() + $this->cacheTtl;
+        $this->cacheBytes += $size;
     }
 
     public function onConnect($client)
@@ -106,6 +166,7 @@ class MajordomoApplication extends Application
             return;
         }
         $this->_latestAlive = time();
+        $this->prunePropertyCache();
         global $cycleName;
         if ($cycleName) {
             $checked_time = time();
@@ -230,7 +291,7 @@ class MajordomoApplication extends Application
                     if (strpos($property_name_lc, '.') === false) {
                         continue;
                     }
-                    if (isSet($this->_cachedProperties[$property_name_lc])) {
+                    if ($this->hasCachedProperty($property_name_lc)) {
                         $send_data[] = array('PROPERTY' => $property, 'VALUE' => $this->_cachedProperties[$property_name_lc]);
                     } else {
                         $send_data[] = array('PROPERTY' => $property, 'VALUE' => getGlobal($property));
@@ -290,7 +351,7 @@ class MajordomoApplication extends Application
         $send_data = array();
         foreach ($properties as $property) {
             $property_lc = mb_strtolower($property, 'UTF-8');
-            if (isSet($this->_cachedProperties[$property_lc])) {
+            if ($this->hasCachedProperty($property_lc)) {
                 $value = $this->_cachedProperties[$property_lc];
             } else {
                 $value = getGlobal($property);
@@ -514,7 +575,7 @@ class MajordomoApplication extends Application
 
         if (IsSet($data['NAME'])) {
             $received_properties[] = $data['NAME'];
-            $received_values[] = $data['VALUE'];
+            $received_values[$data['NAME']] = $data['VALUE'];
         } elseif (is_array($data[0]) && isset($data[0]['NAME'])) {
             $total = count($data);
             for ($i = 0; $i < $total; $i++) {
@@ -532,7 +593,7 @@ class MajordomoApplication extends Application
             if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
                 DebMes("Update property ".$property_name." => ".$property_value." (total cache:".count($this->_cachedProperties).")",'websockets');
             }
-            $this->_cachedProperties[$property_name_lc] = $property_value;
+            $this->cacheProperty($property_name_lc, $property_value);
             //process property update
             $found_subscribers = 0;
 
