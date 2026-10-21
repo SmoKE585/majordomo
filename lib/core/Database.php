@@ -9,10 +9,15 @@ final class Database
     public function select(string $sql): array { return $this->connection->Select($sql); }
     public function one(string $sql): ?array { return $this->connection->SelectOne($sql) ?: null; }
     public function exec(string $sql, bool $ignoreErrors = false): mixed { return $this->connection->Exec($sql, $ignoreErrors); }
-    public function requireExec(string $sql): mixed
+    public function requireExec(string $sql, bool $deferErrors = false): mixed
     {
-        $result = $this->exec($sql);
-        if (!$result) throw new \RuntimeException('Core database operation failed');
+        // Transaction owners must roll back before handling an error. The legacy
+        // error handler can terminate PHP and must not run inside such a batch.
+        $result = $this->exec($sql, $deferErrors);
+        if (!$result) {
+            $error = method_exists($this->connection, 'getLastError') ? $this->connection->getLastError() : array('code' => 0, 'message' => '');
+            throw new \RuntimeException('Core database operation failed: ' . $error['message'], (int)$error['code']);
+        }
         return $result;
     }
     public function insert(string $table, array &$record): int { return (int)$this->connection->Insert($table, $record); }

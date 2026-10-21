@@ -20,8 +20,10 @@ final class HistoryWriter
                 $id = (int)$row['VALUE_ID'];
                 if (!isset($tables[$id])) $tables[$id] = defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1 ? $this->historyStorage->table($id) : 'phistory';
             }
+            for ($attempt = 1; ; $attempt++) {
+            // Rebuild the batch from fresh history tails after a rolled-back attempt.
             $tails = $inserts = $updates = array();
-            $this->db->requireExec('START TRANSACTION');
+            $this->db->requireExec('START TRANSACTION', true);
             try {
                 foreach ($queue as $row) {
                     $id = (int)$row['VALUE_ID'];
@@ -53,21 +55,27 @@ final class HistoryWriter
                     foreach (array_chunk($rows, 100) as $chunk) {
                         $values = array();
                         foreach ($chunk as $row) $values[] = '(' . (int)$row['VALUE_ID'] . ",'" . $this->db->escape($row['ADDED']) . "','" . $this->db->escape($row['VALUE']) . "','" . $this->db->escape($row['SOURCE']) . "')";
-                        $this->db->requireExec("INSERT INTO `$table` (VALUE_ID,ADDED,VALUE,SOURCE) VALUES " . implode(',', $values));
+                        $this->db->requireExec("INSERT INTO `$table` (VALUE_ID,ADDED,VALUE,SOURCE) VALUES " . implode(',', $values), true);
                     }
                 }
                 foreach ($updates as $table => $rows) {
+                    ksort($rows, SORT_NUMERIC);
                     $cases = array();
                     foreach ($rows as $id => $added) $cases[] = 'WHEN ' . (int)$id . " THEN '" . $this->db->escape($added) . "'";
-                    $this->db->requireExec("UPDATE `$table` SET ADDED=CASE ID " . implode(' ', $cases) . ' END WHERE ID IN (' . implode(',', array_keys($rows)) . ')');
+                    $this->db->requireExec("UPDATE `$table` SET ADDED=CASE ID " . implode(' ', $cases) . ' END WHERE ID IN (' . implode(',', array_keys($rows)) . ')', true);
                 }
-                $this->db->requireExec('DELETE FROM phistory_queue WHERE ID IN (' . implode(',', array_map('intval', array_column($queue, 'ID'))) . ')');
-                $this->db->requireExec('COMMIT');
+                $this->db->requireExec('DELETE FROM phistory_queue WHERE ID IN (' . implode(',', array_map('intval', array_column($queue, 'ID'))) . ')', true);
+                $this->db->requireExec('COMMIT', true);
             } catch (Throwable $e) {
-                $this->db->exec('ROLLBACK', true);
+                $rolledBack = $this->db->exec('ROLLBACK', true);
+                if ($rolledBack && in_array($e->getCode(), array(1213, 1205), true) && $attempt < 3) {
+                    usleep(random_int(20000, 60000) * $attempt);
+                    continue;
+                }
                 throw $e;
             }
             return count($queue);
+            }
         } finally {
             $this->db->one("SELECT RELEASE_LOCK('mjd:history-writer')");
         }

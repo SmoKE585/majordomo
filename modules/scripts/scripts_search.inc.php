@@ -117,7 +117,7 @@ $categories_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM script_categorie
 $out['TOTAL_CATEGORIES_ALL'] = isset($categories_total['TOTAL']) ? (int)$categories_total['TOTAL'] : 0;
 $scheduled_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE RUN_PERIODICALLY=1");
 $out['TOTAL_SCHEDULED'] = isset($scheduled_total['TOTAL']) ? (int)$scheduled_total['TOTAL'] : 0;
-$executed_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE EXECUTED IS NOT NULL AND EXECUTED<>'' AND EXECUTED<>'0000-00-00 00:00:00'");
+$executed_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE EXECUTED >= '1000-01-01 00:00:00'");
 $out['TOTAL_EXECUTED'] = isset($executed_total['TOTAL']) ? (int)$executed_total['TOTAL'] : 0;
 $uncategorized_total = SQLSelectOne("SELECT COUNT(*) AS TOTAL FROM scripts WHERE CATEGORY_ID=0 OR CATEGORY_ID IS NULL");
 $out['TOTAL_UNCATEGORIZED'] = isset($uncategorized_total['TOTAL']) ? (int)$uncategorized_total['TOTAL'] : 0;

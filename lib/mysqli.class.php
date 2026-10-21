@@ -227,6 +227,11 @@ class mysql
         }
     }
 
+    public function getLastError(): array
+    {
+        return array('code' => $this->lastErrorNo, 'message' => $this->lastErrorDetails);
+    }
+
     public function AffectedRows()
     {
         if (!$this->dbh) return 0;
