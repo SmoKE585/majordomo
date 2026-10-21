@@ -247,10 +247,11 @@ function mqttRunOnce()
         }
         if (!empty($mqtt->config['MQTT_WRITE_METHOD']) && (int)$mqtt->config['MQTT_WRITE_METHOD'] == 2) {
             try {
-            $queue = checkOperationsQueue('mqtt_queue');
+            $queue = \MajorDoMo\Core\Core::queue()->claim('mqtt_queue', 100, 60);
             foreach ($queue as $mqtt_data) {
                 $topic = $mqtt_data['DATANAME'];
                 if ($topic == '') {
+                    \MajorDoMo\Core\Core::queue()->acknowledge($mqtt_data);
                     continue;
                 }
                 $data_value = json_decode($mqtt_data['DATAVALUE'], true);
@@ -262,10 +263,13 @@ function mqttRunOnce()
                 }
                 $result = $mqtt_client->publish($topic, $value, $qos, $retain);
                 if (!is_null($result) && !$result) {
+                    \MajorDoMo\Core\Core::queue()->release($mqtt_data);
                     DebMes("Error writing from queue '$value' to $topic", 'mqtt_error');
+                } else {
+                    \MajorDoMo\Core\Core::queue()->acknowledge($mqtt_data);
                 }
             }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 DebMes("Error in MQTT queue processing: " . $e->getMessage(), 'mqtt_error');
             }
         }

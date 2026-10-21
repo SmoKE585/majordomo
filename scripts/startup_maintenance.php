@@ -26,57 +26,8 @@ if (defined('LANG_MODULE_SAVERESTORE')) {
     SQLExec("UPDATE project_modules SET TITLE='" . DBSafe(LANG_MODULE_SAVERESTORE) . "' WHERE NAME='saverestore'");
 }
 
-// Remove legacy paid Connect module records. The module files are no longer shipped.
-DebMes("Removing Connect module records.", 'maintenance');
-SQLExec("DELETE FROM project_modules WHERE NAME='connect'");
-SQLExec("DELETE FROM settings WHERE NAME='MODULE_CONNECT'");
-SQLExec("DELETE FROM pvalues WHERE PROPERTY_NAME LIKE '%connect%'");
-SQLExec("DELETE FROM phistory WHERE VALUE_ID NOT IN (SELECT ID FROM pvalues)");
-SQLExec("DELETE FROM properties WHERE TITLE LIKE '%connect%'");
-SQLExec("DELETE FROM events WHERE EVENT_NAME LIKE '%connect%'");
-if (SQLTableExists('history')) {
-    $history_conditions = array();
-    if (isset(SQLSelectOne("SHOW COLUMNS FROM `history` LIKE 'LINKED_OBJECT'")['Field'])) {
-        $history_conditions[] = "LINKED_OBJECT LIKE 'connect'";
-    }
-    if (isset(SQLSelectOne("SHOW COLUMNS FROM `history` LIKE 'LINKED_METHOD'")['Field'])) {
-        $history_conditions[] = "LINKED_METHOD LIKE '%connect%'";
-    }
-    if (count($history_conditions) > 0) {
-        SQLExec("DELETE FROM history WHERE (" . implode(' OR ', $history_conditions) . ")");
-    }
-}
-SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, '\"connect\":{\"filter\":\"\"},', '') WHERE NAME LIKE 'HOOK_EVENT_%'");
-SQLExec("UPDATE settings SET VALUE=REPLACE(VALUE, ',\"connect\":{\"filter\":\"\"}', '') WHERE NAME LIKE 'HOOK_EVENT_%'");
-
-// Remove legacy Connect module files.
-$connect_paths = array(
-    ROOT . 'modules/connect',
-    ROOT . 'templates/connect',
-);
-foreach ($connect_paths as $connect_path) {
-    if (is_dir($connect_path) && function_exists('removeTree')) {
-        removeTree($connect_path);
-        DebMes("Removed legacy Connect path: $connect_path", 'maintenance');
-    }
-}
-
-$connect_cycle = ROOT . 'scripts/cycle_connect.php';
-if (file_exists($connect_cycle)) {
-    @unlink($connect_cycle);
-    DebMes("Removed legacy Connect cycle: $connect_cycle", 'maintenance');
-}
-
-$connect_images = array(
-    ROOT . 'img/connect_back_block.png',
-    ROOT . 'img/modules/connect.png',
-);
-foreach ($connect_images as $img) {
-    if (file_exists($img)) {
-        @unlink($img);
-        DebMes("Removed legacy Connect image: $img", 'maintenance');
-    }
-}
+// Core migrations run once after an update; unrelated user properties are never matched by module-name substrings.
+\MajorDoMo\Core\Core::migrations()->run();
 
 // Remove legacy hook subscribers for deleted user systems.
 DebMes("Removing legacy hook subscribers for deleted user systems.", 'maintenance');
@@ -100,28 +51,6 @@ for ($i = 0; $i < $hook_total; $i++) {
     if ($hook_changed) {
         $hook_settings[$i]['VALUE'] = json_encode($hook_data, JSON_UNESCAPED_UNICODE);
         SQLUpdate('settings', $hook_settings[$i]);
-    }
-}
-
-$config_file = ROOT . 'config.php';
-if (file_exists($config_file)) {
-    $config_content = LoadFile($config_file);
-
-    // Remove MODULE_CONNECT entries, including broken plain-text leftovers:
-    // 'MODULE_CONNECT' => '',
-    // "MODULE_CONNECT"   =>   ""   ,  // comment
-    // 'MODULE_CONNECT' => '1',
-    // 'MODULE_CONNECT'=>'',<br>
-    // 'MODULE_CONNECT'=&gt;'',<br>
-    $config_content_clean = preg_replace(
-        '/[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*(?:=>|=&gt;)[ \t]*[\'"][^\'"]*?[\'"][ \t]*,?[ \t]*(?:<br\s*\/?>)?[ \t]*(?:\/\/[^\r\n]*)?(?:\r?\n)?/i',
-        '',
-        $config_content
-    );
-
-    if ($config_content_clean !== $config_content) {
-        SaveFile($config_file, $config_content_clean);
-        DebMes("Removed legacy MODULE_CONNECT entries from config.php.", 'maintenance');
     }
 }
 

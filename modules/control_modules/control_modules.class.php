@@ -275,6 +275,7 @@ class control_modules extends module
         }
 
 
+        \MajorDoMo\Core\Core::migrations()->run();
         SQLExec("UPDATE project_modules SET HIDDEN=0 WHERE NAME LIKE '" . $this->name . "'");
     }
 

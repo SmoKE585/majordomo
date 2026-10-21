@@ -382,6 +382,8 @@ if (is_file(ROOT . "cms/modules_installed/control_modules.installed")) {
 // continue startup
 include_once(DIR_MODULES . "control_modules/control_modules.class.php");
 $ctl = new control_modules();
+// Upgrade the schema before any cycle can consume queues using the new contract.
+\MajorDoMo\Core\Core::migrations()->run();
 
 
 //removing cached data
@@ -428,7 +430,7 @@ if (defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1) {
 $qry = "1 AND (TITLE LIKE 'cycle%Run' OR TITLE LIKE 'cycle%Control' OR TITLE LIKE 'cycle%Disabled' OR TITLE LIKE 'cycle%AutoRestart' OR TITLE LIKE 'cycle%Status' OR TITLE LIKE 'cycle%StatusUpdated' OR TITLE LIKE 'cycle%StatusDetails')";
 $thisCompObject = getObject('ThisComputer');
 $cycles_records = SQLSelect("SELECT properties.* FROM properties WHERE $qry ORDER BY TITLE");
-SQLExec("DELETE FROM cached_cycles");
+\MajorDoMo\Core\Core::cache()->clearCycles();
 
 $total = count($cycles_records);
 for ($i = 0; $i < $total; $i++) {
@@ -581,7 +583,7 @@ while (true) {
 
         $last_cycles_control_check = time();
         $cyclesControls = $cyclesTimestamps = array();
-        $tmpcyclesTimestamps = SQLSelect("SELECT * FROM cached_cycles;");
+        $tmpcyclesTimestamps = \MajorDoMo\Core\Core::cache()->cycles();
 
         $total = count($tmpcyclesTimestamps);
         foreach ($tmpcyclesTimestamps as $k => $v) {

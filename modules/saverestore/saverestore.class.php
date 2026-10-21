@@ -221,23 +221,7 @@ class saverestore extends module
         }
     }
 
-    function cleanupLegacyConnectConfigNoise($config_file)
-    {
-        if (!file_exists($config_file)) {
-            return;
-        }
 
-        $content = LoadFile($config_file);
-        // Remove MODULE_CONNECT entries, including broken plain-text leftovers.
-        $clean_content = preg_replace(
-            '/[ \t]*[\'"]MODULE_CONNECT[\'"][ \t]*(?:=>|=&gt;)[ \t]*[\'"][^\'"]*?[\'"][ \t]*,?[ \t]*(?:<br\s*\/?>)?[ \t]*(?:\/\/[^\r\n]*)?(?:\r?\n)?/i',
-            '',
-            $content
-        );
-        if ($clean_content !== $content) {
-            SaveFile($config_file, $clean_content);
-        }
-    }
 
     function getSystemUpdateManifestFile()
     {
@@ -544,6 +528,8 @@ class saverestore extends module
     {
         return array(
             'directories' => array(
+                'modules/connect',
+                'templates/connect',
                 'modules/dashboard',
                 'modules/dateselect',
                 'modules/layouts',
@@ -577,6 +563,9 @@ class saverestore extends module
                 'cms/scenes',
             ),
             'files' => array(
+                'scripts/cycle_connect.php',
+                'img/connect_back_block.png',
+                'img/modules/connect.png',
                 'templates/scenes.html',
                 'css/devices.css',
                 'js/easySlider1.7.js',
@@ -598,6 +587,7 @@ class saverestore extends module
     function getObsoleteSystemModules()
     {
         return array(
+            'connect',
             'dashboard',
             'dateselect',
             'layouts',
@@ -834,6 +824,7 @@ class saverestore extends module
     {
         $this->removeObsoleteModuleInstallMarkers($iframe);
         $this->cleanupObsoleteModuleDatabaseRows($iframe);
+        \MajorDoMo\Core\Core::migrations()->run();
     }
 
     function backupDatabaseBeforeSystemUpdate($iframe = 0)
@@ -859,7 +850,7 @@ class saverestore extends module
     function stopCyclesBeforeSystemUpdate($iframe = 0)
     {
         setRebootRequired('system_update');
-        $cycles = array('cycle_main', 'cycle_execs', 'cycle_scheduler', 'cycle_states', 'cycle_ping', 'cycle_phistory', 'cycle_wscache', 'cycle_websockets');
+        $cycles = array('cycle_main', 'cycle_core', 'cycle_execs', 'cycle_scheduler', 'cycle_states', 'cycle_ping', 'cycle_phistory', 'cycle_wscache', 'cycle_websockets');
         foreach ($cycles as $cycle) {
             sg($cycle . 'Control', 'stop');
             sg('ThisComputer.' . $cycle . 'Run', '');
@@ -2370,7 +2361,6 @@ class saverestore extends module
             if ($is_system_update) {
                 $this->cleanupObsoleteSystemModules($iframe);
             }
-            $this->cleanupLegacyConnectConfigNoise(DOC_ROOT . DIRECTORY_SEPARATOR . 'config.php');
             if ($is_system_update) {
                 $this->saveSystemUpdateManifest($new_manifest);
             }

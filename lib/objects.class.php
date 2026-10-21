@@ -1,4 +1,6 @@
 <?php
+
+require_once __DIR__ . '/core.class.php';
 /*
  * @version 0.1 (auto-set)
  */
@@ -268,38 +270,8 @@ function addClassObject($class_name, $object_name, $system = '')
  */
 function getValueIdByName($object_name, $property)
 {
-    $sqlQuery = "SELECT ID
-                  FROM pvalues
-                 WHERE PROPERTY_NAME = '" . DBSafe($object_name . '.' . $property) . "'";
-
-    $value = SQLSelectOne($sqlQuery);
-
-    if (!$value['ID']) {
-        $object = getObject($object_name);
-
-        if (is_object($object)) {
-            $property_id = $object->getPropertyByName($property, $object->class_id, $object->id);
-
-            $sqlQuery = "SELECT ID
-                        FROM pvalues
-                       WHERE PROPERTY_ID = " . (int)$property_id . "
-                         AND OBJECT_ID   = " . (int)$object->id;
-
-            $value = SQLSelectOne($sqlQuery);
-
-            if (!$value['ID'] && $property_id) {
-                $value = array();
-
-                $value['PROPERTY_ID'] = $property_id;
-                $value['OBJECT_ID'] = $object->id;
-                $value['PROPERTY_NAME'] = $object_name . '.' . $property;
-                $value['VALUE'] = '';
-                $value['ID'] = SQLInsert('pvalues', $value);
-            }
-        }
-    }
-
-    return (int)$value['ID'];
+    // TODO: legacy compatibility facade.
+    return \MajorDoMo\Core\Core::objects()->valueId($object_name, $property);
 }
 
 /**
@@ -381,45 +353,10 @@ function removeLinkedProperty($object, $property, $module)
  * @return int|objects
  */
 function getObject($name)
-{
-
-    if (trim($name) == '') return 0;
-
-    if (preg_match('/^(.+?)\.(.+?)$/', $name, $m)) {
-        $class_name = $m[1];
-        $object_name = $m[2];
-
-        $sqlQuery = "SELECT objects.*
-                     FROM objects
-                     LEFT JOIN classes ON objects.CLASS_ID = classes.ID
-                    WHERE objects.TITLE = '" . DBSafe($object_name) . "'
-                      AND classes.TITLE = '" . DBSafe($class_name) . "'";
-        $rec = SQLSelectOne($sqlQuery);
-    } else {
-        $sqlQuery = "SELECT objects.*
-                     FROM objects
-                    WHERE TITLE = '" . DBSafe($name) . "'";
-        $rec = SQLSelectOne($sqlQuery);
-        //$rec = SQLSelectOne("SELECT objects.* FROM objects WHERE TITLE = '".DBSafe($name)."'");
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::objects()->get($name);
     }
-
-    if (!isset($rec['ID'])) {
-        $sqlQuery = "SELECT objects.*
-                     FROM objects
-                    WHERE TITLE = '" . DBSafe($name) . "'";
-        $rec = SQLSelectOne($sqlQuery);
-    }
-
-    if (isset($rec['ID'])) {
-        include_once(DIR_MODULES . 'objects/objects.class.php');
-        $obj = new objects();
-        $obj->id = $rec['ID'];
-        $obj->loadObject($rec['ID']);
-        return $obj;
-    }
-
-    return 0;
-}
 
 /**
  * Summary of getObjectsByProperty
@@ -694,49 +631,10 @@ function returnTypedValue($value)
  * @return mixed
  */
 function getGlobal($varname)
-{
-    $varname = trim($varname);
-    $tmp = explode('.', $varname);
-
-    $class_name = '';
-    if (isset($tmp[2])) {
-        $class_name = $tmp[0];
-        $object_name = $tmp[0] . '.' . $tmp[1];
-        $varname = $tmp[2];
-    } elseif (isset($tmp[1])) {
-        $object_name = $tmp[0];
-        $varname = $tmp[1];
-    } else {
-        $object_name = 'ThisComputer';
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::objects()->value($varname);
     }
-    $cached_name = 'MJD:' . $object_name . '.' . $varname;
-
-    if (strpos($varname, 'cycle_') === 0) {
-        $cached_value = checkCycleFromCache($varname);
-    } else {
-        $cached_value = checkFromCache($cached_name);
-    }
-    if ($cached_value !== false) {
-        return returnTypedValue($cached_value);
-    }
-
-    if ($class_name != '' && isModuleInstalled($class_name)) {
-        include_once(DIR_MODULES . $class_name . '/' . $class_name . '.class.php');
-        $module = new $class_name();
-        if (method_exists($module, 'getModuleProperty')) {
-            $data = $module->getModuleProperty($tmp[1] . '.' . $tmp[2]);
-            return returnTypedValue($data);
-        }
-    } else {
-        $obj = getObject($object_name);
-        if ($obj) {
-            $value = $obj->getProperty($varname);
-            return returnTypedValue($value);
-        }
-    }
-    return false;
-
-}
 
 
 /**
@@ -1231,34 +1129,10 @@ function cleanUpPropertyHistory($property_id, $max_age_days)
  * @return int
  */
 function setGlobal($varname, $value, $no_linked = 0, $source = '')
-{
-
-    $varname = trim($varname);
-    if (strpos($varname, 'cycle_') === 0) {
-        saveCycleToCache($varname, $value);
-        return;
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::objects()->setValue($varname, $value, $no_linked, $source);
     }
-
-    $tmp = explode('.', $varname);
-
-    if (isset($tmp[2])) {
-        $object_name = $tmp[0] . '.' . $tmp[1];
-        $varname = $tmp[2];
-    } elseif (isset($tmp[1])) {
-        $object_name = $tmp[0];
-        $varname = $tmp[1];
-    } else {
-        $object_name = 'ThisComputer';
-    }
-
-    $obj = getObject($object_name);
-
-    if ($obj) {
-        return $obj->setProperty($varname, $value, $no_linked, $source);
-    } else {
-        return 0;
-    }
-}
 
 
 /**
@@ -1269,53 +1143,14 @@ function setGlobal($varname, $value, $no_linked = 0, $source = '')
  */
 function callMethod($method_name, $params = 0)
 {
-    $method_name = trim($method_name);
-    $tmp = explode('.', $method_name);
-    if (isset($tmp[2])) {
-        $object_name = $tmp[0] . '.' . $tmp[1];
-        $varname = $tmp[2];
-    } elseif (isset($tmp[1])) {
-        $object_name = $tmp[0];
-        $method_name = $tmp[1];
-    } else {
-        $object_name = 'ThisComputer';
-    }
-
-    if ($object_name == 'AllScripts') {
-        return runScript($method_name, $params);
-    }
-
-    $obj = getObject($object_name);
-
-    if ($obj) {
-        return $obj->callMethod($method_name, $params);
-    } else {
-        return 0;
-    }
+    // TODO: legacy compatibility facade.
+    return \MajorDoMo\Core\Core::objects()->call($method_name, $params, false);
 }
 
 function callMethodSafe($method_name, $params = 0)
 {
-    $tmp = explode('.', $method_name);
-    if (isset($tmp[2])) {
-        $object_name = $tmp[0] . '.' . $tmp[1];
-        $varname = $tmp[2];
-    } elseif (isset($tmp[1])) {
-        $object_name = $tmp[0];
-        $method_name = $tmp[1];
-    } else {
-        $object_name = 'ThisComputer';
-    }
-    if ($object_name == 'AllScripts') {
-        return runScriptSafe($method_name, $params);
-    }
-    $obj = getObject($object_name);
-
-    if ($obj) {
-        return $obj->callMethodSafe($method_name, $params);
-    } else {
-        return 0;
-    }
+    // TODO: legacy compatibility facade.
+    return \MajorDoMo\Core\Core::objects()->call($method_name, $params, true);
 }
 
 function callAPISync($api_url, $method = 'GET', $params = 0)
@@ -1325,109 +1160,8 @@ function callAPISync($api_url, $method = 'GET', $params = 0)
 
 function callAPI($api_url, $method = 'GET', $params = 0, $wait_response = false)
 {
-    $is_child = false;
-    $fork_disabled = true;
-    static $fork_signal_configured = false;
-
-    if (is_array($method)) {
-        $params = $method;
-        $method = 'GET';
-    }
-
-    $is_cli_runtime = (PHP_SAPI === 'cli');
-    if ($is_cli_runtime && defined('ENABLE_FORK') && ENABLE_FORK && function_exists('pcntl_fork')) {
-        $fork_disabled = false;
-        if (!$fork_signal_configured && function_exists('pcntl_signal') && defined('SIGCHLD')) {
-            pcntl_signal(SIGCHLD, SIG_IGN);
-            $fork_signal_configured = true;
-        }
-    }
-
-    if (!$fork_disabled) {
-        $child_pid = pcntl_fork();
-        if ($child_pid == -1) {
-            //error
-        } elseif ($child_pid) {
-            // parent
-            pcntl_wait($status, WNOHANG);
-            return true;
-        } else {
-            // child
-            $is_child = true;
-            if (function_exists('create_function')) {
-                register_shutdown_function(create_function('$pars', 'posix_kill(getmypid(), SIGKILL);'), array());
-            }
-            set_time_limit(60);
-        }
-    }
-
-
-    startMeasure('callAPI ' . $api_url);
-    if (!is_array($params)) {
-        $params = array();
-    }
-    $params['no_session'] = 1;
-
-
-    $url = preg_replace('/^\/api\//', BASE_URL . '/api.php/', $api_url);
-    $url = preg_replace('/([^:])\/\//', '\1/', $url);
-
-    $method = strtoupper($method);
-    $api_ch = curl_init();
-    curl_setopt($api_ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:32.0) Gecko/20100101 Firefox/32.0');
-    curl_setopt($api_ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($api_ch, CURLOPT_CONNECTTIMEOUT, 10); // connection timeout
-    curl_setopt($api_ch, CURLOPT_MAXREDIRS, 2);
-    curl_setopt($api_ch, CURLOPT_TIMEOUT, 45);  // operation timeout 45 seconds
-    curl_setopt($api_ch, CURLOPT_NOSIGNAL, 1);
-
-    if (!$is_child && !$wait_response) {
-        // fire-and-forget mode: give local API enough time to accept request,
-        // but still return control quickly and avoid blocking the caller
-        curl_setopt($api_ch, CURLOPT_CONNECTTIMEOUT_MS, 300);
-        curl_setopt($api_ch, CURLOPT_TIMEOUT_MS, 800);
-    }
-    if ($method == 'GET') {
-        $url .= '?' . http_build_query($params);
-        curl_setopt($api_ch, CURLOPT_POSTFIELDS, 0);
-        curl_setopt($api_ch, CURLOPT_POST, 0);
-    } elseif ($method == 'POST') {
-        curl_setopt($api_ch, CURLOPT_POST, 1);
-        curl_setopt($api_ch, CURLOPT_POSTFIELDS, $params);
-    }
-    curl_setopt($api_ch, CURLOPT_URL, $url);
-    $result = curl_exec($api_ch);
-
-    if (curl_errno($api_ch)) {
-        $errorInfo = curl_error($api_ch);
-        $info = curl_getinfo($api_ch);
-        //DebMes("Call to $url finished with error: \n" . $errorInfo . "\n" . json_encode($info), 'callAPI_errors');
-    }
-
-    endMeasure('callAPI ' . $api_url);
-
-    if ($is_child) {
-        curl_close($api_ch);
-        exit(0);
-    }
-
-    if ($result != '') {
-        $data = json_decode($result, true);
-        if (is_array($data) && isset($data['apiHandleResult'])) {
-            curl_close($api_ch);
-            return $data['apiHandleResult'];
-        } elseif (is_array($data)) {
-            curl_close($api_ch);
-            return $data;
-        } else {
-            curl_close($api_ch);
-            return $result;
-        }
-    }
-
-    curl_close($api_ch);
-    return true;
-
+    // TODO: legacy compatibility facade; internal asynchronous work uses the durable queue.
+    return \MajorDoMo\Core\Core::api()->request($api_url, $method, $params, $wait_response);
 }
 
 function injectObjectMethodCode($method_name, $key, $code)
@@ -1638,7 +1372,8 @@ function processTitle($title, $object = 0)
  */
 function sg($varname, $value, $no_linked = 0, $source = '')
 {
-    return setGlobal($varname, $value, $no_linked, $source);
+    // TODO: legacy compatibility facade.
+    return \MajorDoMo\Core\Core::objects()->setValue($varname, $value, $no_linked, $source);
 }
 
 /**
@@ -1648,7 +1383,8 @@ function sg($varname, $value, $no_linked = 0, $source = '')
  */
 function gg($varname)
 {
-    return getGlobal($varname);
+    // TODO: legacy compatibility facade.
+    return \MajorDoMo\Core\Core::objects()->value($varname);
 }
 
 /**
@@ -1715,7 +1451,7 @@ function getUserObjectByTitle($user_id, $auto_add = 0)
     if (!$user_title) {
         $user_title = 'User' . $user_id;
     }
-    $user_object = SQLSelectOne("SELECT * FROM objects WHERE (TITLE = '" . DBSafe($user_title) . "' OR (DESCRIPTION!='' AND DESCRIPTION = '" . $user_rec['NAME'] . "'))");
+    $user_object = SQLSelectOne("SELECT * FROM objects WHERE (TITLE = '" . DBSafe($user_title) . "' OR (DESCRIPTION!='' AND DESCRIPTION = '" . DBSafe1($user_rec['NAME']) . "'))");
     if ($user_object['ID']) return $user_object['TITLE'];
     if ($auto_add) {
         $object_id = addClassObject("Users", $user_title);
@@ -1799,68 +1535,14 @@ function objectClassChanged($object_id)
 
 function checkOperationsQueue($topic)
 {
-    if (defined('USE_REDIS')) {
-        $redisConnection = mjdGetRedisConnection();
-        if (!is_object($redisConnection)) {
-            return array();
-        }
-        $queueName = "mjd:queue:" . $topic;
-        $result = array();
-        while ($redisConnection->lLen($queueName)) {
-            $data = $redisConnection->lPop($queueName);
-            $decoded = json_decode($data, true);
-            if (is_array($decoded) && isset($decoded['DATANAME'])) {
-                $item['TOPIC'] = $topic;
-                $item['DATANAME'] = $decoded['DATANAME'];
-                $item['DATAVALUE'] = $decoded['DATAVALUE'] ?? '';
-            } else {
-                // Backward compatibility with legacy "name|value" format.
-                $parts = explode('|', (string)$data, 2);
-                $item['TOPIC'] = $topic;
-                $item['DATANAME'] = $parts[0] ?? '';
-                $item['DATAVALUE'] = $parts[1] ?? '';
-            }
-            $result[] = $item;
-        }
-        return $result;
-    }
-    $data = SQLSelect("SELECT * FROM operations_queue WHERE TOPIC='" . DBSafe($topic) . "' ORDER BY EXPIRE");
-    if (isset($data[0]['TOPIC'])) {
-        SQLExec("DELETE FROM operations_queue WHERE TOPIC='" . DBSafe($topic) . "'");
-    }
-    return $data;
+    // TODO: legacy consume-on-read facade; new consumers explicitly claim and acknowledge.
+    $items = \MajorDoMo\Core\Core::queue()->claim($topic);
+    foreach ($items as $item) \MajorDoMo\Core\Core::queue()->acknowledge($item);
+    return $items;
 }
 
 function addToOperationsQueue($topic, $dataname, $datavalue = '', $uniq = false, $ttl = 60)
 {
-    startMeasure('addToOperationsQueue');
-    if (defined('USE_REDIS')) {
-        $redisConnection = mjdGetRedisConnection();
-        if (!is_object($redisConnection)) {
-            endMeasure('addToOperationsQueue');
-            return false;
-        }
-        $value = json_encode(array(
-            'DATANAME' => (string)$dataname,
-            'DATAVALUE' => (string)$datavalue
-        ));
-        $queueName = "mjd:queue:" . $topic;
-        $result = $redisConnection->rPush($queueName, $value);
-        endMeasure('addToOperationsQueue');
-        return $result;
-    }
-    $rec = array();
-    $rec['TOPIC'] = $topic;
-    $rec['DATANAME'] = $dataname;
-    if (strlen((string)$datavalue) < 1024) {
-        $rec['DATAVALUE'] = $datavalue;
-    }
-    $rec['EXPIRE'] = date('Y-m-d H:i:s', time() + $ttl);
-    if ($uniq) {
-        SQLExec("DELETE FROM operations_queue WHERE TOPIC='" . DBSafe($rec['TOPIC']) . "' AND DATANAME='" . DBSafe($rec['DATANAME']) . "'");
-    }
-    $rec['ID'] = SQLInsert('operations_queue', $rec);
-    SQLExec("DELETE FROM operations_queue WHERE EXPIRE<NOW();");
-    endMeasure('addToOperationsQueue');
-    return $rec['ID'];
+    // TODO: legacy compatibility facade.
+    return \MajorDoMo\Core\Core::queue()->enqueue($topic, $dataname, $datavalue, $uniq, $ttl);
 }

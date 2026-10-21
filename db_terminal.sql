@@ -139,7 +139,8 @@ CREATE TABLE `cached_ws` (
   `PROPERTY` char(100) NOT NULL,
   `DATAVALUE` varchar(20000) NOT NULL,
   `POST_ACTION` char(100) NOT NULL,
-  `ADDED` datetime NOT NULL
+  `ADDED` datetime NOT NULL,
+  `REVISION` char(32) NOT NULL DEFAULT ''
 ) ENGINE=MEMORY DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
@@ -156,7 +157,7 @@ CREATE TABLE `classes` (
   `PARENT_LIST` text DEFAULT NULL,
   `NOLOG` int(3) NOT NULL DEFAULT 0,
   `DESCRIPTION` text DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Дамп данных таблицы `classes`
@@ -502,7 +503,7 @@ CREATE TABLE `history` (
   `OLD_VALUE` varchar(255) NOT NULL DEFAULT '',
   `NEW_VALUE` varchar(255) NOT NULL DEFAULT '',
   `DETAILS` text DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
 
@@ -529,8 +530,11 @@ CREATE TABLE `jobs` (
   `EXPIRE` datetime DEFAULT NULL,
   `PROCESSED` int(3) NOT NULL DEFAULT 0,
   `STARTED` datetime DEFAULT NULL,
-  `EXPIRED` int(3) NOT NULL DEFAULT 0
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+  `EXPIRED` int(3) NOT NULL DEFAULT 0,
+  `CLAIM_TOKEN` char(32) NOT NULL DEFAULT '',
+  `ATTEMPTS` int unsigned NOT NULL DEFAULT 0,
+  `LAST_ERROR` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 -- --------------------------------------------------------
@@ -560,7 +564,7 @@ CREATE TABLE `layouts` (
 --
 
 INSERT INTO `layouts` (`ID`, `TITLE`, `PRIORITY`, `TYPE`, `CODE`, `APP`, `URL`, `DETAILS`, `REFRESH`, `ICON`, `HIDDEN`, `BACKGROUND_IMAGE`, `THEME`) VALUES
-(8, '<#LANG_WELCOME_GREETING#>', 1000, 'html', '<div style=\"padding-left:50px;padding-top:30px\">\r\n<h1><#LANG_WELCOME_GREETING#></h1>\r\n&nbsp;\r\n<p style=\"font-size:14px\">\r\n<#LANG_WELCOME_TEXT#>\r\n</p>\r\n</div>', '', '', '', 0, '', 0, '', ''),
+(8, '<#LANG_WELCOME_GREETING#>', 1000, 'html', '<div style=\"padding-left:50px;padding-top:30px\">\r\n<h1><#LANG_WELCOME_GREETING#></h1>\r\n&nbsp;\r\n<p style=\"font-size:14px\">\r\n<#LANG_WELCOME_TEXT#>\r\n</p>\r\n</div>', '', '', '', 0, '', 0, '', '');
 
 -- --------------------------------------------------------
 
@@ -635,7 +639,7 @@ CREATE TABLE `methods` (
   `EXECUTED` datetime DEFAULT NULL,
   `EXECUTED_PARAMS` varchar(255) DEFAULT NULL,
   `EXECUTED_SRC` varchar(255) DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Дамп данных таблицы `methods`
@@ -713,7 +717,7 @@ CREATE TABLE `objects` (
   `LOCATION_ID` int(10) NOT NULL DEFAULT 0,
   `KEEP_HISTORY` int(10) NOT NULL DEFAULT 0,
   `SYSTEM` varchar(255) NOT NULL DEFAULT ''
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Дамп данных таблицы `objects`
@@ -747,11 +751,18 @@ INSERT INTO `objects` (`ID`, `TITLE`, `CLASS_ID`, `DESCRIPTION`, `LOCATION_ID`, 
 --
 
 CREATE TABLE `operations_queue` (
-  `TOPIC` char(255) NOT NULL,
-  `DATANAME` char(255) NOT NULL,
-  `DATAVALUE` char(255) NOT NULL,
-  `EXPIRE` datetime NOT NULL
-) ENGINE=MEMORY DEFAULT CHARSET=utf8;
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `TOPIC` varchar(255) NOT NULL,
+  `DATANAME` varchar(1024) NOT NULL,
+  `DATAVALUE` mediumtext NOT NULL,
+  `EXPIRE` datetime NOT NULL,
+  `CLAIM_TOKEN` char(32) NOT NULL DEFAULT '',
+  `CLAIM_UNTIL` datetime DEFAULT NULL,
+  `ATTEMPTS` int unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`ID`),
+  KEY `idx_queue_topic_id` (`TOPIC`,`ID`),
+  KEY `idx_queue_expire` (`EXPIRE`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
 
@@ -780,7 +791,7 @@ CREATE TABLE `phistory` (
   `ADDED` datetime DEFAULT NULL,
   `VALUE` varchar(255) NOT NULL,
   `SOURCE` varchar(255) NOT NULL DEFAULT ''
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
 
@@ -929,7 +940,7 @@ CREATE TABLE `properties` (
   `VALIDATION_NUM_MAX` varchar(20) NOT NULL DEFAULT '',
   `VALIDATION_LIST` varchar(255) NOT NULL DEFAULT '',
   `VALIDATION_CODE` text DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Дамп данных таблицы `properties`
@@ -1006,20 +1017,6 @@ INSERT INTO `properties` (`ID`, `CLASS_ID`, `TITLE`, `DESCRIPTION`, `OBJECT_ID`,
 
 -- --------------------------------------------------------
 
---
--- Структура таблицы `public_calls`
---
-
-CREATE TABLE `public_calls` (
-  `ID` int(10) UNSIGNED NOT NULL,
-  `TITLE` varchar(255) NOT NULL DEFAULT '',
-  `LINKED_OBJECT` varchar(255) NOT NULL DEFAULT '',
-  `LINKED_METHOD` varchar(255) NOT NULL DEFAULT '',
-  `PUBLIC_USERNAME` varchar(255) NOT NULL DEFAULT '',
-  `PUBLIC_PASSWORD` varchar(255) NOT NULL DEFAULT '',
-  `PUBLIC_KEY` varchar(255) NOT NULL DEFAULT '',
-  `PROTECTED` int(3) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
 
@@ -1036,7 +1033,7 @@ CREATE TABLE `pvalues` (
   `PROPERTY_NAME` varchar(100) NOT NULL DEFAULT '',
   `LINKED_MODULES` varchar(255) NOT NULL DEFAULT '',
   `SOURCE` varchar(255) NOT NULL DEFAULT ''
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Дамп данных таблицы `pvalues`
@@ -1634,12 +1631,6 @@ ALTER TABLE `properties`
   ADD KEY `OBJECT_ID` (`OBJECT_ID`);
 
 --
--- Индексы таблицы `public_calls`
---
-ALTER TABLE `public_calls`
-  ADD PRIMARY KEY (`ID`);
-
---
 -- Индексы таблицы `pvalues`
 --
 ALTER TABLE `pvalues`
@@ -1880,12 +1871,6 @@ ALTER TABLE `project_modules`
 --
 ALTER TABLE `properties`
   MODIFY `ID` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=258;
-
---
--- AUTO_INCREMENT для таблицы `public_calls`
---
-ALTER TABLE `public_calls`
-  MODIFY `ID` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT для таблицы `pvalues`

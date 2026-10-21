@@ -2,8 +2,8 @@
  @version 2.1 (design system)
 #-->
 [#if CLEAR_FIRST!="1"#]
-<link rel="stylesheet" href="<#ROOTHTML#>templates/saverestore/saverestore.css?v=2026-10-21-2" type="text/css">
-<script type="text/javascript" src="<#ROOTHTML#>templates/saverestore/saverestore.js?v=2026-10-21-2"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/saverestore/saverestore.css?v=2026-10-21-3" type="text/css">
+<script type="text/javascript" src="<#ROOTHTML#>templates/saverestore/saverestore.js?v=2026-10-21-3"></script>
 
 <div class="md-ui-page md-ui-page--stack md-saverestore-page" data-saverestore-page data-saverestore-open-update="[#if MODE="getlatest_iframe"#]1[#else#]0[#endif#]">
     [#if ERR_MSG!=""#]
@@ -400,45 +400,145 @@
         </div>
     </div>
 
-    <div class="md-saverestore-update-modal [#if MODE="getlatest_iframe"#]is-open[#endif#]" data-saverestore-update-modal>
+    <div class="md-saverestore-update-modal [#if MODE="getlatest_iframe"#]is-open[#endif#]"
+         data-saverestore-update-modal
+         data-saverestore-mode="[#if BACKUP="1"#]backup[#else#]update[#endif#]"
+         data-saverestore-return-url="[#ROOTHTML#]admin.php?md=panel&amp;action=saverestore">
         <div class="md-saverestore-update-modal__backdrop" data-saverestore-update-close></div>
-        <div class="md-saverestore-update-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="saverestoreUpdateTitle">
-            <div class="md-saverestore-update-modal__header">
-                <div>
-                    <div class="md-card__eyebrow">Системное обновление</div>
-                    <h2 class="md-saverestore-update-modal__title" id="saverestoreUpdateTitle">Обновление системы</h2>
+        <div class="md-saverestore-update-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="saverestoreUpdateTitle" aria-describedby="saverestoreUpdateDescription" tabindex="-1">
+            <header class="md-saverestore-update-modal__header">
+                <div class="md-saverestore-update-modal__heading">
+                    <span class="md-saverestore-update-modal__heading-icon">
+                        <i class="ti [#if BACKUP="1"#]ti-archive[#else#]ti-cloud-download[#endif#]" aria-hidden="true"></i>
+                    </span>
+                    <div class="md-saverestore-update-modal__heading-text">
+                        <div class="md-card__eyebrow">[#if BACKUP="1"#]Резервное копирование[#else#]Системное обновление[#endif#]</div>
+                        <h2 class="md-saverestore-update-modal__title" id="saverestoreUpdateTitle">[#if BACKUP="1"#]Создание резервной копии[#else#]Обновление системы[#endif#]</h2>
+                        <p class="md-saverestore-update-modal__subtitle" id="saverestoreUpdateDescription">
+                            [#if BACKUP="1"#]Сборка архива и дампа базы данных.[#else#]Обновление [#if UPDATE_CURR_BRANCH!=""#]из ветки <b>[#UPDATE_CURR_BRANCH#]</b>[#else#]из выбранного источника[#endif#] с обязательным бэкапом базы.[#endif#]
+                        </p>
+                    </div>
                 </div>
-                [#if MODE!="getlatest_iframe"#]
-                <button type="button" class="md-icon-btn" data-saverestore-update-close aria-label="Закрыть">
+                <button type="button" class="md-icon-btn md-saverestore-update-modal__close" data-saverestore-update-close aria-label="Закрыть" [#if MODE="getlatest_iframe"#]hidden[#endif#]>
                     <i class="ti ti-x" aria-hidden="true"></i>
                 </button>
-                [#endif#]
-            </div>
-            <div class="md-saverestore-update-modal__body">
-                <div class="md-saverestore-update-status">
-                    <div class="md-saverestore-update-status__main">
-                        <span id="systemUpdateStatusIcon" class="md-saverestore-update-status__icon is-active" aria-hidden="true"></span>
-                        <div>
-                            <div class="md-saverestore-update-status__label">Статус</div>
-                            <div id="systemUpdateStatusText" class="md-saverestore-update-status__text">Подготовка операции…</div>
+            </header>
+
+            <div class="md-saverestore-update-modal__body" data-saverestore-body aria-busy="[#if MODE="getlatest_iframe"#]true[#else#]false[#endif#]">
+                <section class="md-saverestore-update-modal__progress-card" aria-live="polite">
+                    <div class="md-saverestore-update-modal__progress-head">
+                        <span class="md-saverestore-update-modal__status-icon is-active" id="systemUpdateStatusIcon" aria-hidden="true"><i class="ti ti-loader-2"></i></span>
+                        <div class="md-saverestore-update-modal__status-copy">
+                            <div class="md-saverestore-update-modal__status-label" data-saverestore-status-label>Текущий этап</div>
+                            <div class="md-saverestore-update-modal__status-text" id="systemUpdateStatusText">[#if BACKUP="1"#]Подготовка к созданию резервной копии…[#else#]Подготовка обновления…[#endif#]</div>
                         </div>
+                        <div class="md-saverestore-update-modal__percent" aria-hidden="true"><span id="systemUpdatePercent">0</span><small>%</small></div>
                     </div>
-                    <div class="md-progress md-saverestore-progress" id="systemUpdateProgress">
-                        <span class="md-saverestore-progress__bar md-progress__bar" style="width: 10%"></span>
+                    <div class="md-progress md-saverestore-update-modal__progress" id="systemUpdateProgress" role="progressbar" aria-label="Прогресс операции" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <span class="md-progress__bar md-saverestore-update-modal__progress-bar" style="width: 0%"></span>
                     </div>
+                    <div class="md-saverestore-update-modal__meta">
+                        <span class="md-saverestore-update-modal__meta-item"><i class="ti ti-list-check" aria-hidden="true"></i> Шаг <b id="systemUpdateStepCounter">1</b> из <b id="systemUpdateStepTotal">[#if BACKUP="1"#]4[#else#]6[#endif#]</b></span>
+                        <span class="md-saverestore-update-modal__meta-sep" aria-hidden="true"></span>
+                        <span class="md-saverestore-update-modal__meta-item"><i class="ti ti-clock" aria-hidden="true"></i> <span id="systemUpdateElapsed">00:00</span></span>
+                        <span class="md-saverestore-update-modal__meta-sep" aria-hidden="true"></span>
+                        <span class="md-saverestore-update-modal__meta-item md-saverestore-update-modal__meta-item--hint"><i class="ti ti-lock" aria-hidden="true"></i> <span data-saverestore-meta-hint>Не закрывайте окно</span></span>
+                    </div>
+                </section>
+
+                <ol class="md-saverestore-update-modal__stepper" data-saverestore-stepper aria-label="Этапы операции">
+                    [#if BACKUP="1"#]
+                    <li class="md-saverestore-update-modal__step is-active" data-saverestore-step="prepare" data-order="1" aria-current="step">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">1</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Подготовка</span>
+                    </li>
+                    <li class="md-saverestore-update-modal__step" data-saverestore-step="backup" data-order="2">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">2</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Сборка архива</span>
+                    </li>
+                    <li class="md-saverestore-update-modal__step" data-saverestore-step="cleanup" data-order="3">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">3</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Очистка</span>
+                    </li>
+                    <li class="md-saverestore-update-modal__step" data-saverestore-step="finish" data-order="4">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">4</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Завершение</span>
+                    </li>
+                    [#else#]
+                    <li class="md-saverestore-update-modal__step is-active" data-saverestore-step="prepare" data-order="1" aria-current="step">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">1</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Подготовка</span>
+                    </li>
+                    <li class="md-saverestore-update-modal__step" data-saverestore-step="backup" data-order="2">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">2</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Бэкап</span>
+                    </li>
+                    <li class="md-saverestore-update-modal__step" data-saverestore-step="download" data-order="3">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">3</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Загрузка</span>
+                    </li>
+                    <li class="md-saverestore-update-modal__step" data-saverestore-step="apply" data-order="4">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">4</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Применение</span>
+                    </li>
+                    <li class="md-saverestore-update-modal__step" data-saverestore-step="cleanup" data-order="5">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">5</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Очистка</span>
+                    </li>
+                    <li class="md-saverestore-update-modal__step" data-saverestore-step="finish" data-order="6">
+                        <span class="md-saverestore-update-modal__step-dot"><span class="md-saverestore-update-modal__step-num">6</span><i class="ti ti-check md-saverestore-update-modal__step-check" aria-hidden="true"></i></span>
+                        <span class="md-saverestore-update-modal__step-label">Завершение</span>
+                    </li>
+                    [#endif#]
+                </ol>
+
+                <div class="md-saverestore-update-modal__workspace">
+                    <section class="md-saverestore-update-modal__log-card">
+                        <header class="md-saverestore-update-modal__card-head">
+                            <div>
+                                <div class="md-card__eyebrow">Ход выполнения</div>
+                                <h3 class="md-saverestore-update-modal__card-title">Журнал</h3>
+                            </div>
+                            <div class="md-saverestore-update-modal__card-actions">
+                                <span class="md-badge md-badge--info" data-saverestore-live-badge><span class="md-badge__dot"></span><span data-saverestore-live-label>В процессе</span></span>
+                                <button type="button" class="md-icon-btn" data-saverestore-copy-log aria-label="Скопировать журнал" title="Скопировать журнал" disabled>
+                                    <i class="ti ti-copy" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </header>
+                        <div class="md-saverestore-update-modal__log" data-saverestore-log role="log" aria-live="polite" aria-relevant="additions">
+                            <div class="md-saverestore-update-modal__log-empty" data-saverestore-log-empty>
+                                <i class="ti ti-terminal-2" aria-hidden="true"></i>
+                                <span>Ожидаю первые сообщения…</span>
+                            </div>
+                        </div>
+                        <button type="button" class="md-btn md-btn--secondary md-btn--sm md-saverestore-update-modal__log-jump" data-saverestore-log-jump hidden>
+                            <i class="ti ti-arrow-down" aria-hidden="true"></i><span>К последним</span>
+                        </button>
+                    </section>
+
+                    <aside class="md-saverestore-update-modal__checks-card" data-saverestore-checks-card>
+                        <header class="md-saverestore-update-modal__card-head">
+                            <div>
+                                <div class="md-card__eyebrow">Перед запуском</div>
+                                <h3 class="md-saverestore-update-modal__card-title">Проверки</h3>
+                            </div>
+                            <span class="md-badge md-badge--neutral" data-saverestore-checks-summary>—</span>
+                        </header>
+                        <div class="md-saverestore-update-modal__checks" data-saverestore-checks>
+                            <div class="md-saverestore-update-modal__checks-empty">Проверки появятся после старта.</div>
+                        </div>
+                        <div class="md-saverestore-update-modal__checks-note" data-saverestore-checks-note hidden></div>
+                    </aside>
                 </div>
 
-                <div class="md-saverestore-steps">
-                    <span id="systemUpdateStep_prepare" class="md-saverestore-step is-active" data-order="1">1. Подготовка</span>
-                    <span id="systemUpdateStep_backup" class="md-saverestore-step" data-order="2">2. Бэкап</span>
-                    <span id="systemUpdateStep_download" class="md-saverestore-step" data-order="3">3. Загрузка</span>
-                    <span id="systemUpdateStep_apply" class="md-saverestore-step" data-order="4">4. Применение</span>
-                    <span id="systemUpdateStep_cleanup" class="md-saverestore-step" data-order="5">5. Очистка</span>
-                    <span id="systemUpdateStep_finish" class="md-saverestore-step" data-order="6">6. Завершение</span>
+                <div class="md-saverestore-update-modal__note" data-saverestore-note>
+                    <i class="ti ti-info-circle" aria-hidden="true"></i>
+                    <span>[#if BACKUP="1"#]Архив создаётся на сервере. После завершения страница обновится автоматически.[#else#]Не закрывайте окно до завершения. После успешного обновления страница перезагрузится автоматически.[#endif#]</span>
                 </div>
 
                 [#if MODE="getlatest_iframe"#]
-                <iframe id="processUpdateFrame" class="md-saverestore-console" src="<#ROOTHTML#>modules/saverestore/update_iframe.php?with_extensions=[#WITH_EXTENSIONS#]&with_backup=[#WITH_BACKUP#]&backup=<#BACKUP#>&design=<#DESIGN#>&code=<#CODE#>&data=<#DATA#>&save_files=<#SAVE_FILES#>" frameborder="0"></iframe>
+                <iframe id="processUpdateFrame" class="md-saverestore-worker" title="Процесс операции" aria-hidden="true" tabindex="-1" src="<#ROOTHTML#>modules/saverestore/update_iframe.php?with_extensions=[#WITH_EXTENSIONS#]&with_backup=[#WITH_BACKUP#]&backup=<#BACKUP#>&design=<#DESIGN#>&code=<#CODE#>&data=<#DATA#>&save_files=<#SAVE_FILES#>&v=2026-10-21-3" frameborder="0"></iframe>
                 [#else#]
                 <div class="md-alert md-alert--info">
                     <i class="ti ti-lock md-alert__icon" aria-hidden="true"></i>
@@ -446,6 +546,16 @@
                 </div>
                 [#endif#]
             </div>
+
+            <footer class="md-saverestore-update-modal__footer" data-saverestore-finish-actions hidden>
+                <div class="md-saverestore-update-modal__footer-text" data-saverestore-finish-text>Проверьте журнал, затем вернитесь к обновлениям.</div>
+                <div class="md-saverestore-update-modal__footer-actions">
+                    <a class="md-btn md-btn--primary" href="[#ROOTHTML#]admin.php?md=panel&amp;action=saverestore" data-saverestore-return>
+                        <i class="ti ti-arrow-left" aria-hidden="true"></i>
+                        <span class="md-btn__label">Вернуться к обновлениям</span>
+                    </a>
+                </div>
+            </footer>
         </div>
     </div>
 </div>

@@ -148,32 +148,11 @@ if ($object != '') {
         DebMes("object [" . $object . "] not found");
     }
 } elseif ($job != '') {
-    $job = SQLSelectOne("SELECT * FROM jobs WHERE ID='" . (int)$job . "'");
-
-    if ($job['ID']) {
-        define('CALL_SOURCE', 'Job: ' . $job['TITLE']);
-        try {
-            verbose_log("Scheduled job [" . $job['TITLE'] . "]");
-            $code = $job['COMMANDS'];
-            if ($code != '') {
-                setEvalCode($code);
-                $success = eval($code);
-            } else {
-                $success = true;
-            }
-            if ($success === false) {
-                DebMes("Error in scheduled job code: " . $code);
-                registerError('scheduled_jobs', "Error in scheduled job code: " . $code);
-            }
-        } catch (Throwable $e) {
-            DebMes('Error: exception ' . get_class($e) . ', ' . $e->getMessage() . '.');
-            registerError('scheduled_jobs', get_class($e) . ', ' . $e->getMessage());
-        }
-        echo "OK";
-    } else {
-        //DebMes("Job not found: ".$_SERVER['REQUEST_URI']);
-        echo "OK";
-    }
+    $result = \MajorDoMo\Core\Core::scheduler()->execute((int)$job, (string)gr('claim_token'));
+    if (empty($result['success'])) {
+        http_response_code(500);
+        echo 'ERROR';
+    } else echo 'OK';
 } elseif ($method != '') {
     $method = str_replace('%', '', $method);
     callMethod($method, $_REQUEST);

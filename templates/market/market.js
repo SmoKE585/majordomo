@@ -25,6 +25,19 @@
             .replace(/'/g, '&#39;');
     }
 
+    function plural(number, one, few, many) {
+        var n = Math.abs(parseInt(number, 10) || 0);
+        var mod10 = n % 10;
+        var mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) {
+            return one;
+        }
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+            return few;
+        }
+        return many;
+    }
+
     function setCustomRepositoryUrl(moduleName, currentUrlBase64) {
         var config = getMarketConfig();
         var currentUrl = currentUrlBase64 ? window.atob(currentUrlBase64) : '';
@@ -72,60 +85,492 @@
         activeLink.appendChild(badge);
     }
 
-    function marketSetInstallStatus(text, state, percent, step) {
-        var label = document.getElementById('marketInstallStatusText');
+    var marketInstallState = {
+        running: false,
+        finished: false,
+        finishState: '',
+        startedAt: 0,
+        elapsedTimer: null,
+        logEntries: [],
+        copyTimer: null,
+        lastStep: 'prepare',
+        lastPercent: 0
+    };
+
+    function mq(selector, root) {
+        return (root || document).querySelector(selector);
+    }
+
+    function mqa(selector, root) {
+        return Array.prototype.slice.call((root || document).querySelectorAll(selector));
+    }
+
+    function marketModal() {
+        return mq('[data-market-update-modal]');
+    }
+
+    function marketPad(value) {
+        return value < 10 ? '0' + value : String(value);
+    }
+
+    function marketClock(date) {
+        return marketPad(date.getHours()) + ':' + marketPad(date.getMinutes()) + ':' + marketPad(date.getSeconds());
+    }
+
+    function marketDuration(milliseconds) {
+        var total = Math.max(0, Math.floor(milliseconds / 1000));
+        var hours = Math.floor(total / 3600);
+        var minutes = Math.floor((total % 3600) / 60);
+        var seconds = total % 60;
+        return (hours > 0 ? marketPad(hours) + ':' : '') + marketPad(minutes) + ':' + marketPad(seconds);
+    }
+
+    function marketUpdateElapsed() {
+        var target = document.getElementById('marketInstallElapsed');
+        if (!target) {
+            return;
+        }
+        if (!marketInstallState.startedAt) {
+            marketInstallState.startedAt = Date.now();
+        }
+        target.textContent = marketDuration(Date.now() - marketInstallState.startedAt);
+    }
+
+    function marketStartTimer() {
+        if (marketInstallState.elapsedTimer) {
+            return;
+        }
+        if (!marketInstallState.startedAt) {
+            marketInstallState.startedAt = Date.now();
+        }
+        marketUpdateElapsed();
+        marketInstallState.elapsedTimer = window.setInterval(marketUpdateElapsed, 1000);
+    }
+
+    function marketStopTimer() {
+        if (marketInstallState.elapsedTimer) {
+            window.clearInterval(marketInstallState.elapsedTimer);
+            marketInstallState.elapsedTimer = null;
+        }
+        marketUpdateElapsed();
+    }
+
+    function marketSetStatusIcon(state) {
         var icon = document.getElementById('marketInstallStatusIcon');
-        var progress = document.querySelector('#marketInstallProgress .md-market-progress__bar');
-        var modal = document.querySelector('[data-market-update-modal]');
+        if (!icon) {
+            return;
+        }
+        var normalized = state === 'success' || state === 'error' ? state : 'active';
+        icon.classList.remove('is-active', 'is-success', 'is-error');
+        icon.classList.add('is-' + normalized);
+        var glyph = icon.querySelector('i');
+        if (glyph) {
+            glyph.className = 'ti ' + (
+                normalized === 'success' ? 'ti-circle-check' :
+                    normalized === 'error' ? 'ti-alert-triangle' : 'ti-loader-2'
+            );
+        }
+    }
+
+    function marketSetLiveBadge(state) {
+        var badge = mq('[data-market-live-badge]');
+        if (!badge) {
+            return;
+        }
+        var normalized = state === 'success' || state === 'error' ? state : 'active';
+        badge.classList.remove('md-badge--info', 'md-badge--success', 'md-badge--danger');
+        badge.classList.add(
+            normalized === 'success' ? 'md-badge--success' :
+                normalized === 'error' ? 'md-badge--danger' : 'md-badge--info'
+        );
+        var label = mq('[data-market-live-label]', badge);
+        if (label) {
+            label.textContent = normalized === 'success' ? 'Готово' : normalized === 'error' ? 'Ошибка' : 'В процессе';
+        }
+    }
+
+    function marketUpdateProgress(percent, state) {
+        var value = Math.max(0, Math.min(100, Number(percent) || 0));
+        var progress = document.getElementById('marketInstallProgress');
+        var bar = progress ? mq('.md-progress__bar', progress) : null;
+        var label = document.getElementById('marketInstallPercent');
+        if (bar) {
+            bar.style.width = value + '%';
+        }
+        if (progress) {
+            progress.setAttribute('aria-valuenow', String(Math.round(value)));
+            progress.classList.toggle('md-progress--success', state === 'success');
+            progress.classList.toggle('md-progress--danger', state === 'error');
+        }
+        if (label) {
+            label.textContent = String(Math.round(value));
+        }
+    }
+
+    function marketUpdateStep(step, state) {
+        var modal = marketModal();
+        if (!modal || !step) {
+            return;
+        }
+        var steps = mqa('[data-market-step]', modal);
+        if (!steps.length) {
+            return;
+        }
+        var active = null;
+        steps.forEach(function (item) {
+            if (item.getAttribute('data-market-step') === step) {
+                active = item;
+            }
+        });
+        var activeOrder = active ? parseInt(active.getAttribute('data-order'), 10) : NaN;
+        var complete = state === 'success';
+        steps.forEach(function (item) {
+            var order = parseInt(item.getAttribute('data-order'), 10);
+            var isActive = item === active;
+            var isDone = !Number.isNaN(activeOrder) && !Number.isNaN(order) && order < activeOrder;
+            item.classList.toggle('is-active', isActive && !complete && state !== 'error');
+            item.classList.toggle('is-done', isDone || (isActive && complete));
+            item.classList.toggle('is-error', isActive && state === 'error');
+            if (isActive && !complete) {
+                item.setAttribute('aria-current', 'step');
+            } else {
+                item.removeAttribute('aria-current');
+            }
+        });
+        if (active && !Number.isNaN(activeOrder)) {
+            var counter = document.getElementById('marketInstallStepCounter');
+            if (counter) {
+                counter.textContent = String(activeOrder);
+            }
+            var stepper = mq('[data-market-stepper]', modal);
+            if (stepper && stepper.scrollWidth > stepper.clientWidth) {
+                var target = stepper.scrollLeft;
+                if (active.offsetLeft < target) {
+                    target = active.offsetLeft;
+                }
+                if (active.offsetLeft + active.offsetWidth > target + stepper.clientWidth) {
+                    target = active.offsetLeft + active.offsetWidth - stepper.clientWidth;
+                }
+                stepper.scrollLeft = Math.max(0, target);
+            }
+        }
+    }
+
+    function marketSetInstallStatus(text, state, percent, step) {
+        var s = marketInstallState;
+        if (s.finished && state === 'active') {
+            return;
+        }
+        var normalized = state === 'success' || state === 'error' ? state : 'active';
+        var label = document.getElementById('marketInstallStatusText');
         if (label) {
             label.textContent = text || '';
         }
-        if (typeof percent === 'undefined' || percent === null) {
-            percent = state === 'success' || state === 'error' ? 100 : 35;
+        var statusLabel = mq('[data-market-status-label]');
+        if (statusLabel) {
+            statusLabel.textContent = normalized === 'error' ? 'Операция остановлена' :
+                normalized === 'success' ? 'Завершено' : 'Текущий этап';
         }
-        if (icon) {
-            icon.classList.remove('is-success', 'is-error');
-            if (state === 'success') {
-                icon.classList.add('is-success');
-            } else if (state === 'error') {
-                icon.classList.add('is-error');
+        var hint = mq('[data-market-meta-hint]');
+        if (hint) {
+            hint.textContent = normalized === 'error' ? 'Проверьте журнал' :
+                normalized === 'success' ? 'Страница перезагрузится' : 'Не закрывайте окно';
+        }
+        var value = typeof percent === 'undefined' || percent === null ?
+            (normalized === 'success' || normalized === 'error' ? 100 : 35) : percent;
+        marketUpdateProgress(value, normalized);
+        marketSetStatusIcon(normalized);
+        marketSetLiveBadge(normalized);
+        marketUpdateStep(step, normalized);
+        if (normalized === 'active') {
+            s.running = true;
+            s.lastStep = step || s.lastStep;
+            s.lastPercent = value;
+            marketStartTimer();
+        } else {
+            s.running = false;
+            marketStopTimer();
+        }
+    }
+
+    function marketCleanLocation() {
+        var modal = marketModal();
+        if (!modal) {
+            return;
+        }
+        var clean = modal.getAttribute('data-market-return-url');
+        if (!clean || !window.history || typeof window.history.replaceState !== 'function') {
+            return;
+        }
+        try {
+            window.history.replaceState(null, '', clean);
+        } catch (error) {
+            // Ignore browsers that refuse history updates in this context.
+        }
+    }
+
+    function marketShowFinishUI(state) {
+        var modal = marketModal();
+        if (!modal) {
+            return;
+        }
+        var body = mq('[data-market-body]', modal);
+        if (body) {
+            body.setAttribute('aria-busy', 'false');
+        }
+        var close = mq('.md-market-update-modal__close', modal);
+        var actions = mq('[data-market-finish-actions]', modal);
+        var finishText = mq('[data-market-finish-text]', modal);
+        var note = mq('[data-market-note]', modal);
+        if (note) {
+            note.hidden = true;
+        }
+        var detailsNote = mq('[data-market-details-note]', modal);
+        if (detailsNote) {
+            detailsNote.hidden = true;
+        }
+        if (state === 'error') {
+            if (close) {
+                close.hidden = false;
             }
-        }
-        if (progress) {
-            progress.style.width = percent + '%';
-            progress.classList.remove('is-error', 'is-success');
-            if (state === 'error') {
-                progress.classList.add('is-error');
-            } else if (state === 'success') {
-                progress.classList.add('is-success');
+            if (actions) {
+                actions.hidden = false;
             }
-        }
-        if (modal) {
-            var normalizedPercent = Math.max(0, Math.min(100, percent));
-            var opacity = 0.58 + (normalizedPercent / 100) * 0.34;
-            if (state === 'error') {
-                opacity = 0.88;
-            } else if (state === 'success') {
-                opacity = 0.94;
+            if (finishText) {
+                finishText.textContent = 'Проверьте журнал, затем вернитесь в маркет.';
             }
-            modal.style.setProperty('--md-market-backdrop-opacity', opacity.toFixed(2));
-        }
-        if (step) {
-            var activeNode = document.getElementById('marketInstallStep_' + step);
-            var activeOrder = activeNode ? parseInt(activeNode.getAttribute('data-order'), 10) : NaN;
-            Array.prototype.forEach.call(document.querySelectorAll('.md-market-step'), function (item) {
-                var order = parseInt(item.getAttribute('data-order'), 10);
-                var isActive = item.id === 'marketInstallStep_' + step;
-                item.classList.toggle('is-active', isActive);
-                item.classList.toggle('is-done', !Number.isNaN(activeOrder) && !Number.isNaN(order) && order < activeOrder);
-            });
+            marketCleanLocation();
+            window.setTimeout(function () {
+                var back = mq('[data-market-return]', modal);
+                if (back) {
+                    back.focus();
+                }
+            }, 120);
+        } else {
+            if (close) {
+                close.hidden = true;
+            }
+            if (actions) {
+                actions.hidden = true;
+            }
+            marketCleanLocation();
         }
     }
 
     function marketFinishInstall(text, state) {
+        var normalized = state === 'error' ? 'error' : 'success';
+        var s = marketInstallState;
+        s.finished = true;
+        s.finishState = normalized;
+        s.running = false;
         window.onbeforeunload = null;
-        marketSetInstallStatus(text || 'Готово. Обновляем страницу…', state || 'success', 100, 'finish');
+        var finishStep = normalized === 'error' ? (s.lastStep || 'prepare') : 'finish';
+        var finishPercent = normalized === 'error' ? (s.lastPercent || 0) : 100;
+        marketSetInstallStatus(
+            text || (normalized === 'error' ? 'Операция остановлена.' : 'Операция завершена.'),
+            normalized,
+            finishPercent,
+            finishStep
+        );
+        marketShowFinishUI(normalized);
     }
+
+    function marketScrollLogBottom() {
+        var log = mq('[data-market-log]');
+        if (!log) {
+            return;
+        }
+        log.scrollTop = log.scrollHeight;
+        marketSetJumpVisible(false);
+    }
+
+    function marketSetJumpVisible(visible) {
+        var jump = mq('[data-market-log-jump]');
+        if (jump) {
+            jump.hidden = !visible;
+        }
+    }
+
+    function marketLogNearBottom(log) {
+        return log.scrollHeight - log.scrollTop - log.clientHeight < 56;
+    }
+
+    function marketUpdateCopyButton() {
+        var button = mq('[data-market-copy-log]');
+        if (button) {
+            button.disabled = marketInstallState.logEntries.length === 0;
+        }
+    }
+
+    function marketAppendLog(text, kind) {
+        var log = mq('[data-market-log]');
+        var value = String(text || '').trim();
+        if (!log || !value) {
+            return;
+        }
+        var stick = marketLogNearBottom(log);
+        var empty = mq('[data-market-log-empty]', log);
+        if (empty) {
+            empty.remove();
+        }
+        var normalizedKind = ['success', 'warning', 'error', 'muted'].indexOf(kind) !== -1 ? kind : 'info';
+        var now = Date.now();
+        var previous = marketInstallState.logEntries[marketInstallState.logEntries.length - 1];
+        if (previous && previous.type === 'log' && previous.text === value &&
+            previous.kind === normalizedKind && previous.receivedAt && now - previous.receivedAt < 600) {
+            return;
+        }
+        var time = marketClock(new Date(now));
+        var entry = document.createElement('div');
+        entry.className = 'md-market-update-modal__log-entry is-' + normalizedKind;
+
+        var timeNode = document.createElement('span');
+        timeNode.className = 'md-market-update-modal__log-time';
+        timeNode.textContent = time;
+
+        var iconNode = document.createElement('span');
+        iconNode.className = 'md-market-update-modal__log-icon';
+        var glyph = document.createElement('i');
+        glyph.className = 'ti ' + (
+            normalizedKind === 'success' ? 'ti-circle-check' :
+                normalizedKind === 'error' ? 'ti-circle-x' :
+                    normalizedKind === 'warning' ? 'ti-alert-triangle' :
+                        normalizedKind === 'muted' ? 'ti-minus' : 'ti-info-circle'
+        );
+        glyph.setAttribute('aria-hidden', 'true');
+        iconNode.appendChild(glyph);
+
+        var textNode = document.createElement('span');
+        textNode.className = 'md-market-update-modal__log-text';
+        textNode.textContent = value;
+
+        entry.appendChild(timeNode);
+        entry.appendChild(iconNode);
+        entry.appendChild(textNode);
+        log.appendChild(entry);
+
+        marketInstallState.logEntries.push({ type: 'log', time: time, text: value, kind: normalizedKind, receivedAt: now });
+        if (marketInstallState.logEntries.length > 500) {
+            marketInstallState.logEntries.shift();
+            if (log.firstElementChild) {
+                log.removeChild(log.firstElementChild);
+            }
+        }
+        if (stick) {
+            marketScrollLogBottom();
+        } else {
+            marketSetJumpVisible(true);
+        }
+        marketUpdateCopyButton();
+    }
+
+    function marketAppendSection(title, description) {
+        var log = mq('[data-market-log]');
+        var value = String(title || '').trim();
+        if (!log || !value) {
+            return;
+        }
+        var stick = marketLogNearBottom(log);
+        var empty = mq('[data-market-log-empty]', log);
+        if (empty) {
+            empty.remove();
+        }
+        var section = document.createElement('div');
+        section.className = 'md-market-update-modal__log-section';
+        var heading = document.createElement('div');
+        heading.className = 'md-market-update-modal__log-section-title';
+        heading.textContent = value;
+        section.appendChild(heading);
+        var descriptionText = String(description || '').trim();
+        if (descriptionText) {
+            var text = document.createElement('div');
+            text.className = 'md-market-update-modal__log-section-text';
+            text.textContent = descriptionText;
+            section.appendChild(text);
+        }
+        log.appendChild(section);
+        marketInstallState.logEntries.push({ type: 'section', title: value, description: descriptionText });
+        if (stick) {
+            marketScrollLogBottom();
+        } else {
+            marketSetJumpVisible(true);
+        }
+        marketUpdateCopyButton();
+    }
+
+    function marketHandleInstallEvent(event) {
+        if (!event || typeof event !== 'object') {
+            return;
+        }
+        if (event.type === 'events' && Array.isArray(event.items)) {
+            event.items.forEach(marketHandleInstallEvent);
+            return;
+        }
+        switch (event.type) {
+            case 'log':
+                marketAppendLog(event.text, event.kind);
+                break;
+            case 'section':
+                marketAppendSection(event.title, event.description);
+                break;
+            case 'finish':
+                marketFinishInstall(event.text, event.state);
+                break;
+            default:
+                break;
+        }
+    }
+
+    function marketPlainLog() {
+        return marketInstallState.logEntries.map(function (entry) {
+            if (entry.type === 'section') {
+                return '\n[' + entry.title + ']' + (entry.description ? ' ' + entry.description : '') + '\n';
+            }
+            return '[' + entry.time + '] ' + entry.text;
+        }).join('\n').trim();
+    }
+
+    function marketLegacyCopy(text) {
+        return new Promise(function (resolve, reject) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', 'readonly');
+            textarea.style.position = 'fixed';
+            textarea.style.top = '-1000px';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                var copied = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                copied ? resolve() : reject(new Error('copy failed'));
+            } catch (error) {
+                document.body.removeChild(textarea);
+                reject(error);
+            }
+        });
+    }
+
+    function marketCopyText(text) {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            return navigator.clipboard.writeText(text).catch(function () {
+                return marketLegacyCopy(text);
+            });
+        }
+        return marketLegacyCopy(text);
+    }
+
+    window.marketInstallEvent = marketHandleInstallEvent;
+    window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin) {
+            return;
+        }
+        var data = event.data;
+        if (!data || data.source !== 'mdj-market') {
+            return;
+        }
+        marketHandleInstallEvent(data);
+    });
 
     function bindFallbackImages(root) {
         function applyFallback(img) {
@@ -192,6 +637,7 @@
         function renderUpdateCommits(data) {
             var list = document.getElementById('marketUpdateModalList');
             var loading = document.getElementById('marketUpdateModalLoading');
+            var count = document.getElementById('marketUpdateModalCount');
             if (loading) {
                 loading.hidden = true;
             }
@@ -200,6 +646,10 @@
             }
 
             var commits = data && data.COMMITS ? data.COMMITS : [];
+            if (count) {
+                count.hidden = !commits.length;
+                count.textContent = commits.length ? commits.length + ' ' + plural(commits.length, 'коммит', 'коммита', 'коммитов') : '';
+            }
             if (!commits.length) {
                 var fallback = data && data.LATEST_COMMENT ? data.LATEST_COMMENT : '';
                 list.innerHTML = fallback
@@ -223,7 +673,7 @@
             list.innerHTML = rows.join('');
         }
 
-        function openMarketUpdate(button) {
+        function openMarketAction(button, isUninstall) {
             var modalElement = document.getElementById('marketUpdateModal');
             if (!modalElement || !window.bootstrap || !bootstrap.Modal) {
                 return;
@@ -231,11 +681,11 @@
             var card = button.closest ? button.closest('.market-item') : null;
             var moduleName = button.getAttribute('data-module-name') || '';
             var installed = button.getAttribute('data-installed') === '1';
-            var currentVersion = button.getAttribute('data-current-version') || '';
+            var currentVersion = button.getAttribute('data-current-version') || button.getAttribute('data-installed-version') || '';
             var latestVersion = button.getAttribute('data-latest-version') || '';
-            var installUrl = button.getAttribute('data-install-url') || '';
+            var installUrl = button.getAttribute('data-install-url') || button.getAttribute('data-uninstall-url') || '';
             var titleNode = card ? card.querySelector('.market-item__title') : null;
-            var title = titleNode ? titleNode.textContent.trim() : moduleName;
+            var title = button.getAttribute('data-title') || (titleNode ? titleNode.textContent.trim() : moduleName);
 
             var eyebrow = document.getElementById('marketUpdateModalEyebrow');
             var titleElement = document.getElementById('marketUpdateModalTitle');
@@ -244,39 +694,80 @@
             var repo = document.getElementById('marketUpdateModalRepo');
             var list = document.getElementById('marketUpdateModalList');
             var loading = document.getElementById('marketUpdateModalLoading');
+            var note = document.getElementById('marketUpdateModalNote');
+            var count = document.getElementById('marketUpdateModalCount');
+            var sectionTitle = document.getElementById('marketUpdateModalSectionTitle');
+            var hint = document.getElementById('marketUpdateModalHint');
+            var icon = document.getElementById('marketUpdateModalIcon');
 
+            if (icon) {
+                icon.innerHTML = '<i class="ti ' + (isUninstall ? 'ti-trash' : installed ? 'ti-refresh' : 'ti-cloud-download') + '" aria-hidden="true"></i>';
+                icon.classList.toggle('is-danger', isUninstall);
+            }
             if (eyebrow) {
-                eyebrow.textContent = installed ? 'Обновление модуля' : 'Установка модуля';
+                eyebrow.textContent = isUninstall ? 'Удаление модуля' : installed ? 'Обновление модуля' : 'Установка модуля';
             }
             if (titleElement) {
                 titleElement.textContent = title;
             }
             if (versions) {
                 var parts = [];
-                if (installed && currentVersion) {
+                if (currentVersion) {
                     parts.push('Установлено: ' + currentVersion);
                 }
-                if (latestVersion) {
-                    parts.push('Версия: ' + latestVersion);
+                if (!isUninstall && latestVersion) {
+                    parts.push('Обновление: ' + latestVersion);
                 }
                 versions.textContent = parts.join(' · ');
             }
             if (confirm) {
-                confirm.textContent = installed ? 'Обновить' : 'Установить';
+                confirm.textContent = isUninstall ? 'Удалить' : installed ? 'Обновить' : 'Установить';
                 confirm.setAttribute('href', installUrl);
+                confirm.className = 'md-btn ' + (isUninstall ? 'md-btn--danger' : 'md-btn--primary');
             }
             if (repo) {
                 repo.innerHTML = '';
+                repo.hidden = true;
             }
             if (list) {
                 list.innerHTML = '';
             }
+            if (note) {
+                note.hidden = isUninstall;
+                note.classList.remove('is-danger');
+                if (!isUninstall) {
+                    note.innerHTML = '<i class="ti ti-info-circle" aria-hidden="true"></i><span>Проверьте список изменений перед установкой.</span>';
+                }
+            }
+            if (count) {
+                count.hidden = true;
+                count.textContent = '';
+            }
+            if (sectionTitle) {
+                sectionTitle.textContent = isUninstall ? 'Последствия' : 'Что изменится';
+            }
+            if (hint) {
+                hint.textContent = isUninstall ? 'После удаления страница обновится автоматически.' : 'После установки страница обновится автоматически.';
+            }
             if (loading) {
-                loading.hidden = false;
+                loading.hidden = isUninstall;
+            }
+
+            if (isUninstall) {
+                if (list) {
+                    list.innerHTML = '<div class="md-alert md-alert--danger" role="alert">'
+                        + '<i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>'
+                        + '<div class="md-alert__body"><div class="md-alert__title">Модуль будет удалён</div>'
+                        + '<div class="md-alert__text">Будут удалены файлы модуля' + (currentVersion ? ' версии ' + escapeHtml(currentVersion) : '') + ' и связанные записи в базе данных.</div></div>'
+                        + '</div>';
+                }
             }
 
             bootstrap.Modal.getOrCreateInstance(modalElement).show();
 
+            if (isUninstall) {
+                return;
+            }
             if (!moduleName) {
                 renderUpdateCommits({COMMITS: []});
                 return;
@@ -291,6 +782,7 @@
                     throw new Error(data.MESSAGE || 'Не удалось загрузить обновления.');
                 }
                 if (repo) {
+                    repo.hidden = !data.REPOSITORY;
                     repo.innerHTML = data.REPOSITORY
                         ? '<i class="ti ti-brand-git" aria-hidden="true"></i><a href="' + escapeHtml(data.REPOSITORY) + '" target="_blank" rel="noopener">' + escapeHtml(data.REPOSITORY) + '</a>'
                         : '';
@@ -299,7 +791,7 @@
                     var versionParts = [];
                     versionParts.push('Установлено: ' + data.CURRENT_VERSION);
                     if (data.LATEST_VERSION) {
-                        versionParts.push('Версия: ' + data.LATEST_VERSION);
+                        versionParts.push('Обновление: ' + data.LATEST_VERSION);
                     }
                     versions.textContent = versionParts.join(' · ');
                 }
@@ -308,10 +800,21 @@
                 if (loading) {
                     loading.hidden = true;
                 }
+                if (count) {
+                    count.hidden = true;
+                }
                 if (list) {
                     list.innerHTML = '<div class="md-alert md-alert--danger" role="alert"><i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i><div class="md-alert__body"><div class="md-alert__text">' + escapeHtml(error && error.message ? error.message : 'Не удалось загрузить обновления.') + '</div></div></div>';
                 }
             });
+        }
+
+        function openMarketUpdate(button) {
+            openMarketAction(button, false);
+        }
+
+        function openMarketUninstall(button) {
+            openMarketAction(button, true);
         }
 
         function getSearchTab() {
@@ -493,6 +996,10 @@
                 event.preventDefault();
                 openMarketUpdate(actionTarget);
             }
+            if (action === 'open-uninstall') {
+                event.preventDefault();
+                openMarketUninstall(actionTarget);
+            }
             if (action === 'toggle-upload') {
                 event.preventDefault();
                 if (manualUpload) {
@@ -541,9 +1048,87 @@
             requestPluginList(link.getAttribute('data-category-id'), '');
         }
 
-        if (document.querySelector('[data-market-update-modal]')) {
+        var progressModal = document.querySelector('[data-market-update-modal]');
+        if (progressModal) {
             document.body.classList.add('md-market-modal-open');
-            marketSetInstallStatus('Подготовка…', 'active', 15, 'prepare');
+            if (!marketInstallState.finished) {
+                marketStartTimer();
+            }
+
+            var dialog = progressModal.querySelector('.md-market-update-modal__dialog');
+            if (dialog) {
+                window.setTimeout(function () {
+                    dialog.focus();
+                }, 60);
+            }
+
+            function canCloseProgress() {
+                return !marketInstallState.running || marketInstallState.finished;
+            }
+
+            function closeProgressModal() {
+                if (!canCloseProgress()) {
+                    return;
+                }
+                progressModal.classList.remove('is-open');
+                document.body.classList.remove('md-market-modal-open');
+            }
+
+            Array.prototype.forEach.call(progressModal.querySelectorAll('[data-market-close]'), function (button) {
+                button.addEventListener('click', closeProgressModal);
+            });
+
+            progressModal.addEventListener('click', function (event) {
+                if (event.target === progressModal) {
+                    closeProgressModal();
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && progressModal.classList.contains('is-open')) {
+                    closeProgressModal();
+                }
+            });
+
+            var progressLog = progressModal.querySelector('[data-market-log]');
+            if (progressLog) {
+                progressLog.addEventListener('scroll', function () {
+                    marketSetJumpVisible(!marketLogNearBottom(progressLog) && marketInstallState.logEntries.length > 0);
+                });
+            }
+
+            var jumpButton = progressModal.querySelector('[data-market-log-jump]');
+            if (jumpButton) {
+                jumpButton.addEventListener('click', marketScrollLogBottom);
+            }
+
+            var copyButton = progressModal.querySelector('[data-market-copy-log]');
+            if (copyButton) {
+                copyButton.addEventListener('click', function () {
+                    var text = marketPlainLog();
+                    if (!text) {
+                        return;
+                    }
+                    marketCopyText(text).then(function () {
+                        copyButton.classList.add('is-copied');
+                        copyButton.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i>';
+                        copyButton.setAttribute('title', 'Журнал скопирован');
+                        copyButton.setAttribute('aria-label', 'Журнал скопирован');
+                        if (marketInstallState.copyTimer) {
+                            window.clearTimeout(marketInstallState.copyTimer);
+                        }
+                        marketInstallState.copyTimer = window.setTimeout(function () {
+                            copyButton.classList.remove('is-copied');
+                            copyButton.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i>';
+                            copyButton.setAttribute('title', 'Скопировать журнал');
+                            copyButton.setAttribute('aria-label', 'Скопировать журнал');
+                        }, 1600);
+                    }).catch(function () {
+                        copyButton.setAttribute('title', 'Не удалось скопировать');
+                    });
+                });
+            }
+            marketUpdateCopyButton();
         }
 
         bindFallbackImages(document);

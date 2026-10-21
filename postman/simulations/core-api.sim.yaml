@@ -1,0 +1,12 @@
+simulation: majordomo-core-api
+routing: path
+mocks:
+  - routeKey: api
+    path: ../mocks/core-api/config.yaml
+  - routeKey: slow
+    path: ../mocks/core-api-slow/config.yaml
+    scenarios:
+      - overrides:
+          conditions:
+            latency:
+              delay_ms: 300

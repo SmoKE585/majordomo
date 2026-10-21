@@ -39,7 +39,6 @@ if (!function_exists('settingsBuildLanguageOptions')) {
         $map = array(
             'scripts' => 'Скрипты',
             'yadevices' => 'Яндекс Устройства',
-            'connect' => 'Connect',
             'devices' => 'Устройства',
             'telegram' => 'Telegram',
             'mqtt' => 'MQTT',

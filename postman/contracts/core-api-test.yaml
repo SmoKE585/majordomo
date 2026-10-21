@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: MajorDoMo API client transport fixture
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1
+paths:
+  /success:
+    get:
+      responses:
+        '200':
+          description: Existing apiHandleResult envelope
+          content:
+            application/json:
+              example:
+                apiHandleResult:
+                  ok: true
+  /json-error:
+    get:
+      responses:
+        '500':
+          description: JSON failure
+          content:
+            application/json:
+              example:
+                error: expected failure
+  /html-error:
+    get:
+      responses:
+        '500':
+          description: Proxy failure
+          content:
+            text/html:
+              example: '<html><body>Upstream failed</body></html>'

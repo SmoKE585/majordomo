@@ -35,160 +35,36 @@ $cycleVarName = 'ThisComputer.' . str_replace('.php', '', basename(__FILE__)) . 
 
 echo date("H:i:s") . " running " . basename(__FILE__) . "\n";
 
-$processed = array();
-$processed_cleanup_time = 0;
 $queue_check_time = 0;
-
+$cleanup_time = 0;
 while (1) {
-    if (time() - $checked_time > 5) {
-        $checked_time = time();
-        setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
-        // saveToCache("MJD:$cycleVarName", $checked_time);
-    }
-
-
-    /*
-    $keep = SQLSelect("SELECT DISTINCT VALUE_ID, KEEP_HISTORY FROM phistory_queue");
-    if ($keep[0]['VALUE_ID']) {
-        $total = count($keep);
-        for ($i = 0; $i < $total; $i++) {
-            $keep_rec = $keep[$i];
-            if (defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1) {
-                $table_name = createHistoryTable($keep_rec['VALUE_ID']);
-            } else {
-                $table_name = 'phistory';
-            }
-            if ($keep_rec['KEEP_HISTORY'] == 0) continue;
-            $start_tm = date('Y-m-d H:i:s',(time()-(int)$keep_rec['KEEP_HISTORY']*24*60*60));
-            echo date('Y-m-d H:i:s').' '.("DELETE FROM $table_name WHERE VALUE_ID='" . $keep_rec['VALUE_ID'] . "' AND ADDED<('$start_tm')\n");
-            SQLExec("DELETE FROM $table_name WHERE VALUE_ID='" . $keep_rec['VALUE_ID'] . "' AND ADDED<('$start_tm')");
-            echo date('Y-m-d H:i:s ')." Done \n";
+    try {
+        if (time() - $checked_time > 5) {
+            $checked_time = time();
+            setGlobal('cycle_phistoryRun', time(), 1);
         }
-    }
-    */
-    $queue = SQLSelect("SELECT * FROM phistory_queue ORDER BY ID LIMIT " . $limit);
-    if ((time() - $queue_check_time) > 10) {
-        $queue_check_time = time();
-        $queue_error_status = gg('phistory_queue_problem');
-        $tmp = SQLSelectOne("SELECT COUNT(*) as TOTAL FROM phistory_queue;");
-        $count_queue = (int)$tmp['TOTAL'];
-        if ($count_queue > $queue_problem_limit && !$queue_error_status) {
-            sg('phistory_queue_problem', 1);
-            $txt = 'Properties history queue is too long (' . $count_queue . ', threshold ' . $queue_problem_limit . ')';
-            echo date("H:i:s") . " " . $txt . "\n";
-            registerError('phistory_queue', $txt);
-        } elseif ($count_queue <= $limit && $queue_error_status) {
-            sg('phistory_queue_problem', 0);
+        if (time() - $queue_check_time > 10) {
+            $queue_check_time = time();
+            $row = SQLSelectOne('SELECT COUNT(*) AS TOTAL FROM phistory_queue');
+            $count = (int)($row['TOTAL'] ?? 0);
+            $problem = gg('phistory_queue_problem');
+            if ($count > $queue_problem_limit && !$problem) {
+                sg('phistory_queue_problem', 1);
+                registerError('phistory_queue', 'Properties history queue is too long (' . $count . ')');
+            } elseif ($count <= $limit && $problem) sg('phistory_queue_problem', 0);
         }
-    }
-
-    if (isset($queue[0]['ID'])) {
-        if ((time() - $processed_cleanup_time) > 60 * 60) {
-            $processed_cleanup_time = time();
-            foreach ($processed as $value_id => $processed_time) {
-                if ((time() - $processed_time) > 6 * 60 * 60) {
-                    unset($processed[$value_id]);
-                }
-            }
+        $processed = \MajorDoMo\Core\Core::history()->process($limit);
+        if (time() - $cleanup_time >= 60) {
+            $cleanup_time = time();
+            \MajorDoMo\Core\Core::history()->cleanup();
         }
-
-        $total = count($queue);
-        for ($i = 0; $i < $total; $i++) {
-            try {
-            $q_rec = $queue[$i];
-            $value = $q_rec['VALUE'];
-            $old_value = $q_rec['OLD_VALUE'];
-            $history_saved = false;
-            debug_echo("Queue $i / $total");
-            if (defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1) {
-                $table_name = createHistoryTable((int)$q_rec['VALUE_ID']);
-            } else {
-                $table_name = 'phistory';
-            }
-
-            if ($value != $old_value || (defined('HISTORY_NO_OPTIMIZE') && HISTORY_NO_OPTIMIZE == 1)) {
-                if (!isset($processed[$q_rec['VALUE_ID']])) {
-                    $processed[$q_rec['VALUE_ID']] = time();
-                    //$processed[$q_rec['VALUE_ID']]=0;
-                }
-                if ((time() - $processed[$q_rec['VALUE_ID']]) > 4 * 60 * 60) {
-                    $v = SQLSelectOne("SELECT PROPERTY_ID FROM pvalues WHERE ID=" . (int)$q_rec['VALUE_ID']);
-                    $prop = SQLSelectOne("SELECT * FROM properties WHERE ID=" . (int)$v['PROPERTY_ID']);
-                    cleanUpValueHistory($q_rec['VALUE_ID'], $q_rec['KEEP_HISTORY'], $prop['DATA_TYPE']);
-                    $processed[$q_rec['VALUE_ID']] = time();
-                    debug_echo(" Done ");
-                }
-                $h = array();
-                $h['VALUE_ID'] = $q_rec['VALUE_ID'];
-                $h['ADDED'] = $q_rec['ADDED'];
-                $h['VALUE'] = $value;
-                if (strlen($h['VALUE']) > 255) $h['VALUE'] = substr($h['VALUE'], 0, 255);
-                $h['SOURCE'] = $q_rec['SOURCE'];
-                debug_echo(" Insert new value " . $h['VALUE_ID'] . " " . $h['ADDED'] . " " . $value);
-                $h['ID'] = SQLInsert($table_name, $h);
-                $history_saved = !empty($h['ID']);
-                debug_echo(" Done ");
-            } elseif ($value == $old_value) {
-
-                $tmp_history = SQLSelect("SELECT ID, VALUE, SOURCE FROM $table_name WHERE VALUE_ID='" . (int)$q_rec['VALUE_ID'] . "' ORDER BY ID DESC LIMIT 2");
-                $prev_value = $tmp_history[0]['VALUE'] ?? null;
-                $prev_prev_value = $tmp_history[1]['VALUE'] ?? null;
-
-                $this_source = $q_rec['SOURCE'];
-                $this_source = preg_replace('/\d+/is', 'N', $this_source);
-
-                $prev_source = $tmp_history[0]['SOURCE'] ?? '';
-                $prev_source = preg_replace('/\d+/is', 'N', $prev_source);
-
-                if ($this_source == $prev_source &&
-                    $prev_value == $prev_prev_value &&
-                    !empty($tmp_history[0]['ID'])) {
-                    debug_echo(" Update same value " . $q_rec['VALUE_ID']);
-                    $history_saved = (bool)SQLExec("UPDATE $table_name SET ADDED='" . DBSafe($q_rec['ADDED']) . "' WHERE ID=" . (int)$tmp_history[0]['ID']);
-                    /*
-                    $tmp_history[0]['ADDED'] = $q_rec['ADDED'];
-                    foreach($tmp_history[0] as $k=>$v) {
-                        if ($k=='ID' || $k=='ADDED') continue;
-                        unset($tmp_history[0][$k]);
-                    }
-                    */
-                    //SQLUpdate($table_name, $tmp_history[0]);
-                    debug_echo(" Done ");
-                } else {
-                    debug_echo(" Insert same new value " . $q_rec['VALUE_ID']);
-                    $h = array();
-                    $h['VALUE_ID'] = $q_rec['VALUE_ID'];
-                    $h['ADDED'] = $q_rec['ADDED'];
-                    $h['VALUE'] = $value;
-                    if (strlen($h['VALUE']) > 255) $h['VALUE'] = substr($h['VALUE'], 0, 255);
-                    $h['SOURCE'] = $q_rec['SOURCE'];
-                    $h['ID'] = SQLInsert($table_name, $h);
-                    $history_saved = !empty($h['ID']);
-                    debug_echo(" Done ");
-                }
-            }
-            if ($history_saved) {
-                SQLExec("DELETE FROM phistory_queue WHERE ID=" . (int)$q_rec['ID']);
-            }
-            } catch (Exception $e) {
-                DebMes('Error processing history queue item ' . $q_rec['ID'] . ': ' . $e->getMessage(), 'cycle_phistory');
-            }
-        }
-        unset($queue, $tmp_history, $h, $q_rec);
-    } else
+        if (!$processed) sleep(1);
+    } catch (Throwable $e) {
+        DebMes('History queue: ' . $e->getMessage(), 'cycle_phistory');
         sleep(1);
-
-    if (isRebootRequired() || isset($_GET['onetime'])) {
-        exit;
     }
+    if (isRebootRequired() || isset($_GET['onetime'])) exit;
 }
-
-function debug_echo($line)
-{
-    //echo date('Y-m-d H:i:s').' '.$line."\n";
-}
-
-DebMes("Unexpected close of cycle: " . basename(__FILE__));
 
 function ensureHistorySchema()
 {

@@ -1,0 +1,9 @@
+version: 1
+name: core-api-slow
+slug: core-api-slow
+protocol: http
+port: 4500
+scenarios:
+  - name: default
+    path: ../core-api/default.js
+    default: true

@@ -357,177 +357,7 @@
         }
     }
 
-.md-market-update-modal {
-        --md-market-backdrop-opacity: .58;
-        position: fixed;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        z-index: 1080;
-    }
-    .md-market-update-modal__backdrop {
-        position: absolute;
-        inset: 0;
-        background: rgba(12, 18, 26, var(--md-market-backdrop-opacity));
-        backdrop-filter: blur(6px);
-        transition: background-color .24s ease;
-    }
-    .md-market-update-modal__dialog {
-        position: relative;
-        width: min(980px, 100%);
-        max-height: calc(100vh - 40px);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        border-radius: 24px;
-        background: rgba(255, 255, 255, .98);
-        box-shadow: 0 24px 60px rgba(31, 41, 51, .28);
-    }
-    .md-market-update-modal__header,
-    .md-market-update-modal__body {
-        padding: 20px 22px;
-    }
-    .md-market-update-modal__header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 14px;
-        border-bottom: 1px solid rgba(71, 146, 209, .12);
-        background:
-            radial-gradient(circle at top right, rgba(71, 146, 209, .16), transparent 14rem),
-            rgba(255, 255, 255, .98);
-    }
-    .md-market-update-modal__body {
-        display: grid;
-        gap: 16px;
-        min-height: 0;
-        overflow: auto;
-        background: #f5f8fb;
-    }
-    .md-market-update-modal__eyebrow {
-        color: #6b7a88;
-        font-size: .8rem;
-        font-weight: 700;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-    }
-    .md-market-update-modal__title {
-        margin: 6px 0 0;
-        font-size: 22px;
-        line-height: 1.2;
-        font-weight: 700;
-        color: #1f2933;
-    }
-    .md-market-update-status {
-        padding: 16px;
-        border-radius: 18px;
-        background: rgba(71, 146, 209, .06);
-        border: 1px solid rgba(71, 146, 209, .12);
-    }
-    .md-market-update-status__main {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-    .md-market-update-status__icon {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        flex: 0 0 16px;
-        background: rgba(71, 146, 209, .35);
-        box-shadow: 0 0 0 6px rgba(71, 146, 209, .12);
-    }
-    .md-market-update-status__icon.is-success {
-        background: #198754;
-        box-shadow: 0 0 0 6px rgba(25, 135, 84, .14);
-    }
-    .md-market-update-status__icon.is-error {
-        background: #dc3545;
-        box-shadow: 0 0 0 6px rgba(220, 53, 69, .14);
-    }
-    .md-market-update-status__label {
-        color: #6b7a88;
-        font-size: .8rem;
-    }
-    .md-market-update-status__text {
-        color: #1f2933;
-        font-weight: 600;
-    }
-    .md-market-progress {
-        height: 10px;
-        margin: 14px 0 0;
-        border-radius: 999px;
-        background: rgba(71, 146, 209, .12);
-        overflow: hidden;
-    }
-    .md-market-progress__bar {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        background: linear-gradient(90deg, #4792d1, #6ab1df);
-        transition: width .18s ease;
-    }
-    .md-market-steps {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    .md-market-step {
-        display: inline-flex;
-        align-items: center;
-        min-height: 36px;
-        padding: 7px 12px;
-        border-radius: 999px;
-        background: rgba(71, 146, 209, .06);
-        color: #6b7a88;
-        font-size: .84rem;
-        font-weight: 600;
-    }
-    .md-market-step.is-active {
-        color: #4792d1;
-        background: rgba(71, 146, 209, .13);
-    }
-    .md-market-step.is-done {
-        color: #146c43;
-        background: rgba(25, 135, 84, .12);
-    }
-    .md-market-inline-alert {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 14px 16px;
-        border-radius: 16px;
-        background: #fff7df;
-        border: 1px solid rgba(244, 183, 64, .28);
-        color: #5f4a11;
-    }
-    .md-market-console {
-        width: 100%;
-        min-height: 440px;
-        border: 0;
-        border-radius: 18px;
-        background: #0e1d33;
-    }
-    @media (max-width: 767px) {
-        .md-market-update-modal {
-            padding: 0;
-        }
-        .md-market-update-modal__dialog {
-            width: 100%;
-            max-height: 100vh;
-            min-height: 100vh;
-            border-radius: 0;
-        }
-        .md-market-update-modal__header,
-        .md-market-update-modal__body {
-            padding: 18px;
-        }
-        .md-market-console {
-            min-height: 360px;
-        }
-    }
+
 
     .market-plugin-list {
         display: grid;
@@ -1509,125 +1339,7 @@ body.md-admin-shell .market-tabs__clear {
   padding: 0;
 }
 
-/* Update/install modal */
-
-body.md-admin-shell .md-market-update-modal__dialog {
-  color: var(--md-ui-text);
-  background: var(--md-ui-surface);
-  border: 1px solid var(--md-ui-border);
-  border-radius: var(--md-ui-radius-lg);
-  box-shadow: var(--md-ui-shadow-dialog);
-}
-
-body.md-admin-shell .md-market-update-modal__header {
-  padding: 18px 20px 14px;
-  background: transparent;
-  border-bottom: 1px solid var(--md-ui-border);
-}
-
-body.md-admin-shell .md-market-update-modal__body {
-  padding: 16px 20px 20px;
-  background: var(--md-ui-surface-2);
-}
-
-body.md-admin-shell .md-market-update-modal__eyebrow {
-  color: var(--md-ui-primary);
-  font-size: var(--md-ui-fs-caption);
-}
-
-body.md-admin-shell .md-market-update-modal__title {
-  color: var(--md-ui-text);
-  font-size: var(--md-ui-fs-lg);
-  font-weight: 600;
-  letter-spacing: -.02em;
-}
-
-body.md-admin-shell .md-market-update-status {
-  padding: 14px 16px;
-  background: var(--md-ui-surface);
-  border: 1px solid var(--md-ui-border);
-  border-radius: var(--md-ui-radius-md);
-}
-
-body.md-admin-shell .md-market-update-status__label {
-  color: var(--md-ui-muted);
-  font-size: var(--md-ui-fs-caption);
-}
-
-body.md-admin-shell .md-market-update-status__text {
-  color: var(--md-ui-text);
-  font-size: var(--md-ui-fs-sm);
-}
-
-body.md-admin-shell .md-market-update-status__icon {
-  background: var(--md-ui-primary);
-  box-shadow: 0 0 0 6px var(--md-ui-primary-soft);
-}
-
-body.md-admin-shell .md-market-update-status__icon.is-success {
-  background: var(--md-ui-success);
-  box-shadow: 0 0 0 6px var(--md-ui-success-soft, rgba(25, 135, 84, .14));
-}
-
-body.md-admin-shell .md-market-update-status__icon.is-error {
-  background: var(--md-ui-danger);
-  box-shadow: 0 0 0 6px var(--md-ui-danger-soft, rgba(220, 53, 69, .14));
-}
-
-body.md-admin-shell .md-market-progress {
-  height: 8px;
-  background: var(--md-ui-surface-3);
-}
-
-body.md-admin-shell .md-market-progress__bar {
-  background: var(--md-ui-primary);
-}
-
-body.md-admin-shell .md-market-progress__bar.is-success {
-  background: var(--md-ui-success);
-}
-
-body.md-admin-shell .md-market-progress__bar.is-error {
-  background: var(--md-ui-danger);
-}
-
-body.md-admin-shell .md-market-step {
-  min-height: 30px;
-  padding: 5px 10px;
-  color: var(--md-ui-muted);
-  background: var(--md-ui-surface);
-  border: 1px solid var(--md-ui-border);
-  border-radius: 8px;
-  font-size: var(--md-ui-fs-caption);
-}
-
-body.md-admin-shell .md-market-step.is-active {
-  color: var(--md-ui-primary);
-  background: var(--md-ui-primary-soft);
-  border-color: color-mix(in srgb, var(--md-ui-primary) 35%, var(--md-ui-border));
-}
-
-body.md-admin-shell .md-market-step.is-done {
-  color: var(--md-ui-success);
-  background: var(--md-ui-success-soft, rgba(25, 135, 84, .12));
-  border-color: color-mix(in srgb, var(--md-ui-success) 35%, var(--md-ui-border));
-}
-
-body.md-admin-shell .md-market-inline-alert {
-  padding: 12px 14px;
-  color: var(--md-ui-warning);
-  background: var(--md-ui-warning-soft, rgba(244, 183, 64, .12));
-  border: 1px solid color-mix(in srgb, var(--md-ui-warning) 30%, var(--md-ui-border));
-  border-radius: var(--md-ui-radius-sm);
-  font-size: var(--md-ui-fs-xs);
-}
-
-body.md-admin-shell .md-market-console {
-  min-height: 420px;
-  background: #0e1d33;
-  border: 1px solid var(--md-ui-border);
-  border-radius: var(--md-ui-radius-md);
-}body.md-admin-shell .market-plugin-count-badge {
+body.md-admin-shell .market-plugin-count-badge {
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
@@ -1643,84 +1355,6 @@ body.md-admin-shell .market-item__actions {
   align-items: center;
 }
 
-.market-update-modal__versions {
-  margin-top: 3px;
-  color: var(--md-ui-muted);
-  font-size: var(--md-ui-fs-xs);
-}
-
-.market-update-modal__repo {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin-bottom: 10px;
-  color: var(--md-ui-muted);
-  font-size: var(--md-ui-fs-xs);
-  overflow-wrap: anywhere;
-}
-
-.market-update-modal__repo a {
-  color: var(--md-ui-primary);
-  text-decoration: none;
-}
-
-.market-update-modal__loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 24px 12px;
-  color: var(--md-ui-muted);
-  font-size: var(--md-ui-fs-sm);
-}
-
-.market-update-modal__loading[hidden] {
-  display: none;
-}
-
-.market-update-list {
-  max-height: min(42vh, 360px);
-  overflow: auto;
-  background: var(--md-ui-surface);
-  border: 1px solid var(--md-ui-border);
-  border-radius: var(--md-ui-radius-sm);
-}
-
-.market-update-entry {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--md-ui-border);
-}
-
-.market-update-entry:last-child {
-  border-bottom: 0;
-}
-
-.market-update-entry__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--md-ui-muted);
-  font-size: var(--md-ui-fs-caption);
-}
-
-.market-update-entry__head time {
-  font-family: var(--md-ui-font-mono);
-}
-
-.market-update-entry__head a {
-  color: var(--md-ui-primary);
-  text-decoration: none;
-}
-
-.market-update-entry__text {
-  margin-top: 4px;
-  color: var(--md-ui-text-soft);
-  font-size: var(--md-ui-fs-sm);
-  line-height: 1.5;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 @media (max-width: 991.98px) {
   body.md-admin-shell .market-item__actions {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1730,5 +1364,1089 @@ body.md-admin-shell .market-item__actions {
 @media (max-width: 575.98px) {
   body.md-admin-shell .market-item__actions {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+/* Market: install/update/uninstall progress modal */
+
+body.md-market-modal-open {
+  overflow: hidden;
+}
+
+body.md-admin-shell .md-market-update-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+body.md-admin-shell .md-market-update-modal.is-open {
+  display: flex;
+}
+
+body.md-admin-shell .md-market-update-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--md-ui-overlay);
+  backdrop-filter: blur(3px);
+}
+
+body.md-admin-shell .md-market-update-modal__dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-lg);
+  box-shadow: var(--md-ui-shadow-dialog);
+  outline: none;
+}
+
+body.md-admin-shell .md-market-update-modal__header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  background: var(--md-ui-surface);
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-market-update-modal__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-market-update-modal__heading-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: var(--md-ui-radius-sm);
+  font-size: 1.125rem;
+}
+
+body.md-admin-shell .md-market-update-modal[data-market-operation="remove"] .md-market-update-modal__heading-icon,
+body.md-admin-shell .md-market-update-modal[data-market-operation="remove"] .md-market-update-modal__status-icon.is-active {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-market-update-modal__heading-text {
+  min-width: 0;
+}
+
+body.md-admin-shell .md-market-update-modal__title {
+  margin: 1px 0 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-lg);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.3;
+}
+
+body.md-admin-shell .md-market-update-modal__subtitle {
+  margin: 3px 0 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-market-update-modal__close {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+body.md-admin-shell .md-market-update-modal__body {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 14px;
+  min-height: 0;
+  padding: 16px 20px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--md-ui-border-strong) transparent;
+}
+
+body.md-admin-shell .md-market-update-modal__progress-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius);
+}
+
+body.md-admin-shell .md-market-update-modal__progress-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+body.md-admin-shell .md-market-update-modal__status-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: 50%;
+  font-size: 1.125rem;
+}
+
+body.md-admin-shell .md-market-update-modal__status-icon.is-active > i {
+  animation: md-market-spin 1.1s linear infinite;
+}
+
+body.md-admin-shell .md-market-update-modal__status-icon.is-success {
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft);
+}
+
+body.md-admin-shell .md-market-update-modal__status-icon.is-error {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-market-update-modal__status-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-market-update-modal__status-label {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .md-market-update-modal__status-text {
+  margin-top: 1px;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-base);
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-market-update-modal__percent {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 1px;
+  color: var(--md-ui-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+body.md-admin-shell .md-market-update-modal__percent span {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -.03em;
+}
+
+body.md-admin-shell .md-market-update-modal__percent small {
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 600;
+}
+
+body.md-admin-shell .md-market-update-modal__progress {
+  height: 8px;
+}
+
+body.md-admin-shell .md-market-update-modal__progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width .35s ease, background-color .25s ease;
+}
+
+body.md-admin-shell .md-market-update-modal__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.4;
+}
+
+body.md-admin-shell .md-market-update-modal__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-market-update-modal__meta-item > i {
+  color: var(--md-ui-muted-2);
+  font-size: .875rem;
+}
+
+body.md-admin-shell .md-market-update-modal__meta-item b {
+  color: var(--md-ui-text-soft);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-market-update-modal__meta-item--hint {
+  margin-left: auto;
+}
+
+body.md-admin-shell .md-market-update-modal__meta-sep {
+  width: 1px;
+  height: 10px;
+  background: var(--md-ui-border-strong);
+}
+
+body.md-admin-shell .md-market-update-modal__stepper {
+  display: flex;
+  gap: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 2px 0 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+body.md-admin-shell .md-market-update-modal__stepper::-webkit-scrollbar {
+  display: none;
+}
+
+body.md-admin-shell .md-market-update-modal__step {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 4px;
+  text-align: center;
+}
+
+body.md-admin-shell .md-market-update-modal__step:not(:first-child)::before {
+  position: absolute;
+  top: 13px;
+  left: -50%;
+  z-index: 0;
+  width: 100%;
+  height: 2px;
+  content: "";
+  background: var(--md-ui-border);
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-done::before {
+  background: var(--md-ui-success);
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-active::before {
+  background: var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-market-update-modal__step-dot {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface);
+  border: 2px solid var(--md-ui-border-strong);
+  border-radius: 50%;
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color var(--md-ui-transition), border-color var(--md-ui-transition), color var(--md-ui-transition), box-shadow var(--md-ui-transition);
+}
+
+body.md-admin-shell .md-market-update-modal__step-check {
+  display: none;
+  font-size: .8125rem;
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-active .md-market-update-modal__step-dot {
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-color: var(--md-ui-primary);
+  box-shadow: 0 0 0 4px var(--md-ui-primary-soft);
+}
+
+body.md-admin-shell .md-market-update-modal[data-market-operation="remove"] .md-market-update-modal__step.is-active .md-market-update-modal__step-dot {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+  border-color: var(--md-ui-danger);
+  box-shadow: 0 0 0 4px var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-market-update-modal[data-market-operation="remove"] .md-market-update-modal__step.is-active::before {
+  background: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-done .md-market-update-modal__step-dot {
+  color: var(--md-ui-primary-contrast);
+  background: var(--md-ui-success);
+  border-color: var(--md-ui-success);
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-done .md-market-update-modal__step-num {
+  display: none;
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-done .md-market-update-modal__step-check {
+  display: block;
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-error .md-market-update-modal__step-dot {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+  border-color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-market-update-modal__step-label {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-active .md-market-update-modal__step-label {
+  color: var(--md-ui-primary);
+  font-weight: 600;
+}
+
+body.md-admin-shell .md-market-update-modal[data-market-operation="remove"] .md-market-update-modal__step.is-active .md-market-update-modal__step-label {
+  color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-market-update-modal[data-market-operation="remove"] .md-badge--info {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-market-update-modal__step.is-done .md-market-update-modal__step-label {
+  color: var(--md-ui-text-soft);
+}
+
+body.md-admin-shell .md-market-update-modal__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+body.md-admin-shell .md-market-update-modal__log-card,
+body.md-admin-shell .md-market-update-modal__details-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 460px;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius);
+}
+
+body.md-admin-shell .md-market-update-modal__card-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  background: var(--md-ui-surface-2);
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-market-update-modal__card-title {
+  margin: 1px 0 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+body.md-admin-shell .md-market-update-modal__card-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+body.md-admin-shell .md-market-update-modal__log {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 6px 14px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--md-ui-border-strong) transparent;
+}
+
+body.md-admin-shell .md-market-update-modal__log-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  text-align: center;
+}
+
+body.md-admin-shell .md-market-update-modal__log-empty > i {
+  color: var(--md-ui-muted-2);
+  font-size: 1.25rem;
+}
+
+body.md-admin-shell .md-market-update-modal__log-entry {
+  display: grid;
+  grid-template-columns: 54px 16px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--md-ui-border);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-market-update-modal__log-entry:last-child {
+  border-bottom: 0;
+}
+
+body.md-admin-shell .md-market-update-modal__log-time {
+  padding-top: 1px;
+  color: var(--md-ui-muted-2);
+  font-family: var(--md-ui-font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-market-update-modal__log-icon {
+  padding-top: 1px;
+  color: var(--md-ui-info);
+  font-size: .8125rem;
+  line-height: 1.4;
+}
+
+body.md-admin-shell .md-market-update-modal__log-text {
+  min-width: 0;
+  color: var(--md-ui-text-soft);
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-market-update-modal__log-entry.is-success .md-market-update-modal__log-icon {
+  color: var(--md-ui-success);
+}
+
+body.md-admin-shell .md-market-update-modal__log-entry.is-warning .md-market-update-modal__log-icon {
+  color: var(--md-ui-warning);
+}
+
+body.md-admin-shell .md-market-update-modal__log-entry.is-error {
+  margin: 1px -6px;
+  padding: 6px;
+  background: var(--md-ui-danger-soft);
+  border-bottom-color: transparent;
+  border-radius: var(--md-ui-radius-xs);
+}
+
+body.md-admin-shell .md-market-update-modal__log-entry.is-error .md-market-update-modal__log-icon,
+body.md-admin-shell .md-market-update-modal__log-entry.is-error .md-market-update-modal__log-text {
+  color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-market-update-modal__log-entry.is-muted .md-market-update-modal__log-icon,
+body.md-admin-shell .md-market-update-modal__log-entry.is-muted .md-market-update-modal__log-text {
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-market-update-modal__log-section {
+  margin: 10px 0 4px;
+  padding: 9px 11px;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-left: 3px solid var(--md-ui-primary);
+  border-radius: var(--md-ui-radius-xs);
+}
+
+body.md-admin-shell .md-market-update-modal__log-section:first-child {
+  margin-top: 4px;
+}
+
+body.md-admin-shell .md-market-update-modal__log-section-title {
+  color: var(--md-ui-primary);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .md-market-update-modal[data-market-operation="remove"] .md-market-update-modal__log-section {
+  border-left-color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-market-update-modal[data-market-operation="remove"] .md-market-update-modal__log-section-title {
+  color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-market-update-modal__log-section-text {
+  margin-top: 2px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-market-update-modal__log-jump {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  box-shadow: var(--md-ui-shadow-pop);
+}
+
+body.md-admin-shell .md-market-update-modal__details {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 4px 14px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--md-ui-border-strong) transparent;
+}
+
+body.md-admin-shell .md-market-update-modal__details-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--md-ui-border);
+}
+
+body.md-admin-shell .md-market-update-modal__details-row:last-child {
+  border-bottom: 0;
+}
+
+body.md-admin-shell .md-market-update-modal__details-row dt {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+body.md-admin-shell .md-market-update-modal__details-row dd {
+  margin: 0;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-market-update-modal__details-row dd a {
+  color: var(--md-ui-primary);
+  text-decoration: none;
+}
+
+body.md-admin-shell .md-market-update-modal__details-row dd a:hover {
+  color: var(--md-ui-primary-strong);
+}
+
+body.md-admin-shell .md-market-update-modal__details-note {
+  margin: 0 12px 12px;
+  padding: 9px 10px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-xs);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+body.md-admin-shell .md-market-update-modal__details-note[hidden] {
+  display: none;
+}
+
+body.md-admin-shell .md-market-update-modal__details-note.is-danger {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+  border-color: transparent;
+}
+
+body.md-admin-shell .md-market-update-modal__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 2px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-market-update-modal__note > i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--md-ui-primary);
+  font-size: .9375rem;
+}
+
+body.md-admin-shell .md-market-update-modal__footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--md-ui-surface-2);
+  border-top: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-market-update-modal__footer[hidden] {
+  display: none;
+}
+
+body.md-admin-shell .md-market-update-modal__footer-text {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-market-update-modal__footer-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-market-worker {
+  position: fixed;
+  top: 0;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+}
+
+/* Market: install/update/uninstall confirmation modal */
+
+body.md-admin-shell .market-update-modal .modal-content {
+  overflow: hidden;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-lg);
+  box-shadow: var(--md-ui-shadow-dialog);
+}
+
+body.md-admin-shell .market-update-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .market-update-modal__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+body.md-admin-shell .market-update-modal__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: var(--md-ui-radius-sm);
+  font-size: 1.125rem;
+}
+
+body.md-admin-shell .market-update-modal__icon.is-danger {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .market-update-modal__heading-text {
+  min-width: 0;
+}
+
+body.md-admin-shell .market-update-modal .modal-title {
+  margin: 1px 0 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-lg);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.3;
+}
+
+body.md-admin-shell .market-update-modal__versions {
+  margin-top: 3px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .market-update-modal__body {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px 18px;
+  background: var(--md-ui-surface);
+}
+
+body.md-admin-shell .market-update-modal__repo {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 9px 11px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .market-update-modal__repo[hidden] {
+  display: none;
+}
+
+body.md-admin-shell .market-update-modal__repo > i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--md-ui-primary);
+}
+
+body.md-admin-shell .market-update-modal__repo a {
+  color: var(--md-ui-primary);
+  text-decoration: none;
+}
+
+body.md-admin-shell .market-update-modal__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  color: var(--md-ui-info);
+  background: var(--md-ui-info-soft);
+  border: 1px solid transparent;
+  border-radius: var(--md-ui-radius-sm);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.45;
+}
+
+body.md-admin-shell .market-update-modal__note[hidden] {
+  display: none;
+}
+
+body.md-admin-shell .market-update-modal__note.is-danger {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .market-update-modal__note > i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+body.md-admin-shell .market-update-modal__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 2px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 600;
+}
+
+body.md-admin-shell .market-update-modal__section-head .md-badge[hidden] {
+  display: none;
+}
+
+body.md-admin-shell .market-update-modal__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 12px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .market-update-modal__loading[hidden] {
+  display: none;
+}
+
+body.md-admin-shell .market-update-list {
+  max-height: min(40vh, 340px);
+  overflow: auto;
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+}
+
+body.md-admin-shell .market-update-entry {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .market-update-entry:last-child {
+  border-bottom: 0;
+}
+
+body.md-admin-shell .market-update-entry__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+}
+
+body.md-admin-shell .market-update-entry__head time {
+  font-family: var(--md-ui-font-mono);
+}
+
+body.md-admin-shell .market-update-entry__head a {
+  color: var(--md-ui-primary);
+  text-decoration: none;
+}
+
+body.md-admin-shell .market-update-entry__text {
+  margin-top: 4px;
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .market-update-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--md-ui-surface-2);
+  border-top: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .market-update-modal__footer-hint {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.45;
+}
+
+body.md-admin-shell .market-update-modal__footer-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+body.md-admin-shell .market-update-modal__body .md-alert {
+  margin: 0;
+}
+
+@keyframes md-market-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 800px) and (max-height: 880px) {
+  body.md-admin-shell .md-market-update-modal__log-card,
+  body.md-admin-shell .md-market-update-modal__details-card {
+    height: 380px;
+  }
+}
+
+@media (min-width: 800px) and (max-height: 820px) {
+  body.md-admin-shell .md-market-update-modal__log-card,
+  body.md-admin-shell .md-market-update-modal__details-card {
+    height: 320px;
+  }
+}
+
+@media (min-width: 800px) and (max-height: 700px) {
+  body.md-admin-shell .md-market-update-modal__log-card,
+  body.md-admin-shell .md-market-update-modal__details-card {
+    height: 280px;
+  }
+}
+
+@media (max-width: 799.98px) {
+  body.md-admin-shell .md-market-update-modal__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-market-update-modal__log-card,
+  body.md-admin-shell .md-market-update-modal__details-card {
+    height: auto;
+  }
+
+  body.md-admin-shell .md-market-update-modal__log {
+    height: 280px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__details {
+    max-height: 240px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  body.md-admin-shell .md-market-update-modal {
+    padding: 8px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__dialog {
+    max-height: calc(100vh - 16px);
+  }
+
+  body.md-admin-shell .md-market-update-modal__header {
+    padding: 14px 14px 12px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__body {
+    padding: 12px 14px 14px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__title {
+    font-size: var(--md-ui-fs-base);
+  }
+
+  body.md-admin-shell .md-market-update-modal__heading-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  body.md-admin-shell .md-market-update-modal__percent span {
+    font-size: 1.25rem;
+  }
+
+  body.md-admin-shell .md-market-update-modal__meta-item--hint {
+    margin-left: 0;
+  }
+
+  body.md-admin-shell .md-market-update-modal__step {
+    flex: 0 0 84px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__log {
+    height: 260px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__details {
+    max-height: 200px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__footer-actions .md-btn {
+    justify-content: center;
+    width: 100%;
+  }
+
+  body.md-admin-shell .market-update-modal .modal-header,
+  body.md-admin-shell .market-update-modal .modal-body,
+  body.md-admin-shell .market-update-modal .modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  body.md-admin-shell .market-update-modal__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body.md-admin-shell .market-update-modal__footer-actions {
+    width: 100%;
+  }
+
+  body.md-admin-shell .market-update-modal__footer-actions .md-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .md-market-update-modal__meta-sep {
+    display: none;
+  }
+
+  body.md-admin-shell .md-market-update-modal__meta {
+    gap: 4px 10px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__progress-head {
+    align-items: flex-start;
+  }
+
+  body.md-admin-shell .md-market-update-modal__status-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+
+  body.md-admin-shell .md-market-update-modal__log-entry {
+    grid-template-columns: 46px 15px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  body.md-admin-shell .md-market-update-modal__card-head {
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-market-update-modal__details {
+    max-height: 180px;
+  }
+
+  body.md-admin-shell .market-update-modal__footer-hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.md-admin-shell .md-market-update-modal__status-icon.is-active > i {
+    animation: none;
+  }
+
+  body.md-admin-shell .md-market-update-modal__step-dot,
+  body.md-admin-shell .md-market-update-modal__progress-bar {
+    transition: none;
   }
 }

@@ -1,71 +1,24 @@
 <?php
 
-function saveCycleToCache($key, $value)
-{
-    if (is_array($value) || strlen($value) > 255) {
-        SQLExec("DELETE FROM cached_cycles WHERE TITLE='".$key."'");
-        deleteFromCache($key);
-        return;
-    }
+require_once __DIR__ . '/core.class.php';
 
-    if (isset($_SERVER['REQUEST_METHOD'])) {
-        global $memory_cycle_cache;
-        $memory_cycle_cache[$key] = $value;
+function saveCycleToCache($key, $value)
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::cache()->saveCycle($key, $value);
     }
-        $rec = array('TITLE' => $key, 'VALUE' => $value);
-    $sqlQuery = "REPLACE INTO cached_cycles (TITLE, VALUE) " .
-        " VALUES ('" . DbSafe1($rec['TITLE']) . "', " .
-        "'" . DbSafe1($rec['VALUE']) . "')";
-    SQLExec($sqlQuery);
-}
 
 function checkCycleFromCache($key)
-{
-    if (isset($_SERVER['REQUEST_METHOD'])) {
-            global $memory_cycle_cache;
-                if (is_array($memory_cycle_cache) && isset($memory_cycle_cache[$key])) {
-                    return $memory_cycle_cache[$key];
-                }
-        }
-        $rec = SQLSelectOne("SELECT * FROM cached_cycles WHERE TITLE = '" . DBSafe($key) . "'");
-    if (isset($rec['TITLE'])) {
-        return $rec['VALUE'];
-    } else {
-        return false;
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::cache()->cycle($key);
     }
-}
 
 function ensureCachedValuesTable()
-{
-    static $checked = false;
-    if ($checked) {
-        return true;
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::cache()->ensureSqlTable();
     }
-
-    if (SQLTableExists('cached_values')) {
-        $checked = true;
-        return true;
-    }
-
-    if (defined('CACHE_VALUE_MAX_SIZE')) {
-        $cache_value_max_size = CACHE_VALUE_MAX_SIZE;
-    } else {
-        $cache_value_max_size = 255;
-    }
-
-    $sqlQuery = "CREATE TABLE IF NOT EXISTS `cached_values`
-           (`KEYWORD`   CHAR(100) NOT NULL,
-            `DATAVALUE` VARCHAR($cache_value_max_size) NOT NULL,
-            PRIMARY KEY (`KEYWORD`)
-           ) ENGINE = MEMORY DEFAULT CHARSET=utf8;";
-
-    if (SQLExec($sqlQuery)) {
-        $checked = true;
-        return true;
-    }
-
-    return false;
-}
 
 
 
@@ -75,30 +28,10 @@ function ensureCachedValuesTable()
  * @return void
  */
 function clearCacheData($prefix = '')
-{
-    $prefix = strtolower((string)$prefix);
-    if (defined('USE_REDIS')) {
-        $redisConnection = mjdGetRedisConnection();
-        if (!is_object($redisConnection)) {
-            return;
-        }
-        if (!$prefix) $redisConnection->flushDB();
-        else {
-            $list = $redisConnection->keys($prefix . "*");
-            foreach ($list as $key1)
-                $redisConnection->del($key1);
-        }
-        return;
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::cache()->clear($prefix);
     }
-    if (!ensureCachedValuesTable()) {
-        return;
-    }
-    if (!$prefix) {
-        SQLTruncateTable('cached_values');
-    } else {
-        SQLExec("delete from cached_values where KEYWORD like '" . DBSafe($prefix) . "%'");
-    }
-}
 
 /**
  *  Return all Cache Data from prefix
@@ -107,25 +40,10 @@ function clearCacheData($prefix = '')
  * @return array
  */
 function getAllCache($prefix = '')
-{
-    $prefix = strtolower((string)$prefix);
-    $out = array();
-    if (defined('USE_REDIS')) {
-        $redisConnection = mjdGetRedisConnection();
-        if (!is_object($redisConnection)) {
-            return $out;
-        }
-        $list = $redisConnection->keys($prefix . "*");
-        foreach ($list as $key1)
-            $out[$key1] = $redisConnection->get($key1);
-    } else {
-        if (!ensureCachedValuesTable()) {
-            return $out;
-        }
-        $out = SQLSelect("select * from cached_values where KEYWORD like '" . DBSafe($prefix) . "%'");
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::cache()->all($prefix);
     }
-    return $out;
-}
 
 
 /**
@@ -134,53 +52,17 @@ function getAllCache($prefix = '')
  * @param mixed $value Value
  * @return void
  */
-function saveToCache($key, $value)
-{
-    $key = strtolower((string)$key);
-    
-    if (defined('USE_REDIS')) {
-        $redisConnection = mjdGetRedisConnection();
-        if (!is_object($redisConnection)) {
-            return;
-        }
-        $redisConnection->set($key, (string)$value);
-        return;
+function saveToCache($key, $value, $only_if_missing = false)
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::cache()->set($key, $value, $only_if_missing);
     }
 
-    if (defined('CACHE_VALUE_MAX_SIZE')) {
-        $cache_value_max_size = CACHE_VALUE_MAX_SIZE;
-    } else {
-        $cache_value_max_size = 255;
+function deleteFromCache($key)
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::cache()->delete($key);
     }
-
-    if (is_array($value) || strlen((string)$value) > $cache_value_max_size) {
-        deleteFromCache($key);
-        return;
-    }
-
-    if (!ensureCachedValuesTable()) {
-        return;
-    }
-
-    $rec = array('KEYWORD' => $key, 'DATAVALUE' => $value);
-    $sqlQuery = "REPLACE INTO cached_values (KEYWORD, DATAVALUE) " .
-        " VALUES ('" . DbSafe1($rec['KEYWORD']) . "', " .
-        "'" . DbSafe1($rec['DATAVALUE']) . "')";
-    SQLExec($sqlQuery);
-}
-
-function deleteFromCache($key) {
-    $key = strtolower((string)$key);
-    if (ensureCachedValuesTable()) {
-        SQLExec("DELETE FROM cached_values WHERE KEYWORD='" . DBSafe($key) . "'");
-    }
-    if (defined('USE_REDIS')) {
-        $redisConnection = mjdGetRedisConnection();
-        if (is_object($redisConnection) && $redisConnection->exists($key)) {
-            $redisConnection->del($key);
-        }
-    }
-}
 
 /**
  * Summary of checkFromCache
@@ -188,65 +70,16 @@ function deleteFromCache($key) {
  * @return mixed
  */
 function checkFromCache($key)
-{
-    $key = strtolower((string)$key);
-    if (defined('USE_REDIS')) {
-        $redisConnection = mjdGetRedisConnection();
-        if (!is_object($redisConnection)) {
-            return false;
-        }
-        if ($redisConnection->exists($key)) {
-            $value = $redisConnection->get($key);
-            return $value;
-        } else {
-            return false;
-        }
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::cache()->get($key);
     }
-
-
-    if (!ensureCachedValuesTable()) {
-        return false;
-    }
-
-    $rec = SQLSelectOne("SELECT * FROM cached_values WHERE KEYWORD = '" . DBSafe($key) . "'");
-
-    if (isset($rec['KEYWORD'])) {
-        return $rec['DATAVALUE'];
-    } else {
-        return false;
-    }
-}
 
 function postToWebSocketQueue($property, $value, $post_action = 'PostProperty')
-{
-    if (defined('DISABLE_WEBSOCKETS') && DISABLE_WEBSOCKETS == 1) {
-        return false;
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::websockets()->post($property, $value, $post_action);
     }
-    //SQLExec("DELETE FROM cached_ws WHERE PROPERTY='" . DBSafe($property) . "'");
-    $rec = array();
-    $rec['PROPERTY'] = $property;
-    $rec['DATAVALUE'] = $value;
-    $rec['POST_ACTION'] = $post_action;
-    $rec['ADDED'] = date('Y-m-d H:i:s');
-
-    $fields = "";
-    $values = "";
-    $table = 'cached_ws';
-
-    foreach ($rec as $field => $value) {
-        if (is_Numeric($field)) continue;
-        $fields .= "`$field`, ";
-        $values .= "'" . DBSafe1($value) . "', ";
-    }
-
-    $fields = substr($fields, 0, strlen($fields) - 2);
-    $values = substr($values, 0, strlen($values) - 2);
-    $query = "REPLACE INTO `$table`($fields) VALUES($values)";
-
-    $res = SQLExec($query, true);
-    return $res;
-    //SQLInsert('cached_ws', $rec);
-}
 
 function getWebSocketClientPath()
 {
@@ -345,48 +178,19 @@ function postToWebSocket($property, $value, $post_action = 'PostProperty')
 
 
 function createHistoryTable($value_id)
-{
-    $value_id = (int)$value_id;
-    $table_name = 'phistory_value_' . $value_id;
-    SQLExec("CREATE TABLE IF NOT EXISTS `$table_name` (
-  `ID` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `VALUE_ID` int(10) unsigned NOT NULL DEFAULT '0',
-  `ADDED` datetime DEFAULT NULL,
-  `VALUE` varchar(255) NOT NULL,
-  `SOURCE` varchar(255) NOT NULL DEFAULT '',
-  PRIMARY KEY (`ID`),
-  KEY `VALUE_ID` (`VALUE_ID`),
-  KEY `idx_phistory_value_id` (`VALUE_ID`, `ID`)
- ) ENGINE=MyISAM  DEFAULT CHARSET=utf8");
-
-    $source_column = SQLSelectOne("SHOW COLUMNS FROM `$table_name` LIKE 'SOURCE'");
-    if (isset($source_column['Type']) && stripos($source_column['Type'], 'varchar(255)') === false) {
-        SQLExec("ALTER TABLE `$table_name` MODIFY `SOURCE` varchar(255) NOT NULL DEFAULT ''");
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::historyStorage()->table($value_id);
     }
-
-    $value_id_index = SQLSelectOne("SHOW INDEX FROM `$table_name` WHERE Key_name='idx_phistory_value_id'");
-    if (!isset($value_id_index['Key_name'])) {
-        SQLExec("ALTER TABLE `$table_name` ADD INDEX `idx_phistory_value_id` (`VALUE_ID`, `ID`)");
-    }
-
-    return $table_name;
-}
 
 function moveDataFromMainHistoryToTable($value_id)
-{
-    $table_name = 'phistory_value_' . $value_id;
-    $qry = "phistory.VALUE_ID=" . $value_id;
-    SQLExec("INSERT INTO $table_name (VALUE_ID,ADDED,VALUE,SOURCE) SELECT VALUE_ID,ADDED,VALUE,SOURCE FROM phistory WHERE $qry");
-    SQLExec("DELETE FROM phistory WHERE $qry");
-    return true;
-}
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::historyStorage()->moveFromMain($value_id);
+    }
 
 function moveDataFromTableToMainHistory($value_id)
-{
-    $table_name = 'phistory_value_' . $value_id;
-    $qry = "phistory.VALUE_ID=" . $value_id;
-    SQLExec("DELETE FROM phistory WHERE $qry");
-    SQLExec("INSERT INTO phistory (VALUE_ID,ADDED,VALUE,SOURCE) SELECT VALUE_ID,ADDED,VALUE,SOURCE FROM $table_name");
-    SQLDropTable($table_name);
-    return true;
-}
+    {
+        // TODO: legacy compatibility facade; new code uses the service in lib/core/.
+        return \MajorDoMo\Core\Core::historyStorage()->moveToMain($value_id);
+    }

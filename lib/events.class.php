@@ -43,7 +43,7 @@ function registeredEventTime($eventName)
  * @return mixed
  */
 function registeredEventDetails($eventName) {
-    $event = SQLSelectOne("SELECT DETAILS FROM events WHERE EVENT_NAME='" . $eventName . "'"); 
+    $event = SQLSelectOne("SELECT DETAILS FROM events WHERE EVENT_NAME='" . DBSafe1($eventName) . "' ORDER BY ADDED DESC,ID DESC LIMIT 1");
     if (is_array($event)) {
         return $event['DETAILS'];
     } else {

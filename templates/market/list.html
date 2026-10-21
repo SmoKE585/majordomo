@@ -65,7 +65,7 @@
                     data-installed="[#if EXISTS#]1[#else#]0[#endif#]"
                     data-current-version="[#INSTALLED_VERSION#]"
                     data-latest-version="[#LATEST_VERSION#]"
-                    data-install-url="<#ROOTHTML#>panel/market.html?mode=iframe&amp;mode2=install&amp;name=[#MODULE_NAME_ENCODED#]&amp;url=[#REPOSITORY_URL_ENCODED#]&amp;version=[#LATEST_VERSION_ENCODED#]">
+                    data-install-url="<#ROOTHTML#>panel/market.html?mode=iframe&amp;mode2=install&amp;name=[#MODULE_NAME_ENCODED#]&amp;url=[#REPOSITORY_URL_ENCODED#]&amp;version=[#LATEST_VERSION_ENCODED#]&amp;installed=[#if EXISTS#]1[#else#]0[#endif#]">
                 <i class="ti [#if EXISTS#]ti-refresh[#else#]ti-download[#endif#]" aria-hidden="true"></i>
                 <span class="md-btn__label">[#if EXISTS#]<#LANG_UPDATE#>[#else#]<#LANG_ADD#>[#endif#]</span>
             </button>
@@ -91,10 +91,15 @@
                     [#if EXISTS#]
                     <li><hr class="dropdown-divider"></li>
                     <li>
-                        <a class="dropdown-item text-danger" href="<#ROOTHTML#>panel/market.html?mode=iframe&amp;mode2=uninstall&amp;name=[#MODULE_NAME#]" data-confirm="<#LANG_ARE_YOU_SURE#>">
+                        <button type="button"
+                                class="dropdown-item text-danger"
+                                data-market-action="open-uninstall"
+                                data-module-name="[#MODULE_NAME#]"
+                                data-installed-version="[#INSTALLED_VERSION#]"
+                                data-uninstall-url="<#ROOTHTML#>panel/market.html?mode=iframe&amp;mode2=uninstall&amp;name=[#MODULE_NAME#]">
                             <i class="ti ti-trash" aria-hidden="true"></i>
                             <#LANG_DELETE#>
-                        </a>
+                        </button>
                     </li>
                     [#endif#]
                 </ul>

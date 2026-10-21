@@ -41,6 +41,12 @@ class mysql
     public $connected;
     private $lastErrorNo = 0;
     private $lastErrorDetails = '';
+    private $transactionActive = false;
+    private bool $transactionAborted = false;
+    private int $lastAffectedRows = 0;
+    private int $lastInsertId = 0;
+    public $queryCount = 0;
+    public $querySeconds = 0.0;
 
     /**
      * MySQL constructor
@@ -76,28 +82,29 @@ class mysql
      */
     public function Connect()
     {
-        // connects to database
         if ($this->dbh) return true;
-        if ($this->port) {
-            $this->dbh = mysqli_connect($this->host, $this->user, $this->password, $this->dbName, $this->port);
-        } else {
-            $this->dbh = mysqli_connect($this->host, $this->user, $this->password, $this->dbName);
-        }
-        if (!$this->dbh) {
-            $err_no = mysqli_connect_errno();
-            $err_details = mysqli_connect_error();
-            Define('NO_DATABASE_CONNECTION', 1);
-            if (isset($_SERVER['REQUEST_URI']) && $_SERVER['REQUEST_URI'] != '') {
-                $stop = 1;
-                registerError('sql', $err_no . ": " . $err_details);
-                new custom_error($err_no . ": " . $err_details, $stop);
+        try {
+            $connection = mysqli_init();
+            $connection->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+            $connection->real_connect($this->host, $this->user, $this->password, $this->dbName, $this->port ?: ((int)ini_get('mysqli.default_port') ?: 3306));
+            $connection->set_charset('utf8');
+            $connection->query("SET collation_connection='utf8_unicode_ci'");
+            if (defined('SETTINGS_SITE_TIMEZONE')) {
+                $offset = (new DateTimeZone(SETTINGS_SITE_TIMEZONE))->getOffset(new DateTime());
+                $zone = sprintf('%s%02d:%02d', $offset < 0 ? '-' : '+', intdiv(abs($offset), 3600), intdiv(abs($offset) % 3600, 60));
+                $connection->query("SET time_zone='" . $zone . "'");
             }
-            return 0;
+            $this->dbh = $connection;
+            $this->connected = true;
+            $this->latestTransaction = time();
+            return true;
+        } catch (Throwable $e) {
+            $this->dbh = null;
+            $this->connected = false;
+            $this->lastErrorNo = (int)$e->getCode();
+            $this->lastErrorDetails = $e->getMessage();
+            return false;
         }
-        $this->connected = true;
-        $this->latestTransaction = time();
-        $this->Exec("set NAMES 'utf8', CHARACTER SET 'utf8', character_set_client='utf8', character_set_results='utf8', collation_connection='utf8_unicode_ci';");
-        return true;
     }
 
     /**
@@ -109,12 +116,22 @@ class mysql
      */
     public function Exec($query, $ignore_errors = false)
     {
-        if (!$this->dbh && !$this->Connect()) return false;
-        if ((time() - $this->latestTransaction) > $this->pingTimeout) {
-            $this->Ping();
+        if ($this->transactionAborted) {
+            if (preg_match('/^\s*(?:ROLLBACK(?:\s+WORK)?\s*;?\s*$|BEGIN\b|START\s+TRANSACTION\b)/i', $query)) $this->transactionAborted = false;
+            else {
+                $this->lastErrorNo = 2013;
+                $this->lastErrorDetails = 'Transaction connection was lost; explicit rollback or restart is required';
+                if (!$ignore_errors) $this->Error($query, 0);
+                return false;
+            }
         }
+        if (!$this->dbh && !$this->Connect()) return false;
         $this->latestTransaction = time();
         $result = false;
+        $this->lastAffectedRows = 0;
+        $this->lastInsertId = 0;
+        $query_started = microtime(true);
+        $this->queryCount++;
         $this->lastErrorNo = 0;
         $this->lastErrorDetails = '';
         try {
@@ -129,18 +146,37 @@ class mysql
             $errorNo = $this->lastErrorNo ? $this->lastErrorNo : (int)@mysqli_errno($this->dbh);
             $errorDetails = $this->lastErrorDetails ? $this->lastErrorDetails : (string)@mysqli_error($this->dbh);
             if ($this->isConnectionLostError($errorNo, $errorDetails)) {
+                $in_transaction = $this->transactionActive;
                 $this->Disconnect();
-                if ($this->Connect()) {
+                $this->transactionAborted = $in_transaction;
+                $read_only = preg_match('/^\s*(SELECT|SHOW|DESCRIBE|DESC|EXPLAIN)\b/i', $query)
+                    && !preg_match('/FOR\s+UPDATE|LOCK\s+IN\s+SHARE|\bINTO\b|GET_LOCK|RELEASE_LOCK|LAST_INSERT_ID|NEXTVAL|@/i', $query);
+                if ($this->Connect() && !$in_transaction && $read_only) {
                     try {
+                        $this->queryCount++;
                         $result = mysqli_query($this->dbh, $query);
-                        if ($result) {
-                            return $result;
-                        }
                     } catch (Throwable $e) {
                         $this->lastErrorNo = (int)$e->getCode();
                         $this->lastErrorDetails = $e->getMessage();
                     }
                 }
+                if (!$result) {
+                    $this->lastErrorNo = $errorNo;
+                    $this->lastErrorDetails = $in_transaction ? 'Connection lost during transaction; transaction was not replayed' : $errorDetails;
+                }
+            }
+        }
+        $this->querySeconds += microtime(true) - $query_started;
+        if ($result) {
+            if (preg_match('/^\s*(BEGIN|START\s+TRANSACTION)\b/i', $query)) $this->transactionActive = true;
+            if (preg_match('/^\s*(COMMIT|ROLLBACK)\b/i', $query) && !preg_match('/^\s*ROLLBACK\s+TO\b/i', $query)) $this->transactionActive = (bool)preg_match('/\bAND\s+CHAIN\b/i', $query);
+            $affected = mysqli_affected_rows($this->dbh);
+            $insertId = mysqli_insert_id($this->dbh);
+            try {
+                if (class_exists('MajorDoMo\\Core\\Core')) \MajorDoMo\Core\Core::metadata()->changedBySql($query);
+            } finally {
+                $this->lastAffectedRows = $affected;
+                $this->lastInsertId = $insertId;
             }
         }
 
@@ -194,24 +230,20 @@ class mysql
     public function AffectedRows()
     {
         if (!$this->dbh) return 0;
-        return mysqli_affected_rows($this->dbh);
+        return $this->lastAffectedRows;
     }
 
 
     public function Ping()
     {
         if (!$this->dbh && !$this->Connect()) return false;
+        return (bool)$this->Exec('SELECT 1', true);
+    }
 
-        $test_query = "SHOW TABLES FROM " . $this->dbName;
-        $result = @mysqli_query($this->dbh, $test_query);
-        $tblCnt = 0;
-        if ($result) {
-            while ($tbl = mysqli_fetch_array($result)) {
-                $tblCnt++;
-            }
-        }
-        if ($tblCnt > 0) {
-            return true;
+    private function assertIdentifier($identifier)
+    {
+        if (!is_string($identifier) || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/D', $identifier)) {
+            throw new InvalidArgumentException('Invalid database identifier');
         }
     }
 
@@ -241,10 +273,13 @@ class mysql
     public function Update($table, $data, $ndx = "ID")
     {
         if (is_array($ndx)) $ndx = 'ID';
+        $this->assertIdentifier($table);
+        $this->assertIdentifier($ndx);
         $qry = "UPDATE `$table` SET ";
         $qry_fields = array();
         foreach ($data as $field => $value) {
             if (is_Numeric($field) || $field == $ndx) continue;
+            $this->assertIdentifier($field);
             if (!is_null($value)) {
                 $qry_fields[] = "`$field`='" . $this->DBSafe1($value) . "'";
             } else {
@@ -255,7 +290,8 @@ class mysql
         if (!isset($data[$ndx])) {
             $data[$ndx] = '';
         }
-        $qry .= " WHERE $ndx = '" . $data[$ndx] . "'";
+        if (!$qry_fields) return 1;
+        $qry .= " WHERE `$ndx` = '" . $this->DBSafe1($data[$ndx]) . "'";
         if (gr('debug_qry')) {
             dprint($qry, false);
         }
@@ -278,10 +314,12 @@ class mysql
      */
     public function Insert($table, &$data)
     {
+        $this->assertIdentifier($table);
         $fields = "";
         $values = "";
         foreach ($data as $field => $value) {
             if (is_Numeric($field)) continue;
+            $this->assertIdentifier($field);
             $fields .= "`$field`, ";
             $values .= "'" . $this->DBSafe1($value) . "', ";
         }
@@ -296,7 +334,7 @@ class mysql
             return 0;
         }
 
-        return mysqli_insert_id($this->dbh);
+        return $this->lastInsertId;
     }
 
     /**
@@ -309,6 +347,8 @@ class mysql
     {
         if ($this->dbh) mysqli_close($this->dbh);
         $this->dbh = null;
+        $this->connected = false;
+        $this->transactionActive = false;
     }
 
     /**

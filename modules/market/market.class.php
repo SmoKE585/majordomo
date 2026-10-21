@@ -228,14 +228,134 @@ class market extends module
             $out['VERSION_URL'] = urlencode(gr('version'));
             $out['REPO_URL'] = urlencode(gr('repo_url'));
 
+            $out['NAME_DISPLAY'] = htmlspecialchars((string)$name, ENT_QUOTES, 'UTF-8');
+            $out['VERSION_DISPLAY'] = htmlspecialchars(trim((string)gr('version')), ENT_QUOTES, 'UTF-8');
+            $out['REPO_DISPLAY'] = htmlspecialchars(trim((string)gr('repo_url')), ENT_QUOTES, 'UTF-8');
+            $out['LINK_DISPLAY'] = htmlspecialchars(trim((string)$link), ENT_QUOTES, 'UTF-8');
+            $out['INSTALLED'] = gr('installed') ? 1 : 0;
+
             global $names;
 
             if (isset($names) && is_array($names)) {
                 $out['NAMES'] = urlencode(implode(',', $names));
+                $out['NAMES_DISPLAY'] = htmlspecialchars(implode(', ', $names), ENT_QUOTES, 'UTF-8');
+                $out['NAMES_COUNT'] = count($names);
             }
             $out['NAME'] = urlencode($name);
 
             $out['MODE2'] = $mode2;
+            if (in_array($mode2, array('install_multiple', 'update_new', 'update_all'), true)) {
+                $out['OP_KIND'] = 'bulk';
+            } elseif ($mode2 == 'uninstall') {
+                $out['OP_KIND'] = 'remove';
+            } elseif ($mode2 == 'uploaded') {
+                $out['OP_KIND'] = 'upload';
+            } elseif ($mode2 == 'install_repository') {
+                $out['OP_KIND'] = 'repository';
+            } elseif ($mode2 == 'install') {
+                $out['OP_KIND'] = !empty($out['INSTALLED']) ? 'update' : 'install';
+            } else {
+                $out['OP_KIND'] = 'install';
+            }
+
+            $opMeta = array(
+                'remove' => array('eyebrow' => 'Удаление модуля', 'title' => 'Удаление модуля', 'icon' => 'trash', 'action' => 'Удаление'),
+                'update' => array('eyebrow' => 'Обновление модуля', 'title' => 'Обновление модуля', 'icon' => 'refresh', 'action' => 'Обновление'),
+                'install' => array('eyebrow' => 'Установка модуля', 'title' => 'Установка модуля', 'icon' => 'cloud-download', 'action' => 'Установка'),
+                'upload' => array('eyebrow' => 'Установка модуля', 'title' => 'Установка из архива', 'icon' => 'upload', 'action' => 'Установка из архива'),
+                'repository' => array('eyebrow' => 'Установка модуля', 'title' => 'Установка из репозитория', 'icon' => 'brand-git', 'action' => 'Установка из репозитория'),
+                'bulk' => array('eyebrow' => 'Обновление модулей', 'title' => 'Пакетное обновление', 'icon' => 'refresh', 'action' => 'Пакетное обновление'),
+            );
+            $meta = isset($opMeta[$out['OP_KIND']]) ? $opMeta[$out['OP_KIND']] : $opMeta['install'];
+            $out['OP_EYEBROW'] = $meta['eyebrow'];
+            $out['OP_TITLE'] = $meta['title'];
+            $out['OP_ICON'] = 'ti-' . $meta['icon'];
+            $out['OP_ACTION'] = $meta['action'];
+
+            $moduleLabel = '';
+            if (!empty($out['NAMES_DISPLAY'])) {
+                $moduleLabel = $out['NAMES_DISPLAY'];
+            } elseif (!empty($out['NAME_DISPLAY'])) {
+                $moduleLabel = $out['NAME_DISPLAY'];
+            } else {
+                $moduleLabel = 'Все установленные модули';
+            }
+            $out['OP_MODULE_LABEL'] = $moduleLabel;
+            if ($out['OP_KIND'] === 'repository' && empty($out['NAME_DISPLAY'])) {
+                $out['OP_MODULE_LABEL'] = 'Пакет из репозитория';
+            }
+
+            if ($out['OP_KIND'] === 'remove') {
+                $out['OP_SUBTITLE'] = $moduleLabel . ' будет удалён из системы.';
+                $out['OP_NOTE'] = 'Файлы и записи модуля будут удалены. Действие необратимо.';
+            } elseif ($out['OP_KIND'] === 'bulk') {
+                if (!empty($out['NAMES_COUNT'])) {
+                    $moduleCount = (int)$out['NAMES_COUNT'];
+                    $mod10 = $moduleCount % 10;
+                    $mod100 = $moduleCount % 100;
+                    $moduleWord = 'модулей';
+                    if ($mod10 === 1 && $mod100 !== 11) {
+                        $moduleWord = 'модуль';
+                    } elseif ($mod10 >= 2 && $mod10 <= 4 && ($mod100 < 12 || $mod100 > 14)) {
+                        $moduleWord = 'модуля';
+                    }
+                    $out['OP_SUBTITLE'] = $moduleCount === 1
+                        ? '1 модуль будет обновлён.'
+                        : $moduleCount . ' ' . $moduleWord . ' будут обновлены.';
+                } else {
+                    $out['OP_SUBTITLE'] = 'Все доступные обновления будут установлены.';
+                }
+                $out['OP_NOTE'] = 'Операция выполняется на сервере. Не закрывайте окно до завершения.';
+            } elseif ($out['OP_KIND'] === 'repository') {
+                $out['OP_SUBTITLE'] = !empty($out['REPO_DISPLAY']) ? $out['REPO_DISPLAY'] : 'Git-репозиторий';
+                $out['OP_NOTE'] = 'Операция выполняется на сервере. Не закрывайте окно до завершения.';
+            } else {
+                $out['OP_SUBTITLE'] = 'Модуль ' . $moduleLabel;
+                if (!empty($out['VERSION_DISPLAY'])) {
+                    $out['OP_SUBTITLE'] .= ' · версия ' . $out['VERSION_DISPLAY'];
+                }
+                $out['OP_NOTE'] = 'Операция выполняется на сервере. Не закрывайте окно до завершения.';
+            }
+
+            $steps = array();
+            if ($out['OP_KIND'] === 'remove') {
+                $steps = array(
+                    array('ID' => 'prepare', 'LABEL' => 'Подготовка', 'ORDER' => 1),
+                    array('ID' => 'apply', 'LABEL' => 'Удаление', 'ORDER' => 2),
+                    array('ID' => 'finish', 'LABEL' => 'Завершение', 'ORDER' => 3),
+                );
+            } elseif ($out['OP_KIND'] === 'upload') {
+                $steps = array(
+                    array('ID' => 'prepare', 'LABEL' => 'Подготовка', 'ORDER' => 1),
+                    array('ID' => 'apply', 'LABEL' => 'Установка', 'ORDER' => 2),
+                    array('ID' => 'cleanup', 'LABEL' => 'Очистка', 'ORDER' => 3),
+                    array('ID' => 'finish', 'LABEL' => 'Завершение', 'ORDER' => 4),
+                );
+            } elseif ($out['OP_KIND'] === 'repository') {
+                $steps = array(
+                    array('ID' => 'prepare', 'LABEL' => 'Подготовка', 'ORDER' => 1),
+                    array('ID' => 'download', 'LABEL' => 'Загрузка', 'ORDER' => 2),
+                    array('ID' => 'cleanup', 'LABEL' => 'Очистка', 'ORDER' => 3),
+                    array('ID' => 'finish', 'LABEL' => 'Завершение', 'ORDER' => 4),
+                );
+            } elseif ($out['OP_KIND'] === 'bulk') {
+                $steps = array(
+                    array('ID' => 'prepare', 'LABEL' => 'Подготовка', 'ORDER' => 1),
+                    array('ID' => 'apply', 'LABEL' => 'Обновление', 'ORDER' => 2),
+                    array('ID' => 'cleanup', 'LABEL' => 'Очистка', 'ORDER' => 3),
+                    array('ID' => 'finish', 'LABEL' => 'Завершение', 'ORDER' => 4),
+                );
+            } else {
+                $steps = array(
+                    array('ID' => 'prepare', 'LABEL' => 'Подготовка', 'ORDER' => 1),
+                    array('ID' => 'download', 'LABEL' => 'Загрузка', 'ORDER' => 2),
+                    array('ID' => 'apply', 'LABEL' => $out['OP_KIND'] === 'update' ? 'Обновление' : 'Установка', 'ORDER' => 3),
+                    array('ID' => 'cleanup', 'LABEL' => 'Очистка', 'ORDER' => 4),
+                    array('ID' => 'finish', 'LABEL' => 'Завершение', 'ORDER' => 5),
+                );
+            }
+            $out['OP_STEPS'] = $steps;
+            $out['OP_STEP_COUNT'] = count($steps);
 
             if ($mode2 == 'dontupdate' && $name) {
                 if (!$value) {

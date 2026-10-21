@@ -172,25 +172,13 @@ if ($home_network != ''
     && !isset($argv[0])
     && isset($_SERVER['REQUEST_URI'])
 ) {
-    $home_network_pattern = preg_quote($home_network);
-    $home_network_pattern = str_replace('\*', '\d+?', $home_network_pattern);
-    $home_network_pattern = str_replace(',', ' ', $home_network_pattern);
-    $home_network_pattern = str_replace('  ', ' ', $home_network_pattern);
-    $home_network_pattern = str_replace(' ', '|', $home_network_pattern);
-
-    $remoteAddr = isset($_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : '';
-
-    if (defined('LOCAL_IP') && LOCAL_IP != '') {
-        $local_ip = LOCAL_IP;
-    } else {
-        $local_ip = '127.0.0.1';
-    }
-
-    if (getenv('HTTP_X_FORWARDED_FOR') != '') {
-        $remoteAddr = getenv('HTTP_X_FORWARDED_FOR');
-    }
-
-    if (!preg_match('/' . $home_network_pattern . '/is', $remoteAddr) && $remoteAddr != $local_ip && trim($remoteAddr) != '::1') {
+    $remoteAddr = \MajorDoMo\Core\Core::network()->clientIp(
+        $_SERVER['REMOTE_ADDR'] ?? '',
+        $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
+        defined('TRUSTED_PROXIES') ? TRUSTED_PROXIES : ''
+    );
+    $local_ip = defined('LOCAL_IP') && LOCAL_IP !== '' ? LOCAL_IP : '127.0.0.1';
+    if (!\MajorDoMo\Core\Core::network()->inNetworks($remoteAddr, $home_network) && $remoteAddr !== $local_ip && $remoteAddr !== '::1') {
         $php_auth_user = isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : '';
         $php_auth_pw = isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : '';
         if ($ext_access_username && $ext_access_password && $php_auth_user == $ext_access_username && $php_auth_pw == $ext_access_password) {

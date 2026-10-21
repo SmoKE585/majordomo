@@ -1,5 +1,5 @@
-<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-10-21-4" type="text/css">
-<script src="<#ROOTHTML#>templates/market/market.js?v=2026-10-21-7"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>templates/market/market.css?v=2026-10-21-5" type="text/css">
+<script src="<#ROOTHTML#>templates/market/market.js?v=2026-10-21-8"></script>
 <div
     data-market-config
     data-roothtml="<#ROOTHTML#>"
@@ -227,25 +227,36 @@
     <div class="modal fade md-modal market-update-modal" id="marketUpdateModal" tabindex="-1" aria-labelledby="marketUpdateModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <div>
-                        <div class="md-card__eyebrow" id="marketUpdateModalEyebrow">Обновление модуля</div>
-                        <h2 class="modal-title" id="marketUpdateModalTitle">Модуль</h2>
-                        <div class="market-update-modal__versions" id="marketUpdateModalVersions"></div>
+                <div class="modal-header market-update-modal__header">
+                    <div class="market-update-modal__heading">
+                        <span class="market-update-modal__icon" id="marketUpdateModalIcon"><i class="ti ti-cloud-download" aria-hidden="true"></i></span>
+                        <div class="market-update-modal__heading-text">
+                            <div class="md-card__eyebrow" id="marketUpdateModalEyebrow">Установка модуля</div>
+                            <h2 class="modal-title" id="marketUpdateModalTitle">Модуль</h2>
+                            <div class="market-update-modal__versions" id="marketUpdateModalVersions"></div>
+                        </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="market-update-modal__repo" id="marketUpdateModalRepo"></div>
+                <div class="modal-body market-update-modal__body">
+                    <div class="market-update-modal__repo" id="marketUpdateModalRepo" hidden></div>
+                    <div class="market-update-modal__note" id="marketUpdateModalNote" hidden></div>
+                    <div class="market-update-modal__section-head">
+                        <span id="marketUpdateModalSectionTitle">Что изменится</span>
+                        <span class="md-badge md-badge--outline" id="marketUpdateModalCount" hidden></span>
+                    </div>
                     <div class="market-update-modal__loading" id="marketUpdateModalLoading">
                         <span class="md-spinner" aria-hidden="true"></span>
                         <span>Загружаем информацию из Git…</span>
                     </div>
                     <div class="market-update-list" id="marketUpdateModalList"></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="md-btn md-btn--secondary" data-bs-dismiss="modal">Отмена</button>
-                    <a class="md-btn md-btn--primary" id="marketUpdateModalConfirm" href="#">Обновить</a>
+                <div class="modal-footer market-update-modal__footer">
+                    <div class="market-update-modal__footer-hint" id="marketUpdateModalHint">После установки страница обновится автоматически.</div>
+                    <div class="market-update-modal__footer-actions">
+                        <button type="button" class="md-btn md-btn--secondary" data-bs-dismiss="modal">Отмена</button>
+                        <a class="md-btn md-btn--primary" id="marketUpdateModalConfirm" href="#">Обновить</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -254,44 +265,138 @@
 [#endif MODE#]
 
 [#if MODE="iframe"#]
-<div class="md-market-update-modal" data-market-update-modal>
-    <div class="md-market-update-modal__backdrop"></div>
-    <div class="md-market-update-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="marketInstallTitle">
-        <div class="md-market-update-modal__header">
-            <div>
-                <div class="md-market-update-modal__eyebrow">Market</div>
-                <h2 class="md-market-update-modal__title" id="marketInstallTitle">Установка и обновление модуля</h2>
+<div class="md-market-update-modal is-open"
+     data-market-update-modal
+     data-market-operation="[#OP_KIND#]"
+     data-market-return-url="[#ROOTHTML#]admin.php?md=panel&amp;action=market">
+    <div class="md-market-update-modal__backdrop" data-market-close></div>
+    <div class="md-market-update-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="marketInstallTitle" aria-describedby="marketInstallDescription" tabindex="-1">
+        <header class="md-market-update-modal__header">
+            <div class="md-market-update-modal__heading">
+                <span class="md-market-update-modal__heading-icon">
+                    <i class="ti [#OP_ICON#]" aria-hidden="true"></i>
+                </span>
+                <div class="md-market-update-modal__heading-text">
+                    <div class="md-card__eyebrow">[#OP_EYEBROW#]</div>
+                    <h2 class="md-market-update-modal__title" id="marketInstallTitle">[#OP_TITLE#]</h2>
+                    <p class="md-market-update-modal__subtitle" id="marketInstallDescription">[#OP_SUBTITLE#]</p>
+                </div>
             </div>
-        </div>
-        <div class="md-market-update-modal__body">
-            <div class="md-market-update-status">
-                <div class="md-market-update-status__main">
-                    <span id="marketInstallStatusIcon" class="md-market-update-status__icon"></span>
-                    <div>
-                        <div class="md-market-update-status__label">Статус</div>
-                        <div id="marketInstallStatusText" class="md-market-update-status__text">Подготовка операции...</div>
+            <button type="button" class="md-icon-btn md-market-update-modal__close" data-market-close aria-label="Закрыть" hidden>
+                <i class="ti ti-x" aria-hidden="true"></i>
+            </button>
+        </header>
+
+        <div class="md-market-update-modal__body" data-market-body aria-busy="true">
+            <section class="md-market-update-modal__progress-card" aria-live="polite">
+                <div class="md-market-update-modal__progress-head">
+                    <span class="md-market-update-modal__status-icon is-active" id="marketInstallStatusIcon" aria-hidden="true"><i class="ti ti-loader-2"></i></span>
+                    <div class="md-market-update-modal__status-copy">
+                        <div class="md-market-update-modal__status-label" data-market-status-label>Текущий этап</div>
+                        <div class="md-market-update-modal__status-text" id="marketInstallStatusText">Подготовка операции…</div>
                     </div>
+                    <div class="md-market-update-modal__percent" aria-hidden="true"><span id="marketInstallPercent">0</span><small>%</small></div>
                 </div>
-                <div class="md-market-progress" id="marketInstallProgress">
-                    <span class="md-market-progress__bar" style="width: 15%"></span>
+                <div class="md-progress md-market-update-modal__progress" id="marketInstallProgress" role="progressbar" aria-label="Прогресс операции" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <span class="md-progress__bar md-market-update-modal__progress-bar" style="width: 0%"></span>
                 </div>
+                <div class="md-market-update-modal__meta">
+                    <span class="md-market-update-modal__meta-item"><i class="ti ti-list-check" aria-hidden="true"></i> Шаг <b id="marketInstallStepCounter">1</b> из <b>[#OP_STEP_COUNT#]</b></span>
+                    <span class="md-market-update-modal__meta-sep" aria-hidden="true"></span>
+                    <span class="md-market-update-modal__meta-item"><i class="ti ti-clock" aria-hidden="true"></i> <span id="marketInstallElapsed">00:00</span></span>
+                    <span class="md-market-update-modal__meta-sep" aria-hidden="true"></span>
+                    <span class="md-market-update-modal__meta-item md-market-update-modal__meta-item--hint"><i class="ti ti-lock" aria-hidden="true"></i> <span data-market-meta-hint>Не закрывайте окно</span></span>
+                </div>
+            </section>
+
+            <ol class="md-market-update-modal__stepper" data-market-stepper aria-label="Этапы операции">
+                [#begin OP_STEPS#]
+                <li class="md-market-update-modal__step [#if ORDER="1"#]is-active[#endif#]" data-market-step="[#ID#]" data-order="[#ORDER#]" [#if ORDER="1"#]aria-current="step"[#endif#]>
+                    <span class="md-market-update-modal__step-dot"><span class="md-market-update-modal__step-num">[#ORDER#]</span><i class="ti ti-check md-market-update-modal__step-check" aria-hidden="true"></i></span>
+                    <span class="md-market-update-modal__step-label">[#LABEL#]</span>
+                </li>
+                [#end OP_STEPS#]
+            </ol>
+
+            <div class="md-market-update-modal__workspace">
+                <section class="md-market-update-modal__log-card">
+                    <header class="md-market-update-modal__card-head">
+                        <div>
+                            <div class="md-card__eyebrow">Ход выполнения</div>
+                            <h3 class="md-market-update-modal__card-title">Журнал</h3>
+                        </div>
+                        <div class="md-market-update-modal__card-actions">
+                            <span class="md-badge md-badge--info" data-market-live-badge><span class="md-badge__dot"></span><span data-market-live-label>В процессе</span></span>
+                            <button type="button" class="md-icon-btn" data-market-copy-log aria-label="Скопировать журнал" title="Скопировать журнал" disabled>
+                                <i class="ti ti-copy" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </header>
+                    <div class="md-market-update-modal__log" data-market-log role="log" aria-live="polite" aria-relevant="additions">
+                        <div class="md-market-update-modal__log-empty" data-market-log-empty>
+                            <i class="ti ti-terminal-2" aria-hidden="true"></i>
+                            <span>Ожидаю первые сообщения…</span>
+                        </div>
+                    </div>
+                    <button type="button" class="md-btn md-btn--secondary md-btn--sm md-market-update-modal__log-jump" data-market-log-jump hidden>
+                        <i class="ti ti-arrow-down" aria-hidden="true"></i><span>К последним</span>
+                    </button>
+                </section>
+
+                <aside class="md-market-update-modal__details-card">
+                    <header class="md-market-update-modal__card-head">
+                        <div>
+                            <div class="md-card__eyebrow">Параметры</div>
+                            <h3 class="md-market-update-modal__card-title">Операция</h3>
+                        </div>
+                    </header>
+                    <dl class="md-market-update-modal__details">
+                        <div class="md-market-update-modal__details-row">
+                            <dt>Модуль</dt>
+                            <dd>[#OP_MODULE_LABEL#]</dd>
+                        </div>
+                        <div class="md-market-update-modal__details-row">
+                            <dt>Действие</dt>
+                            <dd>[#OP_ACTION#]</dd>
+                        </div>
+                        [#if VERSION_DISPLAY!=""#]
+                        <div class="md-market-update-modal__details-row">
+                            <dt>Версия</dt>
+                            <dd>[#VERSION_DISPLAY#]</dd>
+                        </div>
+                        [#endif#]
+                        [#if REPO_DISPLAY!=""#]
+                        <div class="md-market-update-modal__details-row">
+                            <dt>Репозиторий</dt>
+                            <dd><a href="[#REPO_DISPLAY#]" target="_blank" rel="noopener">[#REPO_DISPLAY#]</a></dd>
+                        </div>
+                        [#endif#]
+                    </dl>
+                    [#if OP_KIND="remove"#]
+                    <div class="md-market-update-modal__details-note is-danger" data-market-details-note>[#OP_NOTE#]</div>
+                    [#endif#]
+                </aside>
             </div>
 
-            <div class="md-market-steps">
-                <span id="marketInstallStep_prepare" class="md-market-step is-active" data-order="1">1. Подготовка</span>
-                <span id="marketInstallStep_download" class="md-market-step" data-order="2">2. Загрузка</span>
-                <span id="marketInstallStep_apply" class="md-market-step" data-order="3">3. Установка</span>
-                <span id="marketInstallStep_cleanup" class="md-market-step" data-order="4">4. Очистка</span>
-                <span id="marketInstallStep_finish" class="md-market-step" data-order="5">5. Завершение</span>
-            </div>
-
-            <div class="md-market-inline-alert">
+            [#if OP_KIND!="remove"#]
+            <div class="md-market-update-modal__note" data-market-note>
                 <i class="ti ti-info-circle" aria-hidden="true"></i>
-                <span>Не закрывайте окно до завершения установки.</span>
+                <span>Операция выполняется на сервере. Не закрывайте окно до завершения.</span>
             </div>
+            [#endif#]
 
-            <iframe id="processUpdateFrame" class="md-market-console" src="<#ROOTHTML#>modules/market/update_iframe.php?mode2=<#MODE2#>&name=[#NAME#]&names=[#NAMES#]&link=[#LINK_URL#]&url=[#INSTALL_URL#]&repo_url=[#REPO_URL#]&version=[#VERSION_URL#]" frameborder="0"></iframe>
+            <iframe id="marketUpdateFrame" class="md-market-worker" title="Процесс установки" aria-hidden="true" tabindex="-1" src="<#ROOTHTML#>modules/market/update_iframe.php?mode2=<#MODE2#>&name=[#NAME#]&names=[#NAMES#]&link=[#LINK_URL#]&url=[#INSTALL_URL#]&repo_url=[#REPO_URL#]&version=[#VERSION_URL#]&installed=<#INSTALLED#>&v=2026-10-21-5" frameborder="0"></iframe>
         </div>
+
+        <footer class="md-market-update-modal__footer" data-market-finish-actions hidden>
+            <div class="md-market-update-modal__footer-text" data-market-finish-text>Проверьте журнал, затем вернитесь в маркет.</div>
+            <div class="md-market-update-modal__footer-actions">
+                <a class="md-btn md-btn--primary" href="[#ROOTHTML#]admin.php?md=panel&amp;action=market" data-market-return>
+                    <i class="ti ti-arrow-left" aria-hidden="true"></i>
+                    <span class="md-btn__label">Вернуться в маркет</span>
+                </a>
+            </div>
+        </footer>
     </div>
 </div>
 [#endif MODE#]

@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/core.class.php';
+
 function mdjEnsureSession()
 {
     global $session;
@@ -496,67 +498,8 @@ function timeOutExists($title)
  */
 function runScheduledJobs()
 {
-    $now = date('Y-m-d H:i:s');
-    $stale_started = date('Y-m-d H:i:s', time() - 300);
-
-    SQLExec("DELETE FROM jobs WHERE EXPIRE <= '" . $now . "'");
-
-    if (defined('JOBS_QUEUE_LIMIT') && (int)JOBS_QUEUE_LIMIT > 0) {
-        $limit = (int)JOBS_QUEUE_LIMIT;
-    } else {
-        $limit = 100;
-    }
-
-    $sqlQuery = "SELECT *
-                  FROM jobs
-                 WHERE PROCESSED = 0
-                   AND EXPIRED   = 0
-                   AND (STARTED IS NULL OR STARTED <= '" . $stale_started . "')
-                   AND RUNTIME   <= '" . $now . "'
-                 ORDER BY RUNTIME, ID
-                 LIMIT " . $limit;
-
-    $jobs = SQLSelect($sqlQuery);
-    $total = count($jobs);
-
-    for ($i = 0; $i < $total; $i++) {
-        $started = date('Y-m-d H:i:s');
-        SQLExec("UPDATE jobs
-                    SET STARTED='" . $started . "'
-                  WHERE ID=" . (int)$jobs[$i]['ID'] . "
-                    AND PROCESSED=0
-                    AND EXPIRED=0
-                    AND RUNTIME <= '" . $now . "'
-                    AND (STARTED IS NULL OR STARTED <= '" . $stale_started . "')");
-        if (SQLAffectedRows() < 1) {
-            continue;
-        }
-
-        $claimed_job = SQLSelectOne("SELECT * FROM jobs WHERE ID=" . (int)$jobs[$i]['ID'] . " AND STARTED='" . DBSafe($started) . "' AND PROCESSED=0 AND EXPIRED=0");
-        if (!isset($claimed_job['ID'])) {
-            continue;
-        }
-        $jobs[$i] = $claimed_job;
-
-        if ($jobs[$i]['COMMANDS'] != '') {
-            $url = BASE_URL . '/objects/?system_call=1&job=' . $jobs[$i]['ID'] . '&title=' . urlencode($jobs[$i]['TITLE']);
-            $job_timeout = defined('JOBS_EXECUTION_TIMEOUT') ? (int)JOBS_EXECUTION_TIMEOUT : 300;
-            if ($job_timeout < 1) {
-                $job_timeout = 300;
-            }
-            $result = trim(getURL($url, 0, '', '', false, array(
-                CURLOPT_CONNECTTIMEOUT => 10,
-                CURLOPT_TIMEOUT => $job_timeout
-            )));
-            $result = preg_replace('/<!--.+-->/is', '', $result);
-            if (!preg_match('/OK$/', $result)) {
-                DebMes(sprintf('Error executing job %s (%s): %s', $jobs[$i]['TITLE'], $jobs[$i]['ID'], $result) . ' (' . __FILE__ . ')', 'errors');
-                SQLExec("UPDATE jobs SET STARTED=NULL, RUNTIME='" . date('Y-m-d H:i:s', time() + 5) . "' WHERE ID=" . (int)$jobs[$i]['ID'] . " AND STARTED='" . DBSafe($started) . "' AND PROCESSED=0");
-                continue;
-            }
-        }
-        SQLExec("UPDATE jobs SET PROCESSED=1 WHERE ID=" . (int)$jobs[$i]['ID'] . " AND STARTED='" . DBSafe($started) . "' AND PROCESSED=0");
-    }
+    // TODO: compatibility facade; new code uses Core::scheduler()->run().
+    return \MajorDoMo\Core\Core::scheduler()->run();
 }
 
 /**

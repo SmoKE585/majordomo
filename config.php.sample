@@ -190,3 +190,9 @@ define('WEBSOCKETS_TLS_PEM_PASSPHRASE', 'shinywss');     // Пароль PEM-к�
 define('WEBSOCKETS_TLS_ALLOW_SELF_SIGNED', 1);           // Разрешать self-signed сертификаты: 0/1 | Allow self-signed certificates: 0/1
 define('WEBSOCKETS_TLS_VERIFY_PEER', 0);                 // Проверять TLS peer: 0/1 | Verify TLS peer: 0/1
 define('WEBSOCKETS_TLS_VERIFY_PEER_NAME', 0);            // Проверять имя TLS peer: 0/1 | Verify TLS peer name: 0/1
+
+// Only these proxies may supply X-Forwarded-For (IP/CIDR list; empty means none).
+//Define('TRUSTED_PROXIES', '127.0.0.1/32,::1/128');
+
+// Optional override for the per-installation Redis key namespace; keep stable across updates.
+//Define('REDIS_PREFIX', 'majordomo:home:');

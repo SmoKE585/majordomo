@@ -1,0 +1,9 @@
+version: 1
+name: core-api-test
+slug: core-api-test
+protocol: http
+port: 4500
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

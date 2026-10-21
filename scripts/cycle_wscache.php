@@ -23,7 +23,7 @@ if (defined('DISABLE_WEBSOCKETS') && DISABLE_WEBSOCKETS == 1) {
     exit;
 }
 
-SQLTruncateTable('cached_ws');
+// Pending updates survive cycle restarts.
 echo date("H:i:s") . " running " . basename(__FILE__) . PHP_EOL;
 
 $checked_time = 0;
@@ -74,7 +74,7 @@ while (1) {
     if ($checked_time != time()) {
         $checked_time = time();
         try {
-            $queue = SQLSelect("SELECT * FROM cached_ws ORDER BY ADDED LIMIT " . $websocket_queue_limit);
+            $queue = \MajorDoMo\Core\Core::websockets()->claim($websocket_queue_limit);
             if (is_array($queue) && !empty($queue)) {
                 $total = count($queue);
                 $sent_ok = 1;
@@ -93,25 +93,26 @@ while (1) {
                     }
 
                     if ($postAction == 'PostProperty') {
-                        $decoded = json_decode($dataValue, true);
+                        $decoded = is_string($dataValue) ? json_decode($dataValue, true) : null;
                         if (is_array($decoded)) {
                             $dataValue = $decoded;
                         }
                         $properties[] = $property;
                         $values[] = $dataValue;
-                        $post_property_keys[] = $property;
+                        $post_property_keys[] = $row;
                         continue;
                     }
 
-                    $decoded = json_decode($dataValue, true);
+                    $decoded = is_string($dataValue) ? json_decode($dataValue, true) : null;
                     if (is_array($decoded)) {
                         $dataValue = $decoded;
                     }
 
                     $sent = postToWebSocket($property, $dataValue, $postAction);
                     if ($sent) {
-                        SQLExec("DELETE FROM cached_ws WHERE PROPERTY='" . DBSafe($property) . "'");
+                        \MajorDoMo\Core\Core::websockets()->acknowledge($row);
                     } else {
+                        \MajorDoMo\Core\Core::websockets()->release($row);
                         $sent_ok = 0;
                     }
                 }
@@ -119,14 +120,13 @@ while (1) {
                 if (count($properties) > 0) {
                     $sent = postToWebSocket($properties, $values, 'PostProperty');
                     if ($sent) {
-                        foreach ($post_property_keys as $property) {
-                            SQLExec("DELETE FROM cached_ws WHERE PROPERTY='" . DBSafe($property) . "'");
-                        }
+                        foreach ($post_property_keys as $row) \MajorDoMo\Core\Core::websockets()->acknowledge($row);
                     } else {
                         $sent_ok = 0;
                     }
                 }
 
+                if (!$sent_ok) foreach ($post_property_keys as $row) \MajorDoMo\Core\Core::websockets()->release($row);
                 if ($sent_ok) {
                     $latest_sent = time();
                     // saveToCache("MJD:$cycleVarName", $latest_sent);

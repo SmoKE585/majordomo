@@ -25,55 +25,76 @@ function saverestoreFrameFlush()
     @ob_flush();
 }
 
+/**
+ * Converts a legacy echonow()/HTML message into a plain text log line.
+ */
+function saverestoreFramePlainText($message)
+{
+    $text = html_entity_decode(strip_tags((string)$message), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace('/\s+/u', ' ', $text);
+    return trim((string)$text);
+}
+
+/**
+ * Queues one structured event for the parent modal. The worker page itself
+ * stays invisible; the parent renders the progress UI with the md-* kit.
+ */
+function saverestoreFrameEmit($type, $payload = array())
+{
+    $payload['type'] = $type;
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    if ($json === false) {
+        $json = '{"type":"' . $type . '"}';
+    }
+    echo '<script>if(window.mdjSaverestoreScan){window.mdjSaverestoreScan();}if(window.mdjSaverestoreEmit){window.mdjSaverestoreEmit(' . $json . ');}</script>';
+    saverestoreFrameFlush();
+}
+
 function saverestoreFrameParentStatus($message, $state = 'active', $percent = 35, $step = 'prepare')
 {
     echo '<script>';
-    echo 'if (window.parent && window.parent.systemUpdateSetStatus) { window.parent.systemUpdateSetStatus(' . json_encode($message) . ', ' . json_encode($state) . ', ' . (int)$percent . ', ' . json_encode($step) . '); }';
+    $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE;
+    echo 'if (window.parent && window.parent.systemUpdateSetStatus) { window.parent.systemUpdateSetStatus(' . json_encode($message, $jsonFlags) . ', ' . json_encode($state, $jsonFlags) . ', ' . (int)$percent . ', ' . json_encode($step, $jsonFlags) . '); }';
     echo '</script>';
     saverestoreFrameFlush();
 }
 
 function saverestoreFrameLog($message, $kind = 'info')
 {
-    echo '<div class="sr-frame-log sr-frame-log--' . htmlspecialchars($kind) . '">' . $message . '</div>';
-    saverestoreFrameFlush();
+    $text = saverestoreFramePlainText($message);
+    if ($text === '') {
+        return;
+    }
+    saverestoreFrameEmit('log', array('text' => $text, 'kind' => $kind));
 }
 
 function saverestoreFrameSection($title, $description = '')
 {
-    echo '<section class="sr-frame-section">';
-    echo '<div class="sr-frame-section__title">' . htmlspecialchars($title) . '</div>';
-    if ($description !== '') {
-        echo '<div class="sr-frame-section__description">' . htmlspecialchars($description) . '</div>';
-    }
-    echo '</section>';
-    saverestoreFrameFlush();
+    saverestoreFrameEmit('section', array(
+        'title' => saverestoreFramePlainText($title),
+        'description' => saverestoreFramePlainText($description),
+    ));
 }
 
 function saverestoreFrameChecklist($title, $checks)
 {
     $has_errors = false;
-    echo '<section class="sr-frame-checks">';
-    echo '<div class="sr-frame-section__title">' . htmlspecialchars($title) . '</div>';
-    echo '<div class="sr-frame-checklist">';
+    $items = array();
     foreach ($checks as $check) {
         $ok = !empty($check['ok']);
         if (!$ok) {
             $has_errors = true;
         }
-        echo '<div class="sr-frame-check sr-frame-check--' . ($ok ? 'ok' : 'fail') . '">';
-        echo '<span class="sr-frame-check__icon">' . ($ok ? '&#10003;' : '&#10005;') . '</span>';
-        echo '<div class="sr-frame-check__content">';
-        echo '<div class="sr-frame-check__title">' . htmlspecialchars($check['title']) . '</div>';
-        if (!empty($check['details'])) {
-            echo '<div class="sr-frame-check__details">' . htmlspecialchars($check['details']) . '</div>';
-        }
-        echo '</div>';
-        echo '</div>';
+        $items[] = array(
+            'title' => saverestoreFramePlainText(isset($check['title']) ? $check['title'] : ''),
+            'details' => saverestoreFramePlainText(isset($check['details']) ? $check['details'] : ''),
+            'ok' => $ok,
+        );
     }
-    echo '</div>';
-    echo '</section>';
-    saverestoreFrameFlush();
+    saverestoreFrameEmit('checks', array(
+        'title' => saverestoreFramePlainText($title),
+        'checks' => $items,
+    ));
     return !$has_errors;
 }
 
@@ -87,19 +108,42 @@ function saverestoreFrameRedirect($message, $is_error = false, $url = '')
         mdjFlashError($message);
     } else {
         mdjFlashSuccess($message);
+        saverestoreFrameLog(LANG_UPDATEBACKUP_GET_REDIRECT, 'muted');
     }
-    saverestoreFrameLog(LANG_UPDATEBACKUP_GET_REDIRECT, 'muted');
-    echo '<script>'
-        . 'if (window.top && window.top.systemUpdateFinish) { window.top.systemUpdateFinish(' . json_encode($message) . ', ' . json_encode($state) . '); }'
-        . 'if (window.top) { window.top.onbeforeunload = null; window.top.location.href = ' . json_encode($url) . '; }'
-        . '</script>';
+
+    $finish_json = json_encode(array(
+        'source' => 'mdj-saverestore',
+        'type' => 'finish',
+        'text' => saverestoreFramePlainText($message),
+        'state' => $state,
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    if ($finish_json === false) {
+        $finish_json = '{"source":"mdj-saverestore","type":"finish","state":"' . $state . '"}';
+    }
+
+    echo '<script>';
+    echo 'if (window.mdjSaverestoreFlush) { window.mdjSaverestoreFlush(); }';
+    echo 'var mdjFinishHandled = false;';
+    echo 'if (window.parent && window.parent !== window && typeof window.parent.systemUpdateEvent === "function") { window.parent.postMessage(' . $finish_json . ', window.location.origin || "*"); mdjFinishHandled = true; }';
+    echo 'else if (window.top && typeof window.top.systemUpdateFinish === "function") { window.top.systemUpdateFinish(' . json_encode(saverestoreFramePlainText($message)) . ', ' . json_encode($state) . '); mdjFinishHandled = true; }';
+    echo 'if (window.top) { window.top.onbeforeunload = null; }';
+    if ($is_error) {
+        // Keep the modal open so the user can read the journal. Only fall back
+        // to navigation when the parent has no bridge at all.
+        echo 'if (!mdjFinishHandled && window.top) { window.top.location.href = ' . json_encode($url) . '; }';
+    } else {
+        // A short pause lets the parent render the 100% state before reload.
+        echo 'setTimeout(function () { if (window.top) { window.top.location.href = ' . json_encode($url) . '; } }, 900);';
+    }
+    echo '</script>';
     saverestoreFrameFlush();
 }
 
 function saverestoreFrameFinishError($message)
 {
-    saverestoreFrameParentStatus($message, 'error', 100, 'finish');
-    saverestoreFrameLog(htmlspecialchars($message), 'error');
+    // The parent keeps the last active step/percent and marks that step as
+    // failed, so an early error does not look like a completed operation.
+    saverestoreFrameLog($message, 'error');
     saverestoreFrameRedirect($message, true);
 }
 
@@ -177,202 +221,195 @@ function saverestoreFrameBuildBackupChecks($sv)
 
 header('X-Accel-Buffering: no');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Content-Type: text/html; charset=utf-8');
 ?>
-<html>
+<!doctype html>
+<html lang="ru">
 <head>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="/3rdparty/bootstrap/css/bootstrap.min.css" type="text/css">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Выполнение операции</title>
     <style>
-        :root {
-            --sr-bg: #0f1724;
-            --sr-surface: rgba(20, 32, 51, .94);
-            --sr-surface-soft: rgba(71, 146, 209, .08);
-            --sr-border: rgba(148, 163, 184, .18);
-            --sr-text: #e6edf5;
-            --sr-muted: #9db0c3;
-            --sr-accent: #6ab1df;
-            --sr-success: #4ec08a;
-            --sr-danger: #ef6b73;
-            --sr-warning: #f3c96b;
-        }
-
-        * { box-sizing: border-box; }
-        html, body { margin: 0; min-height: 100%; }
-        body {
-            padding: 14px;
-            background:
-                radial-gradient(circle at top right, rgba(71, 146, 209, .22), transparent 18rem),
-                linear-gradient(180deg, #101826 0%, var(--sr-bg) 100%);
-            color: var(--sr-text);
-            font: 14px/1.6 Consolas, "SFMono-Regular", Menlo, Monaco, monospace;
-        }
-
-        .sr-frame-shell {
-            display: grid;
-            gap: 10px;
-        }
-
-        .sr-frame-hero,
-        .sr-frame-section,
-        .sr-frame-checks,
-        .sr-frame-log {
-            border: 1px solid var(--sr-border);
-            border-radius: 16px;
-            background: var(--sr-surface);
-            box-shadow: 0 18px 40px rgba(0, 0, 0, .18);
-        }
-
-        .sr-frame-hero,
-        .sr-frame-section,
-        .sr-frame-checks {
-            padding: 10px 12px;
-        }
-
-        .sr-frame-hero__eyebrow {
-            color: var(--sr-accent);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-        }
-
-        .sr-frame-hero__title {
-            margin: 2px 0 0;
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        .sr-frame-hero__text,
-        .sr-frame-section__description,
-        .sr-frame-check__details {
-            margin-top: 4px;
-            color: var(--sr-muted);
-        }
-
-        .sr-frame-section__title,
-        .sr-frame-check__title {
-            font-weight: 700;
-        }
-
-        .sr-frame-checklist {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 6px;
-            margin-top: 8px;
-        }
-
-        .sr-frame-check {
-            display: flex;
-            gap: 8px;
-            padding: 7px 8px;
-            border-radius: 10px;
-            background: var(--sr-surface-soft);
-            border: 1px solid transparent;
-        }
-
-        .sr-frame-check--ok {
-            border-color: rgba(78, 192, 138, .22);
-        }
-
-        .sr-frame-check--fail {
-            border-color: rgba(239, 107, 115, .24);
-            background: rgba(239, 107, 115, .08);
-        }
-
-        .sr-frame-check__icon {
-            width: 16px;
-            flex: 0 0 16px;
-            font-weight: 700;
-            text-align: center;
-            line-height: 1.4;
-        }
-
-        .sr-frame-check--ok .sr-frame-check__icon { color: var(--sr-success); }
-        .sr-frame-check--fail .sr-frame-check__icon { color: var(--sr-danger); }
-
-        .sr-frame-check__title {
-            font-size: 12px;
-            line-height: 1.35;
-        }
-
-        .sr-frame-check__details {
-            font-size: 10px;
-            line-height: 1.25;
-            word-break: break-word;
-        }
-
-        .sr-frame-log {
-            padding: 10px 14px;
-            color: var(--sr-text);
-        }
-
-        .sr-frame-log--success { border-color: rgba(78, 192, 138, .24); background: rgba(78, 192, 138, .10); }
-        .sr-frame-log--error { border-color: rgba(239, 107, 115, .28); background: rgba(239, 107, 115, .12); }
-        .sr-frame-log--warning { border-color: rgba(243, 201, 107, .24); background: rgba(243, 201, 107, .10); }
-        .sr-frame-log--muted { color: var(--sr-muted); }
-
-        .sr-frame-stream {
-            display: flex;
-            flex-direction: column-reverse;
-            gap: 8px;
-            padding-bottom: 12px;
-        }
-
-        .sr-frame-stream > div,
-        .sr-frame-stream > font,
-        .sr-frame-stream > section {
-            display: block;
-            margin: 0;
-        }
-
-        .sr-frame-stream > div,
-        .sr-frame-stream > font > div {
-            padding: 10px 14px;
-            border-radius: 12px;
-            border: 1px solid rgba(148, 163, 184, .12);
-            background: rgba(255, 255, 255, .04);
-        }
-
-        .sr-frame-stream > font[color="green"] > div {
-            color: #b9f5d0;
-            border-color: rgba(78, 192, 138, .22);
-            background: rgba(78, 192, 138, .10);
-        }
-
-        .sr-frame-stream > font[color="red"] > div {
-            color: #ffc4c8;
-            border-color: rgba(239, 107, 115, .28);
-            background: rgba(239, 107, 115, .12);
-        }
-
-        @media (max-width: 640px) {
-            .sr-frame-checklist {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media (max-width: 480px) {
-            .sr-frame-checklist {
-                grid-template-columns: 1fr;
-            }
-        }
+        html, body { margin: 0; padding: 0; background: transparent; }
+        #srFrameStream { display: none; }
     </style>
 </head>
 <body>
-<div class="sr-frame-shell">
+<div id="srFrameStream" aria-hidden="true">
+<script>
+    (function () {
+        var stream = document.getElementById('srFrameStream');
+        if (!stream) {
+            return;
+        }
+
+        var queue = [];
+        var timer = null;
+
+        function send() {
+            timer = null;
+            if (!queue.length) {
+                return;
+            }
+            var items = queue.slice();
+            queue = [];
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        source: 'mdj-saverestore',
+                        type: 'events',
+                        items: items
+                    }, window.location.origin || '*');
+                }
+            } catch (error) {
+                // The parent may be navigating away; nothing to recover here.
+            }
+        }
+
+        function schedule() {
+            if (!timer) {
+                timer = window.setTimeout(send, 30);
+            }
+        }
+
+        function push(event) {
+            if (!event || typeof event !== 'object') {
+                return;
+            }
+            queue.push(event);
+            if (queue.length >= 80) {
+                send();
+            } else {
+                schedule();
+            }
+        }
+
+        window.mdjSaverestoreEmit = push;
+        window.mdjSaverestoreScan = scanStream;
+        window.mdjSaverestoreFlush = function () {
+            if (scanTimer) {
+                window.clearTimeout(scanTimer);
+                scanTimer = null;
+            }
+            scanStream();
+            if (timer) {
+                window.clearTimeout(timer);
+                timer = null;
+            }
+            send();
+        };
+
+        function normalizeText(value) {
+            return String(value || '')
+                .replace(/\u00a0/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function addLog(value, kind) {
+            var text = normalizeText(value);
+            if (!text) {
+                return;
+            }
+            if (text.length > 4000) {
+                text = text.slice(0, 3997) + '…';
+            }
+            push({ type: 'log', text: text, kind: kind || 'info' });
+        }
+
+        function kindFor(element) {
+            var node = element;
+            while (node && node !== stream) {
+                if (node.nodeType === 1) {
+                    var className = node.className || '';
+                    if (typeof className === 'string') {
+                        if (/(^|\s)(text-danger|text-red|sr-error)(\s|$)/.test(className)) {
+                            return 'error';
+                        }
+                        if (/(^|\s)(text-success|text-green|sr-success)(\s|$)/.test(className)) {
+                            return 'success';
+                        }
+                        if (/(^|\s)(text-warning|text-amber|sr-warning)(\s|$)/.test(className)) {
+                            return 'warning';
+                        }
+                        if (/(^|\s)(text-muted|sr-muted)(\s|$)/.test(className)) {
+                            return 'muted';
+                        }
+                    }
+                    var color = node.getAttribute ? (node.getAttribute('color') || '') : '';
+                    if (color === 'red') {
+                        return 'error';
+                    }
+                    if (color === 'green') {
+                        return 'success';
+                    }
+                    if (color === 'orange' || color === 'amber') {
+                        return 'warning';
+                    }
+                }
+                node = node.parentNode;
+            }
+            return 'info';
+        }
+
+        var processed = new WeakSet();
+        var scanTimer = null;
+
+        /**
+         * Legacy echonow() output is parsed by the browser piece by piece.
+         * Scanning the stable top-level children once avoids logging the same
+         * line for the element, its wrapper and its text node.
+         */
+        function scanStream() {
+            scanTimer = null;
+            Array.prototype.forEach.call(stream.childNodes, function (node) {
+                if (processed.has(node)) {
+                    return;
+                }
+                if (node.nodeType === 3) {
+                    var text = normalizeText(node.nodeValue);
+                    if (text) {
+                        addLog(text, 'info');
+                    }
+                    processed.add(node);
+                    return;
+                }
+                if (node.nodeType !== 1) {
+                    return;
+                }
+                if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE' || node.tagName === 'LINK') {
+                    processed.add(node);
+                    return;
+                }
+                var elementText = normalizeText(node.textContent);
+                if (!elementText) {
+                    return;
+                }
+                addLog(elementText, kindFor(node));
+                processed.add(node);
+            });
+        }
+
+        function scheduleScan() {
+            if (!scanTimer) {
+                scanTimer = window.setTimeout(scanStream, 40);
+            }
+        }
+
+        var observer = new MutationObserver(scheduleScan);
+        observer.observe(stream, { childList: true, subtree: true });
+    })();
+</script>
 <?php
 saverestoreFrameParentStatus('Операция запущена. Проверяю параметры...', 'active', 20, 'prepare');
-
 $out = array();
-echo '<div id="srFrameStream" class="sr-frame-stream">';
-saverestoreFrameFlush();
 
 if ($backup) {
     $backup_checks = saverestoreFrameBuildBackupChecks($sv);
     $backup_ok = saverestoreFrameChecklist('Проверка перед созданием резервной копии', $backup_checks);
     if (!$backup_ok) {
         saverestoreFrameFinishError('Не пройдена предварительная проверка перед созданием резервной копии');
-        echo '</div></div></body></html>';
+        echo '</body></html>';
         return;
     }
     logAction('system_backup');
@@ -396,7 +433,7 @@ if ($backup) {
     $update_ok = saverestoreFrameChecklist('Проверка перед обновлением системы', $update_checks);
     if (!$update_ok) {
         saverestoreFrameFinishError('Не пройдена предварительная проверка перед обновлением');
-        echo '</div></div></body></html>';
+        echo '</body></html>';
         return;
     }
     saverestoreFrameSection('Подготовка', 'Базовые проверки пройдены. Дальше будет обязательный бэкап базы, скачивание архива и точная проверка прав на файлы после распаковки.');
@@ -438,7 +475,6 @@ if ($backup) {
     }
 }
 ?>
-</div>
 </div>
 </body>
 </html>

@@ -302,6 +302,7 @@ body.md-admin-shell .md-saverestore-check .md-check__desc {
   margin-top: 2px;
 }
 
+
 /* Update progress modal */
 
 body.md-saverestore-modal-open {
@@ -325,212 +326,794 @@ body.md-admin-shell .md-saverestore-update-modal.is-open {
 body.md-admin-shell .md-saverestore-update-modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(8, 15, 25, .62);
-  backdrop-filter: blur(2px);
+  background: var(--md-ui-overlay);
+  backdrop-filter: blur(3px);
 }
 
 body.md-admin-shell .md-saverestore-update-modal__dialog {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(720px, 100%);
+  width: min(960px, 100%);
   max-height: calc(100vh - 40px);
-  overflow: auto;
+  overflow: hidden;
   background: var(--md-ui-surface);
   border: 1px solid var(--md-ui-border);
   border-radius: var(--md-ui-radius-lg);
   box-shadow: var(--md-ui-shadow-dialog);
+  outline: none;
 }
 
 body.md-admin-shell .md-saverestore-update-modal__header {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px 12px;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  background: var(--md-ui-surface);
   border-bottom: 1px solid var(--md-ui-border);
 }
 
+body.md-admin-shell .md-saverestore-update-modal__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__heading-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: var(--md-ui-radius-sm);
+  font-size: 1.125rem;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__heading-text {
+  min-width: 0;
+}
+
 body.md-admin-shell .md-saverestore-update-modal__title {
+  margin-top: 1px;
   color: var(--md-ui-text);
   font-size: var(--md-ui-fs-lg);
   font-weight: 600;
   letter-spacing: -.02em;
+  line-height: 1.3;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__subtitle {
+  margin-top: 3px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__subtitle b {
+  color: var(--md-ui-text-soft);
+  font-weight: 600;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__close {
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
 
 body.md-admin-shell .md-saverestore-update-modal__body {
   display: grid;
+  flex: 1 1 auto;
   gap: 14px;
-  padding: 16px 18px 18px;
+  min-height: 0;
+  padding: 16px 20px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--md-ui-border-strong) transparent;
 }
 
-body.md-admin-shell .md-saverestore-update-status {
+body.md-admin-shell .md-saverestore-update-modal__progress-card {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 14px 16px;
   background: var(--md-ui-surface-2);
   border: 1px solid var(--md-ui-border);
-  border-radius: var(--md-ui-radius-sm);
+  border-radius: var(--md-ui-radius);
 }
 
-body.md-admin-shell .md-saverestore-update-status__main {
+body.md-admin-shell .md-saverestore-update-modal__progress-head {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
 }
 
-body.md-admin-shell .md-saverestore-update-status__icon {
-  position: relative;
+body.md-admin-shell .md-saverestore-update-modal__status-icon {
+  display: inline-flex;
   flex: 0 0 auto;
-  width: 12px;
-  height: 12px;
-  margin-top: 3px;
-  background: var(--md-ui-primary);
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
   border-radius: 50%;
-  box-shadow: 0 0 0 4px var(--md-ui-primary-soft);
+  font-size: 1.125rem;
 }
 
-body.md-admin-shell .md-saverestore-update-status__icon.is-success {
-  background: var(--md-ui-success);
-  box-shadow: 0 0 0 4px var(--md-ui-success-soft);
+body.md-admin-shell .md-saverestore-update-modal__status-icon.is-active > i {
+  animation: md-saverestore-spin 1.1s linear infinite;
 }
 
-body.md-admin-shell .md-saverestore-update-status__icon.is-error {
-  background: var(--md-ui-danger);
-  box-shadow: 0 0 0 4px var(--md-ui-danger-soft);
+body.md-admin-shell .md-saverestore-update-modal__status-icon.is-success {
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft);
 }
 
-body.md-admin-shell .md-saverestore-update-status__label {
+body.md-admin-shell .md-saverestore-update-modal__status-icon.is-error {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__status-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__status-label {
   color: var(--md-ui-muted);
   font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
 }
 
-body.md-admin-shell .md-saverestore-update-status__text {
+body.md-admin-shell .md-saverestore-update-modal__status-text {
+  margin-top: 1px;
   color: var(--md-ui-text);
-  font-size: var(--md-ui-fs-sm);
-  line-height: 1.5;
+  font-size: var(--md-ui-fs-base);
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
-body.md-admin-shell .md-saverestore-progress {
-  height: 6px;
-  overflow: hidden;
-  background: var(--md-ui-surface-3);
-  border-radius: var(--md-ui-radius-pill);
-}
-
-body.md-admin-shell .md-saverestore-progress__bar {
-  display: block;
-  height: 100%;
-  background: var(--md-ui-primary);
-  border-radius: inherit;
-  transition: width .3s ease, background-color .3s ease;
-}
-
-body.md-admin-shell .md-saverestore-progress__bar.is-success {
-  background: var(--md-ui-success);
-}
-
-body.md-admin-shell .md-saverestore-progress__bar.is-error {
-  background: var(--md-ui-danger);
-}
-
-body.md-admin-shell .md-saverestore-steps {
+body.md-admin-shell .md-saverestore-update-modal__percent {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-body.md-admin-shell .md-saverestore-step {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 3px 9px;
-  color: var(--md-ui-muted);
-  background: var(--md-ui-surface-2);
-  border: 1px solid var(--md-ui-border);
-  border-radius: var(--md-ui-radius-pill);
-  font-size: var(--md-ui-fs-caption);
-}
-
-body.md-admin-shell .md-saverestore-step.is-active {
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 1px;
   color: var(--md-ui-primary);
-  background: var(--md-ui-primary-soft);
-  border-color: transparent;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__percent span {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -.03em;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__percent small {
+  font-size: var(--md-ui-fs-xs);
   font-weight: 600;
 }
 
-body.md-admin-shell .md-saverestore-step.is-done {
-  color: var(--md-ui-success);
-  background: var(--md-ui-success-soft);
-  border-color: transparent;
+body.md-admin-shell .md-saverestore-update-modal__progress {
+  height: 8px;
 }
 
-body.md-admin-shell .md-saverestore-console {
+body.md-admin-shell .md-saverestore-update-modal__progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width .35s ease, background-color .25s ease;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.4;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__meta-item > i {
+  color: var(--md-ui-muted-2);
+  font-size: .875rem;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__meta-item b {
+  color: var(--md-ui-text-soft);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__meta-item--hint {
+  margin-left: auto;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__meta-sep {
+  width: 1px;
+  height: 10px;
+  background: var(--md-ui-border-strong);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__stepper {
+  display: flex;
+  gap: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 2px 0 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__stepper::-webkit-scrollbar {
+  display: none;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 4px;
+  text-align: center;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step:not(:first-child)::before {
+  position: absolute;
+  top: 13px;
+  left: -50%;
+  z-index: 0;
   width: 100%;
-  height: 380px;
+  height: 2px;
+  content: "";
+  background: var(--md-ui-border);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-done::before {
+  background: var(--md-ui-success);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-active::before {
+  background: var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step-dot {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface);
+  border: 2px solid var(--md-ui-border-strong);
+  border-radius: 50%;
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color var(--md-ui-transition), border-color var(--md-ui-transition), color var(--md-ui-transition), box-shadow var(--md-ui-transition);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step-check {
+  display: none;
+  font-size: .8125rem;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-active .md-saverestore-update-modal__step-dot {
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-color: var(--md-ui-primary);
+  box-shadow: 0 0 0 4px var(--md-ui-primary-soft);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-done .md-saverestore-update-modal__step-dot {
+  color: var(--md-ui-primary-contrast);
+  background: var(--md-ui-success);
+  border-color: var(--md-ui-success);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-done .md-saverestore-update-modal__step-num {
+  display: none;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-done .md-saverestore-update-modal__step-check {
+  display: block;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-error .md-saverestore-update-modal__step-dot {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+  border-color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step-label {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-active .md-saverestore-update-modal__step-label {
+  color: var(--md-ui-primary);
+  font-weight: 600;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__step.is-done .md-saverestore-update-modal__step-label {
+  color: var(--md-ui-text-soft);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-card,
+body.md-admin-shell .md-saverestore-update-modal__checks-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 460px;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__checks-card.is-fail {
+  border-color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__card-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  background: var(--md-ui-surface-2);
+  border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__card-title {
+  margin-top: 1px;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__card-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 6px 14px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--md-ui-border-strong) transparent;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  text-align: center;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-empty > i {
+  color: var(--md-ui-muted-2);
+  font-size: 1.25rem;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-entry {
+  display: grid;
+  grid-template-columns: 54px 16px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--md-ui-border);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-entry:last-child {
+  border-bottom: 0;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-time {
+  padding-top: 1px;
+  color: var(--md-ui-muted-2);
+  font-family: var(--md-ui-font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-icon {
+  padding-top: 1px;
+  color: var(--md-ui-info);
+  font-size: .8125rem;
+  line-height: 1.4;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-text {
+  min-width: 0;
+  color: var(--md-ui-text-soft);
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-entry.is-success .md-saverestore-update-modal__log-icon {
+  color: var(--md-ui-success);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-entry.is-warning .md-saverestore-update-modal__log-icon {
+  color: var(--md-ui-warning);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-entry.is-error {
+  margin: 1px -6px;
+  padding: 6px;
+  background: var(--md-ui-danger-soft);
+  border-bottom-color: transparent;
+  border-radius: var(--md-ui-radius-xs);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-entry.is-error .md-saverestore-update-modal__log-icon,
+body.md-admin-shell .md-saverestore-update-modal__log-entry.is-error .md-saverestore-update-modal__log-text {
+  color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-entry.is-muted .md-saverestore-update-modal__log-icon,
+body.md-admin-shell .md-saverestore-update-modal__log-entry.is-muted .md-saverestore-update-modal__log-text {
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-section {
+  margin: 10px 0 4px;
+  padding: 9px 11px;
   background: var(--md-ui-surface-2);
   border: 1px solid var(--md-ui-border);
-  border-radius: var(--md-ui-radius-sm);
+  border-left: 3px solid var(--md-ui-primary);
+  border-radius: var(--md-ui-radius-xs);
 }
 
-@media (max-width: 991.98px) {
-  body.md-admin-shell .md-saverestore-grid {
+body.md-admin-shell .md-saverestore-update-modal__log-section:first-child {
+  margin-top: 4px;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-section-title {
+  color: var(--md-ui-primary);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-section-text {
+  margin-top: 2px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__log-jump {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  box-shadow: var(--md-ui-shadow-pop);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__checks {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 4px 14px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--md-ui-border-strong) transparent;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__checks-empty {
+  padding: 16px 0;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__check {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--md-ui-border);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__check:last-child {
+  border-bottom: 0;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__check-icon {
+  padding-top: 1px;
+  font-size: .875rem;
+  line-height: 1.4;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__check.is-ok .md-saverestore-update-modal__check-icon {
+  color: var(--md-ui-success);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__check.is-fail .md-saverestore-update-modal__check-icon {
+  color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__check-title {
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-caption);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__check-details {
+  margin-top: 1px;
+  color: var(--md-ui-muted);
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__checks-note {
+  margin: 0 12px 12px;
+  padding: 8px 10px;
+  border-radius: var(--md-ui-radius-xs);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__checks-note.is-success {
+  color: var(--md-ui-success);
+  background: var(--md-ui-success-soft);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__checks-note.is-danger {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 2px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__note > i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--md-ui-primary);
+  font-size: .9375rem;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--md-ui-surface-2);
+  border-top: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-saverestore-update-modal__footer[hidden] {
+  display: none;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__footer-text {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.5;
+}
+
+body.md-admin-shell .md-saverestore-update-modal__footer-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-saverestore-worker {
+  position: fixed;
+  top: 0;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+}
+
+@keyframes md-saverestore-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Short desktop windows: keep the whole modal in view, scroll inside cards. */
+@media (min-width: 800px) and (max-height: 880px) {
+  body.md-admin-shell .md-saverestore-update-modal__log-card,
+  body.md-admin-shell .md-saverestore-update-modal__checks-card {
+    height: 380px;
+  }
+}
+
+@media (min-width: 800px) and (max-height: 820px) {
+  body.md-admin-shell .md-saverestore-update-modal__log-card,
+  body.md-admin-shell .md-saverestore-update-modal__checks-card {
+    height: 320px;
+  }
+}
+
+@media (min-width: 800px) and (max-height: 700px) {
+  body.md-admin-shell .md-saverestore-update-modal__log-card,
+  body.md-admin-shell .md-saverestore-update-modal__checks-card {
+    height: 280px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.md-admin-shell .md-saverestore-update-modal__status-icon.is-active > i {
+    animation: none;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__step-dot,
+  body.md-admin-shell .md-saverestore-update-modal__progress-bar {
+    transition: none;
+  }
+}
+
+@media (max-width: 799.98px) {
+  body.md-admin-shell .md-saverestore-update-modal__workspace {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__log-card,
+  body.md-admin-shell .md-saverestore-update-modal__checks-card {
+    height: auto;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__log {
+    height: 280px;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__checks {
+    max-height: 240px;
   }
 }
 
 @media (max-width: 767.98px) {
-  body.md-admin-shell .md-saverestore-kpi__value {
-    font-size: var(--md-ui-fs-base);
-  }
-
-  body.md-admin-shell .md-saverestore-form-grid,
-  body.md-admin-shell .md-saverestore-auto-grid,
-  body.md-admin-shell .md-saverestore-check-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  body.md-admin-shell .md-saverestore-scenarios {
-    flex-wrap: wrap;
-    overflow: visible;
-  }
-
-  body.md-admin-shell .md-saverestore-backup-item {
-    flex-wrap: wrap;
-  }
-
-  body.md-admin-shell .md-saverestore-backup-item__actions {
-    width: 100%;
-    padding-left: 48px;
-  }
-
-  body.md-admin-shell .md-saverestore-form-actions {
-    justify-content: stretch;
-  }
-
-  body.md-admin-shell .md-saverestore-form-actions .md-btn {
-    justify-content: center;
-    width: 100%;
-  }
-
   body.md-admin-shell .md-saverestore-update-modal {
-    padding: 10px;
+    padding: 8px;
   }
 
   body.md-admin-shell .md-saverestore-update-modal__dialog {
-    max-height: calc(100vh - 20px);
+    max-height: calc(100vh - 16px);
   }
 
-  body.md-admin-shell .md-saverestore-console {
+  body.md-admin-shell .md-saverestore-update-modal__header {
+    padding: 14px 14px 12px;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__body {
+    padding: 12px 14px 14px;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__title {
+    font-size: var(--md-ui-fs-base);
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__heading-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__percent span {
+    font-size: 1.25rem;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__meta-item--hint {
+    margin-left: 0;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__step {
+    flex: 0 0 84px;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__log {
     height: 260px;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__footer-actions .md-btn {
+    justify-content: center;
+    width: 100%;
   }
 }
 
 @media (max-width: 575.98px) {
-  body.md-admin-shell .md-saverestore-backup-item__actions {
-    padding-left: 0;
+  body.md-admin-shell .md-saverestore-update-modal__meta-sep {
+    display: none;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__meta {
+    gap: 4px 10px;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__progress-head {
+    align-items: flex-start;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__status-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__log-entry {
+    grid-template-columns: 46px 15px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__card-head {
     flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-saverestore-update-modal__checks {
+    max-height: 200px;
   }
 }
