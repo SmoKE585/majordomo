@@ -60,7 +60,7 @@ class custom_error
         }
 
         $e = new \Exception;
-        if (defined("DEBUG_MODE")) {
+        if (defined('DEBUG_MODE') && DEBUG_MODE) {
             if (isset($_SERVER['REQUEST_URI'])) {
                 $content = <<<FF
          <html>

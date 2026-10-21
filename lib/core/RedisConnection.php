@@ -13,7 +13,9 @@ final class RedisConnection
 
     public function key(string $suffix): string
     {
-        $prefix = defined('REDIS_PREFIX') ? (string)REDIS_PREFIX : 'mjd:' . substr(hash('sha256', (string)DB_NAME), 0, 12) . ':';
+        $prefix = Config::has('REDIS_PREFIX')
+            ? Config::string('REDIS_PREFIX')
+            : 'mjd:' . substr(hash('sha256', Config::string('DB_NAME')), 0, 12) . ':';
         return $prefix . $suffix;
     }
 
@@ -32,7 +34,8 @@ final class RedisConnection
 
     public function get()
     {
-        if (!defined('USE_REDIS') || !USE_REDIS) {
+        $redisHost = Config::get('USE_REDIS', false);
+        if (!$redisHost) {
             return null;
         }
 
@@ -43,45 +46,30 @@ final class RedisConnection
             return $redisConnection;
         }
 
-        $host = (string)USE_REDIS;
+        $host = (string)$redisHost;
         if ($host === '') {
             $host = '127.0.0.1';
         }
 
-        $port = 6379;
-        if (defined('REDIS_PORT')) {
-            $port = (int)REDIS_PORT;
-        } elseif (defined('SETTINGS_SYSTEM_REDIS_PORT')) {
-            $port = (int)SETTINGS_SYSTEM_REDIS_PORT;
-        }
+        $port = Config::has('REDIS_PORT')
+            ? Config::int('REDIS_PORT')
+            : (defined('SETTINGS_SYSTEM_REDIS_PORT') ? (int)SETTINGS_SYSTEM_REDIS_PORT : 6379);
 
-        $db = 0;
-        if (defined('REDIS_DB')) {
-            $db = (int)REDIS_DB;
-        } elseif (defined('SETTINGS_SYSTEM_REDIS_DB')) {
-            $db = (int)SETTINGS_SYSTEM_REDIS_DB;
-        }
+        $db = Config::has('REDIS_DB')
+            ? Config::int('REDIS_DB')
+            : (defined('SETTINGS_SYSTEM_REDIS_DB') ? (int)SETTINGS_SYSTEM_REDIS_DB : 0);
 
-        $username = '';
-        if (defined('REDIS_USERNAME')) {
-            $username = (string)REDIS_USERNAME;
-        } elseif (defined('SETTINGS_SYSTEM_REDIS_USERNAME')) {
-            $username = (string)SETTINGS_SYSTEM_REDIS_USERNAME;
-        }
+        $username = Config::has('REDIS_USERNAME')
+            ? Config::string('REDIS_USERNAME')
+            : (defined('SETTINGS_SYSTEM_REDIS_USERNAME') ? (string)SETTINGS_SYSTEM_REDIS_USERNAME : '');
 
-        $password = '';
-        if (defined('REDIS_PASSWORD')) {
-            $password = (string)REDIS_PASSWORD;
-        } elseif (defined('SETTINGS_SYSTEM_REDIS_PASSWORD')) {
-            $password = (string)SETTINGS_SYSTEM_REDIS_PASSWORD;
-        }
+        $password = Config::has('REDIS_PASSWORD')
+            ? Config::string('REDIS_PASSWORD')
+            : (defined('SETTINGS_SYSTEM_REDIS_PASSWORD') ? (string)SETTINGS_SYSTEM_REDIS_PASSWORD : '');
 
-        $timeout = 2.5;
-        if (defined('REDIS_TIMEOUT')) {
-            $timeout = (float)REDIS_TIMEOUT;
-        } elseif (defined('SETTINGS_SYSTEM_REDIS_TIMEOUT')) {
-            $timeout = (float)SETTINGS_SYSTEM_REDIS_TIMEOUT;
-        }
+        $timeout = Config::has('REDIS_TIMEOUT')
+            ? Config::float('REDIS_TIMEOUT')
+            : (defined('SETTINGS_SYSTEM_REDIS_TIMEOUT') ? (float)SETTINGS_SYSTEM_REDIS_TIMEOUT : 2.5);
 
         try {
             $redis = new Redis();

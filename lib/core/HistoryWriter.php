@@ -18,7 +18,7 @@ final class HistoryWriter
             $tables = array();
             foreach ($queue as $row) {
                 $id = (int)$row['VALUE_ID'];
-                if (!isset($tables[$id])) $tables[$id] = defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1 ? $this->historyStorage->table($id) : 'phistory';
+                if (!isset($tables[$id])) $tables[$id] = Config::bool('SEPARATE_HISTORY_STORAGE') ? $this->historyStorage->table($id) : 'phistory';
             }
             for ($attempt = 1; ; $attempt++) {
                 // Rebuild the batch from fresh history tails after a rolled-back attempt.
@@ -32,7 +32,7 @@ final class HistoryWriter
                         $tail = &$tails[$id];
                         $value = mb_strcut((string)$row['VALUE'], 0, 255, 'UTF-8');
                         $source = (string)$row['SOURCE'];
-                        $same = $row['VALUE'] == $row['OLD_VALUE'] && !(defined('HISTORY_NO_OPTIMIZE') && HISTORY_NO_OPTIMIZE == 1);
+                        $same = $row['VALUE'] == $row['OLD_VALUE'] && !Config::bool('HISTORY_NO_OPTIMIZE');
                         $compress = $same && count($tail) >= 2 && $tail[0]['VALUE'] == $tail[1]['VALUE']
                         && preg_replace('/\d+/', 'N', $source) === preg_replace('/\d+/', 'N', $tail[0]['SOURCE']);
                         if ($compress) {

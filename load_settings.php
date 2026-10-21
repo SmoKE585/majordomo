@@ -27,7 +27,7 @@ if (isset($_GET['theme']) && !defined('SETTINGS_THEME')) {
     Define('SETTINGS_THEME', $_GET['theme']);
 }
 
-if (isset($_GET['disable_websockets'])) {
+if (isset($_GET['disable_websockets']) && !defined('DISABLE_WEBSOCKETS')) {
     Define('DISABLE_WEBSOCKETS', 1);
 }
 

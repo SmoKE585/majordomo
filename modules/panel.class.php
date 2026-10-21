@@ -315,12 +315,41 @@ class panel extends module
 
         if ($this->action && isset($notifications[$this->action])) {
             $total = count($notifications[$this->action]);
+            $notificationIcons = array(
+                'info' => 'info-circle',
+                'success' => 'circle-check',
+                'warning' => 'alert-triangle',
+                'danger' => 'alert-circle',
+            );
+            $moduleTitle = isset($out['NAV_MODULE_NAME']) && $out['NAV_MODULE_NAME'] !== ''
+                ? $out['NAV_MODULE_NAME']
+                : $this->action;
             for ($i = 0; $i < $total; $i++) {
-                $notifications[$this->action][$i]['ADDED'] = date('d.m.Y H:i:s', strtotime($notifications[$this->action][$i]['ADDED']));
-                if ($notifications[$this->action][$i]['TYPE'] == 'default') {
-                    $notifications[$this->action][$i]['TYPE'] = 'info';
+                $notification = $notifications[$this->action][$i];
+                $timestamp = strtotime((string)$notification['ADDED']);
+
+                $type = strtolower((string)$notification['TYPE']);
+                if ($type === 'default') {
+                    $type = 'info';
+                }
+                if (!isset($notificationIcons[$type])) {
+                    $type = 'info';
                 }
 
+                $notifications[$this->action][$i]['TYPE'] = $type;
+                $notifications[$this->action][$i]['ICON'] = $notificationIcons[$type];
+                $notifications[$this->action][$i]['ROLE'] = in_array($type, array('warning', 'danger'), true)
+                    ? 'alert'
+                    : 'status';
+                $notifications[$this->action][$i]['MODULE_TITLE'] = htmlspecialchars(
+                    (string)$moduleTitle,
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
+                $notifications[$this->action][$i]['ADDED_ISO'] = $timestamp ? date('c', $timestamp) : '';
+                $notifications[$this->action][$i]['ADDED'] = $timestamp
+                    ? date('d.m.Y H:i:s', $timestamp)
+                    : (string)$notification['ADDED'];
             }
             $out['MODULE_NOTIFICATIONS'] = $notifications[$this->action];
         }

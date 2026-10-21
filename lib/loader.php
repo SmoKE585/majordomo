@@ -55,6 +55,12 @@ if ($lib_dir = @opendir("./lib")) {
 if (defined('DB_HOST') && DB_HOST) {
     startMeasure('db_connection');
     global $db;
-    $db = new mysql(DB_HOST, '', DB_USER, DB_PASSWORD, DB_NAME);
+    $db = new mysql(
+        DB_HOST,
+        \MajorDoMo\Core\Config::string('DB_PORT'),
+        \MajorDoMo\Core\Config::string('DB_USER'),
+        \MajorDoMo\Core\Config::string('DB_PASSWORD'),
+        \MajorDoMo\Core\Config::string('DB_NAME')
+    );
     endMeasure('db_connection');
 }

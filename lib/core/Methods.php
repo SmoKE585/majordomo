@@ -114,7 +114,7 @@ final class Methods
             }
 
             if (isset($code) && $code != '') {
-                if (defined('PYTHON_PATH') and isItPythonCode($code)) {
+                if (Config::has('PYTHON_PATH') and isItPythonCode($code)) {
                     echo($code);
                     python_run_code($code, $params, $object->object_title);
                 } else {
@@ -218,7 +218,7 @@ final class Methods
         $params['raiseEvent'] = $raiseEvent;
         $params['m_c_s'] = $call_stack;
         $params['r_s_m'] = $run_SafeMethod;
-        if (isset($_SERVER['REQUEST_URI']) && ($_SERVER['REQUEST_URI'] != '') && ((!$raiseEvent && $run_SafeMethod) || (defined('LOWER_BACKGROUND_PROCESSES') && LOWER_BACKGROUND_PROCESSES == 1))) {
+        if (isset($_SERVER['REQUEST_URI']) && ($_SERVER['REQUEST_URI'] != '') && ((!$raiseEvent && $run_SafeMethod) || Config::bool('LOWER_BACKGROUND_PROCESSES'))) {
             $result = $this->call($object, $name, $params);
         } else {
             $params['r_s_m'] = 1;

@@ -75,7 +75,7 @@ class jTemplate
         if (is_object($owner)) $this->owner = &$owner;
 
         $res = "";
-        if (defined("DEBUG_MODE")) {
+        if (defined('DEBUG_MODE') && DEBUG_MODE) {
             // creating layer for debugging purpose
             $res .= "<!-- begin of file $template -->";
         }
@@ -106,7 +106,7 @@ class jTemplate
             $res .= "<!-- end_data [" . $this->div_id . "] --></div>"; // dyn
         }
 
-        if (defined("DEBUG_MODE")) {
+        if (defined('DEBUG_MODE') && DEBUG_MODE) {
             $res .= "<!-- end of file $template -->";
         }
 
@@ -715,7 +715,7 @@ class jTemplate
                     $old_template = $this->template;
                     $this->template = $file_name;
 
-                    if ((defined("DEBUG_MODE")) && !is_integer(strpos($file_name, ".js"))) {
+                    if (defined('DEBUG_MODE') && DEBUG_MODE && !is_integer(strpos($file_name, ".js"))) {
                         $id = "block" . (int)rand(0, 100000);
                         /*
                         $replaceStr  = "<!-- begin of file $file_name -->";

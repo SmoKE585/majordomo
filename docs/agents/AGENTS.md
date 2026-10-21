@@ -22,6 +22,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 
 Уже сделано:
 
+- конфигурация переведена на `.env` + `MajorDoMo\Core\Config`; `config.php` оставлен шимом, легаси-константы сохранены для старых модулей;
 - ядро и циклы стабилизированы под PHP 8;
 - админ-оболочка переведена на Bootstrap 5;
 - главная страница переделана: KPI, активность, циклы, БД, система, быстрый доступ;
@@ -78,8 +79,9 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 4. `docs/agents/admin-module-ui-guidelines.md` — UI-правила для модулей.
 5. `docs/agents/admin-routing.md` — контракт чистых URL, legacy `pd` и 404.
 6. `docs/agents/third-party.md` — что лежит в `3rdparty/`, зачем, план перехода на Composer.
-7. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
-8. Этот файл — текущее состояние и ограничения.
+7. `docs/agents/configuration.md` — `.env`, `Config`, типы, легаси-константы и правила для модулей.
+8. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
+9. Этот файл — текущее состояние и ограничения.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 
@@ -164,13 +166,13 @@ npm run watch:charts   # графики дашборда (второй терм�
 php dev_server.php --host=127.0.0.1 --port=8080
 ```
 
-Нужен MySQL/MariaDB. `config.php` локальный и не коммитится. Для чистой локальной базы можно импортировать `docs/dev/db_terminal.sql` (в нём схема + демо-данные; часть данных историческая).
+Нужен MySQL/MariaDB. Настройки лежат в `.env` (не коммитится): `copy .env.example .env` и заполните доступы. `config.php` — только шим для старых include-точек. Для чистой локальной базы можно импортировать `docs/dev/db_terminal.sql` (в нём схема + демо-данные; часть данных историческая).
 
 Локально `dev_server.php` отдаёт `public/` как document root, а `modules/`, `cms/`, `objects/`, `scripts/`, `3rdparty/`, `docs/` — из корня проекта (как nginx). CWD перед запуском скрипта = каталог скрипта, как в php-fpm.
 
 ### Деплой
 
-Целевой веб-сервер — только nginx. Единственный источник правды — `docs/deploy/nginx.conf.sample`; `.htaccess` в проекте нет и добавлять его не нужно. Правила, которые раньше лежали в `.htaccess` (роутинг на `nf.php`/`api.php`, запрет `lib/`, `templates/*.html`, `config.php`), перенесены в этот конфиг.
+Целевой веб-сервер — только nginx. Единственный источник правды — `docs/deploy/nginx.conf.sample`; `.htaccess` в проекте нет и добавлять его не нужно. Правила, которые раньше лежали в `.htaccess` (роутинг на `nf.php`/`api.php`, запрет `lib/`, `templates/*.html`, `config.php`, `.env` и dotfiles), перенесены в этот конфиг.
 
 ### Скриншоты
 
@@ -243,6 +245,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - Глобальные функции, вызываемые из inline `onclick` старых шаблонов.
 - Совместимость с модулями, которые не переписаны: не удаляйте их CSS/JS, пока не проверены входящие ссылки.
 - PHP 8.4: новые предупреждения/ошибки недопустимы.
+- Конфигурацию: `.env`, `Config::get()`, легаси-мост. Не добавлять `define()` и не читать `getenv()` в модулях.
 - Права доступа/авторизацию (`control_access`, `panel.class.php`) без явной задачи.
 - Формат данных и API старых модулей.
 - Таблицу маршрутов и round-trip-проверку в `lib/admin_router.php`: без неё
@@ -258,6 +261,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - Демо компонента: секция в `templates/ui_kit/sections/` и запись в `docs/agents/DESIGN_SYSTEM.md`; page-only JS UI Kit — `public/assets/js/admin/ui_kit.js`.
 - Новая библиотека: `npm install`, импорт в `resources/js/app.js` (или отдельный entry, если библиотека тяжёлая), при необходимости `window.X = ...`, `npm run build`. Тяжёлые библиотеки вроде CodeMirror и ApexCharts держите в отдельных lazy-chunk, а не в основном бандле.
 - Новая иконка модуля: добавить в `$sidebarIcons` в `modules/panel.class.php` (значение — `ti-*` из Tabler).
+- Новая настройка: `ConfigSchema` + `.env.example` + `Config::get()`; не добавлять константу. Подробно — `docs/agents/configuration.md`.
 - Новая страница UI Kit не нужна: используйте `/admin.php?action=ui_kit`.
 
 ## 10. Дорожная карта
@@ -277,6 +281,8 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `node --check` для изменённых JS.
 - `npm run build` после изменений в `resources/`.
 - `php tests/routing_smoke.php` — контракт friendly URL, round-trip и nginx-конфига.
+- `php tests/config_smoke.php` — парсер `.env`, типы, кеш и легаси-мост.
+- `php tools/config-audit.php` — не выросло ли число обращений к легаси-константам.
 - Открыть `/panel/` и затронутые страницы: console/exceptions, 390 px, светлая и тёмная темы.
 - Проверить старую `pd`-ссылку: 302 на `/panel/...` и то же состояние.
 - Проверить 404: `/nonexistent.html`, `/panel/does_not_exist.html`, `/nonexistent`.

@@ -185,6 +185,12 @@ class saverestore extends module
         if (file_exists($config_file)) {
             @unlink($config_file);
         }
+        foreach (array('.env', '.env.local') as $envFile) {
+            $env_path = rtrim($path, DIRECTORY_SEPARATOR . '/') . DIRECTORY_SEPARATOR . $envFile;
+            if (file_exists($env_path)) {
+                @unlink($env_path);
+            }
+        }
     }
 
     function removeBundledConnectFiles($path)
@@ -513,6 +519,10 @@ class saverestore extends module
             return true;
         }
         if ($relative_path == 'config.php' || preg_match('#(^|/)config\.php$#i', $relative_path)) {
+            return true;
+        }
+        $basename = basename($relative_path);
+        if ($basename === '.env' || $basename === '.env.local' || preg_match('/^\.env\..+\.local$/', $basename)) {
             return true;
         }
         if (preg_match('#^cms(/|$)#i', $relative_path)) {
@@ -1936,7 +1946,7 @@ class saverestore extends module
         $total = count($directory_tree);
         for ($i = 0; $i < $total; $i++) {
             $item = $directory_tree[$i];
-            if ($item['type'] != 'file' || $item['path'] == 'trunk/config.php') {
+            if ($item['type'] != 'file' || $item['path'] == 'trunk/config.php' || $item['path'] == 'trunk/.env' || $item['path'] == 'trunk/.env.local') {
                 continue;
             }
             $filename = str_replace('trunk/', ROOT, $item['path']);
@@ -2302,11 +2312,14 @@ class saverestore extends module
                 }
             }
 
-            if (file_exists(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/config.php')) {
-                if ($iframe) {
-                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DISABLED . ' config.php</div>');
+            foreach (array('config.php', '.env', '.env.local') as $protectedFile) {
+                if (!file_exists(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/' . $protectedFile)) {
+                    continue;
                 }
-                @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/config.php');
+                if ($iframe) {
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DISABLED . ' ' . $protectedFile . '</div>');
+                }
+                @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/' . $protectedFile);
                 if ($iframe) {
                     echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
                 }
@@ -2485,6 +2498,8 @@ class saverestore extends module
                 $pt = array('\.php');
                 copyFiles(ROOT, DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', 0, $pt);
                 @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp/config.php');
+                @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp/.env');
+                @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp/.env.local');
 
                 copyTree(DOC_ROOT . DIRECTORY_SEPARATOR . 'forum', DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp/forum');
                 @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp/forum/config.php');

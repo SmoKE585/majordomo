@@ -9,7 +9,7 @@ final class MetadataCache
 
     public function get($key, $load)
     {
-        if (!defined('USE_REDIS') || !USE_REDIS) return $load();
+        if (!Config::get('USE_REDIS')) return $load();
         $redis = $this->redis->requireConnection();
         $epoch = $redis->get($this->redis->key('meta:epoch')) ?: '0';
         $cache_key = $this->redis->key('meta:') . $epoch . ':' . strtolower($key);
@@ -26,7 +26,7 @@ final class MetadataCache
     public function invalidate()
     {
         unset($GLOBALS['class_properties_cached'], $GLOBALS['cached_class_properties'], $GLOBALS['class_templates_cached'], $GLOBALS['all_objects_cached']);
-        if (defined('USE_REDIS') && USE_REDIS) $this->redis->requireConnection()->incr($this->redis->key('meta:epoch'));
+        if (Config::get('USE_REDIS')) $this->redis->requireConnection()->incr($this->redis->key('meta:epoch'));
     }
 
     public function changedBySql($query)
@@ -39,7 +39,7 @@ final class MetadataCache
         }
         $this->invalidate();
         if (in_array(strtolower($m[1]), array('objects', 'properties', 'classes'), true)) {
-            if (defined('USE_REDIS') && USE_REDIS) {
+            if (Config::get('USE_REDIS')) {
                 $redis = $this->redis->requireConnection();
                 foreach (array('mjd:', 'p:') as $prefix) foreach (Core::cache()->redisKeys($prefix) as $key) $redis->del($key);
             } elseif ($this->db->tableExists('cached_values')) {

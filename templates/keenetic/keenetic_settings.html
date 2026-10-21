@@ -1,0 +1,145 @@
+<!--#
+ @version 0.5
+#-->
+
+<div class="md-ui-page md-ui-page--stack md-keenetic-page md-keenetic-settings">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-settings" aria-hidden="true"></i>Keenetic · Настройки</div>
+            <h1 class="md-ui-hero__title">Настройки модуля</h1>
+            <p class="md-ui-hero__lede">Журналирование, уведомления о прошивках и проверка обновлений для всех роутеров.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-router" aria-hidden="true"></i>Роутеров: <strong>[#STATS_ROUTERS#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-device-laptop" aria-hidden="true"></i>Устройств: <strong>[#STATS_DEVICES#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-plug-connected" aria-hidden="true"></i>Подключений: <strong>[#STATS_CONNECTIONS#]</strong></span>
+                <span class="md-badge md-badge--outline">Версия [#KEENETIC_VERSION#]</span>
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_keenetic_routers" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label">К роутерам</span>
+            </a>
+        </div>
+    </header>
+
+    [#if OK#]
+    <div class="md-alert md-alert--success" role="status">
+        <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+        <div class="md-alert__body"><div class="md-alert__text">Настройки сохранены.</div></div>
+    </div>
+    [#endif OK#]
+
+    <div class="md-keenetic-grid md-keenetic-grid--form">
+        <section class="md-card md-keenetic-card" aria-labelledby="mdKeeneticSettingsTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Поведение</div>
+                    <h2 class="md-card__title" id="mdKeeneticSettingsTitle"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i>Журнал и уведомления</h2>
+                    <p class="md-card__subtitle">Отладка пишется в отдельный файл <code>YYYY-mm-dd_keenetic.log</code> в каталоге логов MajorDoMo.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <form action="?" method="post" class="md-ui-form" name="frmSettings">
+                    <div class="md-ui-form-stack">
+                        <label class="md-switch">
+                            <input class="md-switch__input" type="checkbox" data-md-raw-checkbox name="log_debmes" value="1"[#if LOG_DEBMES=="1"#] checked[#endif LOG_DEBMES#]>
+                            <span class="md-switch__track" aria-hidden="true"><span class="md-switch__thumb"></span></span>
+                            <span class="md-switch__text">
+                                <span class="md-switch__label">Отладка DebMes</span>
+                                <span class="md-switch__desc">Подробный журнал запросов к роутерам. Включайте только для диагностики — файл быстро растёт.</span>
+                            </span>
+                        </label>
+
+                        <label class="md-switch">
+                            <input class="md-switch__input" type="checkbox" data-md-raw-checkbox name="notify_firmware" value="1"[#if NOTIFY_FIRMWARE=="1"#] checked[#endif NOTIFY_FIRMWARE#]>
+                            <span class="md-switch__track" aria-hidden="true"><span class="md-switch__thumb"></span></span>
+                            <span class="md-switch__text">
+                                <span class="md-switch__label">Уведомлять о новых прошивках</span>
+                                <span class="md-switch__desc">Уведомление в панели, когда на роутере появляется новая версия KeeneticOS.</span>
+                            </span>
+                        </label>
+
+                        <label class="md-switch">
+                            <input class="md-switch__input" type="checkbox" data-md-raw-checkbox name="check_firmware" value="1"[#if CHECK_FIRMWARE=="1"#] checked[#endif CHECK_FIRMWARE#]>
+                            <span class="md-switch__track" aria-hidden="true"><span class="md-switch__thumb"></span></span>
+                            <span class="md-switch__text">
+                                <span class="md-switch__label">Проверять обновления прошивок</span>
+                                <span class="md-switch__desc">Ежечасная проверка через компоненты Keenetic. Отдельные роутеры можно исключить в их настройках.</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="md-ui-form-actions md-keenetic-form-actions">
+                        <button type="submit" name="subm" class="md-btn md-btn--primary">
+                            <i class="ti ti-device-floppy" aria-hidden="true"></i><span class="md-btn__label">Сохранить настройки</span>
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="view_mode" value="settings">
+                    <input type="hidden" name="mode" value="update">
+                </form>
+            </div>
+        </section>
+
+        <section class="md-card md-keenetic-card" aria-labelledby="mdKeeneticCycleTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Служебное</div>
+                    <h2 class="md-card__title" id="mdKeeneticCycleTitle"><i class="ti ti-activity" aria-hidden="true"></i>Цикл опроса</h2>
+                    <p class="md-card__subtitle">Фоновый процесс <code>scripts/cycle_keenetic.php</code> опрашивает роутеры по их периодам.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-keenetic-cycle">
+                    [#module name="xray" action="service" cycle="keenetic"#]
+                </div>
+                <div class="md-field__hint">Если цикл остановлен, статусы устройств и интернета перестанут обновляться. Запустите его из X-Ray или перезапустите MajorDoMo.</div>
+                <div class="md-keenetic-actions-row">
+                    <a href="<#ROOTHTML#>panel/xray.html" class="md-btn md-btn--secondary md-btn--sm">
+                        <i class="ti ti-activity" aria-hidden="true"></i>Открыть X-Ray
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="md-card md-keenetic-card" aria-labelledby="mdKeeneticDataTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Данные</div>
+                    <h2 class="md-card__title" id="mdKeeneticDataTitle"><i class="ti ti-database" aria-hidden="true"></i>Таблицы и записи</h2>
+                    <p class="md-card__subtitle">Состояние хранилища модуля. При обновлении схемы колонки добавляются автоматически.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-keenetic-meta-list">
+                    <div class="md-keenetic-meta-list__item"><span>Роутеры</span><strong>[#DB_ROUTERS#]</strong></div>
+                    <div class="md-keenetic-meta-list__item"><span>Устройства</span><strong>[#DB_DEVICES#]</strong></div>
+                    <div class="md-keenetic-meta-list__item"><span>Подключения</span><strong>[#DB_CONNECTIONS#]</strong></div>
+                    <div class="md-keenetic-meta-list__item"><span>В отслеживании</span><strong>[#STATS_TRACKED#]</strong></div>
+                </div>
+                [#if HAS_TABLES==0#]
+                <div class="md-alert md-alert--warning" role="status">
+                    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+                    <div class="md-alert__body"><div class="md-alert__text">Таблицы модуля не найдены. Переустановите модуль через «Дополнения».</div></div>
+                </div>
+                [#endif HAS_TABLES#]
+            </div>
+        </section>
+
+        <section class="md-card md-keenetic-card" aria-labelledby="mdKeeneticHelpTitle">
+            <header class="md-card__head">
+                <div class="md-card__titles">
+                    <div class="md-card__eyebrow">Документация</div>
+                    <h2 class="md-card__title" id="mdKeeneticHelpTitle"><i class="ti ti-help-circle" aria-hidden="true"></i>Справка и примеры</h2>
+                    <p class="md-card__subtitle">Переменные обработчиков, API и работа с отслеживанием.</p>
+                </div>
+            </header>
+            <div class="md-card__body">
+                <div class="md-keenetic-actions-row">
+                    <a href="?view_mode=show_help" class="md-btn md-btn--secondary md-btn--sm"><i class="ti ti-book" aria-hidden="true"></i>Открыть справку</a>
+                    <a href="?view_mode=devices" class="md-btn md-btn--ghost md-btn--sm"><i class="ti ti-device-laptop" aria-hidden="true"></i>Все устройства</a>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

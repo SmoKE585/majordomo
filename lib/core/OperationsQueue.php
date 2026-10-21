@@ -17,7 +17,7 @@ final class OperationsQueue
     public function enqueue($topic, $name, $value = '', $unique = false, $ttl = 60)
     {
         $expires = time() + max(0, (int)$ttl);
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             $payload = json_encode(array('TOPIC' => (string)$topic, 'DATANAME' => (string)$name, 'DATAVALUE' => (string)$value, 'EXPIRES' => $expires, 'UNIQUE' => (bool)$unique, 'NAME_KEY' => $this->redis->key('queue:v2:') . hash('sha256', (string)$topic) . ':names:' . sha1((string)$name)), JSON_THROW_ON_ERROR);
         $lua = <<<'LUA'
 local id = string.format('%020d', redis.call('INCR',KEYS[5]))
@@ -58,7 +58,7 @@ LUA;
         $limit = max(1, min(1000, (int)$limit));
         $lease = max(5, (int)$lease);
         $token = bin2hex(random_bytes(16));
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
         $lua = <<<'LUA'
 local now, limit = tonumber(ARGV[1]), tonumber(ARGV[2])
 -- Import the old list atomically during an upgrade; old producers may still be exiting.
@@ -126,7 +126,7 @@ LUA;
 
     public function acknowledge($item)
     {
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
         $lua = <<<'LUA'
 if redis.call('HGET',KEYS[6],ARGV[1]) ~= ARGV[2] then return 0 end
 local raw = redis.call('HGET',KEYS[3],ARGV[1])
@@ -150,7 +150,7 @@ LUA;
 
     public function release($item, $delay = 5)
     {
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
         $lua = <<<'LUA'
 if redis.call('HGET',KEYS[6],ARGV[1]) ~= ARGV[2] then return 0 end
 redis.call('ZREM',KEYS[2],ARGV[1])
@@ -165,7 +165,7 @@ LUA;
 
     public function claimed($topic, $id, $token)
     {
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             $keys = $this->keys($topic);
             $redis = $this->redis->requireConnection();
             $owner = $redis->hGet($keys[5], $id);

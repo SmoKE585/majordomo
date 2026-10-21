@@ -1,0 +1,126 @@
+<!--#
+ @version 0.5
+#-->
+
+[#if OK#]
+<div class="md-alert md-alert--success" role="status">
+    <i class="ti ti-circle-check md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__text">DNS-запись сохранена.</div></div>
+</div>
+[#endif OK#]
+
+[#if ERR#]
+<div class="md-alert md-alert--danger" role="alert">
+    <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body">
+        <div class="md-alert__title">Не удалось изменить DNS</div>
+        <div class="md-alert__text">[#ERR_ALERT#]</div>
+    </div>
+</div>
+[#endif ERR#]
+
+[#if DNS_ERR#]
+<div class="md-alert md-alert--warning" role="status">
+    <i class="ti ti-wifi-off md-alert__icon" aria-hidden="true"></i>
+    <div class="md-alert__body"><div class="md-alert__text">Роутер не отдал текущий список DNS-записей. Проверьте доступность роутера и повторите попытку.</div></div>
+</div>
+[#endif DNS_ERR#]
+
+<form action="?" method="post" class="md-ui-form" name="frmEdit">
+    <section class="md-card md-keenetic-card" aria-labelledby="mdKeeneticDnsTitle">
+        <header class="md-card__head">
+            <div class="md-card__titles">
+                <div class="md-card__eyebrow">Локальный DNS</div>
+                <h2 class="md-card__title" id="mdKeeneticDnsTitle"><i class="ti ti-world-www" aria-hidden="true"></i>Статические записи</h2>
+                <p class="md-card__subtitle">Сопоставление доменных имён и IPv4-адресов внутри локальной сети.</p>
+            </div>
+            <div class="md-card__actions">
+                <span class="md-badge md-badge--outline">Записей: [#DNS_TOTAL#]</span>
+            </div>
+        </header>
+        <div class="md-card__body">
+            [#if DNS#]
+            <div class="md-table-wrap" data-md-table data-md-table-page-size="25" data-md-table-unit="записей" data-md-table-unit-one="запись" data-md-table-unit-few="записи" data-md-table-unit-many="записей">
+                <div class="md-table__toolbar">
+                    <div class="md-table__search">
+                        <i class="ti ti-search" aria-hidden="true"></i>
+                        <input type="search" data-md-table-search placeholder="Поиск по домену и адресу" aria-label="Поиск DNS-записей" autocomplete="off">
+                    </div>
+                    <div class="md-table__meta" data-md-table-meta>Записей: [#DNS_TOTAL#]</div>
+                </div>
+                <div class="md-table__scroll">
+                    <table class="md-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Доменное имя</th>
+                                <th scope="col">Адрес</th>
+                                <th scope="col" class="text-end"><span class="md-visually-hidden">Действия</span></th>
+                            </tr>
+                        </thead>
+                        <tbody data-md-table-body>
+                            [#begin DNS#]
+                            <tr data-md-row data-search="[#TITLE#] [#IP#]">
+                                <td><strong>[#TITLE#]</strong></td>
+                                <td><span class="md-badge md-badge--outline">[#IP#]</span></td>
+                                <td class="text-end">
+                                    <a href="?view_mode=edit_keenetic_routers&id=[#ROUTER_ID#]&tab=dns&delete_domain=[#TITLE#]" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="Удалить запись" aria-label="Удалить DNS-запись [#TITLE#]" data-md-confirm="Удалить DNS-запись [#TITLE#] → [#IP#]?">
+                                        <i class="ti ti-trash" aria-hidden="true"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            [#end DNS#]
+                        </tbody>
+                    </table>
+                </div>
+                <div class="md-table__empty" data-md-table-empty>
+                    <div class="md-empty md-empty--compact">
+                        <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+                        <div class="md-empty__title">Ничего не найдено</div>
+                        <p class="md-empty__text">Измените запрос.</p>
+                    </div>
+                </div>
+                <div class="md-table__footer">
+                    <span data-md-table-count>Записей: [#DNS_TOTAL#]</span>
+                    <ul class="pagination md-pagination mb-0" data-md-table-pagination></ul>
+                </div>
+            </div>
+            [#else DNS#]
+            <div class="md-empty md-empty--compact">
+                <span class="md-empty__icon"><i class="ti ti-world-www" aria-hidden="true"></i></span>
+                <div class="md-empty__title">DNS-записей нет</div>
+                <p class="md-empty__text">Добавьте первую запись: имя в локальной сети и IPv4-адрес устройства.</p>
+            </div>
+            [#endif DNS#]
+
+            <div class="md-keenetic-dns-add">
+                <div class="md-ui-form-grid">
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdKeeneticDnsName">Доменное имя</label>
+                        <div class="md-field__control">
+                            <input type="text" id="mdKeeneticDnsName" class="md-input" name="title_new" value="" maxlength="253" autocomplete="off" placeholder="camera.local">
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdKeeneticDnsIp">IPv4-адрес</label>
+                        <div class="md-field__control">
+                            <input type="text" id="mdKeeneticDnsIp" class="md-input" name="ip_new" value="" maxlength="15" autocomplete="off" placeholder="192.168.1.10" inputmode="decimal">
+                        </div>
+                    </div>
+                </div>
+                <div class="md-field__hint">Работает только внутри локальной сети. Конфигурация на роутере сохраняется автоматически.</div>
+            </div>
+        </div>
+    </section>
+
+    <div class="md-ui-form-actions md-keenetic-form-actions">
+        <button type="submit" name="subm" class="md-btn md-btn--primary">
+            <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label">Добавить запись</span>
+        </button>
+        <a href="?view_mode=edit_keenetic_routers&id=[#ID#]" class="md-btn md-btn--secondary">Отмена</a>
+    </div>
+
+    <input type="hidden" name="id" value="[#ID#]">
+    <input type="hidden" name="view_mode" value="edit_keenetic_routers">
+    <input type="hidden" name="tab" value="dns">
+    <input type="hidden" name="mode" value="update">
+</form>

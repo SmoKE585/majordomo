@@ -15,7 +15,7 @@ final class Cache
 
     public function saveCycle($key, $value)
     {
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             if (is_array($value)) return false;
             return $this->redis->requireConnection()->hSet($this->redis->key('cycles'), strtolower((string)$key), json_encode(array('TITLE' => (string)$key, 'VALUE' => (string)$value), JSON_THROW_ON_ERROR));
         }
@@ -28,7 +28,7 @@ final class Cache
 
     public function cycle($key)
     {
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             $encoded = $this->redis->requireConnection()->hGet($this->redis->key('cycles'), strtolower((string)$key));
             if ($encoded !== false) return json_decode($encoded, true, 512, JSON_THROW_ON_ERROR)['VALUE'];
             return false;
@@ -39,14 +39,14 @@ final class Cache
 
     public function cycles(): array
     {
-        if (!defined('USE_REDIS') || !USE_REDIS) return $this->db->select('SELECT TITLE,VALUE FROM cached_cycles');
+        if (!Config::get('USE_REDIS')) return $this->db->select('SELECT TITLE,VALUE FROM cached_cycles');
         $rows = $this->redis->requireConnection()->hGetAll($this->redis->key('cycles'));
         return array_values(array_map(fn($row) => json_decode($row, true, 512, JSON_THROW_ON_ERROR), $rows));
     }
 
     public function clearCycles(): void
     {
-        if (defined('USE_REDIS') && USE_REDIS) $this->redis->requireConnection()->del($this->redis->key('cycles'));
+        if (Config::get('USE_REDIS')) $this->redis->requireConnection()->del($this->redis->key('cycles'));
         else $this->db->requireExec('DELETE FROM cached_cycles');
     }
 
@@ -55,7 +55,7 @@ final class Cache
         static $checked = false;
         if ($checked) return true;
         if ($this->db->tableExists('cached_values')) return $checked = true;
-        $size = defined('CACHE_VALUE_MAX_SIZE') ? max(1, (int)CACHE_VALUE_MAX_SIZE) : 255;
+        $size = max(1, Config::int('CACHE_VALUE_MAX_SIZE', 255));
         return $checked = (bool)$this->db->exec("CREATE TABLE IF NOT EXISTS cached_values (KEYWORD CHAR(100) NOT NULL PRIMARY KEY, DATAVALUE VARCHAR($size) NOT NULL) ENGINE=MEMORY DEFAULT CHARSET=utf8");
     }
 
@@ -74,7 +74,7 @@ final class Cache
     public function clear($prefix = '')
     {
         $prefix = strtolower((string)$prefix);
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             $redis = $this->redis->requireConnection();
             // Epoch change prevents a racing metadata fill from reviving an old entry.
             $this->metadata->invalidate();
@@ -88,7 +88,7 @@ final class Cache
 
     public function all($prefix = '')
     {
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             $redis = $this->redis->requireConnection();
             $out = array();
             foreach ($this->redisKeys($prefix) as $key) {
@@ -108,13 +108,13 @@ final class Cache
             if (!$only_if_missing) $this->delete($key);
             return false;
         }
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             $redis = $this->redis->requireConnection();
             $result = $redis->set($this->redis->key('cache:') . $key, (string)$value, $only_if_missing ? array('nx') : array());
             if ($result === false && !$only_if_missing) throw new RuntimeException('Redis cache write failed');
             return $result;
         }
-        $size = defined('CACHE_VALUE_MAX_SIZE') ? (int)CACHE_VALUE_MAX_SIZE : 255;
+        $size = Config::int('CACHE_VALUE_MAX_SIZE', 255);
         if (strlen((string)$value) > $size) return $this->delete($key);
         if (!$this->ensureSqlTable()) return false;
         $verb = $only_if_missing ? 'INSERT IGNORE' : 'REPLACE';
@@ -124,7 +124,7 @@ final class Cache
     public function delete($key)
     {
         $key = strtolower((string)$key);
-        if (defined('USE_REDIS') && USE_REDIS) return $this->redis->requireConnection()->del($this->redis->key('cache:') . $key);
+        if (Config::get('USE_REDIS')) return $this->redis->requireConnection()->del($this->redis->key('cache:') . $key);
         if (!$this->ensureSqlTable()) return false;
         return $this->db->exec("DELETE FROM cached_values WHERE KEYWORD='" . $this->db->escape($key) . "'");
     }
@@ -132,7 +132,7 @@ final class Cache
     public function get($key)
     {
         $key = strtolower((string)$key);
-        if (defined('USE_REDIS') && USE_REDIS) return $this->redis->requireConnection()->get($this->redis->key('cache:') . $key);
+        if (Config::get('USE_REDIS')) return $this->redis->requireConnection()->get($this->redis->key('cache:') . $key);
         if (!$this->ensureSqlTable()) return false;
         $rec = $this->db->one("SELECT DATAVALUE FROM cached_values WHERE KEYWORD='" . $this->db->escape($key) . "'");
         return $rec['DATAVALUE'] ?? false;

@@ -157,7 +157,7 @@ f.php` не находит маршрут и отдаёт `lib/error_page.php`
 - `location = /panel { return 301 /panel/; }`;
 - `location ^~ /panel/ { try_files $uri $uri/ /nf.php?$query_string; }`;
 - `location ^~ /api/ { rewrite ^ /api.php last; }`;
-- `deny` для `config.php` и `/lib/` через `=`/`^~`, а не обычный prefix:
+- `deny` для `.env`, `config.php` и `/lib/` через `=`/`^~`, а не обычный prefix:
   prefix-location проигрывает regex-локации `~ \.php$`;
 - запрет `templates/*.html`, `templates/ui/`, `templates/ui_kit/`, dotfiles и
   служебных расширений (`sql`, `log`, ...).

@@ -35,7 +35,10 @@ class DB {
         if (self::$_instance) {
             return self::$_instance;
         }
-        self::$_instance=new PDO('mysql:host='.DB_HOST.';dbname='.DB_NAME.';charset=utf8',DB_USER,DB_PASSWORD);
+        $host = \MajorDoMo\Core\Config::string('DB_HOST');
+        $port = \MajorDoMo\Core\Config::string('DB_PORT');
+        $dsn = 'mysql:host=' . $host . ($port !== '' ? ';port=' . $port : '') . ';dbname=' . \MajorDoMo\Core\Config::string('DB_NAME') . ';charset=utf8';
+        self::$_instance=new PDO($dsn,\MajorDoMo\Core\Config::string('DB_USER'),\MajorDoMo\Core\Config::string('DB_PASSWORD'));
         self::$_instance->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
         return self::$_instance;
     }

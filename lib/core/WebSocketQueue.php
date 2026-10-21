@@ -9,7 +9,7 @@ final class WebSocketQueue
 
     public function claim($limit)
     {
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             $result = array();
             foreach ($this->queue->claim('websocket', $limit, 60) as $item) {
                 $data = json_decode($item['DATAVALUE'], true, 512, JSON_THROW_ON_ERROR);
@@ -33,10 +33,10 @@ final class WebSocketQueue
 
     public function post($property, $value, $post_action = 'PostProperty')
     {
-        if (defined('DISABLE_WEBSOCKETS') && DISABLE_WEBSOCKETS == 1) {
+        if (Config::bool('DISABLE_WEBSOCKETS')) {
             return false;
         }
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             return $this->queue->enqueue('websocket', $post_action . ':' . $property,
                 json_encode(array('PROPERTY' => $property, 'DATAVALUE' => is_array($value) ? $value : (string)$value, 'POST_ACTION' => $post_action), JSON_THROW_ON_ERROR), true, 3600);
         }

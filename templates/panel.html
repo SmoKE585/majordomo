@@ -328,34 +328,46 @@
 
 
 	[#if MODULE_NOTIFICATIONS#]
-	[#begin MODULE_NOTIFICATIONS#]
-	<div class="alert alert-[#TYPE#]" id="notification[#ID#]">
-		<div class="row">
-			<div class="col-md-1">[#ADDED#]</div>
-			<div class="col-md-10">
-				[#MESSAGE#]</div>
-			<div class="col-md-1"><a href="#" class="btn btn-default" onclick="return dismissNotification([#ID#]);">OK</a></div>
-  	    </div>
+	<div class="d-flex flex-column gap-2 mb-3" aria-live="polite">
+		[#begin MODULE_NOTIFICATIONS#]
+		<div class="md-alert md-alert--[#TYPE#]" id="notification[#ID#]" role="[#ROLE#]">
+			<i class="ti ti-[#ICON#] md-alert__icon" aria-hidden="true"></i>
+			<div class="md-alert__body">
+				<div class="d-flex flex-wrap align-items-center gap-2 mb-1 small text-body-secondary">
+					<span class="md-badge md-badge--outline">[#MODULE_TITLE#]</span>
+					<time datetime="[#ADDED_ISO#]">[#ADDED#]</time>
+				</div>
+				<div class="md-alert__text text-break">[#MESSAGE#]</div>
+			</div>
+			<button type="button" class="md-alert__close" onclick="return dismissNotification([#ID#]);" aria-label="Отметить уведомление прочитанным" title="Скрыть уведомление">
+				<i class="ti ti-x" aria-hidden="true"></i>
+			</button>
+		</div>
+		[#end MODULE_NOTIFICATIONS#]
 	</div>
-	[#end MODULE_NOTIFICATIONS#]
 	[#endif MODULE_NOTIFICATIONS#]
 
 	[#if RUNNING_WITH_ERRORS#]
-	<div class="alert alert-danger">
-		<div class="row">
-			<div class="col-md-6">
-				<b><#LANG_RUNNING_WITH_ERRORS#></b>
+	<div class="md-alert md-alert--danger" role="alert">
+		<i class="ti ti-alert-octagon md-alert__icon" aria-hidden="true"></i>
+		<div class="md-alert__body">
+			<div class="md-alert__title"><#LANG_RUNNING_WITH_ERRORS#></div>
+			<div class="md-alert__text">Система работает с ошибками. Проверьте журнал и обновите или восстановите систему.</div>
+			<div class="md-alert__actions">
+				<a href="?action=saverestore" class="md-btn md-btn--secondary md-btn--sm"><#LANG_NEWSAVERESTORE_UPDATE_BTN#> / <#LANG_RESTORE#></a>
+				<button type="button" class="md-btn md-btn--ghost md-btn--sm" onclick="var details=document.getElementById('system_erorrs_details'); if(details){details.hidden=!details.hidden;} return false;"><#LANG_MORE_DETAILS#></button>
 			</div>
-			<div class="col-md-6 text-right">
-				<a href="?action=saverestore" class="btn btn-default btn-sm"><#LANG_NEWSAVERESTORE_UPDATE_BTN#> / <#LANG_RESTORE#></a>
-				<a href="#" onclick="$('#system_erorrs_details').toggle();return false;" class="btn btn-default btn-sm"><#LANG_MORE_DETAILS#></a>
- 			</div>
-  		</div>
+		</div>
 	</div>
-	<div class="panel panel-body" style="display:none" id="system_erorrs_details">
-		[#begin SYSTEM_ERRORS#]
-		<div style="color:red;">[#BODY#]</div><hr/>
-		[#end SYSTEM_ERRORS#]
+	<div class="md-card mt-2" id="system_erorrs_details" hidden>
+		<div class="md-card__body d-flex flex-column gap-2">
+			[#begin SYSTEM_ERRORS#]
+			<div class="md-alert md-alert--danger" role="alert">
+				<i class="ti ti-alert-circle md-alert__icon" aria-hidden="true"></i>
+				<div class="md-alert__body"><div class="md-alert__text text-break">[#BODY#]</div></div>
+			</div>
+			[#end SYSTEM_ERRORS#]
+		</div>
 	</div>
 	[#endif RUNNING_WITH_ERRORS#]
 

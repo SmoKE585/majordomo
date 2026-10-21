@@ -1,0 +1,262 @@
+<!--#
+ @version 0.5
+#-->
+
+<div class="md-ui-page md-ui-page--stack md-keenetic-page md-keenetic-help">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-help-circle" aria-hidden="true"></i>Keenetic · Справка</div>
+            <h1 class="md-ui-hero__title">Как работает модуль</h1>
+            <p class="md-ui-hero__lede">Подключение роутеров, устройства и привязки, обработчики, подключения, DNS и API.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-router" aria-hidden="true"></i>KeeneticOS <strong>2.13+</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-world" aria-hidden="true"></i>REST API <strong>/rci</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-code" aria-hidden="true"></i>Обработчики на <strong>PHP</strong></span>
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=search_keenetic_routers" class="md-btn md-btn--secondary">
+                <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label">К роутерам</span>
+            </a>
+            <a href="https://mjdm.ru/forum/viewtopic.php?f=5&amp;t=7382" target="_blank" rel="noopener noreferrer" class="md-btn md-btn--ghost">
+                <i class="ti ti-external-link" aria-hidden="true"></i><span class="md-btn__label">Тема на форуме</span>
+            </a>
+        </div>
+    </header>
+
+    <div class="accordion md-keenetic-accordion" id="mdKeeneticHelp">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpGeneral">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneGeneral" aria-expanded="true" aria-controls="mdKeeneticPaneGeneral">
+                    <i class="ti ti-info-circle" aria-hidden="true"></i>Общие сведения
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneGeneral" class="accordion-collapse collapse show" aria-labelledby="mdKeeneticHelpGeneral" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>Модуль работает с интернет-центрами <strong>Keenetic</strong> с прошивкой не ниже <strong>2.13</strong> через REST API <code>/rci</code>. Команды можно проверять в веб-интерфейсе роутера по адресу <code>http://IP_роутера/a</code>.</p>
+                    <p>Возможности:</p>
+                    <ul>
+                        <li>несколько роутеров, IP-адрес или KeenDNS-имя;</li>
+                        <li>доступность роутера и наличие интернета;</li>
+                        <li>активный канал (основной или резервный) и внешний IP;</li>
+                        <li>устройства: статус, тип подключения, MAC, IP, трафик, Wi-Fi и RSSI;</li>
+                        <li>привязка устройств и подключений к свойствам и методам объектов;</li>
+                        <li>отслеживание параметров устройства через класс роутера;</li>
+                        <li>PHP-обработчики на смену статуса устройства, подключения и интернета;</li>
+                        <li>обновление прошивки, перезагрузка и сохранение конфигурации из интерфейса;</li>
+                        <li>управление подключениями и статическими DNS-записями.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpAdd">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneAdd" aria-expanded="false" aria-controls="mdKeeneticPaneAdd">
+                    <i class="ti ti-plus" aria-hidden="true"></i>Добавление роутера
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneAdd" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpAdd" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>Нажмите «Добавить роутер» и заполните:</p>
+                    <ul>
+                        <li><strong>Название</strong> — оно же имя класса объектов; после сохранения не меняется;</li>
+                        <li><strong>Адрес</strong> — IP-адрес, KeenDNS-имя или адрес с портом;</li>
+                        <li><strong>Логин и пароль</strong> администратора роутера;</li>
+                        <li><strong>Период опроса</strong> в секундах (по умолчанию 5, 0 — не опрашивать);</li>
+                        <li><strong>Перезагрузка без интернета</strong> — через сколько секунд перезагрузить роутер при потере связи (0 — не перезагружать).</li>
+                    </ul>
+                    <p>Модуль сразу авторизуется на роутере, определит модель, прошивку, серийный номер и наличие Wi-Fi-системы (MWS). Если авторизация не прошла, роутер не сохраняется.</p>
+                    <p>Пароль хранится в базе в обратимом зашифрованном виде: Keenetic требует исходный пароль для вычисления ответа на challenge. При редактировании оставьте поле пустым, чтобы не менять сохранённый пароль.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpOverview">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneOverview" aria-expanded="false" aria-controls="mdKeeneticPaneOverview">
+                    <i class="ti ti-layout-dashboard" aria-hidden="true"></i>Карточка роутера
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneOverview" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpOverview" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>Карточка роутера состоит из вкладок:</p>
+                    <ul>
+                        <li><strong>Обзор</strong> — доступность, интернет, внешний IP, прошивка, сводка по устройствам и подключениям, журнал интернет-соединения;</li>
+                        <li><strong>Настройки</strong> — адрес, логин, пароль, период опроса, автоперезагрузка и отключение проверки прошивки;</li>
+                        <li><strong>Устройства</strong> — список устройств роутера с поиском, фильтрами и привязками;</li>
+                        <li><strong>Подключения</strong> — VPN/PPPoE/интерфейсы с тумблерами и обработчиком;</li>
+                        <li><strong>DNS</strong> — статические записи локальной сети.</li>
+                    </ul>
+                    <p>В меню «Действия» доступны обновление данных, сохранение конфигурации, установка прошивки, перезагрузка и удаление роутера.</p>
+                    <div class="md-alert md-alert--warning" role="status">
+                        <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+                        <div class="md-alert__body"><div class="md-alert__text">При удалении роутера удаляются его устройства, подключения, привязки и класс объектов с именем роутера.</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpDevices">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneDevices" aria-expanded="false" aria-controls="mdKeeneticPaneDevices">
+                    <i class="ti ti-device-laptop" aria-hidden="true"></i>Устройства и привязки
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneDevices" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpDevices" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>Список устройств обновляется циклом. Для каждого устройства доступны:</p>
+                    <ul>
+                        <li>имя, MAC, IP, тип подключения (LAN/Wi-Fi), регистрация на роутере;</li>
+                        <li>привязка к объекту: <strong>свойство</strong> (1 — в сети, 0 — не в сети) и <strong>метод</strong> (вызывается при смене статуса);</li>
+                        <li>отслеживание параметров, скрипт на смену статуса и журнал последних событий;</li>
+                        <li>Wake-on-LAN для выключенного устройства и регистрация на роутере.</li>
+                    </ul>
+                    <p>Привязка редактируется в карточке устройства. При сохранении имя устройства синхронизируется с роутером, а статус сразу записывается в привязанное свойство.</p>
+                    <p>Раздел «Все устройства» показывает устройства со всех роутеров, с фильтром по роутеру, статусу, типу и отслеживанию.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpTrack">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneTrack" aria-expanded="false" aria-controls="mdKeeneticPaneTrack">
+                    <i class="ti ti-eye" aria-hidden="true"></i>Отслеживание
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneTrack" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpTrack" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>При установке модуль создаёт класс <strong>Keenetic</strong> со свойствами и методом <code>track</code>. При добавлении роутера создаётся подкласс с его именем.</p>
+                    <p>При включении отслеживания в классе роутера создаётся объект с именем устройства, а на каждом опросе вызывается метод <code>track</code> с параметрами:</p>
+                    <ul>
+                        <li><code>UPTIME</code> — время в сети, сек;</li>
+                        <li><code>RXBYTES</code>, <code>TXBYTES</code> — трафик;</li>
+                        <li><code>ROUTER</code> — точка доступа или роутер;</li>
+                        <li><code>NET</code> — SSID, <code>FREQ</code> — 2.4/5 ГГц;</li>
+                        <li><code>WIFI_MODE</code> — стандарт, MIMO, частота и скорость;</li>
+                        <li><code>RSSI</code> — уровень сигнала.</li>
+                    </ul>
+                    <p>Стандартный метод раскладывает параметры по свойствам. Его можно заменить своим методом объекта — это сократит количество записей в базу.</p>
+                    <div class="md-alert md-alert--warning" role="status">
+                        <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
+                        <div class="md-alert__body"><div class="md-alert__text">При включённом отслеживании каждый опрос записывает до 8 свойств на устройство. Включайте его только для нужных устройств.</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpScripts">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneScripts" aria-expanded="false" aria-controls="mdKeeneticPaneScripts">
+                    <i class="ti ti-code" aria-hidden="true"></i>Скрипты
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneScripts" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpScripts" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>Скрипт устройства выполняется при смене статуса. Доступны <code>$status</code> (1 — в сети), <code>$device</code> (данные роутера) и <code>$router</code>.</p>
+                    <pre><code>if ($status) { // устройство появилось в сети
+    $text = 'в сети';
+} else { // устройство отключилось
+    $text = 'не в сети';
+}
+say('Телефон ребёнка ' . $text, 1);
+
+if ($status &amp;&amp; !empty($device['ip'])) {
+    say('IP: ' . $device['ip'], 1);
+}</code></pre>
+                    <p>Скрипт подключения получает <code>$name</code>, <code>$state</code>, <code>$connection</code> и <code>$router</code>:</p>
+                    <pre><code>if ($state) {
+    say('Соединение ' . $name . ' установлено', 2);
+} else {
+    say('Соединение ' . $name . ' потеряно', 2);
+}</code></pre>
+                    <p>Скрипт «Интернета» получает <code>$status</code>: 0 — интернета нет, 1 — основной канал, 2 и выше — резервный канал (номер канала = <code>$status - 1</code>), а также <code>$inet</code> и <code>$router</code>.</p>
+                    <p>Код проверяется на синтаксис перед сохранением. Ошибки выполнения пишутся в системные ошибки MajorDoMo с контекстом.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpConnections">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneConnections" aria-expanded="false" aria-controls="mdKeeneticPaneConnections">
+                    <i class="ti ti-plug-connected" aria-hidden="true"></i>Подключения
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneConnections" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpConnections" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>Вкладка «Подключения» показывает интерфейсы, которые роутер отдаёт в <code>show interface</code>: VPN, PPPoE и другие. Служебные интерфейсы (Bridge, WifiMaster, GigabitEthernet и т. п.) скрыты.</p>
+                    <p>Тумблер включает и выключает подключение сразу, без сохранения формы. Через привязанное свойство подключением тоже можно управлять: запись 1 включает, 0 выключает.</p>
+                    <p>Обработчик выполняется при смене фактического состояния подключения. Конфигурация на роутере сохраняется автоматически.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpDns">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneDns" aria-expanded="false" aria-controls="mdKeeneticPaneDns">
+                    <i class="ti ti-world-www" aria-hidden="true"></i>DNS
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneDns" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpDns" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>Вкладка «DNS» управляет статическими записями <code>ip host</code> в конфигурации роутера. Укажите доменное имя и IPv4-адрес — модуль добавит запись и сохранит конфигурацию.</p>
+                    <p>Работает только внутри локальной сети. Список читается из <code>show running-config</code>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpApi">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneApi" aria-expanded="false" aria-controls="mdKeeneticPaneApi">
+                    <i class="ti ti-terminal" aria-hidden="true"></i>API и функции
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneApi" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpApi" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <p>Произвольная команда RCI:</p>
+                    <pre><code>include_once(DIR_MODULES . 'keenetic/keenetic.class.php');
+$keenetic = new keenetic();
+$result = $keenetic->command('1', '{"show": {"ip": {"hotspot": {}}}}', true);</code></pre>
+                    <p>Первый параметр — ID роутера или его адрес. Третий параметр — сохранить конфигурацию на роутере.</p>
+                    <p>Перезагрузка и Wake-on-LAN:</p>
+                    <pre><code>$keenetic->reboot('1');
+$keenetic->wol('68:72:c3:56:42:81');</code></pre>
+                    <p>Управление подключением: <code>$keenetic->changeConnection('id или название', $state)</code>, где <code>$state</code> — 0 выключить, 1 включить, 2 переключить.</p>
+                    <p>Через API MajorDoMo:</p>
+                    <pre><code>callAPI('/api/module/keenetic', 'GET', array(
+    'id' =&gt; 1,
+    'path' =&gt; 'show/interface',
+    'data' =&gt; ''
+));</code></pre>
+                    <p>Параметр <code>id</code> — ID роутера или его адрес. Ответ возвращается массивом, ошибки — <code>false</code>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="mdKeeneticHelpTroubles">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mdKeeneticPaneTroubles" aria-expanded="false" aria-controls="mdKeeneticPaneTroubles">
+                    <i class="ti ti-bug" aria-hidden="true"></i>Диагностика
+                </button>
+            </h2>
+            <div id="mdKeeneticPaneTroubles" class="accordion-collapse collapse" aria-labelledby="mdKeeneticHelpTroubles" data-bs-parent="#mdKeeneticHelp">
+                <div class="accordion-body">
+                    <ul>
+                        <li><strong>Роутер недоступен.</strong> Проверьте адрес и доступность веб-интерфейса. Локальный IP открывается по HTTP, KeenDNS — по HTTPS.</li>
+                        <li><strong>Ошибка авторизации.</strong> Проверьте логин и пароль. Если пароль менялся, введите его заново в настройках роутера.</li>
+                        <li><strong>Нет устройств.</strong> Проверьте период опроса (не 0), состояние цикла и журнал интернета. Пустой ответ роутера не удаляет устройства.</li>
+                        <li><strong>Не приходят уведомления о прошивке.</strong> Проверьте «Проверять обновления» в настройках модуля и «Не проверять обновления» у конкретного роутера.</li>
+                        <li><strong>Нужны подробности.</strong> Включите «Отладка DebMes» в настройках модуля и смотрите <code>YYYY-mm-dd_keenetic.log</code> в каталоге логов.</li>
+                    </ul>
+                    <p>Если статус устройства «мигает», включите для него отслеживание или увеличьте период опроса: проводные устройства иногда пропадают из агрегированного списка на один опрос.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="md-keenetic-actions-row">
+        <a href="?view_mode=search_keenetic_routers" class="md-btn md-btn--secondary">
+            <i class="ti ti-arrow-left" aria-hidden="true"></i>Вернуться к роутерам
+        </a>
+    </div>
+</div>

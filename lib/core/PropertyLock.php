@@ -12,7 +12,7 @@ final class PropertyLock
     {
         $key = $this->redis->key('lock:property:') . (int)$object_id . ':' . hash('sha256', strtolower($property));
         $token = bin2hex(random_bytes(16));
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             $redis = $this->redis->requireConnection();
             $deadline = microtime(true) + 5;
             do {

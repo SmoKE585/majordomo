@@ -55,7 +55,7 @@ final class OperationWorker
             if (!empty($result['success'])) $this->queue->acknowledge($item);
             elseif ((int)($item['ATTEMPTS'] ?? 1) >= 3) {
                 $error = substr((string)($result['error'] ?? 'Unknown worker error'), 0, 4096);
-                if (defined('USE_REDIS') && USE_REDIS) {
+                if (Config::get('USE_REDIS')) {
                     $this->redis->requireConnection()->hSet($this->redis->key('queue:failed:core_runtime'), $item['QUEUE_ID'], json_encode(array('item' => $item, 'error' => $error), JSON_THROW_ON_ERROR));
                 } else {
                     $record = array('TOPIC' => 'core_runtime', 'PAYLOAD' => json_encode($item, JSON_THROW_ON_ERROR), 'LAST_ERROR' => $error, 'ADDED' => date('Y-m-d H:i:s'));

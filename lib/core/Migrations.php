@@ -171,13 +171,13 @@ final class Migrations
             array('phistory', 'idx_phistory_value_id', 'VALUE_ID,ID', false)
         ) as $index) $this->ensureIndex(...$index);
         $this->removeLegacyConnect();
-        if (defined('USE_REDIS') && USE_REDIS) {
+        if (Config::get('USE_REDIS')) {
             foreach ($this->db->select('SELECT * FROM operations_queue ORDER BY ID') as $row) {
                 $ttl = strtotime($row['EXPIRE']) - time();
                 if ($ttl > 0 && !$this->queue->enqueue($row['TOPIC'], $row['DATANAME'], $row['DATAVALUE'], false, $ttl)) throw new RuntimeException('Cannot migrate pending operation');
                 $this->db->requireExec('DELETE FROM operations_queue WHERE ID=' . (int)$row['ID']);
             }
-            if (!defined('DISABLE_WEBSOCKETS') || !DISABLE_WEBSOCKETS) {
+            if (!Config::bool('DISABLE_WEBSOCKETS')) {
                 foreach ($this->db->select('SELECT * FROM cached_ws') as $row) {
                     if (!$this->websockets->post($row['PROPERTY'], $row['DATAVALUE'], $row['POST_ACTION'])) throw new RuntimeException('Cannot migrate pending WebSocket update');
                     $this->db->requireExec("DELETE FROM cached_ws WHERE PROPERTY='" . $this->db->escape($row['PROPERTY']) . "' AND REVISION='" . $this->db->escape($row['REVISION']) . "'");

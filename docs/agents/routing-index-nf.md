@@ -89,7 +89,7 @@
 4. Если не существует файл/директория и URI подходит `/module/app_mediabrowser\..*` -> `nf.php`
 5. Если не существует файл/директория и URI оканчивается на `.xml` -> `nf.php`
 6. Остальное -> `index.php`
-7. Запреты: `config.php`, `debmes.txt`, `lib/`, `templates/*.html`, dotfiles, расширения `.sql/.log/.sh/...`
+7. Запреты: `.env`, `config.php`, `debmes.txt`, `lib/`, `templates/*.html`, dotfiles, расширения `.sql/.log/.sh/...`
 
 Именно веб-сервер решает, когда вызывать `nf.php`, поэтому конфиг nginx — часть контракта роутинга.
 
@@ -128,7 +128,7 @@
 - парсинг роут-таблицы `$requests` из `nf.php`;
 - набор ключевых friendly URL -> ожидаемый internal link;
 - ожидаемую точку входа (`admin.php` для `/panel/...`, `index.php` для остальных);
-- наличие критичных правил в `docs/deploy/nginx.conf.sample` (`/api/`, `.html`, `.xml`, `app_mediabrowser`, `nf.php`, защита `lib/`, `templates/*.html`, `config.php`);
+- наличие критичных правил в `docs/deploy/nginx.conf.sample` (`/api/`, `.html`, `.xml`, `app_mediabrowser`, `nf.php`, защита `lib/`, `templates/*.html`, `config.php`, `.env`);
 - отсутствие `.htaccess` в дереве проекта — веб-сервер настраивается только через nginx.
 
 Запуск:

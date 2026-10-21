@@ -1,0 +1,248 @@
+<!--#
+ @version 0.5
+#-->
+
+<div class="md-ui-page md-ui-page--stack md-keenetic-page">
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-router" aria-hidden="true"></i>Keenetic</div>
+            <h1 class="md-ui-hero__title">Интернет-центры Keenetic</h1>
+            <p class="md-ui-hero__lede">Роутеры, устройства, подключения, DNS и обновления прошивок в одном рабочем пространстве.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-router" aria-hidden="true"></i>Роутеров: <strong>[#ROUTERS_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-wifi" aria-hidden="true"></i>Онлайн: <strong>[#ROUTERS_ONLINE#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-device-laptop" aria-hidden="true"></i>Устройств в сети: <strong>[#DEVICES_ONLINE#]</strong> из <strong>[#DEVICES_TOTAL#]</strong></span>
+                [#if UPDATES_TOTAL#]
+                <span class="md-badge md-badge--warning"><i class="ti ti-cloud-download" aria-hidden="true"></i>Обновлений: [#UPDATES_TOTAL#]</span>
+                [#endif UPDATES_TOTAL#]
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=edit_keenetic_routers" class="md-btn md-btn--primary">
+                <i class="ti ti-plus" aria-hidden="true"></i><span class="md-btn__label">Добавить роутер</span>
+            </a>
+            <a href="?view_mode=devices" class="md-btn md-btn--secondary">
+                <i class="ti ti-device-laptop" aria-hidden="true"></i><span class="md-btn__label">Все устройства</span>
+            </a>
+            <div class="dropdown">
+                <button type="button" class="md-btn md-btn--secondary" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="ti ti-dots" aria-hidden="true"></i><span class="md-btn__label">Ещё</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    <li><a class="dropdown-item" href="?view_mode=settings"><i class="ti ti-settings" aria-hidden="true"></i>Настройки модуля</a></li>
+                    <li><a class="dropdown-item" href="?view_mode=show_help"><i class="ti ti-help-circle" aria-hidden="true"></i>Справка</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-router" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Роутеры</span>
+            </div>
+            <div class="md-kpi__value">[#ROUTERS_ONLINE#]<span class="md-keenetic-kpi-total"> / [#ROUTERS_TOTAL#]</span></div>
+            <div class="md-kpi__meta">[#if ROUTERS_OFFLINE#]Недоступны: [#ROUTERS_OFFLINE#][#else#]Все на связи[#endif ROUTERS_OFFLINE#]</div>
+        </div>
+        <div class="md-kpi [#if INTERNET_OFFLINE#]md-kpi--warning[#else#]md-kpi--success[#endif#]">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-world" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Интернет</span>
+            </div>
+            <div class="md-kpi__value">[#INTERNET_ONLINE#]</div>
+            <div class="md-kpi__meta">[#if INTERNET_OFFLINE#]Без интернета: [#INTERNET_OFFLINE#][#else#]На всех роутерах есть связь[#endif INTERNET_OFFLINE#]</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-device-laptop" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Устройства</span>
+            </div>
+            <div class="md-kpi__value">[#DEVICES_ONLINE#]<span class="md-keenetic-kpi-total"> / [#DEVICES_TOTAL#]</span></div>
+            <div class="md-kpi__meta">В отслеживании: [#DEVICES_TRACKED#]</div>
+        </div>
+        <div class="md-kpi [#if UPDATES_TOTAL#]md-kpi--warning[#else#]md-kpi--neutral[#endif#]">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-cloud-download" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Обновления</span>
+            </div>
+            <div class="md-kpi__value">[#UPDATES_TOTAL#]</div>
+            <div class="md-kpi__meta">[#if UPDATES_TOTAL#]Доступны новые прошивки[#else#]Прошивки актуальны или проверка отключена[#endif UPDATES_TOTAL#]</div>
+        </div>
+    </div>
+
+    [#if RESULT#]
+    <div class="md-table-wrap md-keenetic-table-wrap" data-md-table data-md-table-page-size="20" data-md-table-unit="роутеров" data-md-table-unit-one="роутер" data-md-table-unit-few="роутера" data-md-table-unit-many="роутеров">
+        <div class="md-table__toolbar">
+            <div class="md-table__search">
+                <i class="ti ti-search" aria-hidden="true"></i>
+                <input type="search" data-md-table-search placeholder="Поиск по названию, адресу и модели" aria-label="Поиск роутеров" autocomplete="off">
+            </div>
+            <select class="md-table__filter" data-md-table-filter="state" aria-label="Фильтр по доступности">
+                <option value="">Все роутеры</option>
+                <option value="online">Онлайн</option>
+                <option value="offline">Недоступны</option>
+            </select>
+            <select class="md-table__filter" data-md-table-filter="update" aria-label="Фильтр по обновлениям">
+                <option value="">Любая прошивка</option>
+                <option value="1">Есть обновление</option>
+            </select>
+            <div class="md-table__meta" data-md-table-meta>Роутеров: [#ROUTERS_TOTAL#]</div>
+        </div>
+
+        <div class="md-table__scroll">
+            <table class="md-table">
+                <thead>
+                    <tr>
+                        <th scope="col">
+                            <button type="button" class="md-table__sort" data-md-table-sort="title">Роутер <i class="ti ti-arrows-up-down" aria-hidden="true"></i></button>
+                        </th>
+                        <th scope="col">Состояние</th>
+                        <th scope="col">Прошивка</th>
+                        <th scope="col">Устройства</th>
+                        <th scope="col">Опрос</th>
+                        <th scope="col" class="text-end"><span class="md-visually-hidden">Действия</span></th>
+                    </tr>
+                </thead>
+                <tbody data-md-table-body>
+                    [#begin RESULT#]
+                    <tr data-md-row data-row-id="[#ID#]" data-state="[#ROW_STATE#]" data-update="[#ROW_UPDATE#]" data-sort-title="[#TITLE#]" data-search="[#SEARCH#]">
+                        <td class="md-keenetic-col-router">
+                            <div class="md-table__name md-keenetic-cell">
+                                <span class="md-table__icon"><i class="ti ti-router[#if STATUS_STATE=="offline"#]-off[#endif#]" aria-hidden="true"></i></span>
+                                <div class="md-keenetic-cell__body">
+                                    <a href="?view_mode=edit_keenetic_routers&id=[#ID#]"><strong>[#TITLE#]</strong></a>
+                                    [#if ADDRESS_HREF!=""#]
+                                    <small class="md-keenetic-cell__link">
+                                        <a href="[#ADDRESS_HREF#]" target="_blank" rel="noopener noreferrer"><i class="ti ti-external-link" aria-hidden="true"></i>[#ADDRESS#]</a>
+                                    </small>
+                                    [#else#]
+                                    <small class="md-keenetic-cell__link">[#ADDRESS#]</small>
+                                    [#endif ADDRESS_HREF#]
+                                    <span class="md-keenetic-cell__meta">
+                                        [#if MODEL!=""#][#MODEL#][#else#]Модель не определена[#endif MODEL#]
+                                        [#if MWS#]<span class="md-badge md-badge--outline">MWS</span>[#endif MWS#]
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="md-keenetic-col-state">
+                            <div class="md-keenetic-status-stack">
+                                <span class="md-status md-status--[#STATUS_STATE#]">
+                                    <span class="md-status__dot" aria-hidden="true"></span>
+                                    <span class="md-status__label">[#STATUS_LABEL#]</span>
+                                </span>
+                                <span class="md-status md-status--[#INET_STATE#]">
+                                    <span class="md-status__dot" aria-hidden="true"></span>
+                                    <span class="md-status__label">[#INET_LABEL#]</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td class="md-keenetic-col-firmware">
+                            <div class="md-keenetic-firmware">
+                                <span class="md-keenetic-firmware__current">[#FIRMWARE#]</span>
+                                [#if UPDATE#]
+                                [#if HREF_FW!=""#]
+                                <a href="[#HREF_FW#]" target="_blank" rel="noopener noreferrer" class="md-badge md-badge--warning" title="Доступна версия [#NEW_FIRMWARE#]">
+                                    <i class="ti ti-arrow-up" aria-hidden="true"></i>[#NEW_FIRMWARE#]
+                                </a>
+                                [#else#]
+                                <span class="md-badge md-badge--warning" title="Доступна версия [#NEW_FIRMWARE#]">
+                                    <i class="ti ti-arrow-up" aria-hidden="true"></i>[#NEW_FIRMWARE#]
+                                </span>
+                                [#endif HREF_FW#]
+                                [#else#]
+                                [#if NO_UPDATE#]<span class="md-badge md-badge--outline">Проверка отключена</span>[#endif NO_UPDATE#]
+                                [#endif UPDATE#]
+                            </div>
+                        </td>
+                        <td class="md-keenetic-col-devices">
+                            <div class="md-keenetic-metric"><strong>[#DEVICES_ONLINE#]</strong> / [#DEVICES_TOTAL#] в сети</div>
+                            <div class="md-keenetic-metric__sub">Отслеживание: [#DEVICES_TRACKED#]</div>
+                        </td>
+                        <td class="md-keenetic-col-poll">
+                            <div class="md-keenetic-metric">[#if REQ_PERIOD#][#REQ_PERIOD#] с[#else#]выключен[#endif REQ_PERIOD#]</div>
+                            <div class="md-keenetic-metric__sub" title="[#UPDATED_TITLE#]"><i class="ti ti-clock" aria-hidden="true"></i>[#UPDATED_HUMAN#]</div>
+                        </td>
+                        <td class="md-keenetic-col-actions">
+                            <div class="md-table__actions">
+                                <a href="?view_mode=edit_keenetic_routers&id=[#ID#]&tab=data" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="Устройства" aria-label="Устройства роутера [#TITLE#]">
+                                    <i class="ti ti-device-laptop" aria-hidden="true"></i>
+                                </a>
+                                <div class="dropdown">
+                                    <button type="button" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Действия для [#TITLE#]">
+                                        <i class="ti ti-dots-vertical" aria-hidden="true"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end md-menu">
+                                        <li><a class="dropdown-item" href="?view_mode=edit_keenetic_routers&id=[#ID#]"><i class="ti ti-layout-dashboard" aria-hidden="true"></i>Обзор</a></li>
+                                        <li><a class="dropdown-item" href="?view_mode=edit_keenetic_routers&id=[#ID#]&tab=settings"><i class="ti ti-settings" aria-hidden="true"></i>Настройки</a></li>
+                                        <li><a class="dropdown-item" href="?view_mode=edit_keenetic_routers&id=[#ID#]&tab=cnct"><i class="ti ti-plug-connected" aria-hidden="true"></i>Подключения</a></li>
+                                        <li><a class="dropdown-item" href="?view_mode=edit_keenetic_routers&id=[#ID#]&tab=dns"><i class="ti ti-world-www" aria-hidden="true"></i>DNS</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="?view_mode=refresh_router&id=[#ID#]&router_id=[#ID#]"><i class="ti ti-refresh" aria-hidden="true"></i>Обновить данные</a></li>
+                                        <li><a class="dropdown-item" href="?view_mode=save_config&id=[#ID#]&router_id=[#ID#]" data-md-confirm="Сохранить текущую конфигурацию роутера в его памяти?"><i class="ti ti-device-floppy" aria-hidden="true"></i>Сохранить конфигурацию</a></li>
+                                        [#if UPDATE#]
+                                        <li><a class="dropdown-item" href="?view_mode=update_firmware&id=[#ID#]&router_id=[#ID#]" data-md-confirm="Запустить установку прошивки [#NEW_FIRMWARE#]? Роутер перезагрузится."><i class="ti ti-cloud-download" aria-hidden="true"></i>Обновить прошивку</a></li>
+                                        [#endif UPDATE#]
+                                        <li><a class="dropdown-item" href="?view_mode=reboot_router&id=[#ID#]&router_id=[#ID#]" data-md-confirm="Перезагрузить роутер [#TITLE#]?"><i class="ti ti-power" aria-hidden="true"></i>Перезагрузить</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="?view_mode=delete_keenetic_routers&id=[#ID#]" data-md-confirm="Удалить роутер [#TITLE#] вместе с устройствами, подключениями и привязками? Класс «[#TITLE#]» тоже будет удалён."><i class="ti ti-trash" aria-hidden="true"></i>Удалить роутер</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    [#end RESULT#]
+                </tbody>
+            </table>
+        </div>
+
+        <div class="md-table__empty" data-md-table-empty>
+            <div class="md-empty md-empty--compact">
+                <span class="md-empty__icon"><i class="ti ti-search" aria-hidden="true"></i></span>
+                <div class="md-empty__title">Ничего не найдено</div>
+                <p class="md-empty__text">Измените запрос или сбросьте фильтры.</p>
+            </div>
+        </div>
+
+        <div class="md-table__footer">
+            <span data-md-table-count>Показано [#ROUTERS_TOTAL#] из [#ROUTERS_TOTAL#]</span>
+            <ul class="pagination md-pagination mb-0" data-md-table-pagination></ul>
+        </div>
+    </div>
+    [#else RESULT#]
+    <div class="md-empty">
+        <span class="md-empty__icon"><i class="ti ti-router" aria-hidden="true"></i></span>
+        <div class="md-empty__title">Роутеров пока нет</div>
+        <p class="md-empty__text">Добавьте интернет-центр Keenetic по IP-адресу или KeenDNS-имени. После проверки подключения появятся устройства, подключения и DNS-записи.</p>
+        <div class="md-empty__actions">
+            <a href="?view_mode=edit_keenetic_routers" class="md-btn md-btn--primary md-btn--sm">
+                <i class="ti ti-plus" aria-hidden="true"></i>Добавить роутер
+            </a>
+            <a href="?view_mode=show_help" class="md-btn md-btn--secondary md-btn--sm">
+                <i class="ti ti-help-circle" aria-hidden="true"></i>Как это работает
+            </a>
+        </div>
+    </div>
+    [#endif RESULT#]
+
+    <section class="md-card md-keenetic-service-card">
+        <header class="md-card__head">
+            <div class="md-card__titles">
+                <div class="md-card__eyebrow">Служебное</div>
+                <h2 class="md-card__title"><i class="ti ti-activity" aria-hidden="true"></i>Цикл опроса</h2>
+                <p class="md-card__subtitle">Фоновый процесс опрашивает роутеры с периодом из настроек каждого роутера.</p>
+            </div>
+            <div class="md-card__actions">
+                <a href="?view_mode=settings" class="md-btn md-btn--ghost md-btn--sm"><i class="ti ti-settings" aria-hidden="true"></i>Настройки</a>
+            </div>
+        </header>
+        <div class="md-card__body">
+            <div class="md-keenetic-cycle">
+                [#module name="xray" action="service" cycle="keenetic"#]
+            </div>
+        </div>
+    </section>
+</div>
+
+

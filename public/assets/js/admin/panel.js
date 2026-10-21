@@ -347,9 +347,10 @@ function dismissNotification(id) {
         url: url,
         success: function (data) {
             if (data == 'OK') {
-                $('#notification' + id).fadeOut();
+                $('#notification' + id).fadeOut(180, function () { $(this).remove(); });
             }
         }
     });
     return false;
 }
+

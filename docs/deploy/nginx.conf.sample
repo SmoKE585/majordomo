@@ -14,10 +14,10 @@
 # ---------------------------------------------------------------------------
 #   <project>/public/     index.php, admin.php, nf.php, api.php, 404.php,
 #                         favicon.ico, robots.txt, assets/
-#   <project>/            bootstrap.php, config.php, lib/, modules/, templates/,
-#                         cms/, 3rdparty/, scripts/, objects/, docs/
+#   <project>/            .env, bootstrap.php, config.php, lib/, modules/,
+#                         templates/, cms/, 3rdparty/, scripts/, objects/, docs/
 #
-# Вне document root и недоступны по HTTP: config.php, bootstrap.php,
+# Вне document root и недоступны по HTTP: .env, config.php, bootstrap.php,
 # load_settings.php, lib/, cycle.php, dev_server.php, src/, tools/.
 #
 # Каталоги, которые обязаны сохранить свои URL, смонтированы из корня проекта
@@ -97,10 +97,6 @@ server {
         return 301 /assets/$1/$2$is_args$args;
     }
 
-    location ~ ^/3rdparty/(bootstrap|bootstrap-datetimepicker|duration-picker|fancybox|jquery|jquery\.toast|jquerymobile|long-press-event|moment)/(.*)$ {
-        return 301 /assets/vendor/$1/$2$is_args$args;
-    }
-
     location ~ ^/templates/([a-z0-9_-]+)/(.+\.(?:css|js))$ {
         return 301 /assets/modules/$1/$2$is_args$args;
     }
@@ -171,6 +167,13 @@ server {
 
     location ^~ /3rdparty/ {
         root /var/www/example/data/www/example.com;
+
+        # Браузерные библиотеки переехали в npm-бандл: старые ссылки ведут в
+        # /assets/vendor/. Regex вложенный намеренно — `^~` отключает проверку
+        # верхнеуровневых regex-локаций, и снаружи этот 301 никогда бы не сработал.
+        location ~ ^/3rdparty/(bootstrap|bootstrap-datetimepicker|duration-picker|fancybox|jquery|jquery\.toast|jquerymobile|long-press-event|moment)/(.*)$ {
+            return 301 /assets/vendor/$1/$2$is_args$args;
+        }
 
         location ~ [^/]\.php(/|$) {
             include /etc/nginx/fastcgi_params;

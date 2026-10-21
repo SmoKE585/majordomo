@@ -113,15 +113,16 @@ final class Properties
             $source = mb_substr($source, 0, 250) . '...';
         }
 
-        if (defined('TRACK_DATA_CHANGES') && TRACK_DATA_CHANGES == 1) {
+        if (Config::bool('TRACK_DATA_CHANGES')) {
             $save = 1;
 
             if (!is_numeric(trim($value))) {
                 $save = 0;
             }
 
-            if (defined('TRACK_DATA_CHANGES_IGNORE') && TRACK_DATA_CHANGES_IGNORE != '' && $save) {
-                $tmp = explode(',', TRACK_DATA_CHANGES_IGNORE);
+            $trackIgnore = Config::string('TRACK_DATA_CHANGES_IGNORE');
+            if ($trackIgnore !== '' && $save) {
+                $tmp = explode(',', $trackIgnore);
                 $total = count($tmp);
                 for ($i = 0; $i < $total; $i++) {
                     $regex = trim($tmp[$i]);
@@ -140,8 +141,8 @@ final class Properties
 
                 if (defined('SETTINGS_SYSTEM_DEBMES_PATH') && SETTINGS_SYSTEM_DEBMES_PATH != '') {
                     $path = SETTINGS_SYSTEM_DEBMES_PATH;
-                } elseif (defined('LOG_DIRECTORY') && LOG_DIRECTORY != '') {
-                    $path = LOG_DIRECTORY;
+                } elseif (($logDirectory = Config::string('LOG_DIRECTORY')) !== '') {
+                    $path = $logDirectory;
                 } else {
                     $path = ROOT . 'cms/debmes';
                 }

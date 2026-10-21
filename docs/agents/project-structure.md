@@ -24,7 +24,8 @@
 │       ├── vendor/             # браузерные библиотеки (bootstrap, jquery, fancybox)
 │       └── modules/<name>/     # CSS/JS страниц конкретного модуля
 ├── bootstrap.php               # chdir в корень приложения для public-входов
-├── config.php(.sample)         # конфигурация (config.php не коммитится)
+├── .env / .env.example         # конфигурация (.env не коммитится)
+├── config.php                  # шим: Config::boot + легаси-глобалы
 ├── load_settings.php           # include, не точка входа
 ├── cycle.php                   # CLI-цикл (systemd), вне document root
 ├── dev_server.php              # локальный сервер, повторяет контракт nginx
@@ -75,7 +76,7 @@
 | `/public/...` | 301 → `/...` (старый префикс docroot) |
 | `/rc/...` | 301 → `/panel/` (функция удалена) |
 
-Вне document root и недоступны по HTTP: `config.php`, `bootstrap.php`,
+Вне document root и недоступны по HTTP: `.env`, `config.php`, `bootstrap.php`,
 `load_settings.php`, `lib/`, `cycle.php`, `dev_server.php`, `src/`, `tools/`.
 
 Приватные подкаталоги `cms/` (`cached`, `debmes`, `modules_installed`,
