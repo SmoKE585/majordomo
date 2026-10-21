@@ -169,6 +169,98 @@ CODE,
     <?php }); ?>
 
     <?php md_ui_demo(array(
+        'title' => 'History drawer: история значения',
+        'desc' => 'Готовый сценарий для истории свойства: период, текущее значение, статистика, график и журнал изменений в общем drawer shell. Компонент сам не загружает данные — источник задаётся атрибутами триггера, поэтому его можно подключить к любому модулю.',
+        'api' => 'MDJUI::historyDrawer() · [data-md-history-open] · MDJCharts',
+        'badge' => 'компонент',
+        'canvas_class' => 'md-ui-demo__canvas--block',
+        'code' => <<<'CODE'
+<button type="button"
+        class="md-btn md-btn--secondary"
+        data-md-history-open
+        data-md-history-target="historyDrawer"
+        data-history-object-id="12"
+        data-history-property-id="34"
+        data-history-title="Kitchen.Temperature"
+        data-history-subtitle="Температура воздуха на кухне">
+  Открыть историю
+</button>
+
+<?= MDJUI::historyDrawer([
+    'id' => 'historyDrawer',
+    'eyebrow' => 'История свойства',
+    'default_range' => '24h',
+]) ?>
+CODE,
+    ), function () {
+        $historyDemo = array(
+            'status' => 'ok',
+            'meta' => array(
+                'object_title' => 'Kitchen',
+                'property_name' => 'Kitchen.Temperature',
+                'description' => 'Температура воздуха на кухне',
+                'keep_history' => 30,
+                'is_numeric' => true,
+            ),
+            'range' => array('key' => '24h', 'label' => '24 часа'),
+            'current' => array(
+                'value' => '23.4',
+                'updated_label' => '21.10.2026 12:30:00',
+                'source' => 'sensor_kitchen',
+            ),
+            'stats' => array('changes' => 18, 'min' => 20.1, 'avg' => 22.7, 'max' => 25.8),
+            'chart' => array(
+                'has_data' => true,
+                'is_numeric' => true,
+                'min' => 20.1,
+                'max' => 25.8,
+                'first_label' => '21.10 00:00',
+                'last_label' => '21.10 12:00',
+                'points' => array(
+                    array('timestamp' => strtotime('2026-10-21 00:00:00'), 'value' => 20.1, 'label' => '21.10 00:00'),
+                    array('timestamp' => strtotime('2026-10-21 02:00:00'), 'value' => 20.8, 'label' => '21.10 02:00'),
+                    array('timestamp' => strtotime('2026-10-21 04:00:00'), 'value' => 21.4, 'label' => '21.10 04:00'),
+                    array('timestamp' => strtotime('2026-10-21 06:00:00'), 'value' => 22.9, 'label' => '21.10 06:00'),
+                    array('timestamp' => strtotime('2026-10-21 08:00:00'), 'value' => 24.6, 'label' => '21.10 08:00'),
+                    array('timestamp' => strtotime('2026-10-21 10:00:00'), 'value' => 25.8, 'label' => '21.10 10:00'),
+                    array('timestamp' => strtotime('2026-10-21 12:00:00'), 'value' => 23.4, 'label' => '21.10 12:00'),
+                ),
+            ),
+            'history' => array(
+                array('added_label' => '21.10.2026 12:30:00', 'value' => '23.4', 'source' => 'sensor_kitchen'),
+                array('added_label' => '21.10.2026 10:00:00', 'value' => '25.8', 'source' => 'sensor_kitchen'),
+                array('added_label' => '21.10.2026 08:00:00', 'value' => '24.6', 'source' => 'sensor_kitchen'),
+                array('added_label' => '21.10.2026 06:00:00', 'value' => '22.9', 'source' => 'scenario_morning'),
+            ),
+            'history_pagination' => array(
+                'page' => 1, 'per_page' => 50, 'total' => 4, 'pages' => 1,
+                'from' => 1, 'to' => 4, 'has_prev' => false, 'has_next' => false,
+            ),
+        );
+        ?>
+        <div class="md-ui-dialog-buttons">
+            <button type="button"
+                    class="md-btn md-btn--secondary"
+                    data-md-history-open
+                    data-md-history-target="uiKitHistoryDrawer"
+                    data-history-title="Kitchen.Temperature"
+                    data-history-subtitle="Температура воздуха на кухне"
+                    data-history-eyebrow="История свойства"
+                    aria-haspopup="dialog">
+                <?= MDJUI::icon('history') ?><span class="md-btn__label">Открыть историю</span>
+            </button>
+        </div>
+        <?= MDJUI::historyDrawer(array(
+            'id' => 'uiKitHistoryDrawer',
+            'eyebrow' => 'История свойства',
+            'title' => 'Kitchen.Temperature',
+            'subtitle' => 'Демо-данные: график и журнал изменений.',
+            'default_range' => '24h',
+            'demo_data' => $historyDemo,
+        )) ?>
+    <?php }); ?>
+
+    <?php md_ui_demo(array(
         'title' => 'Popover, tooltip и inline validation',
         'desc' => 'Popover — для пояснения с действием, tooltip — для короткой подсказки. Ошибка поля показывается под контролом и не дублируется только toast.',
         'api' => 'Bootstrap popover/tooltip · md-field__error',

@@ -654,6 +654,36 @@ MDLinkedObjectUI.destroy(root);
 
 Компонент поддерживает `attrs`, `backdrop_attrs`, `close_attrs` для Alpine/JS, `open` для серверного открытия и `body_id`/`footer_id` для динамического содержимого. На мобильном drawer занимает весь экран. Футер скрывается, если действий нет.
 
+#### History drawer
+
+`MDJUI::historyDrawer()` — готовый шаблон истории значения: период, текущее значение, статистика, график ApexCharts, журнал изменений и пагинация. Он монтируется в общий drawer host, поэтому шапка, футер, Esc и мобильное поведение совпадают с консолью и X-Ray.
+
+```php
+<button type="button" class="md-btn md-btn--secondary"
+        data-md-history-open
+        data-md-history-target="propertyHistory"
+        data-history-object-id="12"
+        data-history-property-id="34"
+        data-history-title="Kitchen.Temperature"
+        data-history-subtitle="Температура воздуха на кухне">
+  История
+</button>
+
+<?= MDJUI::historyDrawer([
+    'id' => 'propertyHistory',
+    'eyebrow' => 'История свойства',
+    'default_range' => '24h',
+]) ?>
+```
+
+Источник данных задаётся триггером:
+
+- `data-history-url` — явный endpoint; относительный URL автоматически становится корневым от `ROOTHTML`;
+- `data-history-object-id` + `data-history-property-id` — встроенный endpoint истории свойства объекта;
+- `data-md-history-demo` на самом компоненте — JSON для UI Kit/статичных демо (без сети).
+
+Ответ endpoint: `{status: "ok", meta, range, current, stats, chart, history, history_pagination}`. График рисуется только для `meta.is_numeric` и `chart.has_data`; иначе компонент показывает empty-state, а журнал остаётся доступным. Кнопки «Обновить» и «CSV» находятся в футере drawer, период — в `md-tabs`. Длинные значения переносятся и прокручиваются внутри карточки текущего значения.
+
 #### Popover и tooltip
 
 ```html

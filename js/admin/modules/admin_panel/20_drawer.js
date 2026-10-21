@@ -172,9 +172,31 @@
             });
         }
 
+        function updateDrawer(options) {
+            if (!current || !options) {
+                return false;
+            }
+            if (options.owner && current.owner && options.owner !== current.owner) {
+                return false;
+            }
+            if (typeof options.eyebrow === 'string') {
+                eyebrow.textContent = options.eyebrow;
+                eyebrow.hidden = options.eyebrow === '';
+            }
+            if (typeof options.title === 'string') {
+                title.textContent = options.title;
+            }
+            if (typeof options.subtitle === 'string') {
+                subtitle.textContent = options.subtitle;
+                subtitle.hidden = options.subtitle === '';
+            }
+            return true;
+        }
+
         window.MDJAdminDrawerHost = {
             open: openDrawer,
             close: closeDrawer,
+            update: updateDrawer,
             getCurrentOwner: function () {
                 return current ? current.owner : '';
             }

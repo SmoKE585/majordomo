@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite';
 
 /**
- * Dashboard charts chunk.
+ * Charts chunk.
  *
- * ApexCharts is only needed on the dashboard. A separate IIFE chunk keeps the
- * main admin bundle lean; js/admin/modules/admin_panel/101_dashboard_charts.js
- * loads assets/admin/charts.js on first use.
+ * ApexCharts is shared by the dashboard and the history drawer. A separate
+ * IIFE chunk keeps the main admin bundle lean;
+ * js/admin/modules/admin_panel/100_chart_runtime.js loads assets/admin/charts.js
+ * on first use.
  *
  * `emptyOutDir` must stay false — the main build owns the directory.
  */

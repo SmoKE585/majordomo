@@ -379,6 +379,11 @@ class MDJUI
         return self::render('chart-card', $props, $slot);
     }
 
+    public static function historyDrawer(array $props = array())
+    {
+        return self::render('history-drawer', $props);
+    }
+
     // ---------------------------------------------------------------------
     // Forms
     // ---------------------------------------------------------------------

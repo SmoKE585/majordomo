@@ -56,6 +56,7 @@ import '../../js/admin/modules/admin_panel/99_init.js';
 import '../../js/admin/modules/admin_panel/70_controls.js';
 import '../../js/admin/modules/admin_panel/80_header_search.js';
 import '../../js/admin/modules/admin_panel/100_dashboard.js';
+import '../../js/admin/modules/admin_panel/100_chart_runtime.js';
 import '../../js/admin/modules/admin_panel/101_dashboard_charts.js';
 import '../../js/admin/modules/admin_panel/110_objects.js';
 import '../../js/admin/modules/admin_panel/115_alpine.js';

@@ -3,6 +3,10 @@
 * @version 0.2 (auto-set)
 */
 
+if (!class_exists('MDJUI')) {
+    require_once(ROOT . 'lib/ui/MDJUI.php');
+}
+
 if ($this->owner->name == 'panel') {
     $out['CONTROLPANEL'] = 1;
 }
@@ -195,6 +199,8 @@ if ($this->tab == 'properties') {
         $props[$i]['OBJECT_TITLE'] = $rec['TITLE'];
         $props[$i]['OBJECT_ID'] = $rec['ID'];
         $props[$i]['FULL_NAME'] = $rec['TITLE'] . '.' . $props[$i]['TITLE'];
+        $props[$i]['FULL_NAME_ATTR'] = htmlspecialchars($props[$i]['FULL_NAME'], ENT_QUOTES, 'UTF-8');
+        $props[$i]['DESCRIPTION_ATTR'] = htmlspecialchars(isset($props[$i]['DESCRIPTION']) ? (string)$props[$i]['DESCRIPTION'] : '', ENT_QUOTES, 'UTF-8');
         $value = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID='" . $props[$i]['ID'] . "' AND OBJECT_ID='" . $rec['ID'] . "'");
         if ($this->mode == 'update') {
             global ${"value" . $props[$i]['ID']};
@@ -260,6 +266,12 @@ if ($this->tab == 'properties') {
     $out['HISTORY_PROPERTIES_TOTAL'] = $historyPropsCount;
     $out['SOURCE_PROPERTIES_TOTAL'] = $sourcePropsCount;
     $out['ONCHANGE_PROPERTIES_TOTAL'] = $onchangePropsCount;
+    $out['PROPERTY_HISTORY_DRAWER'] = MDJUI::historyDrawer(array(
+        'id' => 'mdPropertyHistoryDrawer',
+        'eyebrow' => 'История свойства',
+        'title' => 'История изменения',
+        'default_range' => '24h',
+    ));
     $out['PROPERTIES'] = $props;
     $out['CLASS_PROPERTIES'] = array();
     $out['OBJECT_PROPERTIES'] = array();

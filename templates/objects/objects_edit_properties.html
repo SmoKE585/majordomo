@@ -195,12 +195,14 @@
                     <button
                         type="button"
                         class="md-btn md-btn--secondary md-btn--sm"
-                        data-md-prop-history-open
-                        data-history-url="admin.php?action=objects&md=objects&view_mode=edit_objects&tab=properties&ajax=1&id=<#ID#>&op=property_history&property_id=[#ID#]"
-                        data-property-name="[#FULL_NAME#]"
-                        data-property-title="[#TITLE#]"
-                        data-property-description="[#DESCRIPTION#]"
-                        data-property-history="[#KEEP_HISTORY#]">
+                        data-md-history-open
+                        data-md-history-target="mdPropertyHistoryDrawer"
+                        data-history-object-id="<#ID#>"
+                        data-history-property-id="[#ID#]"
+                        data-history-title="[#FULL_NAME_ATTR#]"
+                        data-history-subtitle="[#DESCRIPTION_ATTR#]"
+                        data-history-eyebrow="История свойства"
+                        aria-haspopup="dialog">
                         <i class="ti ti-history" aria-hidden="true"></i><span>История</span>
                     </button>
                     [#endif#]
@@ -298,77 +300,7 @@
     </div>
 </section>
 
-<div class="md-object-history-backdrop" data-md-object-history-close></div>
-<aside class="md-object-history-drawer" id="mdObjectHistoryDrawer" aria-labelledby="mdObjectHistoryTitle" aria-hidden="true">
-    <div class="md-object-history-drawer__header">
-        <div>
-            <div class="md-object-history-drawer__eyebrow">История свойства</div>
-            <h2 id="mdObjectHistoryTitle">Загрузка...</h2>
-            <div class="md-object-history-drawer__subtitle" id="mdObjectHistorySubtitle"></div>
-        </div>
-        <button type="button" class="btn-close" data-md-object-history-close aria-label="<#LANG_CLOSE#>"></button>
-    </div>
-    <div class="md-object-history-drawer__toolbar">
-        <div class="md-object-history-drawer__ranges" role="tablist" aria-label="Выбор периода">
-            <button type="button" class="md-object-history-drawer__range is-active" data-md-history-range="3h">3ч</button>
-            <button type="button" class="md-object-history-drawer__range" data-md-history-range="12h">12ч</button>
-            <button type="button" class="md-object-history-drawer__range" data-md-history-range="24h">24ч</button>
-            <button type="button" class="md-object-history-drawer__range" data-md-history-range="7d">7д</button>
-            <button type="button" class="md-object-history-drawer__range" data-md-history-range="30d">30д</button>
-            <button type="button" class="md-object-history-drawer__range" data-md-history-range="90d">90д</button>
-        </div>
-        <div class="md-object-history-drawer__summary" id="mdObjectHistoryRangeLabel"></div>
-    </div>
-    <div class="md-object-history-drawer__body">
-        <div class="md-object-history-state" id="mdObjectHistoryState" aria-live="polite"></div>
-        <div class="md-object-history-panel" id="mdObjectHistoryPanel" hidden>
-            <section class="md-object-history-hero">
-                <div class="md-object-history-hero__value">
-                    <span>Текущее значение</span>
-                    <strong id="mdObjectHistoryCurrentValue">-</strong>
-                </div>
-                <div class="md-object-history-hero__meta" id="mdObjectHistoryCurrentMeta"></div>
-            </section>
-            <section class="md-object-history-stats" id="mdObjectHistoryStats"></section>
-            <section class="md-object-history-tabs" id="mdObjectHistoryTabs">
-                <button type="button" class="md-object-history-tabs__button is-active" data-md-history-tab="history">История</button>
-                <button type="button" class="md-object-history-tabs__button" data-md-history-tab="chart" hidden>График</button>
-            </section>
-            <section class="md-object-history-feed" data-md-history-panel="history">
-                <div class="md-object-history-feed__header">
-                    <h3>Изменения свойства</h3>
-                    <span id="mdObjectHistoryFeedCount"></span>
-                </div>
-                <div class="md-object-history-table-wrap">
-                    <table class="md-object-history-table">
-                        <thead>
-                        <tr>
-                            <th>Когда</th>
-                            <th>Значение</th>
-                            <th>Источник</th>
-                        </tr>
-                        </thead>
-                        <tbody id="mdObjectHistoryFeed"></tbody>
-                    </table>
-                </div>
-                <div class="md-object-history-pagination" id="mdObjectHistoryPagination" hidden>
-                    <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-history-page-nav="prev">Назад</button>
-                    <div class="md-object-history-pagination__pages" id="mdObjectHistoryPaginationPages"></div>
-                    <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-history-page-nav="next">Дальше</button>
-                </div>
-            </section>
-            <section class="md-object-history-chart-card" data-md-history-panel="chart" hidden>
-                <div class="md-object-history-chart-card__header">
-                    <div>
-                        <h3>График</h3>
-                        <p id="mdObjectHistoryChartSummary"></p>
-                    </div>
-                </div>
-                <div class="md-object-history-chart" id="mdObjectHistoryChart"></div>
-            </section>
-        </div>
-    </div>
-</aside>
+[#PROPERTY_HISTORY_DRAWER#]
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
