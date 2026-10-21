@@ -440,7 +440,9 @@ if (!isset($request[0])) {
 }
 
 if (isset($result['error'])) {
-    DebMes("Incorrect request (" . $method . "): " . json_encode($request) . "\nInput: " . json_encode($input) . "\nResult: " . json_encode($result), 'api');
+    if (function_exists('DebMes')) {
+        DebMes("Incorrect request (" . $method . "): " . json_encode($request) . "\nInput: " . json_encode($input) . "\nResult: " . json_encode($result), 'api');
+    }
     http_response_code(400);
 } else {
     http_response_code(200);
@@ -457,8 +459,10 @@ if (function_exists('endMeasure')) {
     endMeasure('TOTAL');
 }
 
-if (gr('performance') || (isset($result['passed'])) && $result['passed']>=5) {
-    $result['performance'] = PerformanceReport(1);
+if ((function_exists('gr') && gr('performance')) || (isset($result['passed']) && $result['passed'] >= 5)) {
+    if (function_exists('PerformanceReport')) {
+        $result['performance'] = PerformanceReport(1);
+    }
 }
 
 if (!headers_sent()) {

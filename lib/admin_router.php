@@ -63,7 +63,7 @@ function mdj_admin_route_table($rootHtml = null)
         '/^' . $root . 'panel\/xray\.html/is'
             => '?(panel:{action=xray})&md=xray',
         '/^' . $root . 'panel\/linkedobject\.html/is'
-            => '?(panel:{action=linkedobject})',
+            => '?(panel:{action=linkedobject})&md=linkedobject',
         '/^' . $root . 'panel\/users\/add\.html/is'
             => '?(panel:{action=users})&md=users&view_mode=edit_users',
         '/^' . $root . 'panel\/users\/(\d+)\/delete\.html/is'

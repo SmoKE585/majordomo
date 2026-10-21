@@ -106,7 +106,17 @@ include_once("./lib/loader.php");
 endMeasure('loader');
 
 $requestQuery = mdj_admin_target_to_query($link);
+// Route targets only provide the default state of a pretty URL. Explicit
+// request params must win: module AJAX endpoints are called relative to the
+// current pretty page (for example /panel/script/10.html?view_mode=run_script_ajax)
+// and the route's view_mode must not overwrite them.
+$explicitParams = array_merge($_GET, $_POST);
 foreach ($requestQuery as $key => $value) {
+   if (array_key_exists($key, $explicitParams)) {
+      $_REQUEST[$key] = $explicitParams[$key];
+      ${$key} = $explicitParams[$key];
+      continue;
+   }
    $_REQUEST[$key] = $value;
    ${$key} = $value;
 }

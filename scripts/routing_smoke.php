@@ -95,6 +95,7 @@ $cases = [
     '/panel/event/12.html' => ['module' => 'events', 'params' => ['id' => '12', 'view_mode' => 'edit_events']],
     '/panel/scripts.html' => ['module' => 'scripts', 'params' => []],
     '/panel/xray.html' => ['module' => 'xray', 'params' => []],
+    '/panel/linkedobject.html' => ['module' => 'linkedobject', 'params' => []],
     '/panel/users.html' => ['module' => 'users', 'params' => []],
     '/panel/users/add.html' => ['module' => 'users', 'params' => ['view_mode' => 'edit_users']],
     '/panel/users/5.html' => ['module' => 'users', 'params' => ['id' => '5', 'view_mode' => 'edit_users']],
@@ -156,6 +157,11 @@ routingCheck(
 
 $sidebarXray = '/admin.php?pd=cGFuZWw6e2FjdGlvbj1jbGFzc2VzfQ%3D%3Dpz_&md=panel&inst=&action=xray';
 routingCheck(mdj_admin_pretty_url($sidebarXray) === '/panel/xray.html', '[PRETTY] sidebar xray');
+
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=linkedobject') === '/panel/linkedobject.html',
+    '[PRETTY] linkedobject component page'
+);
 
 routingCheck(mdj_admin_pretty_url('/admin.php') === '/panel/', '[PRETTY] dashboard');
 routingCheck(mdj_admin_pretty_url('/admin.php?action=settings') === '/panel/settings.html', '[PRETTY] settings');

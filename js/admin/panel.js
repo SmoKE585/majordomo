@@ -284,7 +284,7 @@ function partLoad(link) {
     hrefLocation = hrefLocation.replace(/^.*\/\/[^\/]+/, '');
     clearTimeout(locationTimer);
     locationTimer = setTimeout(checkLocationHref, 1000);
-    urlPartLoad += '&part_load=1';
+    urlPartLoad += (urlPartLoad.indexOf('?') === -1 ? '?' : '&') + 'part_load=1';
 
     var cachedKey = simple_hash(urlPartLoad);
     var cachedContent = localStorage.getItem(cachedKey);
