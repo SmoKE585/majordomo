@@ -11,16 +11,16 @@
 | `php-mailer/` | 204 КБ | PHPMailer 6 | `lib/general.class.php` (`sendMail`) | `phpmailer/phpmailer` |
 | `phpmqtt/` | 18 КБ | Минимальный MQTT-клиент | `modules/mqtt/mqtt.class.php`, `scripts/cycle_mqtt.php` | `php-mqtt/client` |
 | `Paginator/` | 9 КБ | Постраничная навигация | `modules/actions_log/actions_log_search.inc.php` | `jasongrimes/paginator` |
-| `elFinder/` | 4.5 МБ | Файловый менеджер (UI + PHP-коннектор) | `public/assets/js/admin/panel.js` → `/3rdparty/elFinder/elfinder.html`, PHP-коннектор через URL | `studio-42/elfinder` (PHP), JS идёт в комплекте |
 | `fonts/` | 1.2 МБ | Шрифт Rubik (woff2) | импорт Vite: `resources/js/app.js` → `../../3rdparty/fonts/rubik/rubik.css` | `@fontsource/rubik` (npm) |
 
-Итого ~7 МБ. Только `smarty3`, `php-mailer`, `phpmqtt` и `Paginator`
-подключаются из PHP; `elFinder` и `fonts` — это веб-ресурсы.
+Итого ~2,5 МБ. Только `smarty3`, `php-mailer`, `phpmqtt` и `Paginator`
+подключаются из PHP; `fonts` — веб-ресурс.
 
 ## 2. Что удалено (0 входящих ссылок)
 
 | Было | Размер | Почему удалено |
 | --- | --- | --- |
+| `3rdparty/elFinder/` | 4.5 МБ | Файловый менеджер с записью в `cms/scenes` открывался из выбора папки в настройках. Заменён project-scoped folder picker: только чтение каталогов внутри проекта, без upload/write. |
 | `pChart/` | 2.4 МБ | Библиотека + самописные эндпоинты `/pChart/?p=объект.свойство`. В коде и в БД ссылок нет; графики свойств сейчас рисует админка (ApexCharts). |
 | `3rdparty/jpgraph/` | 6.2 МБ | Использовался только `pChart/index.php`. |
 | `3rdparty/freeboard/` | 3.5 МБ | Дашборды freeboard. Эндпоинты `modules/objects/objects_widgets.js.php` и `modules/scripts/scripts_widgets.js.php` не подключены ни из одного шаблона, в БД ссылок нет. |
@@ -28,8 +28,8 @@
 Восстановить при необходимости:
 
 ```bash
-git log --oneline -- pChart 3rdparty/jpgraph 3rdparty/freeboard
-git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard
+git log --oneline -- pChart 3rdparty/jpgraph 3rdparty/freeboard 3rdparty/elFinder
+git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard 3rdparty/elFinder
 ```
 
 Если графики свойств снова понадобятся — современный путь: ApexCharts в админке
@@ -65,12 +65,7 @@ git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard
    `cms/cached/templates_c`. Нужен отдельный этап с проверкой всех legacy-страниц,
    которые рендерятся через Smarty.
 
-6. **elFinder** — `composer require studio-42/elfinder` даёт PHP-часть; `elfinder.html`,
-   `js/`, `css/`, `img/` всё равно нужно публиковать как веб-ресурсы. Вариант:
-   оставить `3rdparty/elFinder` как есть или перенести UI в `public/assets/vendor/elfinder`.
-   Это отдельная задача, к Composer не критична.
-
-7. **Rubik** — `npm install @fontsource/rubik` и импорт в `resources/js/app.js`;
+6. **Rubik** — `npm install @fontsource/rubik` и импорт в `resources/js/app.js`;
    `3rdparty/fonts` после этого удаляется (шрифт попадает в бандл `public/assets/admin/fonts`).
 
 После каждого шага: `php -l`, `npm run build` (если затронут фронтенд),
@@ -83,8 +78,8 @@ git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard
   (например, `3rdparty/php-mailer`). Перед переносом библиотеки в `vendor/`
   проверьте входящие ссылки по всему проекту:
   `grep -rn "3rdparty/<name>" --include=*.php .`
-- **Веб-ресурсы.** `elFinder` и `fonts` отдаются браузеру; для них нужен либо
-  URL-путь в `public/assets/vendor/`, либо `root`-override в nginx.
+- **Веб-ресурсы.** `fonts` отдаётся браузеру; для него нужен URL-путь в
+  `public/assets/` или `root`-override в nginx.
 - **Сборка.** `fonts` импортируется Vite — путь является частью сборки, менять
   его нужно вместе с `resources/js/app.js`.
 - **Бандл коммитится.** После переезда шрифтов не забудьте `npm run build` и

@@ -70,6 +70,7 @@ import './modules/admin_panel/115_alpine.js';
 import './modules/admin_panel/118_data_table.js';
 import './modules/admin_panel/119_cycle_widget.js';
 import './modules/admin_panel/121_table_dropdowns.js';
+import './modules/admin_panel/122_folder_picker.js';
 import './modules/admin_panel/116_ui_components.js';
 import './modules/admin_panel/120_linkedobject.js';
 import './codeeditor/loader.js';

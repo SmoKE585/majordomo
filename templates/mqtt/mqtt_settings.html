@@ -181,7 +181,7 @@
                                 <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
                                 <span class="md-check__text">
                                     <span class="md-check__label">Только известные топики</span>
-                                    <span class="md-check__desc">Не создавать записи для новых путей</span>
+                                    <span class="md-check__desc">Игнорировать все топики без привязки к свойству или методу, включая новые</span>
                                 </span>
                             </label>
 
@@ -200,7 +200,7 @@
                             <div class="md-field__control">
                                 <input type="number" id="mdMqttUnlinkedInterval" class="md-input" name="mqtt_unlinked_update_interval" value="[#MQTT_UNLINKED_UPDATE_INTERVAL#]" min="0" step="1" inputmode="numeric">
                             </div>
-                            <div class="md-field__hint">Работает с режимом «Только известные топики». 0 отключает фоновые обновления.</div>
+                            <div class="md-field__hint">Без режима «Только известные топики»: первый приём сразу, следующие — не чаще указанного интервала для каждого топика. 0 — без ограничения. Привязанные свойства и методы обрабатываются сразу.</div>
                         </div>
                     </div>
                 </div>

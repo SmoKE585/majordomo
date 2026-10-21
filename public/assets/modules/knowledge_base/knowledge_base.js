@@ -10,6 +10,8 @@
     'use strict';
 
     var AUDIENCES = ['all', 'user', 'agent'];
+    var articleObserver = null;
+    var articleHashHandler = null;
 
     function queryAll(root, selector) {
         var scope = root && root.querySelectorAll ? root : document;
@@ -217,19 +219,23 @@
         apply(false);
     }
 
+    function teardownArticle() {
+        if (articleObserver) {
+            articleObserver.disconnect();
+            articleObserver = null;
+        }
+        if (articleHashHandler) {
+            window.removeEventListener('hashchange', articleHashHandler);
+            articleHashHandler = null;
+        }
+    }
+
     function initArticle(article) {
         if (!article || article.getAttribute('data-kb-article-ready') === '1') {
             return;
         }
         article.setAttribute('data-kb-article-ready', '1');
-
-        queryAll(article, '[data-kb-scroll-top]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                var reduceMotion = window.matchMedia
-                    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
-            });
-        });
+        teardownArticle();
 
         var links = queryAll(article, '[data-kb-toc-link]');
         var headings = queryAll(article, 'h2[id], h3[id]');
@@ -255,7 +261,7 @@
         }
 
         if ('IntersectionObserver' in window) {
-            var observer = new IntersectionObserver(function (entries) {
+            articleObserver = new IntersectionObserver(function (entries) {
                 var visible = entries.filter(function (entry) {
                     return entry.isIntersecting;
                 });
@@ -268,21 +274,33 @@
             });
 
             headings.forEach(function (heading) {
-                observer.observe(heading);
+                articleObserver.observe(heading);
             });
         }
 
-        window.addEventListener('hashchange', function () {
-            var id = String(window.location.hash || '').replace(/^#/, '');
+        articleHashHandler = function () {
+            var raw = String(window.location.hash || '').replace(/^#/, '');
+            var id = raw;
+            try {
+                id = decodeURIComponent(raw);
+            } catch (error) {
+                id = raw;
+            }
             if (id && linksById[id]) {
                 setActive(id);
             }
-        });
+        };
+        window.addEventListener('hashchange', articleHashHandler);
     }
 
     function init(root) {
         queryAll(root, '[data-kb-list]').forEach(initList);
-        queryAll(root, '[data-kb-article]').forEach(initArticle);
+        var articles = queryAll(root, '[data-kb-article]');
+        if (articles.length) {
+            articles.forEach(initArticle);
+        } else {
+            teardownArticle();
+        }
     }
 
     if (window.MDJAdminUI && typeof window.MDJAdminUI.registerModuleUI === 'function') {

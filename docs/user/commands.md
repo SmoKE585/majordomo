@@ -75,6 +75,8 @@ php tools/config-audit.php --no-log
 | `php tests/install_smoke.php` | Мастер настройки, `.env`-писатель, маркер установки, схема и gate. |
 | `php tests/core_cycle_smoke.php` | Изолированная проверка цикла на фикстурах; рабочая база не используется. |
 | `php tests/core_runtime_smoke.php` | Интеграционная проверка ядра. Требует `APP_ENV=testing` и отдельные тестовые порты MariaDB/Redis. |
+| `php tests/settings_cycles_smoke.php` | Схема «Общих настроек», персистентные состояния и reconcile циклов. |
+| `php tests/folder_picker_smoke.php` | Границы выбора папок: обход `..`, пути вне проекта, скрытые каталоги. |
 | `php tests/knowledge_base_smoke.php` | Сканирование `docs/`, front matter, безопасный Markdown и ссылки базы знаний. |
 
 Базовые проверки синтаксиса:

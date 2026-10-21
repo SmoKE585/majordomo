@@ -101,15 +101,6 @@
                 button.textContent = isPassword ? 'Скрыть' : 'Показать';
             });
         });
-
-        page.querySelectorAll('[data-settings-browse]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                var targetId = button.getAttribute('data-settings-browse');
-                if (targetId && typeof window.openFileBrowser === 'function') {
-                    window.openFileBrowser(targetId);
-                }
-            });
-        });
     }
 
     if (window.MDJAdminUI && typeof window.MDJAdminUI.registerModuleUI === 'function') {

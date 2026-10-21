@@ -42,11 +42,12 @@
 ├── lib/                        # ядро, include-only PHP
 │   ├── core/Install/           # мастер: состояние, gate, .env, схема, schema.sql
 │   ├── core/Settings/          # общие настройки: схема, manager, presenter
-│   └── core/Cycles/            # состояние, супервизор и публичный API циклов
+│   ├── core/Cycles/            # состояние, супервизор и публичный API циклов
+│   └── core/Filesystem/        # folder browser для выбора путей в настройках
 ├── languages/                  # переводы интерфейса
 ├── cms/                        # рантайм-данные и медиа (/cms/...)
 ├── backup/                     # резервные копии saverestore (runtime, gitignored)
-├── 3rdparty/                   # PHP-библиотеки и elFinder (/3rdparty/...)
+├── 3rdparty/                   # PHP-библиотеки (/3rdparty/...)
 ├── objects/                    # /objects/?script=…
 ├── scripts/                    # CLI-циклы и smoke-тесты (/scripts/…)
 ├── tools/                      # dev-инструменты (скриншоты, иконки, config, install)
@@ -76,7 +77,7 @@
 | `/objects/?script=...` | `objects/index.php` |
 
 | `/scripts/...` | `scripts/...` |
-| `/3rdparty/...` | `3rdparty/...` (elFinder, библиотеки) |
+| `/3rdparty/...` | `3rdparty/...` (PHP-библиотеки) |
 | `/docs/...` | `docs/...` (UI Kit ссылается на документацию) |
 | `/css|/js|/img/...` | 301 → `/assets/...` |
 | `/3rdparty/<browser-lib>/...` | 301 → `/assets/vendor/<browser-lib>/...` |
@@ -100,7 +101,7 @@ Document root — только `public/`. Всё, что должно сохра
   каталог и его URL остаются на месте;
 - `cms/` — 160+ обращений вида `ROOT . 'cms/...'` в коде и медиа-URL;
 - `objects/`, `scripts/` — веб-эндпоинты, завязанные на старые URL;
-- `3rdparty/` — elFinder и библиотеки, которые подключают модули.
+- `3rdparty/` — PHP-библиотеки, которые подключают модули.
 
 Точки входа перенесены в `public/` физически. Так как они используют
 относительные include (`./config.php`, `./lib/...`), каждый начинается с
@@ -119,10 +120,9 @@ boot и обработка запроса живут в `lib/core/Application.ph
 
 Полный конфиг — `docs/deploy/nginx.conf.sample` — универсальный: домен, пути и
 сокет заменены на пример. Перед деплоем подставьте свои `root`, `server_name`,
-`сертификаты и сокет php-fpm.
+сертификаты и сокет php-fpm.
 
-``
-ginx
+```nginx
 root /var/www/example/data/www/example.com/public;
 index index.php;
 
@@ -165,8 +165,7 @@ location ^~ /modules/ {
 
 1. Статика страницы модуля → `public/assets/modules/<module>/`, подключается
    только в шаблоне этого модуля (`<#ROOTHTML#>assets/modules/<module>/...`).
-2. Общая библиотека → 
-pm install` + импорт в `resources/js/app.js` (или отдельный
+2. Общая библиотека → `npm install` + импорт в `resources/js/app.js` (или отдельный
    entry). В `public/assets/vendor/` руками ничего не кладём.
 3. Картинка интерфейса → `public/assets/img/...`, ссылка
    `<#ROOTHTML#>assets/img/...`.

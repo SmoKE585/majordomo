@@ -121,14 +121,27 @@ final class AdminApplication extends Application
             $res['CONTENT'] = '';
             $res['NEED_RELOAD'] = 1;
 
-            $cut_begin = '<div id="partLoadContent">';
+            $cut_begin = '<div id="partLoadContent"';
             $cut_begin_index = mb_strpos($result, $cut_begin);
             $cut_end = '</div><!--partloadend-->';
             $cut_end_index = mb_strpos($result, $cut_end);
 
             if (is_integer($cut_begin_index) && is_integer($cut_end_index)) {
-                $cut_begin_index += mb_strlen($cut_begin) + 2;
-                $res['CONTENT'] = mb_substr($result, $cut_begin_index, ($cut_end_index - $cut_begin_index));
+                // The shell adds classes/attributes to the wrapper, so find the
+                // end of the opening tag instead of assuming `>` follows the id.
+                $openingTagEnd = mb_strpos($result, '>', $cut_begin_index);
+                if ($openingTagEnd === false || $openingTagEnd > $cut_end_index) {
+                    $cut_begin_index = false;
+                } else {
+                    $cut_begin_index = $openingTagEnd + 1;
+                }
+            }
+
+            if (is_integer($cut_begin_index) && is_integer($cut_end_index)) {
+                $res['CONTENT'] = ltrim(
+                    mb_substr($result, $cut_begin_index, ($cut_end_index - $cut_begin_index)),
+                    "\r\n"
+                );
                 $res['NEED_RELOAD'] = 0;
                 if (headers_sent()
                     || is_integer(mb_strpos($res['CONTENT'], '$(document).ready'))

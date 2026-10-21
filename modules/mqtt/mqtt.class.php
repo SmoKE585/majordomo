@@ -9,8 +9,8 @@
  * @copyright http://www.atmatic.eu/ (c)
  * @version 0.1 (wizard, 13:07:08 [Jul 19, 2013])
  */
-//
-//
+require_once __DIR__ . '/MqttUnlinkedThrottle.php';
+
 class mqtt extends module
 {
     protected $lookup_cache_ttl = 15;
@@ -19,6 +19,7 @@ class mqtt extends module
     protected $lookup_write_paths = array();
     protected $lookup_linked_paths = array();
     protected $setglobal_supports_source = null;
+    protected static $unlinked_throttle = null;
     /**
      * mqtt
      *
@@ -161,7 +162,7 @@ class mqtt extends module
         foreach ($rows as $row) {
             if ($row['PATH'] !== '') {
                 $this->lookup_by_path[$row['PATH']] = $row;
-                if ($row['LINKED_OBJECT'] != '') {
+                if ($row['LINKED_OBJECT'] != '' && ($row['LINKED_PROPERTY'] != '' || $row['LINKED_METHOD'] != '')) {
                     $this->lookup_linked_paths[] = $row['PATH'];
                 }
             }
@@ -196,7 +197,7 @@ class mqtt extends module
     function hasLinkedPathWithPrefixInList($topic_prefix, $linked_paths)
     {
         foreach ($linked_paths as $linked_path) {
-            if (strpos($linked_path, $topic_prefix) === 0) {
+            if ($linked_path === $topic_prefix || strpos($linked_path, $topic_prefix . '/') === 0) {
                 return true;
             }
         }
@@ -205,7 +206,15 @@ class mqtt extends module
 
     function isLinkedPathInList($path, $linked_paths)
     {
-        return in_array($path, $linked_paths);
+        return in_array($path, $linked_paths, true);
+    }
+
+    function getUnlinkedThrottle()
+    {
+        if (self::$unlinked_throttle === null) {
+            self::$unlinked_throttle = new MqttUnlinkedThrottle(\MajorDoMo\Core\Core::redis());
+        }
+        return self::$unlinked_throttle;
     }
 
     function hasLinkedPathWithPrefix($topic_prefix)
@@ -604,38 +613,48 @@ class mqtt extends module
         if ($value === false) $value = 0;
         elseif ($value === true) $value = 1;
 
-        $this->getConfig();
-
-        $json_payload = $this->decodeJsonObjectPayload($value);
-        if ($json_payload !== false) {
-            foreach ($json_payload as $k => $v) {
-                if (is_array($v)) {
-                    $v = json_encode($v);
-                }
-                if (!$ignore_stripmode && $this->config['MQTT_STRIPMODE']) {
-                    if (is_array($linked_paths)) {
-                        $has_linked_path = $this->hasLinkedPathWithPrefixInList($path . '/' . $k, $linked_paths);
-                    } else {
-                        $has_linked_path = $this->hasLinkedPathWithPrefix($path . '/' . $k);
-                    }
-                    if (!$has_linked_path) {
-                        continue;
-                    }
-                }
-                $this->processMessage($path . '/' . $k, $v, $ignore_stripmode, $linked_paths);
-            }
-        }
-
-        startMeasure('mqttProcessMessage');
-
-        if (!$ignore_stripmode && $this->config['MQTT_STRIPMODE'] && is_array($linked_paths) && !$this->isLinkedPathInList($path, $linked_paths)) {
-            endMeasure('mqttProcessMessage');
-            return false;
+        // The cycle supplies its snapshot; recursive JSON processing reuses it.
+        if (!is_array($linked_paths)) {
+            $this->getConfig();
+            $linked_paths = $this->getLinkedPathsSnapshot();
         }
 
         if (preg_match("/^\\\\u\\d+/", $path)) {
             $path = json_decode('"' . $path . '"');
         }
+
+        $is_linked = $this->isLinkedPathInList($path, $linked_paths);
+        $stripmode = !$ignore_stripmode && !empty($this->config['MQTT_STRIPMODE']);
+        $interval = isset($this->config['MQTT_UNLINKED_UPDATE_INTERVAL']) ? max(0, (int)$this->config['MQTT_UNLINKED_UPDATE_INTERVAL']) : 3600;
+        $process_record = $is_linked || (!$stripmode && $this->getUnlinkedThrottle()->allow($path, $interval));
+        if (!$process_record && !$this->hasLinkedPathWithPrefixInList($path, $linked_paths)) {
+            return false;
+        }
+
+        $throttled = $process_record && !$is_linked && $interval > 0;
+        try {
+            $json_payload = $this->decodeJsonObjectPayload($value);
+            if ($json_payload !== false) {
+                foreach ($json_payload as $k => $v) {
+                    if (is_array($v)) $v = json_encode($v);
+                    $this->processMessage($path . '/' . $k, $v, $ignore_stripmode, $linked_paths);
+                }
+            }
+            if (!$process_record) return false;
+
+            $result = $this->processMessageValue($path, $value, $original_value, $source_url);
+            if ($result === false && $throttled) $this->getUnlinkedThrottle()->cancel($path, $interval);
+            return $result;
+        } catch (Throwable $error) {
+            if ($throttled) $this->getUnlinkedThrottle()->cancel($path, $interval);
+            throw $error;
+        }
+    }
+
+    function processMessageValue($path, $value, $original_value, $source_url)
+    {
+        startMeasure('mqttProcessMessage');
+
         if (preg_match("/^\\\\u\\d+/", $value)) {
             $value = json_decode('"' . $value . '"');
         }
@@ -656,7 +675,8 @@ class mqtt extends module
                 return false;
             }
             /* Insert new record in db */
-            $rec = array();
+            $rec = array('LINKED_OBJECT' => '', 'LINKED_PROPERTY' => '', 'LINKED_METHOD' => '',
+                'PATH_WRITE' => '', 'LOGGING' => 0, 'ONLY_NEW_VALUE' => 0, 'REPLACE_LIST' => '');
             $rec['PATH'] = $path;
             $rec['TITLE'] = $path;
             $rec['VALUE'] = $value . '';
@@ -664,8 +684,10 @@ class mqtt extends module
                 $rec['VALUE'] = mb_substr($rec['VALUE'], 0, 255);
             }
             $rec['UPDATED'] = date('Y-m-d H:i:s');
-            SQLInsert('mqtt', $rec);
-            $this->invalidateLookupCache();
+            $rec['ID'] = SQLInsert('mqtt', $rec);
+            if (!$rec['ID']) throw new RuntimeException('Unable to insert MQTT topic');
+            // Discovery must not reload the entire table after every new topic.
+            $this->lookup_by_path[$path] = $rec;
         } else {
 
             if ($rec['LOGGING']) {
@@ -680,7 +702,9 @@ class mqtt extends module
                     $rec['VALUE'] = mb_substr($rec['VALUE'], 0, 255);
                 }
                 $rec['UPDATED'] = date('Y-m-d H:i:s');
-                SQLUpdate('mqtt', $rec);
+                if (!SQLUpdate('mqtt', array('ID' => $rec['ID'], 'VALUE' => $rec['VALUE'], 'UPDATED' => $rec['UPDATED']))) {
+                    throw new RuntimeException('Unable to update MQTT topic');
+                }
                 $this->lookup_by_path[$path] = $rec;
 
                 if ($rec['REPLACE_LIST'] != '') {

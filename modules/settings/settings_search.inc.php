@@ -146,6 +146,8 @@ if (!function_exists('settingsBuildLanguageOptions')) {
     }
 }
 
+require_once ROOT . 'lib/ui/MDJUI.php';
+
 $systemSettings = new \MajorDoMo\Core\Settings\SettingsManager(ROOT);
 $systemSections = \MajorDoMo\Core\Settings\SettingsSchema::sections();
 $settings_sections = $systemSections + $settings_sections;
@@ -198,6 +200,12 @@ $out['SETTINGS_TOTAL'] = $settingsTotal;
 $out['CHANGED_IN_SECTION'] = 0;
 $out['SYSTEM_SECTION'] = $isSystemSection ? 1 : 0;
 $out['CAN_RESET'] = $activeSection === \MajorDoMo\Core\Settings\SettingsSchema::SECTION_DATABASE ? 0 : 1;
+$out['FOLDER_PICKER'] = MDJUI::folderPicker(array(
+    'id' => 'mdSettingsFolderPicker',
+    'endpoint' => ROOTHTML . 'ajax/settings.html?op=folder',
+    'title' => 'Выбор папки',
+    'subtitle' => 'Только каталоги внутри проекта MajorDoMo.',
+));
 
 if ($isSystemSection) {
     if (!empty($_SESSION['md_settings_warnings']) && is_array($_SESSION['md_settings_warnings'])) {
@@ -412,6 +420,7 @@ if ($res) {
         $res[$i]['SEARCH_TEXT'] = htmlspecialchars($searchText, ENT_QUOTES);
         $res[$i]['IS_WIDE'] = in_array($res[$i]['TYPE'], array('textarea', 'json')) ? 1 : 0;
         $res[$i]['IS_SECRET'] = in_array($res[$i]['TYPE'], array('password')) ? 1 : 0;
+        $res[$i]['PICKER_MODE'] = 'dir';
     }
 
     $out['RESULT'] = $res;

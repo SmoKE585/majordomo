@@ -108,6 +108,8 @@ final class MDKnowledgeBase
             }
         }
 
+        $this->finalizeCategories($documents);
+
         uasort($documents, function ($left, $right) {
             if ($left['category_order'] !== $right['category_order']) {
                 return $left['category_order'] < $right['category_order'] ? -1 : 1;
@@ -326,6 +328,12 @@ final class MDKnowledgeBase
             $categoryKey = 'general';
         }
         $category = $this->categoryInfo($categoryKey, $meta);
+        $overrideLabel = isset($meta['category_label']) && is_string($meta['category_label'])
+            && $meta['category_label'] !== '' ? $meta['category_label'] : null;
+        $overrideIcon = isset($meta['category_icon']) && is_string($meta['category_icon'])
+            && $meta['category_icon'] !== '' ? $meta['category_icon'] : null;
+        $overrideOrder = isset($meta['category_order']) && is_numeric($meta['category_order'])
+            ? (int)$meta['category_order'] : null;
 
         $metaTitle = isset($meta['title']) && is_string($meta['title']) ? trim($meta['title']) : '';
         $title = $metaTitle !== '' ? $metaTitle : $this->extractTitle($body);
@@ -353,7 +361,7 @@ final class MDKnowledgeBase
         $search = mb_strtolower(
             $title . ' ' . $description . ' ' . $category['label'] . ' '
             . implode(' ', $tags) . ' ' . implode(' ', $headings) . ' '
-            . mb_substr($body, 0, 4000, 'UTF-8'),
+            . mb_substr($body, 0, 2000, 'UTF-8'),
             'UTF-8'
         );
         $search = preg_replace('/\s+/u', ' ', $search);
@@ -371,6 +379,9 @@ final class MDKnowledgeBase
             'category_label' => $category['label'],
             'category_icon' => $category['icon'],
             'category_order' => $category['order'],
+            'category_override_label' => $overrideLabel,
+            'category_override_icon' => $overrideIcon,
+            'category_override_order' => $overrideOrder,
             'audience' => $audience,
             'tags' => $tags,
             'order' => $order,
@@ -563,22 +574,7 @@ final class MDKnowledgeBase
      */
     private function categoryInfo($key, array $meta)
     {
-        $defaults = array(
-            'general' => array('label' => 'Общие материалы', 'icon' => 'book', 'order' => 0),
-            'user' => array('label' => 'Для пользователя', 'icon' => 'user', 'order' => 10),
-            'agents' => array('label' => 'Для агентов', 'icon' => 'robot', 'order' => 20),
-            'deploy' => array('label' => 'Развёртывание', 'icon' => 'server', 'order' => 30),
-            'dev' => array('label' => 'Разработка', 'icon' => 'code', 'order' => 40),
-            'archive' => array('label' => 'Архив', 'icon' => 'archive', 'order' => 90),
-        );
-
-        $info = isset($defaults[$key])
-            ? $defaults[$key]
-            : array(
-                'label' => $this->humanize($key),
-                'icon' => 'folder',
-                'order' => 50,
-            );
+        $info = $this->categoryDefaults($key);
 
         if (isset($meta['category_label']) && is_string($meta['category_label']) && $meta['category_label'] !== '') {
             $info['label'] = $meta['category_label'];
@@ -594,6 +590,83 @@ final class MDKnowledgeBase
     }
 
     /**
+     * Default label/icon/order for a category key.
+     *
+     * @param string $key
+     * @return array{label:string,icon:string,order:int}
+     */
+    private function categoryDefaults($key)
+    {
+        $defaults = array(
+            'general' => array('label' => 'Общие материалы', 'icon' => 'book', 'order' => 0),
+            'user' => array('label' => 'Для пользователя', 'icon' => 'user', 'order' => 10),
+            'agents' => array('label' => 'Для агентов', 'icon' => 'robot', 'order' => 20),
+            'deploy' => array('label' => 'Развёртывание', 'icon' => 'server', 'order' => 30),
+            'dev' => array('label' => 'Разработка', 'icon' => 'code', 'order' => 40),
+            'archive' => array('label' => 'Архив', 'icon' => 'archive', 'order' => 90),
+        );
+
+        return isset($defaults[$key])
+            ? $defaults[$key]
+            : array(
+                'label' => $this->humanize($key),
+                'icon' => 'folder',
+                'order' => 50,
+            );
+    }
+
+    /**
+     * Apply explicit category metadata across all documents of a category.
+     *
+     * A label/icon/order may be declared in any one file of the category. The
+     * selection is deterministic: documents are visited by id, so the first
+     * explicit value wins regardless of the final content ordering.
+     *
+     * @param array<string,array<string,mixed>> $documents
+     * @return void
+     */
+    private function finalizeCategories(array &$documents)
+    {
+        $ids = array_keys($documents);
+        sort($ids);
+
+        $overrides = array();
+        foreach ($ids as $id) {
+            $document = $documents[$id];
+            $key = $document['category_key'];
+            if (!isset($overrides[$key])) {
+                $overrides[$key] = array('label' => null, 'icon' => null, 'order' => null);
+            }
+            foreach (array('label', 'icon', 'order') as $field) {
+                $value = $document['category_override_' . $field];
+                if ($overrides[$key][$field] === null && $value !== null) {
+                    $overrides[$key][$field] = $value;
+                }
+            }
+        }
+
+        foreach ($documents as $id => $document) {
+            $key = $document['category_key'];
+            $defaults = $this->categoryDefaults($key);
+            $override = isset($overrides[$key])
+                ? $overrides[$key]
+                : array('label' => null, 'icon' => null, 'order' => null);
+
+            $document['category_label'] = $override['label'] !== null
+                ? $override['label']
+                : $defaults['label'];
+            $document['category_icon'] = $override['icon'] !== null
+                ? $override['icon']
+                : $defaults['icon'];
+            $document['category_order'] = $override['order'] !== null
+                ? (int)$override['order']
+                : (int)$defaults['order'];
+
+            $documents[$id] = $document;
+        }
+    }
+
+    /**
      * Extract the first level-1 heading as a fallback title.
      *
      * @param string $body
@@ -603,6 +676,7 @@ final class MDKnowledgeBase
     {
         $lines = preg_split('/\n/', (string)$body);
         $inFence = false;
+        $inComment = false;
         $count = count($lines);
         for ($i = 0; $i < $count; $i++) {
             $line = $lines[$i];
@@ -611,6 +685,18 @@ final class MDKnowledgeBase
                 continue;
             }
             if ($inFence) {
+                continue;
+            }
+            if ($inComment) {
+                if (strpos($line, '-->') !== false) {
+                    $inComment = false;
+                }
+                continue;
+            }
+            if (strncmp(trim($line), '<!--', 4) === 0) {
+                if (strpos($line, '-->') === false) {
+                    $inComment = true;
+                }
                 continue;
             }
             if (preg_match('/^ {0,3}#\s+(.+?)\s*#*\s*$/', $line, $match)) {
@@ -640,6 +726,13 @@ final class MDKnowledgeBase
         $inComment = false;
         $paragraph = array();
         foreach (preg_split('/\n/', (string)$body) as $line) {
+            if (preg_match('/^ {0,3}(`{3,}|~{3,})/', $line)) {
+                $inFence = !$inFence;
+                continue;
+            }
+            if ($inFence) {
+                continue;
+            }
             if ($inComment) {
                 if (strpos($line, '-->') !== false) {
                     $inComment = false;
@@ -650,13 +743,6 @@ final class MDKnowledgeBase
                 if (strpos($line, '-->') === false) {
                     $inComment = true;
                 }
-                continue;
-            }
-            if (preg_match('/^ {0,3}(`{3,}|~{3,})/', $line)) {
-                $inFence = !$inFence;
-                continue;
-            }
-            if ($inFence) {
                 continue;
             }
 

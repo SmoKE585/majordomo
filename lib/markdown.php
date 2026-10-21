@@ -545,7 +545,7 @@ final class MDMarkdownRenderer
             $i++;
 
             $continuation = array();
-            $nested = array();
+            $parts = array();
             $fenceMarker = '';
             $fenceLength = 0;
             $fenceIndent = 0;
@@ -599,7 +599,11 @@ final class MDMarkdownRenderer
                     if ($nestedIndent <= $indent) {
                         break;
                     }
-                    $nested[] = $this->renderList($lines, $i, $nestedIndent);
+                    // Flush the text collected before the nested list so the
+                    // source order (text -> list -> text) is preserved.
+                    $parts[] = $this->renderListContinuation($continuation);
+                    $continuation = array();
+                    $parts[] = $this->renderList($lines, $i, $nestedIndent);
                     continue;
                 }
 
@@ -611,7 +615,15 @@ final class MDMarkdownRenderer
                     continue;
                 }
 
-                // Lazy continuation: a plain line directly under the item.
+                // A line at the outer indentation ends a nested list; it is
+                // the parent item's continuation, not a lazy line of the
+                // nested item.
+                if ($indent > 0) {
+                    break;
+                }
+
+                // Lazy continuation: a plain line directly under a top-level
+                // item.
                 if (!$this->isBlockStart($lines, $i)) {
                     $continuation[] = $line;
                     $i++;
@@ -634,17 +646,11 @@ final class MDMarkdownRenderer
             }
             $item .= $this->inline($content);
 
-            $continuationText = trim(implode("\n", $continuation));
-            if ($continuationText !== '') {
-                // Continuation lines have already been dedented, so nested
-                // fenced code blocks and paragraphs can go through the normal
-                // block renderer instead of becoming one flat inline string.
-                $item .= $this->renderBlocks(preg_split('/\n/', $continuationText), false);
-            }
+            // Remaining continuation lines (dedented) go through the normal
+            // block renderer; nested lists were flushed into $parts in order.
+            $parts[] = $this->renderListContinuation($continuation);
+            $item .= implode('', $parts);
 
-            if ($nested) {
-                $item .= implode('', $nested);
-            }
             if ($task !== null) {
                 $item .= '</label>';
             }
@@ -655,6 +661,41 @@ final class MDMarkdownRenderer
         $html .= $ordered ? "</ol>\n" : "</ul>\n";
 
         return $html;
+    }
+
+    /**
+     * Render list-item continuation lines.
+     *
+     * Simple wrapped lines are appended to the item's inline text; buffers
+     * containing code, headings, tables or blank-line-separated blocks go
+     * through the block renderer.
+     *
+     * @param array<int,string> $lines
+     * @return string
+     */
+    private function renderListContinuation(array $lines)
+    {
+        $text = trim(implode("\n", $lines));
+        if ($text === '') {
+            return '';
+        }
+
+        $isSimple = strpos($text, "\n\n") === false;
+        if ($isSimple) {
+            $count = count($lines);
+            for ($i = 0; $i < $count; $i++) {
+                if (trim($lines[$i]) === '' || $this->isBlockStart($lines, $i)) {
+                    $isSimple = false;
+                    break;
+                }
+            }
+        }
+
+        if ($isSimple) {
+            return ' ' . $this->inline(preg_replace('/\s*\n\s*/', ' ', $text));
+        }
+
+        return $this->renderBlocks(preg_split('/\n/', $text), false);
     }
 
     /**
@@ -762,7 +803,9 @@ final class MDMarkdownRenderer
     {
         $resolved = $this->resolveUrl($url, false);
         if ($resolved === null) {
-            return $this->escape($this->tokensToPlain($label));
+            // Keep the label formatting (for example inline code) when the
+            // target is repository code that is not web-reachable.
+            return $this->inline($label);
         }
 
         $attrs = ' href="' . $this->escapeAttr($resolved) . '"';
@@ -1023,7 +1066,11 @@ final class MDMarkdownRenderer
      */
     private function escape($text)
     {
-        return htmlspecialchars((string)$text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $escaped = htmlspecialchars((string)$text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        // `$(` is used by partLoad() as a heuristic for inline scripts. Docs
+        // contain PHP/jQuery examples, so encode the sign; the browser still
+        // renders a normal dollar.
+        return str_replace('$', '&#36;', $escaped);
     }
 
     /**
@@ -1034,6 +1081,7 @@ final class MDMarkdownRenderer
      */
     private function escapeAttr($text)
     {
-        return htmlspecialchars((string)$text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $escaped = htmlspecialchars((string)$text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return str_replace('$', '&#36;', $escaped);
     }
 }

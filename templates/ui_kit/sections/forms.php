@@ -438,6 +438,47 @@ CODE,
             </div>
         </form>
     <?php }); ?>
+
+    <?php md_ui_demo(array(
+        'title' => 'Folder picker',
+        'desc' => 'Read-only выбор каталога для путей: бэкапы, логи, сертификаты. Навигация ограничена корнем проекта; файлы и внешние пути недоступны.',
+        'api' => 'MDJUI::folderPicker() · data-md-folder-picker · data-md-folder-picker-modal',
+        'canvas_class' => 'md-ui-demo__canvas--block',
+        'code' => <<<'CODE'
+<?= MDJUI::folderPicker([
+  'id' => 'mdUiKitFolderPicker',
+  'endpoint' => ROOTHTML . 'ajax/settings.html?op=folder',
+]) ?>
+
+<div class="d-flex gap-2">
+  <input class="md-input" id="uiKitFolderPath" type="text" value="" aria-label="Папка">
+  <button type="button" class="md-btn md-btn--secondary"
+          data-md-folder-picker="uiKitFolderPath"
+          data-md-folder-picker-modal="mdUiKitFolderPicker">
+    Выбрать
+  </button>
+</div>
+CODE,
+    ), function () { ?>
+        <div class="md-field">
+            <label class="md-field__label" for="uiKitFolderPath">Папка резервных копий</label>
+            <div class="md-field__control d-flex gap-2">
+                <input class="md-input" id="uiKitFolderPath" type="text" value="" autocomplete="off" spellcheck="false" placeholder="Выберите каталог проекта">
+                <button type="button" class="md-btn md-btn--secondary" data-md-folder-picker="uiKitFolderPath" data-md-folder-picker-modal="mdUiKitFolderPicker">
+                    <?= MDJUI::icon('folder-open') ?>
+                    <span class="md-btn__label">Выбрать</span>
+                </button>
+            </div>
+            <div class="md-field__hint">В поле записывается абсолютный путь внутри проекта. Внешние каталоги можно указать вручную.</div>
+        </div>
+    <?php }); ?>
+
+    <?= MDJUI::folderPicker(array(
+        'id' => 'mdUiKitFolderPicker',
+        'endpoint' => ROOTHTML . 'ajax/settings.html?op=folder',
+        'title' => 'Выбор папки',
+        'subtitle' => 'Только каталоги внутри проекта MajorDoMo.',
+    )) ?>
 </section>
 
 

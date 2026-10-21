@@ -66,6 +66,7 @@ final class SettingsPresenter
                 'STEP' => isset($field['step_attr']) ? (string)$field['step_attr'] : '',
                 'OPTIONS' => $options,
                 'DEPENDS' => $this->depends($field),
+                'PICKER_MODE' => (string)($field['picker'] ?? 'dir') === 'none' ? 'none' : 'dir',
                 'IS_SELECT_DROPDOWN' => 1,
                 'IS_SELECT_CHOICES' => 0,
             );

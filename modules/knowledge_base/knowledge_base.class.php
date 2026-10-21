@@ -287,6 +287,8 @@ class knowledge_base extends module
      */
     private function e($value)
     {
-        return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $escaped = htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        // Keep `$(` out of partLoad content: it is treated as inline JS.
+        return str_replace('$', '&#36;', $escaped);
     }
 }

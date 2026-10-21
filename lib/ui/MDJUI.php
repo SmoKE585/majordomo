@@ -344,6 +344,15 @@ class MDJUI
         return self::render('drawer', $props, $slot);
     }
 
+    /**
+     * Read-only folder picker dialog. The endpoint must return the JSON shape
+     * produced by MajorDoMo\Core\Filesystem\FolderBrowser::listing().
+     */
+    public static function folderPicker(array $props = array())
+    {
+        return self::render('folder-picker', $props);
+    }
+
     public static function kpi(array $props = array())
     {
         return self::render('kpi', $props);

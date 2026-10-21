@@ -88,10 +88,13 @@ function openFileBrowserCallback(url) {
 
 function openFileBrowser(id) {
     fileBrowseElementId = id;
-    window.open(window.ROOTHTML + '3rdparty/elFinder/elfinder.html',
-        'kcfinder_image', 'status=0, toolbar=0, location=0, menubar=0, ' +
-        'directories=0, resizable=1, scrollbars=0, width=800, height=600'
-    );
+    // The old elFinder popup was replaced by the project-scoped folder picker.
+    // Keep this global for legacy inline handlers; pages without the picker
+    // simply do nothing instead of opening an unrestricted file manager.
+    if (window.MDFolderPicker && typeof window.MDFolderPicker.open === 'function') {
+        return window.MDFolderPicker.open(id);
+    }
+    return false;
 }
 
 function showHideLayer(id) {

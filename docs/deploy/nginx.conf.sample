@@ -26,7 +26,7 @@
 #   /modules/...  PHP-эндпоинты модулей (autosave, iframe-воркеры, widgets)
 #   /objects/...  скрипты объектов
 #   /scripts/...  веб-триггеры циклов
-#   /3rdparty/... elFinder и библиотеки
+#   /3rdparty/... PHP-библиотеки
 #   /docs/...     документация (sql/log закрыты)
 #
 # Старые URL:

@@ -608,6 +608,32 @@ MDLinkedObjectUI.destroy(root);
 - Color — `input[type=color]` + hex-поле, синхронизация через Alpine `mdColorPicker`.
 - File upload — зона `.md-upload` + Alpine `mdFileUpload` (см. UI Kit); серверная проверка обязательна.
 
+#### Folder picker
+
+Для путей (бэкапы, логи, сертификаты) используйте read-only диалог
+`MDJUI::folderPicker()` и глобальный `MDFolderPicker`:
+
+```php
+<?= MDJUI::folderPicker([
+    'id' => 'mdSettingsFolderPicker',
+    'endpoint' => ROOTHTML . 'ajax/settings.html?op=folder',
+]) ?>
+
+<button type="button" class="md-btn md-btn--secondary md-btn--sm"
+        data-md-folder-picker="value_BACKUP_PATH"
+        data-md-folder-picker-modal="mdSettingsFolderPicker">
+    Выбрать
+</button>
+```
+
+Endpoint возвращает `{ok, path, absolute, parent, root, dirs}` и обязан
+ограничивать навигацию корнем проекта. Компонент не загружает и не меняет
+файлы: это picker каталогов, а не файловый менеджер. Выбор записывается в
+native input и вызывает `input`/`change`, поэтому зависимости настроек и
+legacy-обработчики продолжают работать. JS API: `MDFolderPicker.open(inputId)`;
+стили — `.md-folder-picker__*` в `ui-system.css`. Живой пример —
+`?action=ui_kit#forms`.
+
 ### 4.5. Уведомления и диалоги
 
 #### `MDJUI::alert($type, $title, $text = '', $props = [])`

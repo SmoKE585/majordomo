@@ -993,10 +993,11 @@ final class InstallSchema
                 'section' => 'websockets',
                 'type' => 'path',
                 'label' => 'Файл сертификата',
-                'description' => 'PEM-файл с сертификатом и ключом.',
+                'description' => 'PEM-файл с сертификатом и ключом. Путь к файлу укажите вручную.',
                 'placeholder' => './server.pem',
                 'default' => '',
                 'width' => 'half',
+                'picker' => 'none',
                 'depends' => array('field' => 'WEBSOCKETS_TLS', 'value' => '1'),
             ),
             'WEBSOCKETS_TLS_PEM_PASSPHRASE' => array(

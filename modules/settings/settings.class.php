@@ -85,6 +85,10 @@ class settings extends module {
 */
  function run() {
  global $session;
+  if ($this->ajax && gr('op') === 'folder') {
+   $this->folderListing();
+   return;
+  }
   if ($this->action=='admin') {
    $this->admin($out);
   } else {
@@ -108,6 +112,36 @@ class settings extends module {
   $p=new parser(DIR_TEMPLATES.$this->name."/".$this->name.".html", $this->data, $this);
   $this->result=$p->result;
 }
+/**
+ * Read-only folder picker endpoint for path settings.
+ *
+ * Route: ajax/settings.html?op=folder&path=cms/saverestore
+ * The browser is anchored to the project root; the service rejects "..",
+ * absolute paths outside the project and symlinks that escape it.
+ */
+ function folderListing() {
+  if (!headers_sent()) {
+   header('Content-Type: application/json; charset=utf-8');
+   header('Cache-Control: no-store, max-age=0');
+   header('X-Content-Type-Options: nosniff');
+  }
+
+  $path = isset($_GET['path']) && is_string($_GET['path']) ? $_GET['path'] : '';
+  try {
+   $browser = new \MajorDoMo\Core\Filesystem\FolderBrowser(ROOT);
+   $result = $browser->listing($path);
+  } catch (\Throwable $e) {
+   $result = array(
+    'ok' => false,
+    'error' => 'Не удалось открыть папки проекта.',
+   );
+  }
+
+  $json = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+  echo $json !== false ? $json : '{"ok":false,"error":"Не удалось подготовить ответ."}';
+  exit;
+ }
+
 /**
 * BackEnd
 *

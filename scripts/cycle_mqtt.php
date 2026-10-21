@@ -22,9 +22,7 @@ $latest_data_received = time();
 $max_no_data_timeout = 5 * 60; // 5 minutes
 $mqtt_reconnect_delay = 5;
 $cycle_name = str_replace('.php', '', basename(__FILE__));
-$mqtt_unlinked_cache = array();
-$mqtt_unlinked_update_interval = 0;
-$mqtt_last_unlinked_update = time();
+$mqtt_repeating_cache = array();
 $mqtt_linked_paths = array();
 
 setGlobal($cycle_name . 'Run', time(), 1);
@@ -62,30 +60,27 @@ function procmsg($topic, $msg)
     global $stripmode;
     global $mqtt_delay;
     global $mqtt_repeating_cache;
-    global $mqtt_unlinked_update_interval;
     global $mqtt_linked_paths;
-
-    if ($mqtt_delay > 0 && isset($mqtt_repeating_cache[$topic]['msg']) && $mqtt_repeating_cache[$topic]['msg'] == $msg && (time() - $mqtt_repeating_cache[$topic]['received']) <= $mqtt_delay) {
-        // processing cached
-        return false;
-    }
-
-    if ($mqtt_delay > 0) {
-        $mqtt_repeating_cache[$topic] = array('msg' => $msg, 'received' => time());
-    }
-
-    //DebMes("Processing incoming $topic: $msg", 'mqtt');
 
     if ($stripmode) {
         if (!$mqtt->hasLinkedPathWithPrefixInList($topic, $mqtt_linked_paths)) {
-            if ($mqtt_unlinked_update_interval > 0) {
-                mqttBufferUnlinkedMessage($topic, $msg);
-            }
             if (isset($mqtt->config['DEBUG_MODE']) && (int)$mqtt->config['DEBUG_MODE']) {
                 echo date("Y-m-d H:i:s") . " Ignore received from {$topic} : $msg\n";
             }
             return false;
         }
+    }
+
+    if ($mqtt_delay > 0) {
+        $topic_key = hash('sha256', $topic, true);
+        $message_hash = hash('sha256', $msg, true);
+        if (isset($mqtt_repeating_cache[$topic_key]) && $mqtt_repeating_cache[$topic_key]['hash'] === $message_hash && $mqtt_repeating_cache[$topic_key]['expires'] >= time()) {
+            return false;
+        }
+        if (!isset($mqtt_repeating_cache[$topic_key]) && count($mqtt_repeating_cache) >= 65536) {
+            unset($mqtt_repeating_cache[array_key_first($mqtt_repeating_cache)]);
+        }
+        $mqtt_repeating_cache[$topic_key] = array('hash' => $message_hash, 'expires' => time() + $mqtt_delay);
     }
 
     $debug_mode = isset($mqtt->config['DEBUG_MODE']) ? (int)$mqtt->config['DEBUG_MODE'] : 0;
@@ -109,65 +104,6 @@ function procmsg($topic, $msg)
     }
 }
 
-function mqttBufferUnlinkedMessage($topic, $msg)
-{
-    global $mqtt_unlinked_cache;
-
-    $mqtt_unlinked_cache[$topic] = array(
-        'topic' => $topic,
-        'msg' => $msg,
-        'received' => time()
-    );
-}
-
-function mqttFlushUnlinkedMessages($force = false)
-{
-    global $mqtt;
-    global $mqtt_unlinked_cache;
-    global $mqtt_unlinked_update_interval;
-    global $mqtt_last_unlinked_update;
-
-    if ($mqtt_unlinked_update_interval <= 0) {
-        return;
-    }
-
-    $now = time();
-    if (!$force && ($now - $mqtt_last_unlinked_update) < $mqtt_unlinked_update_interval) {
-        return;
-    }
-    $mqtt_last_unlinked_update = $now;
-
-    if (empty($mqtt_unlinked_cache)) {
-        return;
-    }
-
-    $messages = $mqtt_unlinked_cache;
-    $mqtt_unlinked_cache = array();
-
-    if (isset($mqtt->config['DEBUG_MODE']) && (int)$mqtt->config['DEBUG_MODE']) {
-        echo date("Y-m-d H:i:s") . " Updating " . count($messages) . " unlinked MQTT topics\n";
-    }
-
-    foreach ($messages as $message) {
-        $topic = $message['topic'];
-        $msg = $message['msg'];
-        $source_url = '/api.php/module/mqtt?topic=' . urlencode($topic) . '&msg=' . urlencode($msg) . '&no_session=1';
-        $has_request_uri = isset($_SERVER['REQUEST_URI']);
-        $old_request_uri = $has_request_uri ? $_SERVER['REQUEST_URI'] : '';
-        $_SERVER['REQUEST_URI'] = $source_url;
-        try {
-            $mqtt->processMessage($topic, $msg, true);
-        } catch (Exception $e) {
-            DebMes("Error updating unlinked MQTT message $topic: " . $e->getMessage(), 'mqtt_error');
-        }
-        if ($has_request_uri) {
-            $_SERVER['REQUEST_URI'] = $old_request_uri;
-        } else {
-            unset($_SERVER['REQUEST_URI']);
-        }
-    }
-}
-
 function mqttShouldStop()
 {
     if (isset($_GET['onetime'])) {
@@ -186,9 +122,8 @@ function mqttRunOnce()
     global $mqtt_delay;
     global $latest_data_received;
     global $max_no_data_timeout;
-    global $mqtt_unlinked_update_interval;
-    global $mqtt_last_unlinked_update;
     global $mqtt_linked_paths;
+    global $mqtt_repeating_cache;
 
     $mqtt = new mqtt();
     $mqtt->getConfig();
@@ -208,8 +143,6 @@ function mqttRunOnce()
     $query = $mqtt->config['MQTT_QUERY'] ? $mqtt->config['MQTT_QUERY'] : '/var/now/#';
     $stripmode = !empty($mqtt->config['MQTT_STRIPMODE']) ? (int)$mqtt->config['MQTT_STRIPMODE'] : 0;
     $mqtt_delay = isset($mqtt->config['MQTT_DELAY']) ? (int)$mqtt->config['MQTT_DELAY'] : 5;
-    $mqtt_unlinked_update_interval = isset($mqtt->config['MQTT_UNLINKED_UPDATE_INTERVAL']) ? max(0, (int)$mqtt->config['MQTT_UNLINKED_UPDATE_INTERVAL']) : 3600;
-    $mqtt_last_unlinked_update = time();
     $mqtt_linked_paths = $mqtt->getLinkedPathsSnapshot(true);
 
     $mqtt_client = new Bluerhinos\phpMQTT($host, $port, $client_name);
@@ -276,10 +209,12 @@ function mqttRunOnce()
 
         if ((time() - $previous_heartbeat) >= 1) {
             $previous_heartbeat = time();
-            mqttFlushUnlinkedMessages();
+            // Bounded fingerprints only; inactive topics do not accumulate forever.
+            foreach ($mqtt_repeating_cache as $topic_key => $cached) {
+                if ($cached['expires'] < $previous_heartbeat) unset($mqtt_repeating_cache[$topic_key]);
+            }
             setGlobal(str_replace('.php', '', basename(__FILE__)) . 'Run', time(), 1);
             if (mqttShouldStop()) {
-                mqttFlushUnlinkedMessages(true);
                 $mqtt_client->close();
                 return;
             }

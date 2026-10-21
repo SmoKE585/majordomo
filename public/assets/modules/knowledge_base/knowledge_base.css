@@ -907,8 +907,27 @@ body.md-admin-shell .md-kb-missing {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* On mobile the TOC should come before the article; meta and neighbours
+   * stay after it. display:contents lets the aside children take part in the
+   * page grid without a wrapper box. */
   body.md-admin-shell .md-kb-article__aside {
-    position: static;
+    display: contents;
+  }
+
+  body.md-admin-shell .md-kb-article__layout .md-kb-toc {
+    order: -1;
+  }
+
+  body.md-admin-shell .md-kb-article__layout .md-kb-prose {
+    order: 1;
+  }
+
+  body.md-admin-shell .md-kb-article__layout .md-kb-meta {
+    order: 2;
+  }
+
+  body.md-admin-shell .md-kb-article__layout .md-kb-neighbors {
+    order: 3;
   }
 }
 

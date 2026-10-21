@@ -179,10 +179,12 @@
                         [#if TYPE="path"#]
                         <div class="md-settings-path">
                             <input type="text" class="md-input" id="value_[#ID#]" name="value_[#ID#]" value="[#VALUE#]" autocomplete="off" spellcheck="false" aria-labelledby="settingsTitle_[#ID#]">
-                            <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-settings-browse="value_[#ID#]">
+                            [#if PICKER_MODE!="none"#]
+                            <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-folder-picker="value_[#ID#]" data-md-folder-picker-modal="mdSettingsFolderPicker" title="Выбрать папку внутри проекта">
                                 <i class="ti ti-folder-open" aria-hidden="true"></i>
                                 <span class="md-btn__label">Выбрать</span>
                             </button>
+                            [#endif#]
                         </div>
                         [#endif TYPE#]
 
@@ -321,3 +323,5 @@
     </div>
     [#endif RESULT#]
 </div>
+
+[#FOLDER_PICKER#]

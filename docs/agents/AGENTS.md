@@ -53,7 +53,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - редактор кода переведён на CodeMirror 6 и отдельный lazy-chunk: единый toolbar, light/dark, авто-высота, поиск, F11/Esc, история версий, ошибки с подсветкой строки, мобильная вёрстка; старый `3rdparty/codemirror` удалён;
 - настройки переведены на общую систему: KPI, `md-tabs` разделов, карточки настроек, `md-field`/`md-input`/`md-select`, локальный поиск;
 - добавлен мастер первичной настройки `/install.php` на новой схеме `lib/core/Install/`: проверка PHP/расширений/прав/БД, запись `.env` с резервной копией, настройки интерфейса в `settings`, создание администратора при необходимости; при пустой базе мастер импортирует чистую схему `lib/core/Install/schema.sql` (только структура, без демо-данных и пользователей); `InstallGate` перенаправляет админку, сайт, API и object-эндпоинты, пока маркер `cms/modules_installed/install.installed` не завершён (старые установки с `control_modules.installed` считаются настроенными); документация — `docs/agents/install.md`, CLI — `tools/install.php`; встроенная авторизация панели удалена (доступ закрывает reverse proxy, новая авторизация будет на модуле «Пользователи»), старый список пользователей на фронтенде и `DISABLE_USERS_LIST` удалены;
-- настройки мастера перенесены в «Общие настройки» (`lib/core/Settings/`): схема переиспользует `InstallSchema`, пишет `.env` и `settings`, проверяет смену БД, сохраняет старые DB-настройки отдельными разделами; после сохранения перезапускает циклы, при смене БД делает полный reload супервизора; документация — `docs/agents/settings.md`;
+- настройки мастера перенесены в «Общие настройки» (`lib/core/Settings/`): схема переиспользует `InstallSchema`, пишет `.env` и `settings`, проверяет смену БД, сохраняет старые DB-настройки отдельными разделами; после сохранения перезапускает циклы, при смене БД делает полный reload супервизора; выбор папок для путей — собственный project-scoped `MDFolderPicker` (`lib/core/Filesystem/FolderBrowser.php`), старый elFinder удалён; документация — `docs/agents/settings.md`;
 - управление циклами переведено на OOP-схему (`lib/core/Cycles/`): персистентное состояние `cms/cycles/state.json` (`running`/`stopped`/`disabled`), поколения для надёжного рестарта, `CycleManager` + `CycleSupervisor`, отключение без ошибок и авто-рестарта, совместимость с `cycle_*Control`/`Disabled` для старых модулей и кнопки `disable`/`enable` в X-Ray; документация — `docs/agents/cycles.md`;
 - «Обновление системы» (saverestore) переведено на общую систему: hero, KPI, карточки обновления/журнала/автоматизации, сценарии восстановления на `md-tabs`, модалка прогресса на `md-*` — этапы, проверки, журнал с копированием и автоскроллом, отдельные состояния успеха/ошибки; при ошибке модалка остаётся открытой, URL очищается от `mode=getlatest_iframe`;
 - X-Ray переведён на общую систему: KPI, вкладки режимов, тулбар с фильтрами по дате и имени файла, консоль, карточки циклов и таблицы; генерация карточек/таблиц в `xray.js` использует `md-*`;
@@ -121,6 +121,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `lib/core/Install/` | `InstallState`, `InstallGate`, `Installer`, `InstallSchema`, `EnvFile`, `InstallDatabase`, `InstallEnvironment`, `InstallFormRenderer`, `schema.sql` |
 | `lib/core/Settings/` | `SettingsSchema`, `SettingsManager`, `SettingsPresenter` — общие настройки поверх мастера |
 | `lib/core/Cycles/` | `CycleStateStore`, `CycleSupervisor`, `CycleManager` — персистентное управление циклами |
+| `lib/core/Filesystem/` | `FolderBrowser` — read-only обзор каталогов в границах проекта для выбора путей |
 | `templates/install/install.php` | Разметка мастера (MDJUI, шаги, обзор) |
 | `public/assets/install/` | Page-only CSS/JS мастера |
 | `tools/install.php` | CLI: `status`, `check`, `test-db`, `reset`, `complete` |
@@ -242,6 +243,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `window.TomSelect`;
 - `window.HtmlDurationPicker`;
 - `window.MDJAdminUI`;
+- `window.MDFolderPicker` (read-only выбор папки; legacy `openFileBrowser` делегирует ему);
 - глобальные функции из `public/assets/js/scripts.js` и `public/assets/js/admin/panel.js`.
 
 Контракт shell:
@@ -309,6 +311,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `php tests/config_smoke.php` — парсер `.env`, типы, кеш и легаси-мост.
 - `php tests/install_smoke.php` — `.env`-писатель, маркер установки, схема, gate и рендер мастера.
 - `php tests/settings_cycles_smoke.php` — схема «Общих настроек», персистентные состояния и reconcile циклов.
+- `php tests/folder_picker_smoke.php` — границы folder picker: обход `..`, абсолютные пути вне проекта, скрытые каталоги, fallback на корень.
 - `php tests/knowledge_base_smoke.php` — сканирование `docs/`, front matter, безопасный Markdown, ссылки и категории базы знаний.
 - `php tools/config-audit.php` — не выросло ли число обращений к легаси-константам.
 - Открыть `/panel/` и затронутые страницы: console/exceptions, 390 px, светлая и тёмная темы.
@@ -351,8 +354,9 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `pChart/` и `3rdparty/jpgraph/` — 0 ссылок в коде и БД, графики давно на ApexCharts;
 - `3rdparty/freeboard/` — дашборды freeboard: эндпоинты-виджеты никуда не подключены;
 - `rc/` — архаичный пульт (Windows-бинарники + `rc/index.php`); URL `/rc/...` теперь 301 на `/panel/`;
+- `3rdparty/elFinder/` — неограниченный файловый менеджер с upload/write; заменён project-scoped folder picker в настройках (`lib/core/Filesystem/FolderBrowser.php`, `MDFolderPicker`);
 - `.tmp-p.json`, `obj.bat`, `templates_alt/`, `lib/_vimage_tahoma.ttf`, `cms/icons/1_iPhone_MUSIC_5_sm.png` — мусор без ссылок (аватар `cms/avatars/1_ver-logo_any_tickets-large.png` оставлен: он привязан к пользователю в БД);
-- `.htaccess` (корень и подкаталоги `lib/`, `templates/`, `cms/`, `backup/`, `3rdparty/elFinder/php/.tmp/`) — правила перенесены в `docs/deploy/nginx.conf.sample`, деплой только на nginx; каталоги, которые держались на этих файлах, сохранены через `.gitkeep`;
+- `.htaccess` (корень и подкаталоги `lib/`, `templates/`, `cms/`, `backup/`) — правила перенесены в `docs/deploy/nginx.conf.sample`, деплой только на nginx; каталоги, которые держались на этих файлах, сохранены через `.gitkeep`;
 - `modules/control_access/`, `templates/control_access/`, `modules/master/`, `templates/master/` — старые вход и ACL панели; авторизация делегирована reverse proxy, новая будет на модуле «Пользователи»;
 - таблица `admin_users` удалена из схемы/установщика, встроенная проверка HTTP Basic Auth в `load_settings.php` (`EXT_ACCESS_*`, `REMOTE_*`) удалена; в существующих БД таблица может остаться как неиспользуемая; доступ закрывает nginx;
 - `config.php.sample` — заменён документированным `.env.example`; настройки больше не живут в PHP-файле.
