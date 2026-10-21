@@ -141,3 +141,20 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 - Не возвращайте catch-all `([\w-]+).html` → docs: он превращал любую опечатку в
   страницу с кодом 200.
 - Не меняйте формат `pd` и правила `parseLinks()` без проверки старых модулей.
+
+## 8. nginx
+
+Канонический шаблон — `nginx.conf.sample`. Готовый пример под текущий домен
+(may-13.ru: subdomain-логика, `auth_basic`, proxy на 8002) —
+`nginx.conf.may-13.ru.sample`.
+
+Для pretty URL в конфиге обязательны:
+
+- `location = /panel { return 301 /panel/; }`;
+- `location ^~ /panel/ { try_files $uri $uri/ /nf.php?$query_string; }`;
+- `location ^~ /api/ { rewrite ^ /api.php last; }`;
+- `deny` для `config.php` и `/lib/` через `=`/`^~`, а не обычный prefix:
+  prefix-location проигрывает regex-локации `~ \.php$`;
+- запрет `templates/*.html`, `templates/ui/`, `templates/ui_kit/`, dotfiles и
+  служебных расширений (`sql`, `log`, ...).
+

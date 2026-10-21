@@ -580,6 +580,19 @@ function usual(&$out) {
     if (!is_array($res[$i]['RESULT'])) {
      unset($res[$i]['RESULT']);
     }
+
+    // Counts for the whole subtree. The classes page renders every level
+    // recursively, so a parent with no direct objects must still show how
+    // many classes and objects live below it.
+    $res[$i]['CHILD_CLASSES_TOTAL']=0;
+    $res[$i]['OBJECTS_DEEP_TOTAL']=isset($res[$i]['OBJECTS_TOTAL']) ? (int)$res[$i]['OBJECTS_TOTAL'] : 0;
+    if (isset($res[$i]['RESULT'])) {
+     $res[$i]['CHILD_CLASSES_TOTAL']=count($res[$i]['RESULT']);
+     foreach ($res[$i]['RESULT'] as $child_class) {
+      $res[$i]['OBJECTS_DEEP_TOTAL']+=(int)(isset($child_class['OBJECTS_DEEP_TOTAL']) ? $child_class['OBJECTS_DEEP_TOTAL'] : 0);
+     }
+    }
+
     if (!isset($res[$i]['RESULT']) && !isset($res[$i]['OBJECTS'])) {
      $res[$i]['CAN_DELETE']=1;
     }

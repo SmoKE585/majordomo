@@ -2,9 +2,9 @@
  * Classes tree.
  *
  * Progressive enhancement for the server-rendered classes table:
- *  - expand / collapse class subtrees and their object panels;
+ *  - expand / collapse class subtrees at any depth and their object panels;
  *  - filter by title, description and object names;
- *  - filter classes with or without objects.
+ *  - filter classes with or without objects in the whole subtree.
  */
 (function (window, document) {
     'use strict';
@@ -45,8 +45,9 @@
         var empty = page.querySelector('[data-md-classes-empty]');
         var scroll = page.querySelector('.md-table__scroll');
         var reset = page.querySelector('[data-md-classes-reset]');
+        var expandAll = page.querySelector('[data-md-classes-expand-all]');
+        var collapseAll = page.querySelector('[data-md-classes-collapse-all]');
 
-        var rowsById = {};
         var parentOf = {};
         var detailByClass = {};
         var toggles = {};
@@ -58,7 +59,6 @@
 
         rows.forEach(function (row) {
             var id = row.getAttribute('data-class-id');
-            rowsById[id] = row;
             parentOf[id] = row.getAttribute('data-parent-id') || '0';
             var toggle = row.querySelector('[data-md-class-toggle]');
             if (toggle) {
@@ -95,6 +95,14 @@
             }
         }
 
+        function expandAncestors(id) {
+            var parent = parentOf[id];
+            while (parent && parent !== '0') {
+                expanded.add(parent);
+                parent = parentOf[parent];
+            }
+        }
+
         function apply() {
             var query = search ? normalize(search.value) : '';
             var filterValue = filter ? String(filter.value || '') : '';
@@ -124,8 +132,9 @@
                 var id = row.getAttribute('data-class-id');
                 row.hidden = active ? !visible.has(id) : !ancestorsVisible(id);
                 var toggle = toggles[id];
+                var isOpen = expanded.has(id);
+                row.classList.toggle('is-expanded', isOpen);
                 if (toggle) {
-                    var isOpen = expanded.has(id);
                     toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                     toggle.setAttribute('aria-label', (isOpen ? 'Скрыть' : 'Показать') + ' содержимое класса');
                 }
@@ -156,6 +165,7 @@
 
         function setExpanded(id, open) {
             if (open) {
+                expandAncestors(id);
                 expanded.add(id);
                 return;
             }
@@ -165,6 +175,15 @@
                     expanded.delete(childId);
                 }
             });
+        }
+
+        function clearFilters() {
+            if (search) {
+                search.value = '';
+            }
+            if (filter) {
+                filter.value = '';
+            }
         }
 
         Object.keys(toggles).forEach(function (id) {
@@ -182,12 +201,21 @@
         }
         if (reset) {
             reset.addEventListener('click', function () {
-                if (search) {
-                    search.value = '';
-                }
-                if (filter) {
-                    filter.value = '';
-                }
+                clearFilters();
+                expanded.clear();
+                apply();
+            });
+        }
+        if (expandAll) {
+            expandAll.addEventListener('click', function () {
+                Object.keys(toggles).forEach(function (id) {
+                    expanded.add(id);
+                });
+                apply();
+            });
+        }
+        if (collapseAll) {
+            collapseAll.addEventListener('click', function () {
                 expanded.clear();
                 apply();
             });

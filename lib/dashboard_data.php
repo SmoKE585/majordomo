@@ -127,76 +127,11 @@ function mdj_dashboard_memory_info()
 }
 
 /**
- * Windows system metrics via PowerShell, cached for two minutes.
+ * CPU cores and load average (Linux).
  *
- * wmic is absent on current Windows builds, so the fallback uses a single
- * PowerShell call for CPU, memory and boot time. The result is cached in
- * cms/cached to keep dashboard polling inexpensive.
- *
- * @return array{cpu_percent:float|null,memory_total:float|null,memory_available:float|null,uptime:int|null}|null
- */
-function mdj_dashboard_windows_metrics()
-{
-    if (PHP_OS_FAMILY !== 'Windows' || !function_exists('exec')) {
-        return null;
-    }
-
-    $file = mdj_dashboard_cache_dir() . 'dashboard_windows_metrics.json';
-    $now = time();
-    if (is_readable($file)) {
-        $cached = json_decode((string)@file_get_contents($file), true);
-        if (is_array($cached) && isset($cached['at']) && ($now - (int)$cached['at']) < 120) {
-            unset($cached['at']);
-            return $cached;
-        }
-    }
-
-    $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
-    if (in_array('exec', $disabled, true)) {
-        return null;
-    }
-
-    $script = <<<'POWERSHELL'
-$os=Get-CimInstance Win32_OperatingSystem; $cpu=(Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average; Write-Output ('CPU=' + [math]::Round($cpu,1)); Write-Output ('MEMTOTAL=' + ($os.TotalVisibleMemorySize * 1024)); Write-Output ('MEMFREE=' + ($os.FreePhysicalMemory * 1024)); Write-Output ('UPTIME=' + [int](((Get-Date) - $os.LastBootUpTime).TotalSeconds))
-POWERSHELL;
-    $command = 'powershell -NoProfile -NonInteractive -Command "' . $script . '" 2>NUL';
-
-    $output = array();
-    @exec($command, $output);
-    $values = array(
-        'cpu_percent' => null,
-        'memory_total' => null,
-        'memory_available' => null,
-        'uptime' => null,
-    );
-    foreach ($output as $line) {
-        if (preg_match('/^CPU=([\d.]+)/i', trim($line), $match)) {
-            $values['cpu_percent'] = min(100, max(0, (float)$match[1]));
-        } elseif (preg_match('/^MEMTOTAL=(\d+)/i', trim($line), $match)) {
-            $values['memory_total'] = (float)$match[1];
-        } elseif (preg_match('/^MEMFREE=(\d+)/i', trim($line), $match)) {
-            $values['memory_available'] = (float)$match[1];
-        } elseif (preg_match('/^UPTIME=(\d+)/i', trim($line), $match)) {
-            $values['uptime'] = (int)$match[1];
-        }
-    }
-
-    if ($values['cpu_percent'] === null && $values['memory_total'] === null && $values['uptime'] === null) {
-        return null;
-    }
-
-    @file_put_contents($file, json_encode($values + array('at' => $now), JSON_UNESCAPED_UNICODE), LOCK_EX);
-
-    return $values;
-}
-
-/**
- * CPU cores and load average.
- *
- * @param array|null $windows Pre-collected Windows metrics.
  * @return array{cores:int,load1:float|null,load5:float|null,load15:float|null,percent:float|null,source:string}
  */
-function mdj_dashboard_cpu_info($windows = null)
+function mdj_dashboard_cpu_info()
 {
     $cores = 1;
     if (is_readable('/proc/cpuinfo')) {
@@ -207,8 +142,6 @@ function mdj_dashboard_cpu_info($windows = null)
                 $cores = $count;
             }
         }
-    } elseif (getenv('NUMBER_OF_PROCESSORS')) {
-        $cores = max(1, (int)getenv('NUMBER_OF_PROCESSORS'));
     }
 
     $load = null;
@@ -226,25 +159,8 @@ function mdj_dashboard_cpu_info($windows = null)
     }
 
     $percent = null;
-    $source = 'load';
     if ($load !== null) {
         $percent = min(100, max(0, ($load[0] / $cores) * 100));
-    } elseif (is_array($windows) && isset($windows['cpu_percent']) && $windows['cpu_percent'] !== null) {
-        $percent = (float)$windows['cpu_percent'];
-        $source = 'powershell';
-    } elseif (PHP_OS_FAMILY === 'Windows' && function_exists('exec')) {
-        $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
-        if (!in_array('exec', $disabled, true)) {
-            $output = array();
-            @exec('wmic cpu get loadpercentage /value 2>NUL', $output);
-            foreach ($output as $line) {
-                if (preg_match('/LoadPercentage=(\d+)/i', $line, $match)) {
-                    $percent = min(100, max(0, (float)$match[1]));
-                    $source = 'wmic';
-                    break;
-                }
-            }
-        }
     }
 
     return array(
@@ -253,17 +169,16 @@ function mdj_dashboard_cpu_info($windows = null)
         'load5' => $load ? $load[1] : null,
         'load15' => $load ? $load[2] : null,
         'percent' => $percent === null ? null : round($percent, 1),
-        'source' => $source,
+        'source' => 'load',
     );
 }
 
 /**
- * System uptime in seconds.
+ * System uptime in seconds (Linux).
  *
- * @param array|null $windows Pre-collected Windows metrics.
  * @return int|null
  */
-function mdj_dashboard_uptime_seconds($windows = null)
+function mdj_dashboard_uptime_seconds()
 {
     if (is_readable('/proc/uptime')) {
         $raw = trim((string)@file_get_contents('/proc/uptime'));
@@ -275,64 +190,7 @@ function mdj_dashboard_uptime_seconds($windows = null)
         }
     }
 
-    if (is_array($windows) && isset($windows['uptime']) && $windows['uptime'] !== null) {
-        return max(0, (int)$windows['uptime']);
-    }
-
-    if (PHP_OS_FAMILY === 'Windows' && function_exists('exec')) {
-        $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
-        if (!in_array('exec', $disabled, true)) {
-            $output = array();
-            @exec('wmic os get lastbootuptime /value 2>NUL', $output);
-            foreach ($output as $line) {
-                if (preg_match('/LastBootUpTime=(\d{14})/i', $line, $match)) {
-                    $boot = \DateTime::createFromFormat('YmdHis', $match[1]);
-                    if ($boot instanceof \DateTime) {
-                        return max(0, time() - $boot->getTimestamp());
-                    }
-                }
-            }
-        }
-    }
-
     return null;
-}
-
-/**
- * Windows physical memory from wmic or pre-collected PowerShell metrics.
- *
- * @param array|null $windows
- * @return array{total:float,available:float}|null
- */
-function mdj_dashboard_memory_info_windows($windows = null)
-{
-    if (is_array($windows) && !empty($windows['memory_total'])) {
-        $total = (float)$windows['memory_total'];
-        $available = isset($windows['memory_available']) ? (float)$windows['memory_available'] : 0;
-        return array('total' => $total, 'available' => min($total, $available));
-    }
-
-    if (PHP_OS_FAMILY !== 'Windows' || !function_exists('exec')) {
-        return null;
-    }
-    $disabled = array_map('trim', explode(',', (string)ini_get('disable_functions')));
-    if (in_array('exec', $disabled, true)) {
-        return null;
-    }
-    $output = array();
-    @exec('wmic OS get FreePhysicalMemory,TotalVisibleMemorySize /value 2>NUL', $output);
-    $values = array();
-    foreach ($output as $line) {
-        if (preg_match('/^(FreePhysicalMemory|TotalVisibleMemorySize)=(\d+)/i', trim($line), $match)) {
-            $values[strtolower($match[1])] = (float)$match[2] * 1024;
-        }
-    }
-    if (empty($values['totalvisiblememorysize'])) {
-        return null;
-    }
-    $total = $values['totalvisiblememorysize'];
-    $available = isset($values['freephysicalmemory']) ? $values['freephysicalmemory'] : 0;
-    return array('total' => $total, 'available' => min($total, $available));
 }
 
 /**
@@ -416,29 +274,51 @@ function mdj_dashboard_cycles()
 {
     $items = array();
     $counts = array('running' => 0, 'stopped' => 0, 'offline' => 0, 'disabled' => 0, 'total' => 0);
-    $dir = ROOT . 'scripts';
-    if (!is_dir($dir)) {
-        return array('items' => array(), 'counts' => $counts);
+
+    // Build the same cycle list X-Ray uses: registered cycle_*Run properties
+    // plus cycle_*.php files that have not been started yet.
+    $keys = array();
+    $computer = getObject('Computer.ThisComputer');
+    if (is_object($computer) && !empty($computer->id)) {
+        $runProperties = SQLSelect("SELECT TITLE FROM properties WHERE OBJECT_ID=" . (int)$computer->id . " AND TITLE LIKE 'cycle%Run'");
+        if (is_array($runProperties)) {
+            foreach ($runProperties as $property) {
+                if (preg_match('/^(cycle_.+)Run$/i', (string)$property['TITLE'], $match)) {
+                    $keys[$match[1]] = 1;
+                }
+            }
+        }
     }
 
-    $files = @scandir($dir);
-    if (!is_array($files)) {
+    $dir = ROOT . 'scripts';
+    if (is_dir($dir)) {
+        $files = @scandir($dir);
+        if (is_array($files)) {
+            foreach ($files as $file) {
+                if (preg_match('/^(cycle_.+)\.php$/i', $file, $match)) {
+                    $keys[$match[1]] = 1;
+                }
+            }
+        }
+    }
+
+    if (empty($keys)) {
         return array('items' => array(), 'counts' => $counts);
     }
 
     $now = time();
-    foreach ($files as $file) {
-        if (!preg_match('/^cycle_(.+)\.php$/i', $file, $match)) {
-            continue;
-        }
-        $title = $match[1];
-        $disabled = (bool)getGlobal($title . 'Disabled');
-        $run = (int)getGlobal($title . 'Run');
-        $control = (string)getGlobal($title . 'Control');
+    foreach (array_keys($keys) as $key) {
+        // Globals are named cycle_<name>Run / cycle_<name>Disabled.
+        // X-Ray uses exactly the same keys; using only <name> made every cycle
+        // look offline on installations where the cycle files are present.
+        $title = preg_replace('/^cycle_/i', '', $key);
+        $disabled = (bool)getGlobal($key . 'Disabled');
+        $run = (int)getGlobal($key . 'Run');
+        $control = (string)getGlobal($key . 'Control');
 
         if ($disabled) {
             $status = 'disabled';
-        } elseif ($run > 0 && ($now - $run) < 5 * 60) {
+        } elseif ($run > 0 && ($now - $run) < 10 * 60) {
             $status = 'running';
         } elseif ($run > 0) {
             $status = 'stopped';
@@ -453,6 +333,7 @@ function mdj_dashboard_cycles()
 
         $items[] = array(
             'title' => $title,
+            'key' => $key,
             'status' => $status,
             'disabled' => $disabled ? 1 : 0,
             'control' => $control,
@@ -631,12 +512,8 @@ function mdj_dashboard_collect($fresh = false)
         $counts['devices_available'] = true;
     }
 
-    $windows = mdj_dashboard_windows_metrics();
-    $cpu = mdj_dashboard_cpu_info($windows);
+    $cpu = mdj_dashboard_cpu_info();
     $memory = mdj_dashboard_memory_info();
-    if ($memory === null) {
-        $memory = mdj_dashboard_memory_info_windows($windows);
-    }
     $memoryPercent = null;
     $memoryUsed = null;
     $memoryTotal = null;
@@ -711,7 +588,7 @@ function mdj_dashboard_collect($fresh = false)
     $cycles = mdj_dashboard_cycles();
     $errors = mdj_dashboard_errors();
     $activity = mdj_dashboard_activity();
-    $uptime = mdj_dashboard_uptime_seconds($windows);
+    $uptime = mdj_dashboard_uptime_seconds();
 
     $attention = array();
     $addAttention = static function ($tone, $icon, $title, $text, $actionLabel, $actionUrl) use (&$attention) {
@@ -853,7 +730,7 @@ function mdj_dashboard_collect($fresh = false)
         'generated_ts' => $now,
         'cached' => false,
         'system' => array(
-            'os' => PHP_OS_FAMILY . ' ' . php_uname('r'),
+            'os' => php_uname('s') . ' ' . php_uname('r'),
             'php' => PHP_VERSION,
             'server' => isset($_SERVER['SERVER_SOFTWARE']) ? (string)$_SERVER['SERVER_SOFTWARE'] : '',
             'host' => (string)@gethostname(),

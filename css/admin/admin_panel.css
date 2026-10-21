@@ -6993,3 +6993,23 @@ label > input[type="checkbox"]:not([data-md-raw-checkbox]) {
   font-size: .72rem;
   color: var(--md-admin-muted);
 }
+
+/* ── Sidebar scrolling ──
+   The menu is an independent scroll area: reaching its top or bottom must not
+   scroll the page behind it (desktop and mobile drawer alike). */
+.md-admin-sidebar__inner,
+.md-admin-sidebar__scroll {
+  overscroll-behavior: contain;
+}
+
+.md-admin-sidebar__scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 991.98px) {
+  body.md-admin-sidebar-open {
+    overflow: hidden;
+  }
+}

@@ -541,17 +541,20 @@
             return;
         }
 
+        // The nav lives in its own scroll container; keep the fallback for
+        // legacy shells where the inner wrapper was the scroller.
+        var sidebarScroll = sidebarInner.querySelector('.md-admin-sidebar__scroll') || sidebarInner;
         var activeItem = sidebarInner.querySelector('.md-admin-sidebar__item.active, .md-admin-sidebar__item.is-active');
         if (!activeItem) {
             return;
         }
 
         window.requestAnimationFrame(function () {
-            var sidebarRect = sidebarInner.getBoundingClientRect();
+            var sidebarRect = sidebarScroll.getBoundingClientRect();
             var activeRect = activeItem.getBoundingClientRect();
-            var currentScrollTop = sidebarInner.scrollTop;
-            var targetScrollTop = currentScrollTop + (activeRect.top - sidebarRect.top) - (sidebarInner.clientHeight / 2) + (activeRect.height / 2);
-            sidebarInner.scrollTop = Math.max(0, targetScrollTop);
+            var currentScrollTop = sidebarScroll.scrollTop;
+            var targetScrollTop = currentScrollTop + (activeRect.top - sidebarRect.top) - (sidebarScroll.clientHeight / 2) + (activeRect.height / 2);
+            sidebarScroll.scrollTop = Math.max(0, targetScrollTop);
         });
     }
 

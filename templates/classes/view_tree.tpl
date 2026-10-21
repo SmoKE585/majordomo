@@ -70,6 +70,12 @@
                     <option value="with">С объектами</option>
                     <option value="empty">Без объектов</option>
                 </select>
+                <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-md-classes-expand-all aria-label="Развернуть все классы">
+                    <i class="ti ti-chevrons-down" aria-hidden="true"></i><span class="md-btn__label">Развернуть всё</span>
+                </button>
+                <button type="button" class="md-btn md-btn--ghost md-btn--sm" data-md-classes-collapse-all aria-label="Свернуть все классы">
+                    <i class="ti ti-chevrons-up" aria-hidden="true"></i><span class="md-btn__label">Свернуть</span>
+                </button>
                 <div class="md-table__meta" data-md-classes-count>{$CLASSES_TOTAL|default:'0'} {$smarty.const.LANG_CLASSES}</div>
             </div>
 
@@ -78,6 +84,7 @@
                     <thead>
                         <tr>
                             <th scope="col">Класс</th>
+                            <th scope="col">Дочерние</th>
                             <th scope="col">Объекты</th>
                             <th scope="col">Методы</th>
                             <th scope="col">Свойства</th>
@@ -87,11 +94,11 @@
                     <tbody>
                         {function name=classes}
                         {foreach $items as $item}
-                        <tr class="md-tree-table__row" data-md-class-row data-class-id="{$item.ID}" data-parent-id="{$item.PARENT_ID|default:'0'}" data-objects="{$item.OBJECTS_TOTAL|default:'0'}" data-search="{$item.TITLE|escape:'html'} {$item.DESCRIPTION|escape:'html'}">
+                        <tr class="md-tree-table__row" data-md-class-row data-class-id="{$item.ID}" data-parent-id="{$item.PARENT_ID|default:'0'}" data-objects="{$item.OBJECTS_DEEP_TOTAL|default:'0'}" {if $item.CHILD_CLASSES_TOTAL > 0}data-has-children="1"{/if} data-search="{$item.TITLE|escape:'html'} {$item.DESCRIPTION|escape:'html'}">
                             <td>
                                 <div class="md-tree-table__cell" style="--md-tree-level: {$item.LEVEL|default:'0'};">
-                                    {if isset($item.RESULT) || $item.OBJECTS_TOTAL > 0}
-                                    <button type="button" class="md-tree-table__toggle" data-md-class-toggle aria-expanded="false" aria-controls="md-class-detail-{$item.ID}" aria-label="Показать содержимое класса {$item.TITLE|escape:'html'}">
+                                    {if $item.CHILD_CLASSES_TOTAL > 0 || $item.OBJECTS_TOTAL > 0}
+                                    <button type="button" class="md-tree-table__toggle" data-md-class-toggle aria-expanded="false" {if $item.OBJECTS_TOTAL > 0}aria-controls="md-class-detail-{$item.ID}"{/if} aria-label="Показать содержимое класса {$item.TITLE|escape:'html'}">
                                         <i class="ti ti-chevron-right" aria-hidden="true"></i>
                                     </button>
                                     {else}
@@ -105,8 +112,17 @@
                                 </div>
                             </td>
                             <td class="md-tree-table__count">
+                                {if $item.CHILD_CLASSES_TOTAL > 0}
+                                    <span class="md-badge md-badge--outline" title="Дочерних классов: {$item.CHILD_CLASSES_TOTAL|default:'0'}">{$item.CHILD_CLASSES_TOTAL}</span>
+                                {else}
+                                    <span class="md-tree-empty">—</span>
+                                {/if}
+                            </td>
+                            <td class="md-tree-table__count">
                                 {if $item.OBJECTS_TOTAL > 0}
-                                    <span class="md-badge md-badge--primary">{$item.OBJECTS_TOTAL}</span>
+                                    <span class="md-badge md-badge--primary" title="Прямых объектов: {$item.OBJECTS_TOTAL|default:'0'}">{$item.OBJECTS_TOTAL}</span>
+                                {elseif $item.OBJECTS_DEEP_TOTAL > 0}
+                                    <span class="md-tree-empty" title="Объектов в подклассах: {$item.OBJECTS_DEEP_TOTAL|default:'0'}">{$item.OBJECTS_DEEP_TOTAL} в подклассах</span>
                                 {else}
                                     <span class="md-tree-empty">—</span>
                                 {/if}
@@ -136,15 +152,14 @@
                                 </div>
                             </td>
                         </tr>
-                        {if isset($item.RESULT) || $item.OBJECTS_TOTAL > 0}
-                        <tr class="md-tree-table__detail" id="md-class-detail-{$item.ID}" data-md-class-detail data-detail-for="{$item.ID}" hidden>
-                            <td colspan="5">
+                        {if $item.OBJECTS_TOTAL > 0}
+                        <tr class="md-tree-table__detail{if $item.CHILD_CLASSES_TOTAL > 0} md-tree-table__detail--with-children{/if}" id="md-class-detail-{$item.ID}" data-md-class-detail data-detail-for="{$item.ID}" style="--md-tree-level: {$item.LEVEL|default:'0'};" hidden>
+                            <td colspan="6">
                                 <div class="md-tree-table__panel" style="--md-tree-level: {$item.LEVEL|default:'0'};">
                                     <div class="md-tree-table__panel-head">
                                         <span>{$smarty.const.LANG_OBJECTS}</span>
                                         <span class="md-badge md-badge--outline">{$item.OBJECTS_TOTAL|default:'0'}</span>
                                     </div>
-                                    {if $item.OBJECTS_TOTAL > 0}
                                     <div class="md-tree-objects">
                                         {foreach $item.OBJECTS as $object}
                                         <a class="md-tree-object" href="{$smarty.const.ROOTHTML}panel/class/{$item.ID}/object/{$object.ID}.html">
@@ -159,9 +174,6 @@
                                         </a>
                                         {/foreach}
                                     </div>
-                                    {else}
-                                    <div class="md-tree-empty">В классе пока нет объектов.</div>
-                                    {/if}
                                     <div class="md-tree-panel-actions">
                                         <a href="?view_mode=edit_classes&amp;id={$item.ID}&amp;tab=objects">Открыть объекты класса</a>
                                         <a href="?view_mode=edit_classes&amp;id={$item.ID}&amp;tab=properties">Свойства</a>

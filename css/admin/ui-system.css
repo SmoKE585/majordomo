@@ -3189,11 +3189,53 @@ body.md-admin-shell .md-table__footer .md-pagination {
 }
 /* Tree table: hierarchical rows on top of the data table. */
 body.md-admin-shell .md-tree-table__cell {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 220px;
   padding-left: calc(var(--md-tree-level, 0) * 18px);
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent 10px,
+    var(--md-ui-border) 10px,
+    var(--md-ui-border) 11px,
+    transparent 11px,
+    transparent 18px
+  );
+  background-repeat: no-repeat;
+  background-position: left top;
+  background-size: calc(var(--md-tree-level, 0) * 18px) 100%;
+}
+
+/* Branch from the parent rail to the current row. */
+body.md-admin-shell .md-tree-table__row:not([data-parent-id="0"]) .md-tree-table__cell::before {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--md-tree-level, 0) * 18px - 7px);
+  width: 7px;
+  border-top: 1px solid var(--md-ui-border);
+  content: "";
+}
+
+/* The vertical rail starts at the parent chevron and grows down to its
+   visible children. Collapsed branches keep it at zero height. */
+body.md-admin-shell .md-tree-table__row[data-has-children="1"] > td > .md-tree-table__cell::after {
+  position: absolute;
+  top: 50%;
+  bottom: 0;
+  left: calc(var(--md-tree-level, 0) * 18px + 11px);
+  width: 1px;
+  background: var(--md-ui-border);
+  content: "";
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform 160ms ease;
+}
+
+body.md-admin-shell .md-tree-table__row.is-expanded[data-has-children="1"] > td > .md-tree-table__cell::after {
+  transform: scaleY(1);
 }
 
 body.md-admin-shell .md-tree-table__toggle {
@@ -3279,6 +3321,22 @@ body.md-admin-shell .md-tree-table__count {
 body.md-admin-shell .md-tree-table__detail > td {
   padding: 0 12px 12px;
   background: var(--md-ui-surface-2);
+}
+
+/* Keep the parent rail continuous when an object panel sits between a class
+   and its expanded child rows. */
+body.md-admin-shell .md-tree-table__detail--with-children > td {
+  position: relative;
+}
+
+body.md-admin-shell .md-tree-table__detail--with-children > td::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(12px + var(--md-tree-level, 0) * 18px + 11px);
+  width: 1px;
+  background: var(--md-ui-border);
+  content: "";
 }
 
 body.md-admin-shell .md-tree-table__panel {
@@ -5901,6 +5959,11 @@ body.md-admin-shell .md-ui-page-footer a:hover {
   body.md-admin-shell .md-table__search {
     flex-basis: 100%;
     max-width: none;
+  }
+
+  body.md-admin-shell [data-md-classes-expand-all] .md-btn__label,
+  body.md-admin-shell [data-md-classes-collapse-all] .md-btn__label {
+    display: none;
   }
 
   body.md-admin-shell .md-table__meta {
