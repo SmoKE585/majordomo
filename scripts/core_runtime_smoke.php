@@ -202,6 +202,43 @@ try {
     for($i=0;$i<4;$i++) { $row=array('VALUE_ID'=>2,'ADDED'=>date('Y-m-d H:i:s',time()+$i),'VALUE'=>'7','OLD_VALUE'=>'7','SOURCE'=>'sensor-'.$i,'KEEP_HISTORY'=>7); SQLInsert('phistory_queue',$row); }
     Core::history()->process();
     check((int)SQLSelectOne("SELECT COUNT(*) AS C FROM `$table`")['C']===$beforeHistory+2, 'batch writer preserves repeated-value compression');
+    // A failed compression update happens after the batch INSERT: retry must
+    // roll back that INSERT as well, and must not enter the legacy fatal logger.
+    execTest("CREATE TRIGGER retry_history BEFORE UPDATE ON `$table` FOR EACH ROW BEGIN SET @mjd_history_attempts=COALESCE(@mjd_history_attempts,0)+1; IF COALESCE(@mjd_history_failures,0)>0 THEN SET @mjd_history_failures=@mjd_history_failures-1; IF @mjd_history_error=1205 THEN SIGNAL SQLSTATE 'HY000' SET MYSQL_ERRNO=1205, MESSAGE_TEXT='fixture lock timeout'; ELSE SIGNAL SQLSTATE '40001' SET MYSQL_ERRNO=1213, MESSAGE_TEXT='fixture deadlock'; END IF; END IF; END");
+    foreach (array(1213, 1205) as $lockError) {
+        execTest("SET @mjd_history_failures=1,@mjd_history_attempts=0,@mjd_history_error=$lockError");
+        $beforeHistory=(int)SQLSelectOne("SELECT COUNT(*) AS C FROM `$table`")['C'];
+        $beforeErrors=count($GLOBALS['test_sql_errors'] ?? array());
+        foreach (array(array('7','7'),array('8','7')) as $event) { $row=array('VALUE_ID'=>2,'ADDED'=>date('Y-m-d H:i:s'),'VALUE'=>$event[0],'OLD_VALUE'=>$event[1],'SOURCE'=>'sensor-9','KEEP_HISTORY'=>7); SQLInsert('phistory_queue',$row); }
+        check(Core::history()->process()===2, "history retries full batch after SQL $lockError");
+        check((int)SQLSelectOne('SELECT @mjd_history_attempts AS C')['C']===2, "SQL $lockError rebuilds compression update on retry");
+        check((int)SQLSelectOne("SELECT COUNT(*) AS C FROM `$table`")['C']===$beforeHistory+1 && (int)SQLSelectOne('SELECT COUNT(*) AS C FROM phistory_queue')['C']===0, "SQL $lockError retry commits once without losing queue events");
+        check(count($GLOBALS['test_sql_errors'] ?? array())===$beforeErrors, "SQL $lockError retry bypasses terminating legacy error handler");
+        // Restore two equal history tails for the next compression scenario.
+        for($i=0;$i<3;$i++) { $row=array('VALUE_ID'=>2,'ADDED'=>date('Y-m-d H:i:s'),'VALUE'=>'7','OLD_VALUE'=>'7','SOURCE'=>'sensor-9','KEEP_HISTORY'=>7); SQLInsert('phistory_queue',$row); }
+        Core::history()->process();
+    }
+    execTest('SET @mjd_history_failures=10,@mjd_history_attempts=0,@mjd_history_error=1213');
+    $beforeHistory=(int)SQLSelectOne("SELECT COUNT(*) AS C FROM `$table`")['C'];
+    foreach (array(array('7','7'),array('8','7')) as $event) { $row=array('VALUE_ID'=>2,'ADDED'=>date('Y-m-d H:i:s'),'VALUE'=>$event[0],'OLD_VALUE'=>$event[1],'SOURCE'=>'sensor-9','KEEP_HISTORY'=>7); SQLInsert('phistory_queue',$row); }
+    $retryError=null;
+    try { Core::history()->process(); } catch (RuntimeException $expected) { $retryError=$expected; }
+    check($retryError && $retryError->getCode()===1213 && (int)SQLSelectOne('SELECT @mjd_history_attempts AS C')['C']===3, 'persistent deadlock stops after three complete attempts');
+    check((int)SQLSelectOne("SELECT COUNT(*) AS C FROM `$table`")['C']===$beforeHistory && (int)SQLSelectOne('SELECT COUNT(*) AS C FROM phistory_queue')['C']===2, 'exhausted deadlock retries leave history and pending events intact');
+    execTest('DROP TRIGGER retry_history');
+    check(Core::history()->process()===2, 'history resumes pending batch after persistent contention clears');
+
+    // Exercise both real counter queries in strict SQL mode, including legacy
+    // zero dates stored before strict mode was enabled.
+    execTest('CREATE TABLE IF NOT EXISTS scripts (ID int NOT NULL AUTO_INCREMENT PRIMARY KEY,EXECUTED datetime NULL) ENGINE=InnoDB');
+    execTest("SET SESSION sql_mode=''");
+    execTest("INSERT INTO scripts (EXECUTED) VALUES (NULL),('0000-00-00 00:00:00'),('2026-10-21 11:25:19')");
+    execTest("SET SESSION sql_mode='STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+    foreach (array('modules/scripts/scripts_search.inc.php','modules/scripts/scripts.class.php') as $counterFile) {
+        $counterSource=file_get_contents(ROOT.$counterFile);
+        if (!preg_match('/\$executed_total = SQLSelectOne\("([^"]+)"\);/', $counterSource, $counterMatch)) throw new RuntimeException('Script counter query not found');
+        check((int)SQLSelectOne($counterMatch[1])['TOTAL']===1, "script execution count accepts strict DATETIME mode ($counterFile)");
+    }
     $beforePending=(int)SQLSelectOne('SELECT COUNT(*) AS C FROM phistory_queue')['C'];
     $admin->query("SELECT GET_LOCK('mjd:history-writer',0)");
     check(Core::history()->process()===0, 'second history consumer cannot process an owned batch');

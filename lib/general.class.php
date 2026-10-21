@@ -523,8 +523,22 @@ function DebMes($errorMessage, $logLevel = "debug")
         fputs($f, date("H:i:s") . ' ' . $tmp[0]);
         fputs($f, " " . $errorMessage . "\n");
         fclose($f);
-        if (is_writable($today_file) || !file_exists($today_file)) {
-            @chmod($today_file, 0666);
+        // Logs are written by different system users (root cycles and the web
+        // server), so keep them group/world writable when possible. A denied
+        // chmod() is not an application error: it must not raise a warning and
+        // must not land in error_get_last(), where it used to be attached to a
+        // completely different log entry.
+        $log_perms = @fileperms($today_file);
+        if ($log_perms !== false && ($log_perms & 0666) !== 0666 && is_writable($today_file)) {
+            set_error_handler(static function () {
+                return true;
+            });
+            try {
+                chmod($today_file, 0666);
+            } catch (Throwable $e) {
+                // Another owner keeps writing the log; nothing to do here.
+            }
+            restore_error_handler();
         }
     }
 }

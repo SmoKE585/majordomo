@@ -145,6 +145,8 @@ class mysql
         if (!$result) {
             $errorNo = $this->lastErrorNo ? $this->lastErrorNo : (int)@mysqli_errno($this->dbh);
             $errorDetails = $this->lastErrorDetails ? $this->lastErrorDetails : (string)@mysqli_error($this->dbh);
+            $this->lastErrorNo = $errorNo;
+            $this->lastErrorDetails = $errorDetails;
             if ($this->isConnectionLostError($errorNo, $errorDetails)) {
                 $in_transaction = $this->transactionActive;
                 $this->Disconnect();

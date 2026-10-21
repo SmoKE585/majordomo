@@ -126,7 +126,15 @@ function majordomoGetErrorType($error_level = 0) {
     }
 }
 
-function majordomoGetErrorDetails($e = 0)
+/**
+ * Build the log block for an error/exception.
+ *
+ * @param mixed $e Throwable being logged (0 for "no exception")
+ * @param array|false|null $error PHP error array to describe. null means
+ *        "take error_get_last()", false means "no PHP error block".
+ * @return string
+ */
+function majordomoGetErrorDetails($e = 0, $error = null)
 {
 
     if (isset($_SERVER['REQUEST_URI'])) {
@@ -141,7 +149,13 @@ function majordomoGetErrorDetails($e = 0)
 
 
 
-    $error = error_get_last();
+    // PHP only refreshes error_get_last() for errors it handles itself. For an
+    // error or an exception passed through our handlers that value is stale and
+    // may point to a completely unrelated, suppressed diagnostics (@chmod,
+    // @filemtime, ...), so it must only be used when nothing else was supplied.
+    if ($error === null && !is_object($e)) {
+        $error = error_get_last();
+    }
     if (is_array($error)) {
         $errorCode = $error['type'];
         $errorType = majordomoGetErrorType($errorCode);
@@ -220,7 +234,9 @@ function majordomoErrorHandler($errno, $errmsg, $filename, $linenum)
     majordomoRememberCycleCrash("PHP $errorType: $errmsg in " . basename($filename) . ':' . (int)$linenum);
     $message = "PHP error level $errorCode $errorType in $filename (line $linenum):\n" . $errmsg . "\n";
 
-    $message .= majordomoGetErrorDetails();
+    // The error itself is already in the line above: do not repeat it from
+    // error_get_last(), which may still hold an older suppressed diagnostics.
+    $message .= majordomoGetErrorDetails(0, false);
     if ($errno == E_WARNING) {
         if (defined('LOG_PHP_WARNINGS') && LOG_PHP_WARNINGS) {
             majordomoSaveError($message, 'php_warnings');

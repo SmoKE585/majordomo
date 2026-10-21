@@ -1,12 +1,27 @@
 <?php
 
-error_reporting(E_ALL & ~(E_STRICT | E_NOTICE | E_DEPRECATED));
+// E_STRICT is deprecated as a constant in PHP 8.4 and PHP 8 never emits that
+// error level, so it must not appear in the mask.
+error_reporting(E_ALL & ~(E_NOTICE | E_DEPRECATED));
 mb_internal_encoding("UTF-8");
 
 
 // get settings
 $settings = SQLSelect('SELECT NAME, VALUE FROM settings');
+if (!is_array($settings)) {
+    // A failed query (connection lost, server restart) must not turn into
+    // count(false) and must not silently produce an empty configuration.
+    $settings = array();
+}
 $total = count($settings);
+
+if (!$total) {
+    // Without the settings rows the runtime has no SETTINGS_* constants at all.
+    // Historically that surfaced much later as a misleading "Undefined
+    // constant SETTINGS_THEME" inside application->run(); the log entry below
+    // names the real cause (empty/unreadable settings table).
+    DebMes('Settings table is empty or unreadable, default SETTINGS_* values are used', 'errors');
+}
 
 if (isset($_GET['theme']) && !defined('SETTINGS_THEME')) {
     Define('SETTINGS_THEME', $_GET['theme']);
@@ -30,13 +45,30 @@ for ($i = 0; $i < $total; $i++) {
     if ($settings[$i]['NAME'] == 'SITE_TIMEZONE' && !in_array($settings[$i]['VALUE'], DateTimeZone::listIdentifiers())) {
         continue;
     }
-    Define('SETTINGS_' . $settings[$i]['NAME'], $settings[$i]['VALUE']);
+    $setting_constant = 'SETTINGS_' . $settings[$i]['NAME'];
+    if (!defined($setting_constant)) {
+        // Values forced by the request (?theme=, ?lang=) win over the database;
+        // re-defining an existing constant only produces an E_WARNING.
+        Define($setting_constant, $settings[$i]['VALUE']);
+    }
 }
 
 
-if (!defined('SETTINGS_SITE_LANGUAGE')) {
-    Define('SETTINGS_SITE_LANGUAGE', 'en');
+// Settings the runtime reads as bare constants (modules/application.class.php,
+// templates, legacy modules) must always exist. A missing row is user data, not
+// a fatal error: fall back to the same defaults modules/first_start.php uses.
+$settings_defaults = array(
+    'SITE_LANGUAGE' => 'en',
+    'SITE_TIMEZONE' => 'Europe/Minsk',
+    'THEME' => 'dark',
+);
+foreach ($settings_defaults as $setting_name => $setting_default) {
+    if (!defined('SETTINGS_' . $setting_name)) {
+        Define('SETTINGS_' . $setting_name, $setting_default);
+    }
 }
+unset($settings_defaults, $setting_name, $setting_default, $setting_constant);
+
 
 if (!defined('GIT_URL')) {
     Define('GIT_URL', 'https://github.com/SmoKE585/majordomo');
@@ -64,11 +96,6 @@ if (LANG_SETTINGS_SITE_LANGUAGE_CODE) {
 } else {
     Define('SETTINGS_SITE_LANGUAGE_CODE', '');
 }
-
-if (!defined('SETTINGS_SITE_TIMEZONE')) {
-    Define('SETTINGS_SITE_TIMEZONE', 'Europe/Minsk');
-}
-
 
 ini_set('date.timezone', SETTINGS_SITE_TIMEZONE);
 date_default_timezone_set(SETTINGS_SITE_TIMEZONE);

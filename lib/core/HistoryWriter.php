@@ -21,60 +21,60 @@ final class HistoryWriter
                 if (!isset($tables[$id])) $tables[$id] = defined('SEPARATE_HISTORY_STORAGE') && SEPARATE_HISTORY_STORAGE == 1 ? $this->historyStorage->table($id) : 'phistory';
             }
             for ($attempt = 1; ; $attempt++) {
-            // Rebuild the batch from fresh history tails after a rolled-back attempt.
-            $tails = $inserts = $updates = array();
-            $this->db->requireExec('START TRANSACTION', true);
-            try {
-                foreach ($queue as $row) {
-                    $id = (int)$row['VALUE_ID'];
-                    $table = $tables[$id];
-                    if (!isset($tails[$id])) $tails[$id] = $this->db->select("SELECT ID,VALUE,SOURCE,ADDED FROM `$table` WHERE VALUE_ID=$id ORDER BY ID DESC LIMIT 2");
-                    $tail = &$tails[$id];
-                    $value = mb_strcut((string)$row['VALUE'], 0, 255, 'UTF-8');
-                    $source = (string)$row['SOURCE'];
-                    $same = $row['VALUE'] == $row['OLD_VALUE'] && !(defined('HISTORY_NO_OPTIMIZE') && HISTORY_NO_OPTIMIZE == 1);
-                    $compress = $same && count($tail) >= 2 && $tail[0]['VALUE'] == $tail[1]['VALUE']
-                    && preg_replace('/\d+/', 'N', $source) === preg_replace('/\d+/', 'N', $tail[0]['SOURCE']);
-                    if ($compress) {
-                        $tail[0]['ADDED'] = $row['ADDED'];
-                        if (isset($tail[0]['_INSERT'])) $inserts[$table][$tail[0]['_INSERT']]['ADDED'] = $row['ADDED'];
-                        else $updates[$table][(int)$tail[0]['ID']] = $row['ADDED'];
-                    } else {
-                        $entry = array('VALUE_ID' => $id, 'ADDED' => $row['ADDED'], 'VALUE' => $value, 'SOURCE' => $source);
-                        if (!isset($inserts[$table])) $inserts[$table] = array();
-                        $index = count($inserts[$table]);
-                        $inserts[$table][] = $entry;
-                        $entry['_INSERT'] = $index;
-                        array_unshift($tail, $entry);
-                        $tail = array_slice($tail, 0, 2);
+                // Rebuild the batch from fresh history tails after a rolled-back attempt.
+                $tails = $inserts = $updates = array();
+                $this->db->requireExec('START TRANSACTION', true);
+                try {
+                    foreach ($queue as $row) {
+                        $id = (int)$row['VALUE_ID'];
+                        $table = $tables[$id];
+                        if (!isset($tails[$id])) $tails[$id] = $this->db->select("SELECT ID,VALUE,SOURCE,ADDED FROM `$table` WHERE VALUE_ID=$id ORDER BY ID DESC LIMIT 2");
+                        $tail = &$tails[$id];
+                        $value = mb_strcut((string)$row['VALUE'], 0, 255, 'UTF-8');
+                        $source = (string)$row['SOURCE'];
+                        $same = $row['VALUE'] == $row['OLD_VALUE'] && !(defined('HISTORY_NO_OPTIMIZE') && HISTORY_NO_OPTIMIZE == 1);
+                        $compress = $same && count($tail) >= 2 && $tail[0]['VALUE'] == $tail[1]['VALUE']
+                        && preg_replace('/\d+/', 'N', $source) === preg_replace('/\d+/', 'N', $tail[0]['SOURCE']);
+                        if ($compress) {
+                            $tail[0]['ADDED'] = $row['ADDED'];
+                            if (isset($tail[0]['_INSERT'])) $inserts[$table][$tail[0]['_INSERT']]['ADDED'] = $row['ADDED'];
+                            else $updates[$table][(int)$tail[0]['ID']] = $row['ADDED'];
+                        } else {
+                            $entry = array('VALUE_ID' => $id, 'ADDED' => $row['ADDED'], 'VALUE' => $value, 'SOURCE' => $source);
+                            if (!isset($inserts[$table])) $inserts[$table] = array();
+                            $index = count($inserts[$table]);
+                            $inserts[$table][] = $entry;
+                            $entry['_INSERT'] = $index;
+                            array_unshift($tail, $entry);
+                            $tail = array_slice($tail, 0, 2);
+                        }
+                        unset($tail);
                     }
-                    unset($tail);
-                }
-                foreach ($inserts as $table => $rows) {
-                    // Bound packet size even when an installation permits large source strings.
-                    foreach (array_chunk($rows, 100) as $chunk) {
-                        $values = array();
-                        foreach ($chunk as $row) $values[] = '(' . (int)$row['VALUE_ID'] . ",'" . $this->db->escape($row['ADDED']) . "','" . $this->db->escape($row['VALUE']) . "','" . $this->db->escape($row['SOURCE']) . "')";
-                        $this->db->requireExec("INSERT INTO `$table` (VALUE_ID,ADDED,VALUE,SOURCE) VALUES " . implode(',', $values), true);
+                    foreach ($inserts as $table => $rows) {
+                        // Bound packet size even when an installation permits large source strings.
+                        foreach (array_chunk($rows, 100) as $chunk) {
+                            $values = array();
+                            foreach ($chunk as $row) $values[] = '(' . (int)$row['VALUE_ID'] . ",'" . $this->db->escape($row['ADDED']) . "','" . $this->db->escape($row['VALUE']) . "','" . $this->db->escape($row['SOURCE']) . "')";
+                            $this->db->requireExec("INSERT INTO `$table` (VALUE_ID,ADDED,VALUE,SOURCE) VALUES " . implode(',', $values), true);
+                        }
                     }
+                    foreach ($updates as $table => $rows) {
+                        ksort($rows, SORT_NUMERIC);
+                        $cases = array();
+                        foreach ($rows as $id => $added) $cases[] = 'WHEN ' . (int)$id . " THEN '" . $this->db->escape($added) . "'";
+                        $this->db->requireExec("UPDATE `$table` SET ADDED=CASE ID " . implode(' ', $cases) . ' END WHERE ID IN (' . implode(',', array_keys($rows)) . ')', true);
+                    }
+                    $this->db->requireExec('DELETE FROM phistory_queue WHERE ID IN (' . implode(',', array_map('intval', array_column($queue, 'ID'))) . ')', true);
+                    $this->db->requireExec('COMMIT', true);
+                } catch (Throwable $e) {
+                    $rolledBack = $this->db->exec('ROLLBACK', true);
+                    if ($rolledBack && in_array($e->getCode(), array(1213, 1205), true) && $attempt < 3) {
+                        usleep(random_int(20000, 60000) * $attempt);
+                        continue;
+                    }
+                    throw $e;
                 }
-                foreach ($updates as $table => $rows) {
-                    ksort($rows, SORT_NUMERIC);
-                    $cases = array();
-                    foreach ($rows as $id => $added) $cases[] = 'WHEN ' . (int)$id . " THEN '" . $this->db->escape($added) . "'";
-                    $this->db->requireExec("UPDATE `$table` SET ADDED=CASE ID " . implode(' ', $cases) . ' END WHERE ID IN (' . implode(',', array_keys($rows)) . ')', true);
-                }
-                $this->db->requireExec('DELETE FROM phistory_queue WHERE ID IN (' . implode(',', array_map('intval', array_column($queue, 'ID'))) . ')', true);
-                $this->db->requireExec('COMMIT', true);
-            } catch (Throwable $e) {
-                $rolledBack = $this->db->exec('ROLLBACK', true);
-                if ($rolledBack && in_array($e->getCode(), array(1213, 1205), true) && $attempt < 3) {
-                    usleep(random_int(20000, 60000) * $attempt);
-                    continue;
-                }
-                throw $e;
-            }
-            return count($queue);
+                return count($queue);
             }
         } finally {
             $this->db->one("SELECT RELEASE_LOCK('mjd:history-writer')");

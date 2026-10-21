@@ -51,7 +51,11 @@ class application extends module
 
         $out = array();
 
-        $theme = SETTINGS_THEME;
+        // The theme is user data from the settings table, not a compile-time
+        // fact: a missing/unreadable THEME row must not kill the request with
+        // "Undefined constant SETTINGS_THEME" (load_settings.php falls back to
+        // the same default, this guard keeps the module usable on its own).
+        $theme = defined('SETTINGS_THEME') && SETTINGS_THEME !== '' ? SETTINGS_THEME : 'dark';
         if ($this->action == 'layouts' && $this->id) {
             $layout_rec = SQLSelectOne("SELECT * FROM layouts WHERE ID=" . (int)$this->id);
             if ($layout_rec['THEME']) {
@@ -61,7 +65,9 @@ class application extends module
                 $out['BODY_CSS'] .= 'background-image:url(' . $layout_rec['BACKGROUND_IMAGE'] . ')';
             }
         }
-        Define('THEME', $theme);
+        if (!defined('THEME')) {
+            Define('THEME', $theme);
+        }
 
         if ($this->action == 'ajaxgetglobal') {
             if (!headers_sent()) {
