@@ -83,7 +83,8 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 Единый источник правды — `lib/admin_router.php`:
 
 - `mdj_admin_route_table()` — таблица inbound-маршрутов (pretty path → legacy query).
-  Её использует `nf.php`.
+  Её использует 
+f.php`.
 - `mdj_admin_pretty_url()` — outbound-преобразователь (legacy query → pretty path).
   Его используют `parseLinks()`, `module::redirect()` и AJAX-поиск в шапке.
 - `mdj_admin_resolve_path()` / `mdj_admin_state_from_query()` — разбор и нормализация
@@ -94,7 +95,8 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 один параметр теряется, ссылка остаётся legacy. Поэтому непортированные модули
 продолжают работать без изменений.
 
-`nf.php` при открытии pretty URL собирает те же `$_REQUEST['pd']`, `md`, `inst` и
+
+f.php` при открытии pretty URL собирает те же `$_REQUEST['pd']`, `md`, `inst` и
 параметры модуля, что и раньше. Старые модули не знают, что URL изменился.
 
 Значения из маршрута — это состояние **по умолчанию**. Явные GET/POST-параметры
@@ -113,7 +115,8 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 
 ## 5. 404
 
-- Неизвестный `*.html` → `nf.php` не находит маршрут и отдаёт `lib/error_page.php`
+- Неизвестный `*.html` → 
+f.php` не находит маршрут и отдаёт `lib/error_page.php`
   со статусом `404`.
 - Неизвестный модуль в админке (`/panel/foo.html`) → `panel.class.php` проверяет
   наличие класса модуля и показывает 404 внутри shell, тоже со статусом `404`.
@@ -144,9 +147,10 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 
 ## 8. nginx
 
-Канонический шаблон — `docs/deploy/nginx.conf.sample`. Готовый пример под текущий домен
-(may-13.ru: subdomain-логика, `auth_basic`, proxy на 8002) —
-`docs/deploy/nginx.conf.may-13.ru.sample`.
+Канонический шаблон — `docs/deploy/nginx.conf.sample` (универсальный, без конкретного
+домена): `root` указывает на `<project>/public`, а каталоги вне document root
+(`/modules/`, `/cms/`, `/objects/`, `/scripts/`, `/3rdparty/`, `/docs/`) смонтированы
+через `root`-override с вложенной PHP-локацией.
 
 Для pretty URL в конфиге обязательны:
 

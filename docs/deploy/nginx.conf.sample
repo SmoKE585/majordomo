@@ -1,100 +1,129 @@
-# MajorDoMo virtual host (nginx only).
+# MajorDoMo — эталонный конфиг nginx (единственный источник правды).
 #
-# The project is deployed on nginx: all rewrite and access rules live in this
-# file, and no per-directory configuration should be added anywhere else.
+# Деплой только на nginx: все rewrite- и access-правила живут здесь,
+# .htaccess в проекте нет и добавлять его не нужно.
 #
-# Usage:
+# Использование:
 #   cp docs/deploy/nginx.conf.sample /etc/nginx/sites-available/majordomo
-#   # adjust root, server_name and the php-fpm socket below
+#   # замените example.com, пути и сокет php-fpm на свои
 #   ln -s /etc/nginx/sites-available/majordomo /etc/nginx/sites-enabled/
 #   nginx -t && systemctl reload nginx
 #
 # ---------------------------------------------------------------------------
-# Layout: public/ is the document root (Laravel-like)
+# Схема: public/ — document root
 # ---------------------------------------------------------------------------
 #   <project>/public/     index.php, admin.php, nf.php, api.php, 404.php,
 #                         favicon.ico, robots.txt, assets/
-#   <project>/            application code: bootstrap.php, config.php, lib/,
-#                         modules/, templates/, cms/, 3rdparty/, scripts/,
-#                         objects/, pChart/, docs/
+#   <project>/            bootstrap.php, config.php, lib/, modules/, templates/,
+#                         cms/, 3rdparty/, scripts/, objects/, docs/
 #
-# Only public/ is reachable by default; config.php, lib/, load_settings.php,
-# bootstrap.php, cycle.php and dev_server.php are outside the document root.
+# Вне document root и недоступны по HTTP: config.php, bootstrap.php,
+# load_settings.php, lib/, cycle.php, dev_server.php, src/, tools/.
 #
-# Directories that must stay reachable by their old URLs are mounted from the
-# project root through explicit `root` overrides, so those URLs keep working:
+# Каталоги, которые обязаны сохранить свои URL, смонтированы из корня проекта
+# через `root`-override:
+#   /cms/...      медиа (аватары, картинки, звуки); cached/debmes закрыты
+#   /modules/...  PHP-эндпоинты модулей (autosave, iframe-воркеры, widgets)
+#   /objects/...  скрипты объектов
+#   /scripts/...  веб-триггеры циклов
+#   /3rdparty/... elFinder и библиотеки
+#   /docs/...     документация (sql/log закрыты)
 #
-#   /cms/...      media (avatars, images, sounds); cached/debmes denied
-#   /modules/...  module PHP endpoints (autosave, iframe workers, widgets)
-#   /objects/...  object scripts
-#   /pChart/...   property charts
-#   /scripts/...  cycle web triggers
-#   /3rdparty/... elFinder and bundled libraries
-#   /docs/...     documentation (sql/log denied)
-#
-# Old URLs are redirected:
-#   /css|/js|/img/...          301 -> /assets/...
-#   /3rdparty/<browser-lib>/... 301 -> /assets/vendor/<browser-lib>/...
+# Старые URL:
+#   /css|/js|/img/...           301 -> /assets/...
+#   /3rdparty/<browser-lib>/...  301 -> /assets/vendor/<browser-lib>/...
 #   /templates/<module>/*.css|js 301 -> /assets/modules/<module>/...
-#   /public/...                301 -> /...            (old docroot prefix)
-#   /rc/...                    301 -> /panel/         (feature removed)
+#   /public/...                 301 -> /...            (старый префикс docroot)
+#   /rc/...                     301 -> /panel/         (функция удалена)
+#
+# Если нужны поддомены с отдельными каталогами, добавьте до `root`:
+#   set $subdomain "";
+#   if ($host ~* ^([a-z0-9-]+)\.example\.com$) { set $subdomain $1; }
+#   set $root_path /var/www/example/data/www/example.com/$subdomain;
+# и используйте `root $root_path/public;` / `root $root_path;` в locations.
 
 server {
-    listen 127.0.0.1:80;
-    server_name example.com www.example.com localhost;
+    listen 443 ssl;
+    http2 on;
 
-    root /var/www/example/data/www/example.com/public;
-    index index.php;
+    server_name example.com www.example.com;
+
+    ssl_certificate     /etc/nginx/ssl/example.com.crt;
+    ssl_certificate_key /etc/nginx/ssl/example.com.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
 
     charset utf-8;
     autoindex off;
 
-    # --- Public entry points ----------------------------------------------
+    gzip on;
+    gzip_proxied expired no-cache no-store private auth;
+    gzip_types text/css text/xml application/javascript text/plain application/json image/svg+xml image/x-icon;
+    gzip_comp_level 1;
+
+    # Опционально: закрыть сайт basic-auth.
+    # auth_basic "closed site";
+    # auth_basic_user_file /var/www/example/data/www/example.com/.httpauth;
+
+    root /var/www/example/data/www/example.com/public;
+    index index.php;
+
+    # Опционально: требует nginx со встроенным модулем disable_symlinks
+    # (сборки fastpanel и т.п.). В стандартном nginx директивы нет.
+    # disable_symlinks if_not_owner from=/var/www/example/data/www/example.com;
+
+    # --- Точки входа -----------------------------------------------------
     location = /panel {
         return 301 /panel/;
     }
+
     location ^~ /panel/ {
         try_files $uri $uri/ /nf.php?$query_string;
     }
+
     location ^~ /api/ {
         rewrite ^ /api.php last;
     }
+
     error_page 404 /404.php;
 
-    # --- Static assets -----------------------------------------------------
+    # --- Статика ---------------------------------------------------------
     location ^~ /assets/ {
         expires 30d;
         access_log off;
     }
 
-    # --- Legacy asset URLs: permanent redirects to /assets/ ----------------
+    # --- Старые URL ассетов -> /assets/ ---------------------------------
     location ~ ^/(css|js|img)/(.+)$ {
         return 301 /assets/$1/$2$is_args$args;
     }
+
     location ~ ^/3rdparty/(bootstrap|bootstrap-datetimepicker|duration-picker|fancybox|jquery|jquery\.toast|jquerymobile|long-press-event|moment)/(.*)$ {
         return 301 /assets/vendor/$1/$2$is_args$args;
     }
+
     location ~ ^/templates/([a-z0-9_-]+)/(.+\.(?:css|js))$ {
         return 301 /assets/modules/$1/$2$is_args$args;
     }
+
+    # --- Удалённые/устаревшие пути --------------------------------------
     location ~ ^/public/(.*)$ {
         return 301 /$1$is_args$args;
     }
 
-    # --- Removed feature ---------------------------------------------------
     location = /rc {
         return 301 /panel/;
     }
+
     location ^~ /rc/ {
         return 301 /panel/;
     }
 
-    # --- Application directories outside the document root -----------------
-    # `^~` wins over regex locations, therefore PHP must be handled by a
-    # nested location inside every block. Otherwise nginx would serve the
-    # source of modules/*.php instead of executing it.
+    # --- PHP-эндпоинты вне document root ---------------------------------
+    # ^~ перекрывает regex-локации, поэтому PHP обрабатывается вложенной
+    # location: иначе nginx отдал бы исходники modules/*.php как текст.
     location ^~ /modules/ {
         root /var/www/example/data/www/example.com;
+
         location ~ [^/]\.php(/|$) {
             include /etc/nginx/fastcgi_params;
             fastcgi_split_path_info ^(.+\.php)(/.*)$;
@@ -110,21 +139,7 @@ server {
 
     location ^~ /objects/ {
         root /var/www/example/data/www/example.com;
-        location ~ [^/]\.php(/|$) {
-            include /etc/nginx/fastcgi_params;
-            fastcgi_split_path_info ^(.+\.php)(/.*)$;
-            fastcgi_pass unix:/var/run/php/php-fpm.sock;
 
-            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-            fastcgi_param DOCUMENT_ROOT /var/www/example/data/www/example.com/public;
-            fastcgi_param PATH_INFO $fastcgi_path_info;
-
-            fastcgi_read_timeout 240;
-        }
-    }
-
-    location ^~ /pChart/ {
-        root /var/www/example/data/www/example.com;
         location ~ [^/]\.php(/|$) {
             include /etc/nginx/fastcgi_params;
             fastcgi_split_path_info ^(.+\.php)(/.*)$;
@@ -140,6 +155,7 @@ server {
 
     location ^~ /scripts/ {
         root /var/www/example/data/www/example.com;
+
         location ~ [^/]\.php(/|$) {
             include /etc/nginx/fastcgi_params;
             fastcgi_split_path_info ^(.+\.php)(/.*)$;
@@ -155,6 +171,7 @@ server {
 
     location ^~ /3rdparty/ {
         root /var/www/example/data/www/example.com;
+
         location ~ [^/]\.php(/|$) {
             include /etc/nginx/fastcgi_params;
             fastcgi_split_path_info ^(.+\.php)(/.*)$;
@@ -166,27 +183,45 @@ server {
 
             fastcgi_read_timeout 240;
         }
-        location ~* \.(sql|log|sh|py|ini|phps|fla|htaccess|htpasswd)$ { deny all; }
+
+        location ~* \.(sql|log|sh|py|ini|phps|fla|htaccess|htpasswd)$ {
+            deny all;
+        }
     }
 
-    # Media only; runtime data (cache, logs, installed markers, backups) is private.
+    # --- Медиа и документация --------------------------------------------
+    # Только медиа; runtime-данные (кэш, логи, маркеры установки, бэкапы) закрыты.
     location ^~ /cms/ {
         root /var/www/example/data/www/example.com;
-        location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ { deny all; }
-        location ~* \.(gif|jpe?g|png|svg|webp|ico)$ { expires 7d; }
+
+        location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ {
+            deny all;
+        }
+
+        location ~* \.(gif|jpe?g|png|svg|webp|ico)$ {
+            expires 7d;
+        }
     }
 
-    # Documentation (UI Kit links to it). SQL dumps and scripts stay closed.
+    # На документацию ссылается UI Kit. SQL-дампы и скрипты закрыты.
     location ^~ /docs/ {
         root /var/www/example/data/www/example.com;
-        location ~* \.(sql|log|sh|py|ini|phps|fla)$ { deny all; }
+
+        location ~* \.(sql|log|sh|py|ini|phps|fla)$ {
+            deny all;
+        }
     }
 
-    # --- Access protection --------------------------------------------------
-    location ~ /\. { deny all; }
-    location ~* \.(htaccess|htpasswd|ini|phps|fla|sql|log|sh|py)$ { deny all; }
+    # --- Защита -----------------------------------------------------------
+    location ~ /\. {
+        deny all;
+    }
 
-    # --- Cache and friendly URLs -------------------------------------------
+    location ~* \.(htaccess|htpasswd|ini|phps|fla|sql|log|sh|py)$ {
+        deny all;
+    }
+
+    # --- Кэш и friendly URL ----------------------------------------------
     location ~* \.(gif|jpe?g|png|svg|webp|ico|ogg|mp3|mp4|mkv|flv|swf|wmv|asf|asx|wma|wax|wmx|wm)$ {
         expires 7d;
         add_header Cache-Control "public";
@@ -200,23 +235,80 @@ server {
         try_files $uri $uri/ /nf.php?$query_string;
     }
 
-    # --- Everything else ----------------------------------------------------
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
-    # --- PHP from the document root ----------------------------------------
+    # --- PHP из document root --------------------------------------------
     location ~ [^/]\.php(/|$) {
         include /etc/nginx/fastcgi_params;
-        fastcgi_pass unix:/var/run/php/php-fpm.sock;
         fastcgi_split_path_info ^(.+\.php)(/.*)$;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
 
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         fastcgi_param DOCUMENT_ROOT $realpath_root;
         fastcgi_param SCRIPT_NAME $fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
-        fastcgi_param HTTPS $http_x_forwarded_proto if_not_empty;
+        fastcgi_param HTTPS on;
 
-        fastcgi_read_timeout 240;
+        # Обновление/бэкап/восстановление могут идти дольше 60 секунд.
+        fastcgi_read_timeout 600s;
+        fastcgi_send_timeout 600s;
+        client_max_body_size 512m;
+    }
+}
+
+# HTTP -> HTTPS
+server {
+    listen 80;
+    server_name example.com www.example.com;
+    return 301 https://$host$request_uri;
+}
+
+# Локальный вход (внутренние запросы приложения, health-checks).
+server {
+    listen 127.0.0.1:80;
+    server_name localhost;
+
+    charset utf-8;
+
+    root /var/www/example/data/www/example.com/public;
+    index index.php;
+
+    location = /panel {
+        return 301 /panel/;
+    }
+
+    location ^~ /panel/ {
+        try_files $uri $uri/ /nf.php?$query_string;
+    }
+
+    location ^~ /api/ {
+        rewrite ^ /api.php last;
+    }
+
+    error_page 404 /404.php;
+
+    location ~ ^/(css|js|img)/(.+)$ {
+        return 301 /assets/$1/$2$is_args$args;
+    }
+
+    location ~ [^/]\.php(/|$) {
+        include /etc/nginx/fastcgi_params;
+        fastcgi_split_path_info ^(.+\.php)(/.*)$;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_param SCRIPT_NAME $fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+
+        fastcgi_read_timeout 600s;
+        fastcgi_send_timeout 600s;
+        client_max_body_size 512m;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
     }
 }

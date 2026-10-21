@@ -323,12 +323,11 @@ $nginxChecks = [
     'location = /rc {' => 'removed rc redirect',
     'location ^~ /modules/ {' => 'module endpoints location',
     'location ^~ /objects/ {' => 'objects entry location',
-    'location ^~ /pChart/ {' => 'pChart entry location',
     'location ^~ /scripts/ {' => 'scripts entry location',
     'location ^~ /3rdparty/ {' => '3rdparty location',
     'location ^~ /cms/ {' => 'cms media location',
     'location ^~ /docs/ {' => 'documentation location',
-    'location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ { deny all; }' => 'cms runtime data is private',
+    'location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ {' => 'cms runtime data is private',
 ];
 
 foreach ($nginxChecks as $needle => $name) {
@@ -369,6 +368,7 @@ foreach (['index.php', 'admin.php', 'nf.php', 'api.php', '404.php'] as $entry) {
 }
 routingCheck(is_file($rootDir . '/bootstrap.php'), '[PUBLIC] bootstrap.php must define the application root');
 routingCheck(!is_dir($rootDir . '/rc'), '[PUBLIC] rc/ is removed (redirected to /panel/)');
+routingCheck(!is_dir($rootDir . '/pChart'), '[PUBLIC] pChart/ is removed (unused chart library)');
 
 foreach (findHtaccessLeftovers($rootDir) as $htaccess) {
     $failures[] = "[LEGACY] {$htaccess} — web server config lives in docs/deploy/nginx.conf.sample only";

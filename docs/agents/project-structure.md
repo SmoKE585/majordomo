@@ -43,7 +43,6 @@
 ├── backup/                     # резервные копии saverestore (runtime, gitignored)
 ├── 3rdparty/                   # PHP-библиотеки и elFinder (/3rdparty/...)
 ├── objects/                    # /objects/?script=…
-├── pChart/                     # /pChart/?p=… (графики свойств)
 ├── scripts/                    # CLI-циклы и smoke-тесты (/scripts/…)
 ├── tools/                      # dev-инструменты (скриншоты, иконки, сканер ассетов)
 ├── package.json / vite.*.js    # сборка статики
@@ -67,7 +66,7 @@
 | `/cms/avatars/...`, `/cms/images/...` | `cms/...` (медиа) |
 | `/modules/...` | `modules/...` (включая PHP-эндпоинты) |
 | `/objects/?script=...` | `objects/index.php` |
-| `/pChart/?p=...` | `pChart/index.php` |
+
 | `/scripts/...` | `scripts/...` |
 | `/3rdparty/...` | `3rdparty/...` (elFinder, библиотеки) |
 | `/docs/...` | `docs/...` (UI Kit ссылается на документацию) |
@@ -92,7 +91,7 @@ Document root — только `public/`. Всё, что должно сохра
   (`modules/<name>/autosave.php`, `update_iframe.php`, `*.js.php`), поэтому
   каталог и его URL остаются на месте;
 - `cms/` — 160+ обращений вида `ROOT . 'cms/...'` в коде и медиа-URL;
-- `objects/`, `pChart/`, `scripts/` — веб-эндпоинты, завязанные на старые URL;
+- `objects/`, `scripts/` — веб-эндпоинты, завязанные на старые URL;
 - `3rdparty/` — elFinder и библиотеки, которые подключают модули.
 
 Точки входа перенесены в `public/` физически. Так как они используют
@@ -103,10 +102,12 @@ Document root — только `public/`. Всё, что должно сохра
 
 ## 4. nginx
 
-Полный конфиг — `docs/deploy/nginx.conf.sample` (эталон) и
-`docs/deploy/nginx.conf.may-13.ru.sample` (боевой домен с поддоменами).
+Полный конфиг — `docs/deploy/nginx.conf.sample` — универсальный: домен, пути и
+сокет заменены на пример. Перед деплоем подставьте свои `root`, `server_name`,
+`сертификаты и сокет php-fpm.
 
-```nginx
+``
+ginx
 root /var/www/example/data/www/example.com/public;
 index index.php;
 
@@ -138,7 +139,7 @@ location ^~ /modules/ {
 
 - document root — `public/`; входные файлы, `/assets/`, `favicon.ico`,
   `robots.txt` берутся оттуда;
-- `/modules/`, `/objects/`, `/pChart/`, `/scripts/`, `/3rdparty/`, `/cms/`,
+- `/modules/`, `/objects/`, `/scripts/`, `/3rdparty/`, `/cms/`,
   `/docs/` отдаются из корня проекта, PHP в них выполняется;
 - CWD перед запуском скрипта = каталог скрипта (как в php-fpm), поэтому
   `bootstrap.php` и собственные `chdir()` эндпоинтов работают одинаково с продом;
@@ -149,7 +150,8 @@ location ^~ /modules/ {
 
 1. Статика страницы модуля → `public/assets/modules/<module>/`, подключается
    только в шаблоне этого модуля (`<#ROOTHTML#>assets/modules/<module>/...`).
-2. Общая библиотека → `npm install` + импорт в `src/admin/main.js` (или отдельный
+2. Общая библиотека → 
+pm install` + импорт в `src/admin/main.js` (или отдельный
    entry). В `public/assets/vendor/` руками ничего не кладём.
 3. Картинка интерфейса → `public/assets/img/...`, ссылка
    `<#ROOTHTML#>assets/img/...`.

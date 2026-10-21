@@ -27,7 +27,7 @@ $devEntrypoint = devServerRoute($projectRoot);
 if (is_string($devEntrypoint)) {
     if (devEnsureDatabaseAvailable($projectRoot)) {
         // php-fpm runs a request with the working directory set to the script
-        // directory; legacy entry points rely on that (pChart/objects/modules
+        // directory; legacy entry points rely on that (objects/modules
         // do their own chdir("../..")). Mirror it before including the script.
         chdir(dirname($devEntrypoint));
         try {
@@ -132,7 +132,7 @@ function devServerRoute($projectRoot)
 
     // Legacy application directories live outside public/ and are served from
     // the project root (mirrors the nginx `root` overrides).
-    if (preg_match('#^/(modules|objects|pChart|scripts|3rdparty|cms|docs)/#i', $path)) {
+    if (preg_match('#^/(modules|objects|scripts|3rdparty|cms|docs)/#i', $path)) {
         $legacyFile = realpath($projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim(rawurldecode($path), '/\\')));
         if ($legacyFile !== false && strpos($legacyFile, $projectRoot) === 0) {
             if (is_file($legacyFile)) {

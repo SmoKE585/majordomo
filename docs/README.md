@@ -7,7 +7,7 @@
 
 | Каталог | Для кого | Что внутри |
 | --- | --- | --- |
-| [`agents/`](agents/) | агенты и контрибьюторы | `AGENTS.md` (полные правила), `DESIGN_SYSTEM.md`, `project-structure.md`, `admin-assets.md`, `admin-module-ui-guidelines.md`, `admin-routing.md`, технические заметки по ядру и циклам |
+| [`agents/`](agents/) | агенты и контрибьюторы | `AGENTS.md` (полные правила), `DESIGN_SYSTEM.md`, `project-structure.md`, `admin-assets.md`, `admin-module-ui-guidelines.md`, `admin-routing.md`, `third-party.md`, технические заметки по ядру и циклам |
 | [`user/`](user/) | пользователи и администраторы | описание проекта (`README.md`), блог, контракты API (Postman) |
 | [`deploy/`](deploy/) | DevOps | `nginx.conf.sample`, боевой `nginx.conf.may-13.ru.sample`, systemd-unit, `install-linux.sh` |
 | [`dev/`](dev/) | разработка | `db_terminal.sql` — схема + демо-данные для локальной базы |

@@ -77,8 +77,9 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 3. `docs/agents/admin-assets.md` — сборка, бандл, как добавлять пакеты.
 4. `docs/agents/admin-module-ui-guidelines.md` — UI-правила для модулей.
 5. `docs/agents/admin-routing.md` — контракт чистых URL, legacy `pd` и 404.
-6. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
-7. Этот файл — текущее состояние и ограничения.
+6. `docs/agents/third-party.md` — что лежит в `3rdparty/`, зачем, план перехода на Composer.
+7. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
+8. Этот файл — текущее состояние и ограничения.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 
@@ -93,7 +94,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
   библиотеки, `modules/<name>/` — CSS/JS страниц модулей);
 - `src/admin/` — исходники Vite (`main.js`, `css/`, `js/`), в бандл, не отдаются напрямую;
 - `bootstrap.php` — `chdir` в корень приложения; его подключает каждый public-вход;
-- `modules/`, `cms/`, `objects/`, `pChart/`, `scripts/`, `3rdparty/`, `docs/` — вне
+- `modules/`, `cms/`, `objects/`, `scripts/`, `3rdparty/`, `docs/` — вне
   document root, отдаются nginx через `root`-override (URL не меняются).
 
 | Путь | Назначение |
@@ -164,7 +165,7 @@ php dev_server.php --host=127.0.0.1 --port=8080
 
 Нужен MySQL/MariaDB. `config.php` локальный и не коммитится. Для чистой локальной базы можно импортировать `docs/dev/db_terminal.sql` (в нём схема + демо-данные; часть данных историческая).
 
-Локально `dev_server.php` отдаёт `public/` как document root, а `modules/`, `cms/`, `objects/`, `pChart/`, `scripts/`, `3rdparty/`, `docs/` — из корня проекта (как nginx). CWD перед запуском скрипта = каталог скрипта, как в php-fpm.
+Локально `dev_server.php` отдаёт `public/` как document root, а `modules/`, `cms/`, `objects/`, `scripts/`, `3rdparty/`, `docs/` — из корня проекта (как nginx). CWD перед запуском скрипта = каталог скрипта, как в php-fpm.
 
 ### Деплой
 
@@ -310,6 +311,8 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `js/builder.js`, `js/effects.js`, `js/dragdrop.js`, `js/slider.js`, `js/system.js`, `js/gmaps.js`, `js/jquery.autocomplete.js`, `js/jquery.betterTooltip.js`, `js/jquery.bgiframe.js`, `js/jquery.event.drag-2.2.js`, `js/jquery.gritter.js`, `js/ui.core.js`, `js/ui.draggable.js`, `js/ui.resizable.js` — мёртвая legacy-фронтенд-цепочка (script.aculo.us, jQuery UI-дубли, неиспользуемые плагины);
 - `css/jquery.autocomplete.css`, `css/jquery.betterTooltip.css`, `css/jquery.gritter.css`, `css/ui-*/jquery-ui-1.9.1.custom.min.css` — парные к удалённым скриптам и min-дубли;
 - `templates/scripts.js`, `templates/debug_templates.js`, `templates/scripts/scripts_widgets.css` — не подключались ни из одного шаблона;
+- `pChart/` и `3rdparty/jpgraph/` — 0 ссылок в коде и БД, графики давно на ApexCharts;
+- `3rdparty/freeboard/` — дашборды freeboard: эндпоинты-виджеты никуда не подключены;
 - `rc/` — архаичный пульт (Windows-бинарники + `rc/index.php`); URL `/rc/...` теперь 301 на `/panel/`;
 - `.tmp-p.json`, `obj.bat`, `templates_alt/`, `lib/_vimage_tahoma.ttf`, `cms/icons/1_iPhone_MUSIC_5_sm.png` — мусор без ссылок (аватар `cms/avatars/1_ver-logo_any_tickets-large.png` оставлен: он привязан к пользователю в БД);
 - `.htaccess` (корень и подкаталоги `lib/`, `templates/`, `cms/`, `backup/`, `3rdparty/elFinder/php/.tmp/`) — правила перенесены в `docs/deploy/nginx.conf.sample`, деплой только на nginx; каталоги, которые держались на этих файлах, сохранены через `.gitkeep`.
