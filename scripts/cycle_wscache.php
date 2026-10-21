@@ -27,6 +27,7 @@ if (defined('DISABLE_WEBSOCKETS') && DISABLE_WEBSOCKETS == 1) {
 echo date("H:i:s") . " running " . basename(__FILE__) . PHP_EOL;
 
 $checked_time = 0;
+$last_heartbeat = 0;
 $latest_sent = time();
 $cycle_wscache_started = time();
 setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
@@ -74,6 +75,11 @@ while (1) {
     if ($checked_time != time()) {
         $checked_time = time();
         try {
+            // Liveness must not depend on whether there are websocket messages to send.
+            if ($checked_time - $last_heartbeat >= 5) {
+                setGlobal('cycle_wscacheRun', $checked_time, 1);
+                $last_heartbeat = $checked_time;
+            }
             $queue = \MajorDoMo\Core\Core::websockets()->claim($websocket_queue_limit);
             if (is_array($queue) && !empty($queue)) {
                 $total = count($queue);

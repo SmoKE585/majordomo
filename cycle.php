@@ -35,6 +35,7 @@ register_shutdown_function(function () use (&$threads, &$mainCycleStarted, &$mai
     if (is_array($error) && isset($error['type'])) {
         $details .= ', last_error=' . $error['message'] . ' in ' . $error['file'] . ':' . $error['line'];
     }
+    echo date('Y-m-d H:i:s') . ' ' . ($mainCycleShutdownExpected ? '' : 'CRITICAL: ') . $details . PHP_EOL;
     DebMes($details, 'boot', $mainCycleShutdownExpected ? 'info' : 'error');
 });
 
@@ -87,9 +88,17 @@ function buildCycleStopReason($cycleTitle, $closedThread, $exitCode = null, $ter
 
 function setCycleRuntimeStatus($cycleTitle, $status, $details = '')
 {
-    saveCycleToCache($cycleTitle . 'Status', $status);
-    saveCycleToCache($cycleTitle . 'StatusUpdated', time());
-    saveCycleToCache($cycleTitle . 'StatusDetails', substr((string)$details, 0, 240));
+    static $lastFailure = 0;
+    try {
+        saveCycleToCache($cycleTitle . 'Status', $status);
+        saveCycleToCache($cycleTitle . 'StatusUpdated', time());
+        saveCycleToCache($cycleTitle . 'StatusDetails', substr((string)$details, 0, 240));
+    } catch (Throwable $error) {
+        if (time() - $lastFailure >= 30) {
+            $lastFailure = time();
+            error_log('Cycle supervisor cannot save status: ' . $error->getMessage());
+        }
+    }
 }
 
 function addCycleRuntimeLog($cycleTitle, $message)
@@ -98,26 +107,38 @@ function addCycleRuntimeLog($cycleTitle, $message)
     if ($message == '') {
         return;
     }
-    SQLExec('CREATE TABLE IF NOT EXISTS `cached_cycle_logs` (`ID` int(10) unsigned NOT NULL AUTO_INCREMENT,`CYCLE` char(100) NOT NULL,`ADDED` int(10) unsigned NOT NULL,`MESSAGE` varchar(1024) NOT NULL,PRIMARY KEY (`ID`),KEY `CYCLE_ADDED` (`CYCLE`,`ADDED`)) ENGINE=MEMORY DEFAULT CHARSET=utf8;');
-    $lines = preg_split('/\r\n|\r|\n/', $message);
-    $total = count($lines);
-    for ($i = 0; $i < $total; $i++) {
-        $line = trim($lines[$i]);
-        if ($line == '') {
-            continue;
+    static $lastFailure = 0;
+    try {
+        $db = \MajorDoMo\Core\Core::database();
+        $cycle = $db->escape($cycleTitle);
+        $lines = array_slice(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $message)), static fn($line) => $line !== ''), -80);
+        $rows = array();
+        foreach ($lines as $line) $rows[] = "('" . $cycle . "'," . time() . ",'" . $db->escape(substr($line, 0, 1000)) . "')";
+        if (!$rows) return;
+        $db->requireExec('INSERT INTO cached_cycle_logs (CYCLE,ADDED,MESSAGE) VALUES ' . implode(',', $rows), true);
+        $cutoff = $db->one("SELECT ID FROM cached_cycle_logs WHERE CYCLE='" . $cycle . "' ORDER BY ID DESC LIMIT 80,1");
+        if ($cutoff) $db->requireExec("DELETE FROM cached_cycle_logs WHERE CYCLE='" . $cycle . "' AND ID<=" . (int)$cutoff['ID'], true);
+    } catch (Throwable $error) {
+        if (time() - $lastFailure >= 30) {
+            $lastFailure = time();
+            error_log('Cycle supervisor cannot save cycle log: ' . $error->getMessage());
         }
-        $rec = array(
-            'CYCLE' => $cycleTitle,
-            'ADDED' => time(),
-            'MESSAGE' => substr($line, 0, 1000),
-        );
-        SQLInsert('cached_cycle_logs', $rec);
     }
-    $oldLogs = SQLSelect("SELECT ID FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycleTitle) . "' ORDER BY ID DESC LIMIT 80, 1000");
-    $totalOldLogs = count($oldLogs);
-    for ($i = 0; $i < $totalOldLogs; $i++) {
-        SQLExec('DELETE FROM cached_cycle_logs WHERE ID=' . (int)$oldLogs[$i]['ID']);
-    }
+}
+
+function reportCycleRuntimeFailure($title, $reason, $code = 'cycle_stop')
+{
+    global $cycleWatchdog;
+    $retry = $cycleWatchdog->failure($title, time());
+    $message = ($retry['critical'] ? 'CRITICAL: ' : 'RECOVERY: ') . $title . ': ' . $reason
+        . '; failures in 10 minutes: ' . $retry['count'] . '; restart in ' . $retry['delay'] . 's';
+    echo date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
+    DebMes($message, 'boot', $retry['critical'] ? 'error' : 'warning');
+    addCycleRuntimeLog($title, $message);
+    setCycleRuntimeStatus($title, $retry['critical'] ? 'error' : 'starting', $message);
+    try { registerError($code, $message); }
+    catch (Throwable $error) { error_log('Cycle supervisor cannot register system error: ' . $error->getMessage()); }
+    return $retry['delay'];
 }
 
 function startCycleThread($threads, $title, $cmd)
@@ -127,7 +148,7 @@ function startCycleThread($threads, $title, $cmd)
         DebMes($message, 'boot', 'error');
         setCycleRuntimeStatus($title, 'stopped', $message);
         addCycleRuntimeLog($title, $message);
-        setGlobal($title . 'Run', '');
+        try { setGlobal($title . 'Run', ''); } catch (Throwable $error) { error_log('Cannot clear cycle heartbeat: ' . $error->getMessage()); }
         return false;
     }
 
@@ -137,7 +158,7 @@ function startCycleThread($threads, $title, $cmd)
         DebMes($message, 'boot', 'error');
         setCycleRuntimeStatus($title, 'stopped', $message);
         addCycleRuntimeLog($title, $message);
-        setGlobal($title . 'Run', '');
+        try { setGlobal($title . 'Run', ''); } catch (Throwable $error) { error_log('Cannot clear cycle heartbeat: ' . $error->getMessage()); }
         return false;
     }
 
@@ -500,6 +521,13 @@ if (defined('PATH_TO_PHP'))
 else
     $threads->phpPath = IsWindowsOS() ? '..\server\php\php.exe' : 'php';
 
+$cycleWatchdog = new \MajorDoMo\Core\Cycles\CycleWatchdog(
+    \MajorDoMo\Core\Config::int('CYCLE_HEARTBEAT_TIMEOUT', 120),
+    \MajorDoMo\Core\Config::int('CYCLE_STARTUP_TIMEOUT', 180),
+    \MajorDoMo\Core\Config::arrayValue('CYCLE_TIMEOUTS')
+);
+$to_start = $to_stop = $started_when = $is_running = $expected_exits = array();
+
 foreach ($cycles as $path) {
 
     if (file_exists($path)) {
@@ -547,8 +575,11 @@ foreach ($cycles as $path) {
             saveCycleToCache($title . 'LastError', '');
             setCycleRuntimeStatus($title, 'starting');
             $pipes[$pipe_id] = $path;
+            $is_running[$title] = $pipe_id;
+            $started_when[$title] = time();
             echo "OK" . PHP_EOL;
         } else {
+            $to_start[$title] = time() + reportCycleRuntimeFailure($title, 'Initial process start failed: ' . $path);
             echo "FAILED" . PHP_EOL;
         }
     }
@@ -562,16 +593,14 @@ $last_restart = array();
 $last_cycles_control_check = time();
 $cycleReloadStarted = 0;
 
-$auto_restarts = array();
-$to_start = array();
-$to_stop = array();
-$started_when = array();
-$is_running = array();
 $last_no_threads_log = 0;
+$last_cache_failure = 0;
 
 $thisComputerObject = getObject('Computer.ThisComputer');
+$supervisorFailures = 0;
 
 while (true) {
+    try {
     $result = $threads->iteration();
     if ($result === false) {
         if ((time() - $last_no_threads_log) >= 30) {
@@ -585,7 +614,7 @@ while (true) {
                 continue;
             }
             $title = $m[1];
-            if ($cycleReloadStarted || !$cycleSupervisor->isDesiredRunning($title) || getGlobal($title . 'Disabled')) {
+            if ($cycleReloadStarted || !$cycleSupervisor->isDesiredRunning($title)) {
                 continue;
             }
             if (!isset($to_start[$title])) {
@@ -598,11 +627,23 @@ while (true) {
         sleep(1);
     }
 
-    if ((time() - $last_cycles_control_check) >= 5 || !empty($result)) {
+    if ((time() - $last_cycles_control_check) >= 5) {
 
         $last_cycles_control_check = time();
         $cyclesControls = $cyclesTimestamps = array();
-        $tmpcyclesTimestamps = \MajorDoMo\Core\Core::cache()->cycles();
+        $cycle_cache_available = true;
+        try {
+            $tmpcyclesTimestamps = \MajorDoMo\Core\Core::cache()->cycles();
+        } catch (Throwable $error) {
+            $tmpcyclesTimestamps = array();
+            $cycle_cache_available = false;
+            if (time() - $last_cache_failure >= 30) {
+                $last_cache_failure = time();
+                $message = 'CRITICAL: cycle heartbeat storage is unavailable; process monitoring continues: ' . $error->getMessage();
+                echo date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
+                DebMes($message, 'boot');
+            }
+        }
 
         $total = count($tmpcyclesTimestamps);
         foreach ($tmpcyclesTimestamps as $k => $v) {
@@ -638,11 +679,6 @@ while (true) {
                     setCycleRuntimeStatus($title, 'stopping');
                     // Explicit stop must cancel any delayed start/restart requests.
                     unset($to_start[$title]);
-                    $key = array_search($title, $auto_restarts);
-                    if ($key !== false) {
-                        unset($auto_restarts[$key]);
-                        $auto_restarts = array_values($auto_restarts);
-                    }
                 } elseif ($control == 'start') {
                     $cycleStateStore->set($title, \MajorDoMo\Core\Cycles\CycleStateStore::RUNNING);
                     unset($to_stop[$title]);
@@ -655,7 +691,7 @@ while (true) {
                 } elseif ($control == 'restart') {
                     $cycleStateStore->set($title, \MajorDoMo\Core\Cycles\CycleStateStore::RUNNING);
                     $to_stop[$title] = time();
-                    $to_start[$title] = time() + 30;
+                    $to_start[$title] = time() + 2;
                     setCycleRuntimeStatus($title, isset($is_running[$title]) ? 'stopping' : 'starting');
                 }
                 setGlobal($title . 'Control', '');
@@ -673,30 +709,38 @@ while (true) {
                 $cycle_updated_timestamp = $cyclesTimestamps[$title . 'Run'] ?? null;
                 if (isset($to_stop[$title])) {
                     setCycleRuntimeStatus($title, 'stopping');
-                } elseif ($cycle_updated_timestamp && ((time() - (int)$cycle_updated_timestamp) <= 10 * 60)) {
+                } elseif ($cycle_updated_timestamp >= $started_when[$title] && $cycle_updated_timestamp <= time() + 5
+                    && ((time() - (int)$cycle_updated_timestamp) < $cycleWatchdog->timeout($title))) {
                     setCycleRuntimeStatus($title, 'running');
-                } elseif ((time() - $started_when[$title]) > 10 * 60) {
+                } elseif ((time() - $started_when[$title]) >= $cycleWatchdog->timeout($title, true)) {
                     setCycleRuntimeStatus($title, 'hang');
                 } else {
                     setCycleRuntimeStatus($title, 'starting');
                 }
-                if ($cycleSupervisor->isDesiredRunning($title) && (time() - $started_when[$title]) > 30 && !in_array($title, $auto_restarts)) {
-                    DebMes("Adding $title to auto-recovery list", 'boot');
-                    $auto_restarts[] = $title;
-                }
-
-                if ($cycleSupervisor->isDesiredRunning($title) && !isset($to_start[$title]) && $cycle_updated_timestamp && in_array($title, $auto_restarts) && ((time() - $cycle_updated_timestamp) > 30 * 60)) { //
-                    DebMes("Looks like $title is dead (updated: " . date('Y-m-d H:i:s', $cycle_updated_timestamp) . "). Need to recovery", 'boot');
-                    setCycleRuntimeStatus($title, 'hang', 'Last update: ' . date('Y-m-d H:i:s', $cycle_updated_timestamp));
-                    addCycleRuntimeLog($title, 'Detected hang, requesting restart');
-                    registerError('cycle_hang', $title);
-                    setGlobal($title . 'Control', 'restart');
+                if ($cycle_cache_available && !$cycleReloadStarted && !isRebootRequired() && $cycleSupervisor->isDesiredRunning($title)
+                    && !isset($to_start[$title]) && !isset($to_stop[$title])) {
+                    $reason = $cycleWatchdog->stalled($title, $started_when[$title], (int)$cycle_updated_timestamp, time());
+                    if ($reason !== null) {
+                        $info = $threads->getThreadInfo($id);
+                        $reason .= '; pid=' . ($info['pid'] ?? 'unknown') . '; last output: ' . substr(trim($info['output'] ?? ''), -1000);
+                        $to_start[$title] = time() + reportCycleRuntimeFailure($title, $reason, 'cycle_hang');
+                        $to_stop[$title] = time();
+                    }
                 }
             }
         }
 
         $cycleSupervisor->touch();
         $cycleSupervisor->reconcile($cycleTitles, $is_running, $to_start, $to_stop);
+        // Recover even if a controller exception interrupted handling a close notification.
+        if (!$cycleReloadStarted && !isRebootRequired() && strpos((string)$result, 'THREAD CLOSED:') === false) {
+            foreach ($cycleTitles as $missingTitle) {
+                if ($cycleSupervisor->isDesiredRunning($missingTitle) && !isset($is_running[$missingTitle])
+                    && !isset($to_start[$missingTitle]) && !isset($to_stop[$missingTitle])) {
+                    $to_start[$missingTitle] = time() + reportCycleRuntimeFailure($missingTitle, 'Process is missing from the supervisor registry');
+                }
+            }
+        }
 
         if ($cycleSupervisor->reloadRequested() && !$cycleReloadStarted) {
             $cycleReloadStarted = time();
@@ -753,19 +797,18 @@ while (true) {
 
     foreach ($to_stop as $title => $tm) {
 
-        $key = array_search($title, $auto_restarts);
-        if ($key !== false) {
-            unset($auto_restarts[$key]);
-            $auto_restarts = array_values($auto_restarts);
-        }
-
         if ($tm <= time()) {
             if (isset($is_running[$title])) {
                 $id = $is_running[$title];
                 DebMes("Force closing service " . $title . " (id: " . $id . ")", 'boot');
                 setCycleRuntimeStatus($title, 'stopping');
                 addCycleRuntimeLog($title, 'Force closing service');
-                $threads->closeThread($id);
+                $expected_exits[$id] = true;
+                if (!$threads->closeThread($id)) {
+                    $to_stop[$title] = time() + 5;
+                    reportCycleRuntimeFailure($title, 'Unable to terminate process; replacement is blocked to avoid duplicate cycles');
+                    continue;
+                }
                 unset($is_running[$title]);
                 unset($started_when[$title]);
             }
@@ -778,6 +821,11 @@ while (true) {
             unset($to_start[$title]);
             continue;
         }
+        if (!$cycleSupervisor->isDesiredRunning($title) || isRebootRequired()) {
+            unset($to_start[$title]);
+            continue;
+        }
+        if (isset($is_running[$title], $to_stop[$title])) continue;
         if ($tm <= time()) {
             if (!isset($is_running[$title])) {
                 $cmd = './scripts/' . $title . '.php';
@@ -788,6 +836,9 @@ while (true) {
                 if ($pipe_id) {
                     $is_running[$title] = $pipe_id;
                     $started_when[$title] = time();
+                } else {
+                    $to_start[$title] = time() + reportCycleRuntimeFailure($title, 'Process start failed: ' . $cmd);
+                    continue;
                 }
             } else {
                 DebMes("Got to_start command for " . $title . ' but looks like it is already running', 'boot');
@@ -806,37 +857,42 @@ while (true) {
                 }
             }
         }
-        $closePattern = '/THREAD CLOSED:\s*\[(.*?)\](?:\s+EXIT_CODE=([-\d]+)\s+TERM_SIG=([-\d]+)\s+STOP_SIG=([-\d]+))?/is';
+        $closePattern = '/THREAD CLOSED:\s*\[(.*?)\](?:\s+EXIT_CODE=([-\d]+)\s+TERM_SIG=([-\d]+)\s+STOP_SIG=([-\d]+))?(?:\s+THREAD_ID=(\d+))?/is';
         if (preg_match_all($closePattern, $result, $matches, PREG_SET_ORDER) && !isRebootRequired()) {
             $total_m = count($matches);
             for ($im = 0; $im < $total_m; $im++) {
                 $closed_thread = $matches[$im][1];
                 $exit_code = isset($matches[$im][2]) && $matches[$im][2] !== '' ? (int)$matches[$im][2] : null;
                 $term_sig = isset($matches[$im][3]) && $matches[$im][3] !== '' ? (int)$matches[$im][3] : null;
+                $closed_id = (int)($matches[$im][5] ?? 0);
+                $thread_details = $threads->takeClosedDetails($closed_id);
                 $cycle_title = '';
                 $need_restart = 0;
                 $last_error = '';
                 $stop_requested = false;
                 if (preg_match('/(cycle_.+?)\.php/is', $closed_thread, $m)) {
                     $cycle_title = $m[1];
-                    $last_error = checkCycleFromCache($cycle_title . 'LastError');
+                    try { $last_error = checkCycleFromCache($cycle_title . 'LastError'); }
+                    catch (Throwable $error) {
+                        $last_error = '';
+                        error_log('Cannot read cycle error: ' . $error->getMessage());
+                    }
                     if ($last_error === false) {
                         $last_error = '';
                     }
                     DebMes("Thread closed: " . $cycle_title, 'boot');
-                    $stop_requested = isset($to_stop[$cycle_title]);
-                    unset($to_stop[$cycle_title]);
-                    setGlobal($cycle_title . 'Run', '');
-                    setCycleRuntimeStatus($cycle_title, 'stopped', 'Thread closed');
+                    $stop_requested = isset($expected_exits[$closed_id]) || isset($to_stop[$cycle_title]);
+                    unset($expected_exits[$closed_id]);
+                    $new_process_running = isset($is_running[$cycle_title]) && $is_running[$cycle_title] !== $closed_id;
+                    if (!$new_process_running) {
+                        unset($is_running[$cycle_title], $to_stop[$cycle_title], $started_when[$cycle_title]);
+                        try { setGlobal($cycle_title . 'Run', ''); } catch (Throwable $error) { error_log('Cannot clear stopped cycle heartbeat: ' . $error->getMessage()); }
+                        setCycleRuntimeStatus($cycle_title, 'stopped', 'Thread closed');
+                    }
                     addCycleRuntimeLog($cycle_title, 'Thread closed. Exit code: ' . (string)$exit_code . ', term signal: ' . (string)$term_sig);
                     if (!$cycleSupervisor->isDesiredRunning($cycle_title)) {
                         // Intentional stop/disable: this is not a crash and must
                         // not create system errors or trigger auto-recovery.
-                        $key = array_search($cycle_title, $auto_restarts);
-                        if ($key !== false) {
-                            unset($auto_restarts[$key]);
-                            $auto_restarts = array_values($auto_restarts);
-                        }
                         unset($to_start[$cycle_title], $to_stop[$cycle_title], $started_when[$cycle_title]);
                         $desired = $cycleSupervisor->desired($cycle_title);
                         setCycleRuntimeStatus(
@@ -847,24 +903,11 @@ while (true) {
                         addCycleRuntimeLog($cycle_title, 'Process stopped by administrator');
                         continue;
                     }
-                    if (!$stop_requested) {
-                        $key = array_search($cycle_title, $auto_restarts);
-                        if ($key !== false) {
-                            unset($auto_restarts[$key]);
-                            $auto_restarts = array_values($auto_restarts);
-                            $need_restart = 1;
-                        } elseif (isset($to_start[$cycle_title])) {
-                            $need_restart = 1;
-                        }
-                    }
+                    $need_restart = !$stop_requested && !$new_process_running;
                 }
                 if ($need_restart && $cycle_title && !$cycleReloadStarted) {
                     if (!isset($to_start[$cycle_title])) {
-                        DebMes("AUTO-RECOVERY: " . $closed_thread, 'boot');
-                        setCycleRuntimeStatus($cycle_title, 'starting', 'Auto recovery scheduled');
-                        addCycleRuntimeLog($cycle_title, 'Auto recovery scheduled');
-                        if (!preg_match('/websockets/is', $closed_thread)) {
-                            $details = buildCycleStopReason(
+                        $details = buildCycleStopReason(
                                 $cycle_title,
                                 $closed_thread,
                                 $exit_code,
@@ -873,15 +916,25 @@ while (true) {
                                 isset($to_start[$cycle_title]),
                                 $last_error
                             );
-                            registerError('cycle_stop', $details);
-                            saveCycleToCache($cycle_title . 'LastError', '');
-                        }
-                        $to_start[$cycle_title] = time() + 2;
+                        $details .= "\nPID: " . ($thread_details['pid'] ?? 'unknown') . "\nLast process output: " . substr(trim($thread_details['output'] ?? ''), -2000);
+                        $to_start[$cycle_title] = time() + reportCycleRuntimeFailure($cycle_title, $details);
                     }
                     $started_when[$cycle_title] = $to_start[$cycle_title];
                 }
             }
         }
+    }
+    $supervisorFailures = 0;
+    } catch (Throwable $error) {
+        $message = 'CRITICAL: supervisor iteration failed: ' . get_class($error) . ': ' . $error->getMessage()
+            . ' in ' . $error->getFile() . ':' . $error->getLine();
+        echo date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
+        error_log($message);
+        if (++$supervisorFailures >= 3) {
+            error_log('CRITICAL: supervisor failed three times consecutively; exiting for service-manager recovery');
+            exit(1);
+        }
+        sleep(1);
     }
 }
 

@@ -88,7 +88,7 @@ class Server extends Socket
 
                         $num_changed = @stream_select($changed_sockets, $write, $except, 0, 5000);
                         if ($num_changed === false) {
-                                $this->log('[warn] stream_select() failed, cleaning sockets');
+                                $this->log('[warn] stream_select() failed, cleaning sockets', 'warning');
                                 $this->rebuildSocketList();
                                 continue;
                         }
@@ -97,7 +97,7 @@ class Server extends Socket
                                 if ($socket === $this->master) {
                                         $ressource = @stream_socket_accept($this->master, 0);
                                         if ($ressource === false) {
-                                                $this->log('[warn] Socket accept failed');
+                                                $this->log('[warn] Socket accept failed', 'warning');
                                                 continue;
                                         }
                                         stream_set_blocking($ressource, false);
@@ -108,7 +108,7 @@ class Server extends Socket
                                         $this->clientActivity[(int) $ressource] = time();
 
                                         if (count($this->clients) > $this->_maxClients) {
-                                                $this->log('Attention: Client Limit Reached!');
+                                                $this->log('Attention: Client Limit Reached!', 'warning');
                                                 $client->onDisconnect();
                                                 if ($this->getApplication('status') !== false) {
                                                         $this->getApplication('status')->statusMsg('Attention: Client Limit Reached!', 'warning');
@@ -118,7 +118,7 @@ class Server extends Socket
 
                                         $this->_addIpToStorage($client->getClientIp());
                                         if ($this->_checkMaxConnectionsPerIp($client->getClientIp()) === false) {
-                                                $this->log('Connection/Ip limit for ip ' . $client->getClientIp() . ' was reached!');
+                                                $this->log('Connection/Ip limit for ip ' . $client->getClientIp() . ' was reached!', 'warning');
                                                 $client->onDisconnect();
                                                 if ($this->getApplication('status') !== false) {
                                                         $this->getApplication('status')->statusMsg('Connection/Ip limit for ip ' . $client->getClientIp() . ' was reached!', 'warning');
@@ -182,7 +182,7 @@ class Server extends Socket
                                         $client->onData($data);
                                         $elapsed = microtime(true) - $started;
                                         if ($elapsed > 1) {
-                                                $this->log('[warn] Slow websocket onData: ' . round($elapsed, 3) . 's, client=' . $client->getClientIp() . ':' . $client->getClientPort() . ', bytes=' . $bytes);
+                                                $this->log('[warn] Slow websocket onData: ' . round($elapsed, 3) . 's, client=' . $client->getClientIp() . ':' . $client->getClientPort() . ', bytes=' . $bytes, 'warning');
                                         }
                                         unset($GLOBALS['websockets_busy_since'], $GLOBALS['websockets_busy_info']);
                                 }
@@ -221,7 +221,7 @@ class Server extends Socket
                 }
 
                 $this->allsockets = array_values($sockets);
-                $this->log('[warn] Socket list rebuilt. sockets=' . count($this->allsockets) . ', clients=' . count($this->clients));
+                $this->log('[warn] Socket list rebuilt. sockets=' . count($this->allsockets) . ', clients=' . count($this->clients), 'warning');
         }
 
         protected function isJson($string)

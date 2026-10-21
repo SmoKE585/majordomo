@@ -474,10 +474,10 @@ function DebMes($errorMessage, $logLevel = "debug", $severity = '')
 
     $source = (string)$logLevel;
     $severity = strtolower((string)$severity);
-    $problem = in_array($severity, array('warning', 'warn', 'error', 'danger', 'critical', 'alert', 'emergency', 'exception'), true)
-        || preg_match('~(?:^|[/_-])(?:errors?|warnings?|exceptions?)(?:$|[/_-])~i', $source);
+    $problemSeverity = in_array($severity, array('warning', 'warn', 'error', 'danger', 'critical', 'alert', 'emergency', 'exception'), true);
+    $problem = $problemSeverity || preg_match('~(?:^|[/_-])(?:errors?|warnings?|exceptions?)(?:$|[/_-])~i', $source);
     if ($problem) {
-        if ($severity === '' || !in_array($severity, array('warning', 'warn', 'error', 'danger', 'critical', 'alert', 'emergency', 'exception'), true)) {
+        if (!$problemSeverity) {
             $severity = preg_match('~(?:^|[/_-])warnings?(?:$|[/_-])~i', $source) ? 'warning' : 'error';
         }
         $logLevel = 'errors';
@@ -536,12 +536,11 @@ function DebMes($errorMessage, $logLevel = "debug", $severity = '')
 
     if (file_exists($today_file) && filesize($today_file) > $max_log_size) return;
 
-    $f = fopen($today_file, "a+");
-    if ($f) {
-        $tmp = explode(' ', microtime());
-        fputs($f, date("H:i:s") . ' ' . $tmp[0]);
-        fputs($f, " " . $errorMessage . "\n");
-        fclose($f);
+    $tmp = explode(' ', microtime());
+    // Several cycles and web requests now share errors.log. Append one complete
+    // entry under a lock so their timestamps and multiline details cannot mix.
+    $entry = date("H:i:s") . ' ' . $tmp[0] . " " . $errorMessage . "\n";
+    if (file_put_contents($today_file, $entry, FILE_APPEND | LOCK_EX) !== false) {
         // Logs are written by different system users (root cycles and the web
         // server), so keep them group/world writable when possible. A denied
         // chmod() is not an application error: it must not raise a warning and

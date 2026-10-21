@@ -97,7 +97,7 @@ function processSubscriptionByModule($module_name, $event_name, &$details)
             try {
                 $output = $module_object->processSubscription($event_name, $details);
             } catch (Exception $e) {
-                //DebMes('Error in processing "%s": ' . $e->getMessage(), 'process_subscription');
+                DebMes('Subscription ' . $module_name . '.' . $event_name . ': ' . get_class($e) . ': ' . $e->getMessage(), 'process_subscription', 'error');
             }
             //DebMes("$module_name.processSubscription ($event_name) DONE",'process_subscription');
         } else {

@@ -5,9 +5,12 @@
  * Run: php tests/settings_cycles_smoke.php
  */
 
+putenv('APP_ENV=testing');
+putenv('USE_REDIS=false');
 require_once dirname(__DIR__) . '/lib/core.class.php';
 
 use MajorDoMo\Core\ConfigSchema;
+use MajorDoMo\Core\Config;
 use MajorDoMo\Core\Cycles\CycleManager;
 use MajorDoMo\Core\Cycles\CycleStateStore;
 use MajorDoMo\Core\Cycles\CycleSupervisor;
@@ -63,6 +66,7 @@ check($duplicates === array(), 'field ids are unique and reference an existing s
 // --- Cycle state store -----------------------------------------------------
 $root = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'mjd-settings-cycles-' . bin2hex(random_bytes(6));
 mkdir($root . '/scripts', 0777, true);
+Config::boot($root);
 file_put_contents($root . '/scripts/cycle_test.php', "<?php\n");
 file_put_contents($root . '/scripts/cycle_other.php', "<?php\n");
 try {
@@ -122,6 +126,8 @@ try {
     @unlink($root . '/cms/cycles/state.json');
     @unlink($root . '/cms/cycles/state.lock');
     @rmdir($root . '/cms/cycles');
+    if (is_file($root . '/cms/cached/config.php')) unlink($root . '/cms/cached/config.php');
+    if (is_dir($root . '/cms/cached')) rmdir($root . '/cms/cached');
     @rmdir($root . '/cms');
     @rmdir($root . '/scripts');
     @rmdir($root);

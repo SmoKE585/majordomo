@@ -30,6 +30,7 @@ $queries = 0;
 $writes = 0;
 $failWrite = false;
 $actions = array();
+$logs = array();
 $checks = 0;
 
 function check($condition, $message)
@@ -66,7 +67,10 @@ function SQLUpdate($table, $row)
 }
 function startMeasure($name) {}
 function endMeasure($name) {}
-function DebMes($message, $source) {}
+function DebMes($message, $source, $severity = '')
+{
+    $GLOBALS['logs'][] = array('message' => $message, 'source' => $source, 'severity' => $severity);
+}
 function callMethod($name, $parameters)
 {
     $GLOBALS['actions'][] = array($name, $parameters['VALUE']);
@@ -256,11 +260,11 @@ check($first->allow('different-interval', 3600) && $first->allow('different-inte
 $fake->broken = true;
 $connection = fakeConnection($fake);
 $fallback = new TestMqttThrottle($connection);
-$log = $fixture . '/redis-test.log';
-ini_set('error_log', $log);
+$beforeLogs = count($logs);
 check($fallback->allow('outage', 3600) && !$fallback->allow('outage', 3600), 'Redis failure must fall back to memory');
 check((new ReflectionProperty(RedisConnection::class, 'connection'))->getValue($connection) === null, 'Broken Redis sockets must be discarded');
-check(str_contains(file_get_contents($log), 'bounded cycle memory'), 'Redis fallback must be reported');
-unlink($log);
+check(count($logs) === $beforeLogs + 1 && str_contains($logs[$beforeLogs]['message'], 'bounded cycle memory')
+    && $logs[$beforeLogs]['source'] === 'mqtt' && $logs[$beforeLogs]['severity'] === 'warning',
+    'Redis fallback must be reported once through the unified warning channel');
 
 echo 'MQTT smoke tests passed: ' . $checks . ' checks; 30,000 repeated topics: 0 SQL queries.' . PHP_EOL;

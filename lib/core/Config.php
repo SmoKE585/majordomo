@@ -440,16 +440,25 @@ final class Config
         // Config boots before the general library on CLI/public entry points.
         $path = self::string('LOG_DIRECTORY');
         $directory = ($path !== '' ? rtrim($path, '/\\') : self::$root . '/cms/debmes') . '/' . date('Y-m-d');
-        if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
-            error_log('MajorDoMo config: ' . $message);
-            return;
-        }
-        if (file_put_contents(
-            $directory . '/errors.log',
-            date('H:i:s') . ' ' . explode(' ', microtime())[0] . ' [WARNING] [config] ' . $message . PHP_EOL,
-            FILE_APPEND | LOCK_EX
-        ) === false) {
-            error_log('MajorDoMo config: ' . $message);
+        $previousUmask = umask(0);
+        try {
+            if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+                error_log('MajorDoMo config: ' . $message);
+                return;
+            }
+            $file = $directory . '/errors.log';
+            $maxSize = self::int('LOG_MAX_SIZE');
+            $maxSize = ($maxSize > 0 ? $maxSize : 5) * 1024 * 1024;
+            if (is_file($file) && filesize($file) > $maxSize) return;
+            if (file_put_contents(
+                $file,
+                date('H:i:s') . ' ' . explode(' ', microtime())[0] . ' [WARNING] [config] ' . $message . PHP_EOL,
+                FILE_APPEND | LOCK_EX
+            ) === false) {
+                error_log('MajorDoMo config: ' . $message);
+            }
+        } finally {
+            umask($previousUmask);
         }
     }
 }

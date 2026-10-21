@@ -1,315 +1,222 @@
 <?php
 
-/**
- * Summary of Threads
- * Thanks to http://habrahabr.ru/post/75454/
- */
+/** Owns only its child processes; polling and output reads never wait for child output. */
 class Threads
 {
-   public $phpPath = 'php';
-   private $lastId = 0;
-   
-   private $descriptorSpec = array(
-       0 => array('pipe', 'r'),
-       1 => array('pipe', 'w')
-   );
+    public $phpPath = 'php';
+    public $handles = array();
+    public $commandLines = array();
+    private $lastId = 0;
+    private $pipes = array();
+    private $tails = array();
+    private $logFiles = array();
+    private $temporaryFiles = array();
+    private $readOffsets = array();
+    private $closedDetails = array();
+    private $pendingClosed = '';
 
-   public $handles      = array();
-   private $streams      = array();
-   private $results      = array();
-   private $pipes        = array();
-   public $commandLines = array();
-   private $timeout      = 5;
-   private $lastCheck    = 0;
+    public function newThread($filename, $params = array())
+    {
+        return $this->openProcess($filename, $params);
+    }
 
-   private function commandArgument($value)
-   {
-      return escapeshellarg((string)$value);
-   }
+    public function newXThread($filename, $display = '101', $params = array())
+    {
+        if (IsWindowsOS()) throw new ThreadsException('FOR_LINUX_ONLY');
+        return $this->openProcess($filename, $params, (string)$display);
+    }
 
+    private function openProcess($filename, $params, $display = null)
+    {
+        if (!is_file($filename)) {
+            DebMes("Cannot start thread '$filename' -- FILE NOT FOUND", 'threads');
+            return false;
+        }
+        $arguments = array($this->phpPath, '-q', (string)$filename, '--params', serialize($params));
+        $command = implode(' ', array_map('escapeshellarg', $arguments));
+        $descriptors = array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('redirect', 1));
+        $file = null;
+        $temporary = null;
+        if (defined('LOG_CYCLES') && LOG_CYCLES == '1') {
+            $path = defined('SETTINGS_SYSTEM_DEBMES_PATH') && SETTINGS_SYSTEM_DEBMES_PATH !== '' ? SETTINGS_SYSTEM_DEBMES_PATH
+                : (defined('LOG_DIRECTORY') && LOG_DIRECTORY !== '' ? LOG_DIRECTORY : ROOT . 'cms/debmes');
+            $file = rtrim($path, '/\\') . '/log_' . date('Y-m-d') . '-' . basename($filename) . '.txt';
+            $descriptors[1] = array('file', $file, 'a');
+        } elseif (IsWindowsOS()) {
+            // PHP cannot reliably make anonymous Windows pipes non-blocking.
+            // An owned, bounded spool keeps silent children from blocking the supervisor.
+            $temporary = tempnam(sys_get_temp_dir(), 'mjd-cycle-');
+            if ($temporary === false) return false;
+            $descriptors[1] = array('file', $temporary, 'a');
+        }
+        // DISPLAY is the child-process environment, not application configuration.
+        $environment = null;
+        if ($display !== null) {
+            $environment = getenv();
+            $environment['DISPLAY'] = $display;
+        }
+        try {
+            $handle = proc_open($arguments, $descriptors, $pipes, null, $environment, array('bypass_shell' => true, 'blocking_pipes' => false));
+        } catch (Throwable $error) {
+            if ($temporary !== null) unlink($temporary);
+            DebMes('Cannot start thread: ' . $error->getMessage(), 'threads');
+            return false;
+        }
+        if (!is_resource($handle)) {
+            if ($temporary !== null) unlink($temporary);
+            DebMes('Cannot start thread: proc_open failed for ' . $filename, 'threads');
+            return false;
+        }
+        $id = ++$this->lastId;
+        fclose($pipes[0]);
+        unset($pipes[0]);
+        if ($temporary !== null) {
+            $pipes[1] = fopen($temporary, 'rb');
+            $this->temporaryFiles[$id] = $temporary;
+            $this->readOffsets[$id] = 0;
+        }
+        foreach ($pipes as $pipe) stream_set_blocking($pipe, false);
+        $this->handles[$id] = $handle;
+        $this->pipes[$id] = $pipes;
+        $this->commandLines[$id] = $command;
+        $this->tails[$id] = '';
+        if ($file !== null) $this->logFiles[$id] = $file;
+        echo date('H:i:s') . ' Starting thread: ' . $command . PHP_EOL;
+        return $id;
+    }
 
-   public function closeThread($id) {
-      if (!isset($this->handles[$id])) {
-         return;
-      }
-      $pstatus = proc_get_status($this->handles[$id]);
-      if (empty($pstatus['running'])) {
-         return;
-      }
-      $pid = $pstatus['pid'];
-      $cmd = $pstatus['command'];
-      DebMes("Closing thread $pid ($cmd)",'threads');
+    public function getPipes()
+    {
+        return $this->pipes;
+    }
 
-      // Ask the cycle to exit first. Cycles keep their own state on disk, so a
-      // graceful termination is safe and much less likely to leave a half-written
-      // backup or a locked queue behind.
-      @proc_terminate($this->handles[$id]);
-      for ($i = 0; $i < 15; $i++) {
-         usleep(200000);
-         $status = proc_get_status($this->handles[$id]);
-         if (empty($status['running'])) {
-            DebMes("Process $pid ($cmd) stopped after SIGTERM",'threads');
-            return;
-         }
-      }
+    public function getThreadInfo($id): array
+    {
+        if (!isset($this->handles[$id])) return array();
+        $status = proc_get_status($this->handles[$id]);
+        $status['output'] = $this->lastOutput($id);
+        return $status;
+    }
 
-      // Fall back to a forced kill for cycles that ignore SIGTERM.
-      if (IsWindowsOS()) {
-         $exec_str = "taskkill /F /T /PID $pid";
-      } else {
-         $exec_str = "kill -9 $pid";
-      }
-      DebMes("Executing: " . $exec_str,'threads');
-      $output = array();
-      $result = exec($exec_str, $output);
-      DebMes("Result: " . implode("\n", $output),'threads');
-   }
+    public function takeClosedDetails($id): array
+    {
+        $details = $this->closedDetails[$id] ?? array();
+        unset($this->closedDetails[$id]);
+        return $details;
+    }
 
-   /**
-    * Summary of newThread
-    * @param mixed $filename File name
-    * @param mixed $params   Params
-    * @throws ThreadsException
-    * @return double|int
-    */
-   public function newThread($filename, $params = array())
-   {
-      if (!file_exists($filename))
-      {
-         DebMes("Cannot start thread '$filename' -- FILE NOT FOUND", 'threads', 'error');
-         return false;
-      }
-
-      $params = serialize($params);
-      $baseCommand = $this->commandArgument($this->phpPath) . ' -q ' . $this->commandArgument($filename) . ' --params ' . $this->commandArgument($params);
-
-      if (defined('LOG_CYCLES') && LOG_CYCLES == '1') {
-         if (defined('SETTINGS_SYSTEM_DEBMES_PATH') && SETTINGS_SYSTEM_DEBMES_PATH!='') {
-            $path = SETTINGS_SYSTEM_DEBMES_PATH;
-         } elseif (defined('LOG_DIRECTORY') && LOG_DIRECTORY!='') {
-            $path = LOG_DIRECTORY;
-         } else {
-            $path = ROOT . 'cms/debmes';
-         }
-         $fileToWrite = $path . '/log_' . date('Y-m-d') . '-' . basename($filename) . '.txt';
-         $command = $baseCommand . ' >> ' . $this->commandArgument($fileToWrite) . ' 2>&1';
-      } else {
-         $command = $baseCommand . ' 2>&1';
-      }
-      if (!IsWindowsOS()) {
-       $command='exec '.$command;
-      }
-      ++$this->lastId;
-
-      echo date('H:i:s') . " Starting thread: " . $command . "\n";
-      $this->commandLines[$this->lastId] = $command;
-      $this->handles[$this->lastId]      = proc_open($command, $this->descriptorSpec, $pipes);
-
-      stream_set_blocking($pipes[0], 0);
-      stream_set_blocking($pipes[1], 0);
-      stream_set_timeout($pipes[0], $this->timeout);
-      stream_set_timeout($pipes[1], $this->timeout);
-      
-      $this->streams[$this->lastId] = $pipes[1];
-      $this->pipes[$this->lastId]   = $pipes;
-
-      return $this->lastId;
-   }
-
-   /**
-    * Функция создает поток на отдельном экране в LINUX
-    * @param mixed $filename File name
-    * @param mixed $display  Display
-    * @param mixed $params   Params
-    * @throws ThreadsException
-    * @return double|int
-    */
-   public function newXThread($filename, $display = '101', $params = array())
-   {
-      if (IsWindowsOS())
-         throw new ThreadsException('FOR_LINUX_ONLY');
-
-      if (!file_exists($filename)) {
-         DebMes("Cannot start thread '$filename' -- FILE NOT FOUND", 'threads', 'error');
-         return false;
-      }
-
-      $params  = addcslashes(serialize($params), '"');
-      $command = 'DISPLAY=:' . $display . ' ' . $this->phpPath . ' ' . $filename . ' --params "' . $params . '"';
-      
-      ++$this->lastId;
-
-      $this->commandLines[$this->lastId] = $command;
-
-      echo date('H:i:s') . " Starting threadx: " . $command . "\n";
-      $this->handles[$this->lastId]      = proc_open($command, $this->descriptorSpec, $pipes);
-      
-      stream_set_timeout($pipes[0], $this->timeout);
-      stream_set_timeout($pipes[1], $this->timeout);
-      stream_set_blocking($pipes[0], 0);
-      stream_set_blocking($pipes[1], 0);
-      
-      $this->streams[$this->lastId] = $pipes[1];
-      $this->pipes[$this->lastId]   = $pipes;
-
-      return $this->lastId;
-   }
-
-   /**
-    * Summary of getPipes
-    * @return array[]
-    */
-   public function getPipes()
-   {
-      return $this->pipes;
-   }
-
-   /**
-    * Summary of iteration
-    * @return bool|int|string
-    */
-   public function iteration()
-   {
-      $result = '';
-      
-      if (!count($this->streams))
-      {
-         return false;
-      }
-
-      $read   = $this->streams;
-      $write  = null;
-      $except = null;
-
-      //echo date('H:i:s')." Selecting streams"."\n";
-      if (false === ($number_of_streams = stream_select($read, $write, $except, $this->timeout)))
-      {
-         DebMes("No active streams",'threads');
-         return 0;
-      }
-
-      /*
-      $stream = next($read);
-      if (!$stream) {
-      reset($read);
-      $stream=current($read);
-      }
-       */
-      global $output_show;
-      global $delayed;
-
-      $now = time();
-
-      foreach ($read as $stream)
-      {
-         $id = array_search($stream, $this->streams);
-
-         stream_set_blocking($stream, 1);
-         stream_set_timeout($stream, $this->timeout);
-         
-         $stream_status = stream_get_meta_data($stream);
-         $proc_status   = proc_get_status($this->handles[$id]);
-         $contents = stream_get_contents($stream, 65536);
-         if ($contents !== false && $contents !== '') {
-            $result .= "THREAD OUTPUT: [" . $this->commandLines[$id] . "]\n" . $contents . "\nTHREAD OUTPUT END\n";
-         }
-
-         if (!isset($output_show[$this->commandLines[$id]]) || $output_show[$this->commandLines[$id]] != $now)
-         {
-            $output_show[$this->commandLines[$id]] = $now;
-            
-            $name = $this->commandLines[$id];
-            
-            if (preg_match('/cycle_.+?\.php/', $name, $m))
-            {
-               $name = $m[0];
+    private function lastOutput($id): string
+    {
+        if (isset($this->logFiles[$id]) && is_readable($this->logFiles[$id])) {
+            $stream = fopen($this->logFiles[$id], 'rb');
+            if ($stream) {
+                $size = fstat($stream)['size'];
+                fseek($stream, max(0, $size - 4096));
+                $tail = stream_get_contents($stream, 4096);
+                fclose($stream);
+                if ($tail !== false) return $tail;
             }
+        }
+        return $this->tails[$id] ?? '';
+    }
 
-            //echo date('H:i:s') . " working thread: " . $name . "\n";
-            //echo "Status:\n";
-            //print_r($proc_status);
-            //echo "\n";
-         }
+    private function readOutput($id): string
+    {
+        $contents = '';
+        foreach ($this->pipes[$id] ?? array() as $pipe) {
+            if (isset($this->temporaryFiles[$id])) {
+                $size = fstat($pipe)['size'];
+                $offset = $this->readOffsets[$id];
+                if ($size > 1048576) $offset = max(0, $size - 65536);
+                fseek($pipe, $offset);
+                $chunk = stream_get_contents($pipe, min(65536, max(0, $size - $offset)));
+                $this->readOffsets[$id] = $offset + strlen($chunk === false ? '' : $chunk);
+                if ($size > 1048576) {
+                    $spool = fopen($this->temporaryFiles[$id], 'c');
+                    ftruncate($spool, 0);
+                    fclose($spool);
+                    $this->readOffsets[$id] = 0;
+                }
+            } else {
+                $chunk = stream_get_contents($pipe, 65536);
+            }
+            if ($chunk !== false) $contents .= $chunk;
+        }
+        if ($contents === '') return '';
+        $this->tails[$id] = substr(($this->tails[$id] ?? '') . $contents, -4096);
+        return "THREAD OUTPUT: [" . $this->commandLines[$id] . "]\n" . $contents . "\nTHREAD OUTPUT END\n";
+    }
 
-         if (!$proc_status['running'])
-         {
-            //feof($stream)
-            echo date('H:i:s') . " Closing thread: " . $this->commandLines[$id] . "\n";
-            DebMes("Closing thread: " . $this->commandLines[$id],'threads');
-            
-            $exitCode = isset($proc_status['exitcode']) ? (int)$proc_status['exitcode'] : -1;
-            $termSig = isset($proc_status['termsig']) ? (int)$proc_status['termsig'] : 0;
-            $stopSig = isset($proc_status['stopsig']) ? (int)$proc_status['stopsig'] : 0;
-            $result .= "THREAD CLOSED: [" . $this->commandLines[$id] . "] EXIT_CODE=" . $exitCode . " TERM_SIG=" . $termSig . " STOP_SIG=" . $stopSig . "\n";
-            
-            fclose($this->pipes[$id][0]);
-            fclose($this->pipes[$id][1]);
+    private function reap($id, array $status): string
+    {
+        $result = $this->readOutput($id);
+        $this->closedDetails[$id] = array('pid' => (int)$status['pid'], 'output' => $this->lastOutput($id));
+        if (count($this->closedDetails) > 128) unset($this->closedDetails[array_key_first($this->closedDetails)]);
+        $result .= 'THREAD CLOSED: [' . $this->commandLines[$id] . '] EXIT_CODE=' . (int)($status['exitcode'] ?? -1)
+            . ' TERM_SIG=' . (int)($status['termsig'] ?? 0) . ' STOP_SIG=' . (int)($status['stopsig'] ?? 0) . ' THREAD_ID=' . $id . "\n";
+        foreach ($this->pipes[$id] ?? array() as $pipe) fclose($pipe);
+        proc_close($this->handles[$id]);
+        if (isset($this->temporaryFiles[$id])) unlink($this->temporaryFiles[$id]);
+        unset($this->temporaryFiles[$id], $this->readOffsets[$id]);
+        unset($this->handles[$id], $this->pipes[$id], $this->commandLines[$id], $this->tails[$id], $this->logFiles[$id]);
+        return $result;
+    }
 
-            proc_close($this->handles[$id]);
+    public function closeThread($id)
+    {
+        if (!isset($this->handles[$id])) return true;
+        $status = proc_get_status($this->handles[$id]);
+        if ($status['running']) {
+            DebMes('Stopping cycle process pid=' . $status['pid'], 'threads');
+            proc_terminate($this->handles[$id]);
+            $deadline = microtime(true) + 3;
+            do {
+                // Retain only the diagnostic tail while waiting for termination.
+                $this->readOutput($id);
+                $status = proc_get_status($this->handles[$id]);
+                if (!$status['running']) break;
+                usleep(50000);
+            } while (microtime(true) < $deadline);
+            if ($status['running']) {
+                DebMes('Cycle ignored termination; force killing pid=' . $status['pid'], 'threads');
+                proc_terminate($this->handles[$id], 9);
+                $deadline = microtime(true) + 2;
+                do {
+                    $status = proc_get_status($this->handles[$id]);
+                    if (!$status['running']) break;
+                    usleep(50000);
+                } while (microtime(true) < $deadline);
+            }
+        }
+        if ($status['running']) {
+            DebMes('CRITICAL: cycle process could not be killed, pid=' . $status['pid'], 'threads');
+            return false;
+        }
+        $this->pendingClosed .= $this->reap($id, $status);
+        return true;
+    }
 
-            unset($this->handles[$id]);
-            unset($this->streams[$id]);
-            unset($this->pipes[$id]);
-            unset($this->commandLines[$id]);
-         }
-         else
-         {
-            $result .= "1";
-         }
+    public function iteration()
+    {
+        $result = $this->pendingClosed;
+        $this->pendingClosed = '';
+        if (!$this->handles) return $result !== '' ? $result : false;
+        foreach (array_keys($this->handles) as $id) {
+            $result .= $this->readOutput($id);
+            $status = proc_get_status($this->handles[$id]);
+            if (!$status['running']) $result .= $this->reap($id, $status);
+        }
+        usleep(100000);
+        return $result;
+    }
 
-         /*
-         //$result = stream_get_contents($this->pipes[$id][1]);
-         if (feof($stream) || ($contents = fread($stream, 150))==false) { //)
-         //if (feof($stream) || ($contents = fgets($stream, 4096))==false) {
-         //if (feof($stream) || ($contents = stream_socket_recvfrom($stream, 4096, STREAM_PEEK))) {
-         echo date('H:i:s')." Closing thread: ".$this->commandLines[$id]."\n";
-         DebMes("Closing thread: ".$this->commandLines[$id]);
-         $result.="THREAD CLOSED: [".$this->commandLines[$id]."]\n";
-         fclose($this->pipes[$id][0]);
-         fclose($this->pipes[$id][1]);
-         proc_close($this->handles[$id]);
-         unset($this->handles[$id]);
-         unset($this->streams[$id]);
-         unset($this->pipes[$id]);
-         unset($this->commandLines[$id]);
-         } else {
-         echo "Got: ";
-         echo $contents;
-         $result.=$contents;
-         }
-          */
-      }
-
-      if ($delayed != $now)
-      {
-         $delayed = $now;
-         sleep(1);
-      }
-
-      return $result;
-   }
-
-   /**
-    * Summary of getParams
-    * @return mixed
-    */
-   public static function getParams()
-   {
-      foreach ($_SERVER['argv'] as $key => $argv)
-      {
-         if ($argv == '--params' && isset($_SERVER['argv'][$key + 1]))
-         {
-            return unserialize($_SERVER['argv'][$key + 1]);
-         }
-      }
-
-      return false;
-   }
+    public static function getParams()
+    {
+        foreach ($_SERVER['argv'] as $key => $argv) {
+            if ($argv === '--params' && isset($_SERVER['argv'][$key + 1])) return unserialize($_SERVER['argv'][$key + 1]);
+        }
+        return false;
+    }
 }
 
-/**
- * Summary of ThreadsException
- */
-class ThreadsException extends Exception
-{
-}
+class ThreadsException extends Exception {}

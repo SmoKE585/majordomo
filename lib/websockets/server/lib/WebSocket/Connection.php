@@ -52,7 +52,7 @@ class Connection {
 
         // check for valid http-header:
         if (!preg_match('/\AGET (\S+) HTTP\/1.1\z/', $lines[0], $matches)) {
-            $this->log('Invalid request: ' . $lines[0]);
+            $this->log('Invalid request: ' . $lines[0], 'warning');
             $this->sendHttpResponse(400);
             $this->shutdownSocket();
             return false;
@@ -67,7 +67,7 @@ class Connection {
         $applicationName = substr($requestPath, 1);
         $this->application = $this->server->getApplication($applicationName);
         if (!$this->application) {
-            $this->log('Invalid application: ' . $path);
+            $this->log('Invalid application: ' . $path, 'warning');
             $this->sendHttpResponse(404);
             $this->shutdownSocket();
             $this->server->removeClientOnError($this);
@@ -85,7 +85,7 @@ class Connection {
 
         // check for supported websocket version:
         if (!isset($headers['Sec-WebSocket-Version']) || $headers['Sec-WebSocket-Version'] < 6) {
-            $this->log('Unsupported websocket version.');
+            $this->log('Unsupported websocket version.', 'warning');
             $this->sendHttpResponse(501);
             $this->shutdownSocket();
             $this->server->removeClientOnError($this);
@@ -97,7 +97,7 @@ class Connection {
             $origin = (isset($headers['Sec-WebSocket-Origin'])) ? $headers['Sec-WebSocket-Origin'] : false;
             $origin = (isset($headers['Origin'])) ? $headers['Origin'] : $origin;
             if ($origin === false) {
-                $this->log('No origin provided.');
+                $this->log('No origin provided.', 'warning');
                 $this->sendHttpResponse(401);
                 $this->shutdownSocket();
                 $this->server->removeClientOnError($this);
@@ -105,7 +105,7 @@ class Connection {
             }
 
             if (empty($origin)) {
-                $this->log('Empty origin provided.');
+                $this->log('Empty origin provided.', 'warning');
                 $this->sendHttpResponse(401);
                 $this->shutdownSocket();
                 $this->server->removeClientOnError($this);
@@ -113,7 +113,7 @@ class Connection {
             }
 
             if ($this->server->checkOrigin($origin) === false) {
-                $this->log('Invalid origin provided.');
+                $this->log('Invalid origin provided.', 'warning');
                 $this->sendHttpResponse(401);
                 $this->shutdownSocket();
                 $this->server->removeClientOnError($this);
@@ -122,7 +122,7 @@ class Connection {
         }
 
         if (!$this->checkAuthToken($path, $headers)) {
-            $this->log('Invalid websocket token.');
+                $this->log('Invalid websocket token.', 'warning');
             $this->sendHttpResponse(401);
             $this->shutdownSocket();
             $this->server->removeClientOnError($this);

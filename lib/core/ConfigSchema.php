@@ -66,6 +66,9 @@ final class ConfigSchema
 
             // Background cycles ---------------------------------------------
             'RESTART_THREADS' => array('type' => 'list', 'default' => array(), 'constant' => false),
+            'CYCLE_HEARTBEAT_TIMEOUT' => array('type' => 'integer', 'default' => 120, 'constant' => false),
+            'CYCLE_STARTUP_TIMEOUT' => array('type' => 'integer', 'default' => 180, 'constant' => false),
+            'CYCLE_TIMEOUTS' => array('type' => 'json', 'default' => array(), 'constant' => false),
             'WAIT_FOR_MAIN_CYCLE' => array('type' => 'boolean', 'optional' => true),
             'LOWER_BACKGROUND_PROCESSES' => array('type' => 'boolean', 'optional' => true),
             'ENABLE_PANEL_ACCELERATION' => array('type' => 'boolean', 'optional' => true),

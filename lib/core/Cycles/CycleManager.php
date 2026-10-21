@@ -3,6 +3,7 @@
 namespace MajorDoMo\Core\Cycles;
 
 use MajorDoMo\Core\Core;
+use MajorDoMo\Core\Config;
 
 /**
  * Public API for managing background cycles.
@@ -78,15 +79,19 @@ final class CycleManager
         $status = (string)$this->cycleValue($name . 'Status');
         $statusUpdated = (int)$this->cycleValue($name . 'StatusUpdated');
         $details = (string)$this->cycleValue($name . 'StatusDetails');
-        $online = $updated > 0 && (time() - $updated) < 10 * 60;
+        $watchdog = new CycleWatchdog(Config::int('CYCLE_HEARTBEAT_TIMEOUT', 120), Config::int('CYCLE_STARTUP_TIMEOUT', 180), Config::arrayValue('CYCLE_TIMEOUTS'));
+        $online = $updated > 0 && $updated <= time() + 5 && (time() - $updated) < $watchdog->timeout($name);
 
         if ($desired === CycleStateStore::DISABLED) {
             $runtimeStatus = 'disabled';
         } elseif ($desired === CycleStateStore::STOPPED) {
             $runtimeStatus = $online ? 'stopping' : 'stopped';
+        } elseif ($status === 'error' && $statusUpdated >= $updated) {
+            $runtimeStatus = 'error';
+            $online = false;
         } elseif ($online) {
             $runtimeStatus = 'running';
-        } elseif (in_array($status, array('starting', 'stopping'), true) && $statusUpdated > 0 && (time() - $statusUpdated) < 10 * 60) {
+        } elseif (in_array($status, array('starting', 'stopping'), true) && $statusUpdated > 0 && (time() - $statusUpdated) < $watchdog->timeout($name, true)) {
             $runtimeStatus = $status;
         } elseif ($updated > 0) {
             $runtimeStatus = 'hang';

@@ -52,6 +52,12 @@ if ($scenario === 'disabled' || $scenario === 'custom-path') {
     DebMes('fixture ' . $scenario, 'module', 'error');
     exit;
 }
+if ($scenario === 'parallel') {
+    for ($i = 0; $i < 25; $i++) {
+        DebMes('fixture parallel ' . getmypid() . ':' . $i . "\nfixture detail " . getmypid() . ':' . $i, 'parallel_fixture', 'error');
+    }
+    exit;
+}
 
 $checks = 0;
 function check(bool $condition, string $message): void
@@ -88,6 +94,7 @@ $remove = static function (string $path) use (&$remove): void {
     }
 };
 
+$testExitCode = 0;
 try {
     DebMes('fixture user debug');
     // Words in user messages must not silently change their destination.
@@ -151,6 +158,25 @@ try {
     check($exitCode === 0 && $stderr === '' && is_file($configFile), 'early configuration diagnostics use the resolved log directory');
     check(str_contains(file_get_contents($configFile), '[WARNING] [config] Invalid boolean value for DEBUG_MODE'), 'early config warning uses unified format before DebMes loads');
 
+    $writers = array();
+    for ($i = 0; $i < 2; $i++) {
+        $process = proc_open(array(PHP_BINARY, __FILE__, 'parallel', $fixture),
+            array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes);
+        if (!is_resource($process)) throw new RuntimeException('Cannot start parallel log writer');
+        fclose($pipes[0]);
+        $writers[] = array($process, $pipes);
+    }
+    foreach ($writers as [$process, $pipes]) {
+        $output = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        check(proc_close($process) === 0 && $output === '' && $stderr === '', 'parallel writer completes without warnings');
+    }
+    $content = file_get_contents($errorsFile);
+    check(preg_match_all('~^\d{2}:\d{2}:\d{2} 0\.\d+ \[ERROR\] \[parallel_fixture\] fixture parallel (\d+:\d+)\nfixture detail \1$~m', $content) === 50,
+        'parallel writers preserve complete multiline entries');
+
     $limitedFile = $directory . '/size_limit.log';
     file_put_contents($limitedFile, str_repeat('x', 1024 * 1024 + 1));
     DebMes('fixture beyond limit', 'size_limit');
@@ -161,10 +187,11 @@ try {
     echo 'Logging smoke: ' . $checks . ' passed.' . PHP_EOL;
 } catch (Throwable $e) {
     fwrite(STDERR, $e->getMessage() . PHP_EOL);
-    exit(1);
+    $testExitCode = 1;
 } finally {
     error_clear_last();
     restore_error_handler();
     restore_exception_handler();
     $remove($fixture);
 }
+exit($testExitCode);
