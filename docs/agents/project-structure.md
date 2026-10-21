@@ -22,18 +22,41 @@
 │   ├── codeeditor-entry.js     # entry lazy-chunk редактора (CodeMirror 6)
 │   ├── css/                    # admin_panel.css, ui-v2.css, ui-system.css, codeeditor.css
 │   └── js/                     # modules/admin_panel/*, codeeditor.js, codeeditor-loader.js
+├── docs/                       # вся документация и конфиги деплоя
+│   ├── README.md               # карта документации
+│   ├── agents/                 # правила, дизайн-система, структура, сборка, роутинг
+│   ├── user/                   # README проекта, блог, контракты API (Postman)
+│   ├── deploy/                 # nginx-конфиги, systemd-unit, install-linux.sh
+│   ├── dev/                    # db_terminal.sql (схема + демо-данные)
+│   ├── archive/                # разовые отчёты
+│   └── ui-redesign/            # локальные скриншоты (gitignored)
 ├── modules/                    # PHP-модули: классы, include-фрагменты, веб-эндпоинты
 ├── templates/                  # include-only разметка (*.html), PHP-партиалы
 ├── lib/                        # ядро, include-only PHP (наружу закрыт nginx)
+├── languages/                  # переводы интерфейса
 ├── cms/                        # рантайм-данные и медиа: avatars, images, files, cached, debmes
+├── backup/                     # резервные копии saverestore (runtime, gitignored)
 ├── 3rdparty/                   # PHP-библиотеки и elFinder (smarty3, php-mailer, phpmqtt, …)
+├── objects/                    # веб-точка входа /objects/?script=…
+├── rc/                         # веб-точка входа /rc/ (пульт)
+├── pChart/                     # веб-точка входа /pChart/?p=… (графики свойств)
 ├── scripts/                    # CLI-циклы и smoke-тесты
-├── docs/                       # документация
+├── tools/                      # dev-инструменты (скриншоты, иконки, сканер ассетов)
+├── node_modules/               # зависимости сборки (gitignored)
+├── AGENTS.md                   # короткий указатель для агентов
+├── README.md                   # лендинг проекта
+├── package.json / vite.*.js    # сборка статики
+├── config.php(.sample)         # конфигурация (config.php не коммитится)
 └── *.php                       # точки входа: index, admin, nf, api, 404, command, cycle
 ```
 
 Правило: если файл скачивает браузер — он живёт в `public/assets/`; если файл
-компилируется Vite — он живёт в `src/admin/`; всё остальное — код приложения.
+компилируется Vite — он живёт в `src/admin/`; документация и деплой-конфиги —
+в `docs/`; всё остальное — код приложения.
+
+`objects/`, `rc/`, `pChart/` — не «папки с мусором», а веб-точки входа: на них
+завязаны URL (`/objects/?script=…`, `/rc/…`, `/pChart/?p=…`), поэтому они
+остаются в корне. `backup/` создаёт saverestore в рантайме.
 
 ## 2. URL → файл
 
