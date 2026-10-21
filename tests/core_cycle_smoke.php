@@ -6,7 +6,7 @@ $fixture = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'mjd-core-cycle-' . bin2he
 mkdir($fixture);
 mkdir($fixture . '/scripts');
 mkdir($fixture . '/lib');
-copy(dirname(__DIR__) . '/cycle_core.php', $fixture . '/scripts/cycle_core.php');
+copy(dirname(__DIR__) . '/scripts/cycle_core.php', $fixture . '/scripts/cycle_core.php');
 file_put_contents($fixture . '/config.php', "<?php \$_GET['onetime'] = 1;\n");
 file_put_contents($fixture . '/load_settings.php', "<?php\n");
 $bootstrap = <<<'PHP'

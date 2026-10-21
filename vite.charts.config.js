@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
  *
  * ApexCharts is shared by the dashboard and the history drawer. A separate
  * IIFE chunk keeps the main admin bundle lean;
- * src/admin/js/modules/admin_panel/100_chart_runtime.js loads /assets/admin/charts.js
+ * resources/admin/js/modules/admin_panel/100_chart_runtime.js loads /assets/admin/charts.js
  * on first use.
  *
  * `emptyOutDir` must stay false — the main build owns the directory.
@@ -21,7 +21,7 @@ export default defineConfig({
     target: 'es2018',
     chunkSizeWarningLimit: 1200,
     rollupOptions: {
-      input: 'src/admin/charts-entry.js',
+      input: 'resources/admin/charts-entry.js',
       output: {
         format: 'iife',
         entryFileNames: 'charts.js',

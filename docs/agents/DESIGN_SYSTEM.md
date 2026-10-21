@@ -3,7 +3,7 @@
 Единая дизайн-система админки MajorDoMo. Документ обязателен для людей и ИИ-агентов, которые создают или меняют интерфейс панели управления.
 
 - Живая документация: **`/admin.php?action=ui_kit`**
-- Канонический CSS: `src/admin/css/ui-system.css`
+- Канонический CSS: `resources/admin/css/ui-system.css`
 - PHP-компоненты: `lib/ui/MDJUI.php` + `templates/ui/components/`
 - Демонстрационные секции: `templates/ui_kit/sections/`
 - Сборка: `npm run build`
@@ -21,7 +21,7 @@
 | --- | --- |
 | Backend | PHP 8.4, MajorDoMo modules и шаблоны |
 | UI base | Bootstrap 5.3 + Tabler Icons 3.49 |
-| Локальные токены и компоненты | `src/admin/css/ui-system.css` |
+| Локальные токены и компоненты | `resources/admin/css/ui-system.css` |
 | Сборка | Vite (`npm run build` → `public/assets/admin/admin.css` + `admin.js`) |
 | Локальные интерактивные состояния | Alpine.js 3 |
 | Select с поиском | Tom Select (`data-md-searchable`) |
@@ -523,7 +523,7 @@ Field Group: label, description, hint, error, required/optional.
 - инициализируется повторно после `partLoad`, AJAX-строк и клонирования; дубли `uniq` в клонах строк разводятся по DOM-контейнеру;
 - в таблицах автоматически включает compact-режим и не раздвигает ячейку.
 
-JS API (`src/admin/js/modules/admin_panel/120_linkedobject.js`):
+JS API (`resources/admin/js/modules/admin_panel/120_linkedobject.js`):
 
 ```js
 MDLinkedObjectUI.init(root);                 // идемпотентно
@@ -534,7 +534,7 @@ MDLinkedObjectUI.refresh('linked_object');
 MDLinkedObjectUI.destroy(root);
 ```
 
-Контракт: `[data-md-linkedobject]`, `data-md-linkedobject-role`, `data-md-linkedobject-field-id`, `data-md-linkedobject-base-url`. Разметка и стили — `templates/linkedobject/linkedobject.html` + `src/admin/css/ui-system.css`. Живой пример — `?action=ui_kit#linkedobject`.
+Контракт: `[data-md-linkedobject]`, `data-md-linkedobject-role`, `data-md-linkedobject-field-id`, `data-md-linkedobject-base-url`. Разметка и стили — `templates/linkedobject/linkedobject.html` + `resources/admin/css/ui-system.css`. Живой пример — `?action=ui_kit#linkedobject`.
 
 #### `MDJUI::checkbox($props = [])`, `radio($props = [])`, `switchControl($props = [])`
 
@@ -710,7 +710,7 @@ Tooltip — короткая подсказка, не документация. 
 
 ### 4.7. Таблицы и данные
 
-Data Table — серверный рендер + прогрессивное улучшение (`src/admin/js/modules/admin_panel/118_data_table.js`).
+Data Table — серверный рендер + прогрессивное улучшение (`resources/admin/js/modules/admin_panel/118_data_table.js`).
 
 ```html
 <div class="md-table-wrap" data-md-table data-md-table-page-size="6" data-md-table-unit="устройств">
@@ -1008,7 +1008,7 @@ Connection Status — статус транспорта, не устройств
 - Для редактора в закрытом drawer/modal: `data-code-editor-lazy="1"` и `MDCodeEditor.init(container)` при открытии.
 - Не добавляйте `<script>`/`<link>` CodeMirror в шаблон: загрузчик уже в бандле.
 - Отступы — **табы**, ширина отображения 4. `Tab`/`Shift+Tab` меняют отступ, `Ctrl+Alt+L` и `Ctrl+Alt+I` переиндентируют выделение или весь документ (как Reformat Code в PhpStorm).
-- Иконка клавиатуры в toolbar открывает popover с горячими клавишами; список задаётся в `SHORTCUT_GROUPS` в `src/admin/js/codeeditor.js`. Не дублируйте его в шаблонах.
+- Иконка клавиатуры в toolbar открывает popover с горячими клавишами; список задаётся в `SHORTCUT_GROUPS` в `resources/admin/js/codeeditor.js`. Не дублируйте его в шаблонах.
 - Дополнительно: `Ctrl+Y` — удалить строку, `Shift+Alt+↑/↓` — переместить строку, `Ctrl+G` — перейти к строке, `Ctrl+/` — комментарий, `Ctrl+D` — дублировать строку.
 - Хоткеи работают и на русской раскладке: обработчик `handleLayoutShortcut` использует `event.code` (`KeyL`, `KeyY`, `Slash` и т.д.), а не `event.key`.
 
@@ -1138,7 +1138,7 @@ Connection Status — статус транспорта, не устройств
 
 ### Alpine
 
-Зарегистрированные общие компоненты (`src/admin/js/modules/admin_panel/116_ui_components.js`):
+Зарегистрированные общие компоненты (`resources/admin/js/modules/admin_panel/116_ui_components.js`):
 
 | Компонент | Назначение |
 | --- | --- |
@@ -1165,11 +1165,11 @@ Alpine запускается один раз после boot shell; на `partL
 
 ### Редактор кода
 
-`src/admin/js/codeeditor.js` + `src/admin/css/codeeditor.css`, сборка — `vite.codeeditor.config.js`. Загрузчик `src/admin/js/codeeditor-loader.js` входит в `admin.js`; сам редактор — в `public/assets/admin/codeeditor.js` (не в `admin.js`). Консоль инициализируется при открытии drawer, остальные редакторы — при появлении на странице.
+`resources/admin/js/codeeditor.js` + `resources/admin/css/codeeditor.css`, сборка — `vite.codeeditor.config.js`. Загрузчик `resources/admin/js/codeeditor-loader.js` входит в `admin.js`; сам редактор — в `public/assets/admin/codeeditor.js` (не в `admin.js`). Консоль инициализируется при открытии drawer, остальные редакторы — при появлении на странице.
 
 ### Data Table
 
-`src/admin/js/modules/admin_panel/118_data_table.js`, контракт — в разделе 4.7. Контроллер идемпотентен, повторная инициализация не создаёт дубли.
+`resources/admin/js/modules/admin_panel/118_data_table.js`, контракт — в разделе 4.7. Контроллер идемпотентен, повторная инициализация не создаёт дубли.
 
 ### Управление контролами
 
@@ -1182,7 +1182,7 @@ Alpine запускается один раз после boot shell; на `partL
 
 ### Связи объектов
 
-`120_linkedobject.js` — общий контроллер `[data-md-linkedobject]`, `window.MDLinkedObjectUI`. Он не инициализирует Tom Select и не зависит от jQuery; native input остаётся источником значения. Модуль регистрируется через `MDJAdminUI.registerModuleUI('linkedobject', …)`, поэтому работает после `partLoad`. Стили — в `src/admin/css/ui-system.css`, секция LinkedObject.
+`120_linkedobject.js` — общий контроллер `[data-md-linkedobject]`, `window.MDLinkedObjectUI`. Он не инициализирует Tom Select и не зависит от jQuery; native input остаётся источником значения. Модуль регистрируется через `MDJAdminUI.registerModuleUI('linkedobject', …)`, поэтому работает после `partLoad`. Стили — в `resources/admin/css/ui-system.css`, секция LinkedObject.
 
 #### Плотные таблицы связей
 
@@ -1199,7 +1199,7 @@ Alpine запускается один раз после boot shell; на `partL
 1. Проверьте UI Kit и этот документ — возможно, компонент уже есть.
 2. Создайте `templates/ui/components/my-widget.php`; используйте `$props` и `$slot`, экранируйте текст через `MDJUI::e`.
 3. Добавьте публичный метод в `lib/ui/MDJUI.php` (`MDJUI::myWidget(...)`) и, при необходимости, `MDJUI::render`.
-4. Опишите стили в `src/admin/css/ui-system.css` с префиксом `md-`, только на токенах.
+4. Опишите стили в `resources/admin/css/ui-system.css` с префиксом `md-`, только на токенах.
 5. Добавьте состояния: default/hover/focus/disabled/loading/error, dark theme, 390 px.
 6. Добавьте демо в `templates/ui_kit/sections/` и обновите этот файл.
 7. `npm run build`; проверьте `?action=ui_kit` в светлой/тёмной теме и на 390 px.
@@ -1241,7 +1241,7 @@ public static function myWidget(array $props = array(), $slot = '')
 
 | Путь | Назначение |
 | --- | --- |
-| `src/admin/css/ui-system.css` | токены, `md-*` компоненты, demo-утилиты |
+| `resources/admin/css/ui-system.css` | токены, `md-*` компоненты, demo-утилиты |
 | `lib/ui/MDJUI.php` | серверный API компонентов + демо-данные |
 | `lib/ui/tabler-icons.json` | каталог 5 247 Tabler-иконок |
 | `tools/generate-icon-catalog.mjs` | генератор каталога (`npm run icons`) |
@@ -1249,20 +1249,20 @@ public static function myWidget(array $props = array(), $slot = '')
 | `templates/ui_kit/ui_kit.php` | каркас страницы UI Kit |
 | `templates/ui_kit/sections/*.php` | секции документации |
 | `modules/ui_kit/ui_kit.class.php` | модуль админки, маршрут `?action=ui_kit` |
-| `src/admin/js/modules/admin_panel/115_alpine.js` | запуск Alpine и partLoad |
-| `src/admin/js/modules/admin_panel/116_ui_components.js` | общие Alpine-компоненты, toast store |
-| `src/admin/js/modules/admin_panel/118_data_table.js` | data table |
+| `resources/admin/js/modules/admin_panel/115_alpine.js` | запуск Alpine и partLoad |
+| `resources/admin/js/modules/admin_panel/116_ui_components.js` | общие Alpine-компоненты, toast store |
+| `resources/admin/js/modules/admin_panel/118_data_table.js` | data table |
 | `public/assets/js/admin/ui_kit.js` | page-only логика UI Kit (каталог иконок, copy, scrollspy) |
-| `src/admin/js/codeeditor.js` | обвязка CodeMirror 6 и рендер редактора |
-| `src/admin/js/codeeditor-loader.js` | lazy-загрузка редактора (в основном бандле) |
-| `src/admin/css/codeeditor.css` | стили редактора, темы, поиск, drawer истории |
-| `src/admin/codeeditor-entry.js` | entry отдельного Vite-chunk |
+| `resources/admin/js/codeeditor.js` | обвязка CodeMirror 6 и рендер редактора |
+| `resources/admin/js/codeeditor-loader.js` | lazy-загрузка редактора (в основном бандле) |
+| `resources/admin/css/codeeditor.css` | стили редактора, темы, поиск, drawer истории |
+| `resources/admin/codeeditor-entry.js` | entry отдельного Vite-chunk |
 | `vite.codeeditor.config.js` | сборка `public/assets/admin/codeeditor.js/css` |
-| `src/admin/js/modules/admin_panel/70_controls.js` | Tom Select, range, password, alert |
-| `src/admin/js/modules/admin_panel/120_linkedobject.js` | LinkedObject: native input, поиск, context, portal dropdown |
+| `resources/admin/js/modules/admin_panel/70_controls.js` | Tom Select, range, password, alert |
+| `resources/admin/js/modules/admin_panel/120_linkedobject.js` | LinkedObject: native input, поиск, context, portal dropdown |
 | `templates/linkedobject/linkedobject.html` | разметка `object/property/method` |
 | `templates/ui_kit/sections/linkedobject.php` | живое демо UI Kit |
-| `src/admin/main.js` | imports Vite |
+| `resources/admin/main.js` | imports Vite |
 | `templates/common_header_admin.html` | версия бандла и URL lazy-chunk |
 
 Страница UI Kit доступна по **`/admin.php?action=ui_kit`**. Модуль регистрируется автоматически при первом открытии и появляется в разделе «Система» бокового меню.

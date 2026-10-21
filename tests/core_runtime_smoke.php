@@ -16,7 +16,7 @@ define('REDIS_DB', 15);
 define('REDIS_TIMEOUT', 0.5);
 define('SEPARATE_HISTORY_STORAGE', getenv('MJD_TEST_SEPARATE_HISTORY') ? 1 : 0);
 define('DB_NAME', 'mjd_core_test_' . bin2hex(random_bytes(6)));
-require __DIR__ . '/tests/bootstrap.php';
+require __DIR__ . '/bootstrap.php';
 
 use MajorDoMo\Core\Core;
 
@@ -281,7 +281,7 @@ try {
     $config="<?php\nif (getenv('APP_ENV') !== 'testing') exit(2);\n";
     foreach ($constants as $name=>$value) $config .= 'define(' . var_export($name,true) . ',' . var_export($value,true) . ");\n";
     file_put_contents($fixture . 'config.php',$config);
-    $loader = '<?php require ' . var_export(ROOT . 'scripts/tests/bootstrap.php',true) . '; $db=new mysql("127.0.0.1",' . (int)getenv('MJD_TEST_DB_PORT') . ',"root","",DB_NAME);';
+    $loader = '<?php require ' . var_export(ROOT . 'tests/bootstrap.php',true) . '; $db=new mysql("127.0.0.1",' . (int)getenv('MJD_TEST_DB_PORT') . ',"root","",DB_NAME);';
     file_put_contents($fixture . 'lib/loader.php',$loader); file_put_contents($fixture . 'load_settings.php','<?php');
     $processes = new \MajorDoMo\Core\ProcessRunner($fixture);
     $scheduler = new \MajorDoMo\Core\Scheduler(Core::database(),$processes);

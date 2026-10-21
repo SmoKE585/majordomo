@@ -18,7 +18,7 @@ export default defineConfig({
     target: 'es2018',
     chunkSizeWarningLimit: 1200,
     rollupOptions: {
-      input: 'src/admin/codeeditor-entry.js',
+      input: 'resources/admin/codeeditor-entry.js',
       output: {
         format: 'iife',
         entryFileNames: 'codeeditor.js',

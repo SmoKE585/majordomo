@@ -8,7 +8,7 @@ Reusable cycle UI for module pages and X-Ray.
   - `compact => true` — compact strip for a module page (MQTT, etc.).
   - `compact => false` — full card (alternative for a standalone page).
 - `md-cycle-table` — row/table layout for the X-Ray services list.
-- `src/admin/js/modules/admin_panel/119_cycle_widget.js` — polling, AJAX commands and live state updates for both variants.
+- `resources/admin/js/modules/admin_panel/119_cycle_widget.js` — polling, AJAX commands and live state updates for both variants.
 
 ## Server component
 
@@ -86,8 +86,8 @@ Commands are queued through the same endpoint (`op=start|stop|restart`). Do not 
 
 - `lib/ui/MDJUI.php` — `cycleCard()`.
 - `templates/ui/components/cycle-card.php` — markup.
-- `src/admin/css/ui-system.css` — `.md-cycle-card`, `.md-cycle-table`, states, responsive rules.
-- `src/admin/js/modules/admin_panel/119_cycle_widget.js` — controller.
+- `resources/admin/css/ui-system.css` — `.md-cycle-card`, `.md-cycle-table`, states, responsive rules.
+- `resources/admin/js/modules/admin_panel/119_cycle_widget.js` — controller.
 - `templates/xray/xray.html` — X-Ray layout / service action.
 - `public/assets/modules/xray/xray.js` — X-Ray table rows.
 - `modules/xray/xray.class.php` — initial state + JSON endpoint.

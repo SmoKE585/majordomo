@@ -128,8 +128,8 @@ f.php` не находит маршрут и отдаёт `lib/error_page.php`
 
 1. Добавьте правило в `mdj_admin_route_table()` **до** generic-правил.
 2. Добавьте построение пути в `mdj_admin_build_pretty()` (если это не generic).
-3. Добавьте кейс в `scripts/routing_smoke.php`: inbound, outbound и fallback.
-4. Проверьте `php scripts/routing_smoke.php`.
+3. Добавьте кейс в `tests/routing_smoke.php`: inbound, outbound и fallback.
+4. Проверьте `php tests/routing_smoke.php`.
 5. Проверьте старую ссылку: она должна либо редиректить на новый URL, либо
    остаться legacy без потери состояния.
 

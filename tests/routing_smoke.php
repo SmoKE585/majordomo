@@ -13,7 +13,7 @@ declare(strict_types=1);
  * Also validates the nginx-only deployment contract (no .htaccess leftovers).
  *
  * Usage:
- *   php scripts/routing_smoke.php
+ *   php tests/routing_smoke.php
  */
 
 const EXIT_OK = 0;

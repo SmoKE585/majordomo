@@ -7,10 +7,10 @@ load CodeMirror from a template and do not add vendor files.
 
 ## What to use
 
-- Wrapper / behaviour: `src/admin/js/codeeditor.js`
-- Styles: `src/admin/css/codeeditor.css`
-- Lazy loader (already in the main admin bundle): `src/admin/js/codeeditor-loader.js`
-- Build entry: `src/admin/codeeditor-entry.js`
+- Wrapper / behaviour: `resources/admin/js/codeeditor.js`
+- Styles: `resources/admin/css/codeeditor.css`
+- Lazy loader (already in the main admin bundle): `resources/admin/js/codeeditor-loader.js`
+- Build entry: `resources/admin/codeeditor-entry.js`
 - Build config: `vite.codeeditor.config.js`
 - Output: `public/assets/admin/codeeditor.js` + `public/assets/admin/codeeditor.css`
 - Asset URLs: `window.MDCodeEditorConfig` in `templates/common_header_admin.html`
@@ -150,12 +150,12 @@ legacy MajorDoMo code style.
 | `Ctrl+Enter` | Execute (console only) |
 
 The keyboard icon in the editor toolbar opens a popover with this list. The
-source of truth is `SHORTCUT_GROUPS` in `src/admin/js/codeeditor.js`; do not
+source of truth is `SHORTCUT_GROUPS` in `resources/admin/js/codeeditor.js`; do not
 duplicate the list in module templates.
 
 Shortcuts must also work on the Russian keyboard layout. CodeMirror's keymap
 matches `event.key`, which is Cyrillic there. Do not remove the
-`handleLayoutShortcut` / `event.code` fallback in `src/admin/js/codeeditor.js`: it
+`handleLayoutShortcut` / `event.code` fallback in `resources/admin/js/codeeditor.js`: it
 maps physical keys (`KeyL`, `KeyY`, `Slash`, …) independently of the layout.
 
 On mobile (≤767 px) the keyboard icon is hidden and the popover is not used:
@@ -198,8 +198,8 @@ New code should prefer these methods over DOM manipulation. Do not rely on
 - For editors inside a closed drawer or modal, add `data-code-editor-lazy="1"`
   and call `window.MDCodeEditor.init(container)` when the container opens.
 - The console in `templates/panel.html` uses this pattern; see
-  `src/admin/js/modules/admin_panel/50_console.js`.
-- Do not import CodeMirror packages in `src/admin/main.js`. The editor has its
+  `resources/admin/js/modules/admin_panel/50_console.js`.
+- Do not import CodeMirror packages in `resources/admin/main.js`. The editor has its
   own entry and build config.
 
 ## Refactoring checklist

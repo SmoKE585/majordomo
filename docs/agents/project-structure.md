@@ -28,7 +28,7 @@
 ├── load_settings.php           # include, не точка входа
 ├── cycle.php                   # CLI-цикл (systemd), вне document root
 ├── dev_server.php              # локальный сервер, повторяет контракт nginx
-├── src/admin/                  # исходники Vite, в бандл, наружу не отдаются
+├── resources/admin/                  # исходники Vite, в бандл, наружу не отдаются
 │   ├── main.js  charts-entry.js  codeeditor-entry.js
 │   ├── css/                    # admin_panel.css, ui-v2.css, ui-system.css, codeeditor.css
 │   └── js/                     # modules/admin_panel/*, codeeditor.js, codeeditor-loader.js
@@ -44,12 +44,13 @@
 ├── objects/                    # /objects/?script=…
 ├── scripts/                    # CLI-циклы и smoke-тесты (/scripts/…)
 ├── tools/                      # dev-инструменты (скриншоты, иконки, сканер ассетов)
+├── tests/                      # smoke/regression: routing, core runtime, cycle
 ├── package.json / vite.*.js    # сборка статики
 └── AGENTS.md  README.md        # короткие указатели в корне
 ```
 
 Правило: если файл скачивает браузер — он в `public/assets/`; если файл
-компилируется Vite — он в `src/admin/`; если это точка входа — она в `public/`;
+компилируется Vite — он в `resources/admin/`; если это точка входа — она в `public/`;
 документация и деплой — в `docs/`; всё остальное — код приложения.
 
 ## 2. URL → файл
@@ -150,7 +151,7 @@ location ^~ /modules/ {
 1. Статика страницы модуля → `public/assets/modules/<module>/`, подключается
    только в шаблоне этого модуля (`<#ROOTHTML#>assets/modules/<module>/...`).
 2. Общая библиотека → 
-pm install` + импорт в `src/admin/main.js` (или отдельный
+pm install` + импорт в `resources/admin/main.js` (или отдельный
    entry). В `public/assets/vendor/` руками ничего не кладём.
 3. Картинка интерфейса → `public/assets/img/...`, ссылка
    `<#ROOTHTML#>assets/img/...`.
@@ -162,7 +163,7 @@ pm install` + импорт в `src/admin/main.js` (или отдельный
 php -l <изменённые php>
 node --check <изменённые js>
 npm run build
-php scripts/routing_smoke.php     # маршруты, nginx-контракт, layout public/
+php tests/routing_smoke.php     # маршруты, nginx-контракт, layout public/
 node tools/asset-references.mjs   # отчёт о неиспользуемой статике
 nginx -t && systemctl reload nginx
 ```

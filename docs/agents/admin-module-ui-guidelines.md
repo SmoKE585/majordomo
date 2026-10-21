@@ -26,10 +26,10 @@
 - Bootstrap 5 CSS/JS.
 - Tabler Icons (5 247 иконок; Bootstrap Icons — только legacy `glyphicon`).
 - Rubik локально: `3rdparty/fonts/rubik/`.
-- Общий CSS админки: `src/admin/css/admin_panel.css` (legacy, постепенно заменяется).
-- Канонический слой компонентов: `src/admin/css/ui-system.css` + `MDJUI` + `templates/ui/components/`.
-- Новый слой shell/dashboard: `src/admin/css/ui-v2.css`.
-- Общий JS админки: `src/admin/js/modules/admin_panel/` (включая Alpine, data table, controls).
+- Общий CSS админки: `resources/admin/css/admin_panel.css` (legacy, постепенно заменяется).
+- Канонический слой компонентов: `resources/admin/css/ui-system.css` + `MDJUI` + `templates/ui/components/`.
+- Новый слой shell/dashboard: `resources/admin/css/ui-v2.css`.
+- Общий JS админки: `resources/admin/js/modules/admin_panel/` (включая Alpine, data table, controls).
 - Bootstrap 5 modal, dropdown, collapse, tooltip, popover; Tom Select; Tabler Icons.
 - Общие цвета, тени, радиусы, layout и базовые legacy-compat классы.
 
@@ -64,10 +64,10 @@
 
 Для общих компонентов админки:
 
-- новые общие стили и компоненты — `src/admin/css/ui-system.css` (канонический слой) и `MDJUI`/`templates/ui/components/`;
-- `src/admin/css/ui-v2.css` — shell/dashboard; не добавляйте туда новые общие компоненты;
-- `src/admin/css/admin_panel.css` считается legacy: не добавляйте туда новые компоненты без необходимости, только точечные правки существующих страниц;
-- новый общий JS — модули в `src/admin/js/modules/admin_panel/`, подключаемые через `src/admin/main.js`;
+- новые общие стили и компоненты — `resources/admin/css/ui-system.css` (канонический слой) и `MDJUI`/`templates/ui/components/`;
+- `resources/admin/css/ui-v2.css` — shell/dashboard; не добавляйте туда новые общие компоненты;
+- `resources/admin/css/admin_panel.css` считается legacy: не добавляйте туда новые компоненты без необходимости, только точечные правки существующих страниц;
+- новый общий JS — модули в `resources/admin/js/modules/admin_panel/`, подключаемые через `resources/admin/main.js`;
 - JS конкретной страницы модуля — локальный файл рядом с модулем, подключается только в шаблоне этого модуля и не регистрируется в общем bundle;
 - перед созданием компонента проверьте UI Kit (`/admin.php?action=ui_kit`) и `docs/agents/DESIGN_SYSTEM.md`.
 
@@ -101,7 +101,7 @@ Tom Select уже в бандле и инициализируется автом
 
 ### Связи объектов — исключение
 
-`linkedobject` — не обычный select, а редактор связей со свободным вводом: значение может быть вызовом метода с параметрами, а исходный `input` уже существует в legacy-шаблоне и должен остаться полем формы. Поэтому у него собственный контроллер `MDLinkedObjectUI` (`src/admin/js/modules/admin_panel/120_linkedobject.js`) и собственный portal-dropdown. Не копируйте его разметку и не заменяйте поле на `data-md-searchable`; для нового кода используйте существующий шаблон:
+`linkedobject` — не обычный select, а редактор связей со свободным вводом: значение может быть вызовом метода с параметрами, а исходный `input` уже существует в legacy-шаблоне и должен остаться полем формы. Поэтому у него собственный контроллер `MDLinkedObjectUI` (`resources/admin/js/modules/admin_panel/120_linkedobject.js`) и собственный portal-dropdown. Не копируйте его разметку и не заменяйте поле на `data-md-searchable`; для нового кода используйте существующий шаблон:
 
 ```html
 [#module name="linkedobject"
@@ -663,7 +663,7 @@ Inline styles почти всегда запрещены.
 
 Правила:
 
-- не переносить их CSS/JS в `src/admin/css/admin_panel.css` и `js/admin/admin_panel.js`;
+- не переносить их CSS/JS в `resources/admin/css/admin_panel.css` и `js/admin/admin_panel.js`;
 - не использовать их как пример для новых модулей;
 - не добавлять совместимость ради старого фронтового меню;
 - при обнаружении неиспользуемых файлов сцен/фронтового меню готовить отдельный cleanup: найти входящие ссылки, удалить или пометить `DEPRECATED`, затем убрать подключения;

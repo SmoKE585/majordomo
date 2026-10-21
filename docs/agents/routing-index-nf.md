@@ -122,7 +122,7 @@
 
 Для снижения риска перед рефактором добавлен локальный контрактный smoke-скрипт:
 
-- [scripts/routing_smoke.php](</C:/Проекты/_Умный дом (проекты)/___majordomo/scripts/routing_smoke.php>)
+- [tests/routing_smoke.php](</C:/Проекты/_Умный дом (проекты)/___majordomo/tests/routing_smoke.php>)
 
 Что проверяет:
 - парсинг роут-таблицы `$requests` из `nf.php`;
@@ -134,7 +134,7 @@
 Запуск:
 
 ```bash
-php scripts/routing_smoke.php
+php tests/routing_smoke.php
 ```
 
 Ожидаемый успешный результат:

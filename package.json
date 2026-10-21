@@ -12,7 +12,7 @@
     "watch": "vite build --watch",
     "watch:editor": "vite build --config vite.codeeditor.config.js --watch",
     "watch:charts": "vite build --config vite.charts.config.js --watch",
-    "check": "node --check src/admin/main.js",
+    "check": "node --check resources/admin/main.js",
     "icons": "node tools/generate-icon-catalog.mjs"
   },
   "dependencies": {

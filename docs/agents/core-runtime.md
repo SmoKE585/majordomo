@@ -98,7 +98,7 @@ HTTP/FPM-процессы: их принимает `cycle_core.php`, выпол�
 
 ## Изолированные проверки
 
-`scripts/core_runtime_smoke.php` не загружает рабочий `config.php` и создаёт
+`tests/core_runtime_smoke.php` не загружает рабочий `config.php` и создаёт
 случайную тестовую БД. Требует `APP_ENV=testing`, явные loopback-порты тестовых
 MariaDB/Redis и маркеры disposable-окружения. Кеш теста имеет отдельное
 пространство; тест не вызывает `FLUSHDB`. На Windows без phpredis тестовый
@@ -117,7 +117,7 @@ docker port mjd-test-redis
 $env:APP_ENV = 'testing'
 $env:MJD_TEST_DB_PORT = '<db-port>'
 $env:MJD_TEST_REDIS_PORT = '<redis-port>'
-php scripts/core_runtime_smoke.php
+php tests/core_runtime_smoke.php
 # Дополнительные режимы: MJD_TEST_SQL_CACHE=1 / MJD_TEST_SEPARATE_HISTORY=1 / MJD_TEST_USE_SEED=1.
 ```
 
@@ -126,7 +126,7 @@ php scripts/core_runtime_smoke.php
 ```powershell
 postman simulation run docs/user/api/postman/simulations/core-api.sim.yaml --port 55559 --output ndjson
 $env:MJD_TEST_SIM_URL = 'http://127.0.0.1:55559'
-php scripts/core_runtime_smoke.php
+php tests/core_runtime_smoke.php
 ```
 
 Контракт стенда основан на существующем `apiHandleResult` и HTTP-ошибках.
