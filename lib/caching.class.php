@@ -118,8 +118,8 @@ function postToWebSocket($property, $value, $post_action = 'PostProperty')
         $wsClient = new WebsocketClient;
         if (!(@$wsClient->connect('127.0.0.1', WEBSOCKETS_PORT, getWebSocketClientPath()))) {
             $wsClient = false;
+            DebMes("Failed to connect to websocket", 'websockets', 'error');
             if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                DebMes("Failed to connect to websocket");
                 echo date('Y-m-d H:i:s') . " Failed to connect to websocket\n";
             }
         }
@@ -149,8 +149,8 @@ function postToWebSocket($property, $value, $post_action = 'PostProperty')
     if (Is_Object($wsClient)) {
         $data_sent = @$wsClient->sendData($payload);
         if (!$data_sent) {
+            DebMes("Failed to send data to websocket", 'websockets', 'error');
             if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                DebMes("Failed to send data to websocket");
                 echo date('Y-m-d H:i:s') . " Failed to send data to websocket\n";
             }
         }
@@ -165,8 +165,8 @@ function postToWebSocket($property, $value, $post_action = 'PostProperty')
         if ((@$wsClient->connect('127.0.0.1', WEBSOCKETS_PORT, getWebSocketClientPath()))) {
             $data_sent = @$wsClient->sendData($payload);
         } else {
+            DebMes("Failed to reconnect to websocket", 'websockets', 'error');
             if (defined('DEBUG_WEBSOCKETS') && DEBUG_WEBSOCKETS == 1) {
-                DebMes("Failed to reconnect to websocket");
                 echo date('Y-m-d H:i:s') . " Failed to reconnect to websocket\n";
             }
         }

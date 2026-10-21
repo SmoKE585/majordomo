@@ -216,7 +216,7 @@ function resetRebootRequired()
         $old_reason = trim((string)@file_get_contents($path_to_flag));
         $res = @unlink($path_to_flag);
         if (function_exists('DebMes')) {
-            DebMes('Reboot flag reset: ' . ($res ? 'OK' : 'FAILED') . ', reason=' . $old_reason . ', path=' . $path_to_flag, 'boot');
+            DebMes('Reboot flag reset: ' . ($res ? 'OK' : 'FAILED') . ', reason=' . $old_reason . ', path=' . $path_to_flag, 'boot', $res ? 'info' : 'error');
         }
     }
 }
@@ -639,7 +639,7 @@ function runScriptSafe($id, $params = 0)
         $run_SafeScript = isset($_GET['r_s_s']) ? $_GET['r_s_s'] : false;
         if (is_array($call_stack) && in_array($current_call, $call_stack)) {
             $call_stack[] = $current_call;
-            DebMes("Warning: cross-linked call of " . $current_call . "\nlog:\n" . implode(" -> \n", $call_stack), 'scripts');
+            DebMes("Warning: cross-linked call of " . $current_call . "\nlog:\n" . implode(" -> \n", $call_stack), 'scripts', 'warning');
             return 0;
         }
     }
@@ -960,13 +960,13 @@ function execInBackground($cmd)
                 system($cmd);
             }
         } catch (Exception $e) {
-            DebMes('Error: exception ' . get_class($e) . ', ' . $e->getMessage() . '.');
+            DebMes('Error: exception ' . get_class($e) . ', ' . $e->getMessage() . '.', 'execs', 'error');
         }
     } else {
         try {
             exec($cmd . " > /dev/null &");
         } catch (Exception $e) {
-            DebMes('Error: exception ' . get_class($e) . ', ' . $e->getMessage() . '.');
+            DebMes('Error: exception ' . get_class($e) . ', ' . $e->getMessage() . '.', 'execs', 'error');
         }
     }
 }
@@ -1814,7 +1814,7 @@ function ping($host)
 
 function echonow($msg, $color = '')
 {
-    DebMes(strip_tags($msg), 'auto_update');
+    DebMes(strip_tags($msg), 'auto_update', $color === 'red' ? 'error' : 'info');
     if ($color) {
         echo '<font color="' . $color . '">';
     }

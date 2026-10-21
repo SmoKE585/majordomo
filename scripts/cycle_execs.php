@@ -37,7 +37,7 @@ while (1) {
         try {
             exec($command);
         } catch (Exception $e) {
-            DebMes('Command - '. $command . '. Error: exception ' . get_class($e) . ', ' . $e->getMessage() ,'execs');
+            DebMes('Command - '. $command . '. Error: exception ' . get_class($e) . ', ' . $e->getMessage() ,'execs', 'error');
         }    
         if ($exclusive['ON_COMPLETE']) {
             //DebMes("On complete code: ".$exclusive['ON_COMPLETE'], 'execs');
@@ -45,7 +45,7 @@ while (1) {
                 setEvalCode($exclusive['ON_COMPLETE']);
                 eval($exclusive['ON_COMPLETE']);
             } catch (Exception $e) {
-                DebMes('ON_COMPLETE command - '. $exclusive['ON_COMPLETE'] . ' for command - '.$command.' have error. Error: exception ' . get_class($e) . ', ' . $e->getMessage() ,'execs');
+                DebMes('ON_COMPLETE command - '. $exclusive['ON_COMPLETE'] . ' for command - '.$command.' have error. Error: exception ' . get_class($e) . ', ' . $e->getMessage() ,'execs', 'error');
             }
         }
         continue ;
@@ -66,7 +66,7 @@ while (1) {
                 setEvalCode($safe_execs['ON_COMPLETE']);
                 eval($safe_execs['ON_COMPLETE']);
             } catch (Exception $e) {
-                DebMes('ON_COMPLETE command - '. $safe_execs['ON_COMPLETE'] . ' for command - '.$command.' have error. Error: exception ' . get_class($e) . ', ' . $e->getMessage() ,'execs');
+                DebMes('ON_COMPLETE command - '. $safe_execs['ON_COMPLETE'] . ' for command - '.$command.' have error. Error: exception ' . get_class($e) . ', ' . $e->getMessage() ,'execs', 'error');
             }
         }
         continue ;
@@ -79,4 +79,4 @@ while (1) {
     sleep(1);
 }
 
-DebMes("Unexpected close of cycle: " . basename(__FILE__));
+DebMes("Unexpected close of cycle: " . basename(__FILE__), 'cycle_execs', 'error');

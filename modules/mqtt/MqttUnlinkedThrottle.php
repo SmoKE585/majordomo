@@ -33,7 +33,12 @@ class MqttUnlinkedThrottle
     {
         $this->connection->discard();
         if ($now >= $this->nextWarning) {
-            error_log('MajorDoMo MQTT: Redis throttle unavailable; using bounded cycle memory (' . get_class($error) . ')');
+            $message = 'Redis throttle unavailable; using bounded cycle memory (' . get_class($error) . ')';
+            if (function_exists('DebMes')) {
+                DebMes($message, 'mqtt', 'warning');
+            } else {
+                error_log('MajorDoMo MQTT: ' . $message);
+            }
             $this->nextWarning = $now + 60;
         }
     }

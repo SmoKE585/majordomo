@@ -76,7 +76,7 @@ class Threads
    {
       if (!file_exists($filename))
       {
-         DebMes("Cannot start thread '$filename' -- FILE NOT FOUND");
+         DebMes("Cannot start thread '$filename' -- FILE NOT FOUND", 'threads', 'error');
          return false;
       }
 
@@ -130,7 +130,7 @@ class Threads
          throw new ThreadsException('FOR_LINUX_ONLY');
 
       if (!file_exists($filename)) {
-         DebMes("Cannot start thread '$filename' -- FILE NOT FOUND");
+         DebMes("Cannot start thread '$filename' -- FILE NOT FOUND", 'threads', 'error');
          return false;
       }
 

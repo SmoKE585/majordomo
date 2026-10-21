@@ -16,6 +16,32 @@ final class Properties
         private CodeExecutor $code
     ) {}
 
+    /** Remove one subscriber without creating values or overwriting concurrent edits. */
+    public function removeLinkedModule(string $object, string $property, string $module): bool
+    {
+        if ($object === '' || $property === '' || $module === '') {
+            throw new \InvalidArgumentException('Object, property and linked module are required');
+        }
+        $object_row = $this->db->one("SELECT ID,CLASS_ID FROM objects WHERE TITLE='" . $this->db->escape($object) . "' LIMIT 1");
+        if (!$object_row) return false;
+        $property_id = $this->resolve((object)$object_row, $property, (int)$object_row['CLASS_ID'], (int)$object_row['ID']);
+        if (!$property_id) return false;
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $row = $this->db->one('SELECT ID,LINKED_MODULES FROM pvalues WHERE OBJECT_ID=' . (int)$object_row['ID']
+                . ' AND PROPERTY_ID=' . (int)$property_id . ' LIMIT 1');
+            if (!$row) return false;
+            $modules = explode(',', (string)$row['LINKED_MODULES']);
+            $remaining = array_filter($modules, static fn($linked) => trim($linked) !== $module);
+            if (count($remaining) === count($modules)) return false;
+
+            // Compare the exact previous list: another editor may have added a subscriber.
+            $this->db->requireExec("UPDATE pvalues SET LINKED_MODULES='" . $this->db->escape(implode(',', $remaining))
+                . "' WHERE ID=" . (int)$row['ID'] . " AND BINARY LINKED_MODULES=BINARY '" . $this->db->escape($row['LINKED_MODULES']) . "'", true);
+            if ($this->db->affectedRows() > 0) return true;
+        }
+        throw new RuntimeException('Property module bindings changed concurrently; retry later');
+    }
+
     public function get($object, $property, $cache_checked = false)
     {
         if (!$object->object_title) return false;
@@ -312,18 +338,17 @@ final class Properties
                 startMeasure('linkedModulesProcessing');
                 for ($i = 0; $i < $total; $i++) {
                     $linked_module = trim($tmp[$i]);
-                    if (isset($no_linked[$linked_module])) {
+                    if ($linked_module === '' || isset($no_linked[$linked_module])) {
                         continue;
                     }
                     startMeasure('linkedModule' . $linked_module);
-                    if (file_exists(DIR_MODULES . $linked_module . '/' . $linked_module . '.class.php')) {
-                        $params = array();
-                        $params['object'] = $object->object_title;
-                        $params['property'] = $property;
-                        $params['value'] = $value;
-                        $url = '/api/modulePropertySet/' . urlencode($linked_module);
-                        if (!Core::api()->request($url, 'GET', $params)) throw new RuntimeException('Linked operation was not queued');
-                    }
+                    // The worker validates availability and removes confirmed stale subscribers.
+                    $params = array();
+                    $params['object'] = $object->object_title;
+                    $params['property'] = $property;
+                    $params['value'] = $value;
+                    $url = '/api/modulePropertySet/' . urlencode($linked_module);
+                    if (!Core::api()->request($url, 'GET', $params)) throw new RuntimeException('Linked operation was not queued');
                     endMeasure('linkedModule' . $linked_module);
                 }
                 endMeasure('linkedModulesProcessing');

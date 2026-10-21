@@ -308,7 +308,7 @@ class Server extends Socket
                         echo $line . PHP_EOL;
                 }
                 if (function_exists('DebMes')) {
-                        DebMes($line, 'websockets');
+                        DebMes($line, 'websockets', $type ?: 'error');
                 }
         }
 

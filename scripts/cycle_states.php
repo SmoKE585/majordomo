@@ -55,7 +55,7 @@ if (isset($_GET['once'])) {
                 try {
                     callMethod($objects[$i]['TITLE'] . '.checkState');
                 } catch (Exception $e) {
-                    DebMes('Error in checkState for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_states');
+                    DebMes('Error in checkState for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_states', 'error');
                 }
             }
         }
@@ -67,5 +67,5 @@ if (isset($_GET['once'])) {
         sleep(1);
     }
 
-    DebMes("Unexpected close of cycle: " . basename(__FILE__));
+    DebMes("Unexpected close of cycle: " . basename(__FILE__), 'cycle_states', 'error');
 }

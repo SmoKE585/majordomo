@@ -137,12 +137,13 @@ while (1) {
                         clearTimeout('restartWebSocket');
                     }
                 } else {
+                    DebMes('Error while posting to websocket', 'websockets', 'error');
                     echo date("H:i:s") . ' Error while posting to websocket.' . "\n";
                 }
             }
             unset($queue, $properties, $values, $post_property_keys);
         } catch (Throwable $e) {
-            DebMes('cycle_wscache error: ' . $e->getMessage(), 'websockets');
+            DebMes('cycle_wscache error: ' . $e->getMessage(), 'websockets', 'error');
             echo date("H:i:s") . ' cycle_wscache exception: ' . $e->getMessage() . "\n";
         }
     }
@@ -154,4 +155,4 @@ while (1) {
     sleep(1);
 }
 
-DebMes("Unexpected close of cycle: " . basename(__FILE__));
+DebMes("Unexpected close of cycle: " . basename(__FILE__), 'cycle_wscache', 'error');

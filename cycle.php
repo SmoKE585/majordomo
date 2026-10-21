@@ -35,7 +35,7 @@ register_shutdown_function(function () use (&$threads, &$mainCycleStarted, &$mai
     if (is_array($error) && isset($error['type'])) {
         $details .= ', last_error=' . $error['message'] . ' in ' . $error['file'] . ':' . $error['line'];
     }
-    DebMes($details, 'boot');
+    DebMes($details, 'boot', $mainCycleShutdownExpected ? 'info' : 'error');
 });
 
 if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
@@ -124,7 +124,7 @@ function startCycleThread($threads, $title, $cmd)
 {
     if (!file_exists($cmd)) {
         $message = 'Cycle file not found: ' . $cmd;
-        DebMes($message, 'boot');
+        DebMes($message, 'boot', 'error');
         setCycleRuntimeStatus($title, 'stopped', $message);
         addCycleRuntimeLog($title, $message);
         setGlobal($title . 'Run', '');
@@ -134,7 +134,7 @@ function startCycleThread($threads, $title, $cmd)
     $pipeId = $threads->newThread($cmd);
     if (!$pipeId) {
         $message = 'Failed to start cycle process: ' . $cmd;
-        DebMes($message, 'boot');
+        DebMes($message, 'boot', 'error');
         setCycleRuntimeStatus($title, 'stopped', $message);
         addCycleRuntimeLog($title, $message);
         setGlobal($title . 'Run', '');
@@ -150,13 +150,13 @@ set_time_limit(0);
 
 $db_filename = ROOT . 'database_backup/db.sql';
 if ((!file_exists($db_filename) || filesize($db_filename) == 0) && file_exists($db_filename . '.prev') && filesize($db_filename . '.prev') > 0) {
-    DebMes("Main backup file is empty, restoring from previous: " . $db_filename . '.prev', 'boot');
+    DebMes("Main backup file is empty, restoring from previous: " . $db_filename . '.prev', 'boot', 'warning');
     $db_filename = $db_filename . '.prev';
 }
 
 $db_history_filename = ROOT . 'database_backup/db_history.sql';
 if ((!file_exists($db_history_filename) || filesize($db_history_filename) == 0) && file_exists($db_history_filename . '.prev') && filesize($db_history_filename . '.prev') > 0) {
-    DebMes("Main history backup file is empty, restoring from previous: " . $db_history_filename . '.prev', 'boot');
+    DebMes("Main history backup file is empty, restoring from previous: " . $db_history_filename . '.prev', 'boot', 'warning');
     $db_history_filename = $db_history_filename . '.prev';
 }
 
@@ -205,11 +205,11 @@ if (file_exists($db_filename) && filesize($db_filename) > 0) {
         exec($mysql_path . $mysqlParam);
     } else {
         echo "History backup file not found or invalid: " . $db_history_filename . PHP_EOL;
-        DebMes("History backup file not found or invalid: " . $db_history_filename, 'boot');
+        DebMes("History backup file not found or invalid: " . $db_history_filename, 'boot', 'error');
     }
 } else {
     echo "Backup file not found or invalid: " . $db_filename . PHP_EOL;
-    DebMes("Backup file not found or invalid: " . $db_filename, 'boot');
+    DebMes("Backup file not found or invalid: " . $db_filename, 'boot', 'error');
 }
 
 //если есть "поломанные" таблицы, попытаться их "вылечить"
@@ -230,7 +230,7 @@ for ($i = 0; $i < $total; $i++) {
         $checked = $checked + 1;
     } else {
         echo "Checking table [" . $table . "]... broken ... try to repair ...";
-        DebMes("Checking table [" . $table . "]... broken (" . $result['Msg_text'] . ")... try to repair ...", 'boot');
+        DebMes("Checking table [" . $table . "]... broken (" . $result['Msg_text'] . ")... try to repair ...", 'boot', 'warning');
         $broken = $broken + 1;
         SQLExec("REPAIR TABLE " . $table . ";");
         sleep(10);
@@ -240,7 +240,7 @@ for ($i = 0; $i < $total; $i++) {
             DebMes("$table repaired OK", 'boot');
             $repaired = $repaired + 1;
         } else {
-            DebMes("Repair failed (" . $result['Msg_text'] . "), trying extended repair...", 'boot');
+            DebMes("Repair failed (" . $result['Msg_text'] . "), trying extended repair...", 'boot', 'warning');
             echo "try to repair extended...";
             SQLExec("REPAIR TABLE " . $table . " EXTENDED;");
             sleep(10);
@@ -250,7 +250,7 @@ for ($i = 0; $i < $total; $i++) {
                 echo "OK\n";
                 $repaired = $repaired + 1;
             } else {
-                DebMes("Repair failed (" . $result['Msg_text'] . "), trying repair using frm...", 'boot');
+                DebMes("Repair failed (" . $result['Msg_text'] . "), trying repair using frm...", 'boot', 'warning');
                 echo "try to repair use_frm...";
                 SQLExec("REPAIR TABLE " . $table . " USE_FRM;");
                 sleep(5);
@@ -260,7 +260,7 @@ for ($i = 0; $i < $total; $i++) {
                     echo "OK\n";
                     $repaired = $repaired + 1;
                 } else {
-                    DebMes("Repair of $table failed!", 'boot');
+                    DebMes("Repair of $table failed!", 'boot', 'error');
                     echo "NO RESULT(...try restore from backup\n";
                     $fatal = $fatal + 1;
                 }
@@ -271,7 +271,7 @@ for ($i = 0; $i < $total; $i++) {
 echo "CHECK/REPAIR TABLES RESULT -> Total: " . $total . ", checked Ok: " . $checked . ", broken: " . $broken . ", repaired: " . $repaired . ", FATAL Errors : " . $fatal;
 echo "\n";
 
-Debmes("CHECK/REPAIR TABLES RESULT -> Total: " . $total . ", checked Ok: " . $checked . ", broken: " . $broken . ", repaired: " . $repaired . ", FATAL Errors : " . $fatal, 'boot');
+Debmes("CHECK/REPAIR TABLES RESULT -> Total: " . $total . ", checked Ok: " . $checked . ", broken: " . $broken . ", repaired: " . $repaired . ", FATAL Errors : " . $fatal, 'boot', $fatal ? 'error' : ($broken ? 'warning' : 'info'));
 
 DebMes("Loading settings...", 'boot');
 include_once("./load_settings.php");
@@ -575,7 +575,7 @@ while (true) {
     $result = $threads->iteration();
     if ($result === false) {
         if ((time() - $last_no_threads_log) >= 30) {
-            DebMes('No active cycle threads left. Scheduling all enabled cycles for restart.', 'boot');
+            DebMes('No active cycle threads left. Scheduling all enabled cycles for restart.', 'boot', 'warning');
             addCycleRuntimeLog('cycle_controller', 'No active cycle threads left. Scheduling all enabled cycles for restart.');
             $last_no_threads_log = time();
         }

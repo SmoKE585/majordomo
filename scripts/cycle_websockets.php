@@ -10,12 +10,12 @@ set_time_limit(0);
 
 include_once("./load_settings.php");
 
-function cycleWebSocketsLog($message)
+function cycleWebSocketsLog($message, $severity = 'info')
 {
     $message = date('Y-m-d H:i:s') . ' ' . $message;
     echo $message . PHP_EOL;
     if (function_exists('DebMes')) {
-        DebMes($message, 'websockets');
+        DebMes($message, 'websockets', $severity);
     }
 }
 
@@ -66,7 +66,7 @@ if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
                 $busyFor = microtime(true) - (float)$GLOBALS['websockets_busy_since'];
                 if ($busyFor > 5) {
                     $info = isset($GLOBALS['websockets_busy_info']) ? $GLOBALS['websockets_busy_info'] : 'unknown';
-                    cycleWebSocketsLog('cycle_websockets busy for ' . round($busyFor, 3) . 's: ' . $info);
+                    cycleWebSocketsLog('cycle_websockets busy for ' . round($busyFor, 3) . 's: ' . $info, 'warning');
                 }
             }
             pcntl_alarm(15);
@@ -105,7 +105,7 @@ function killProcessesOnPort($port)
             echo $message . PHP_EOL;
 
             if (function_exists('DebMes')) {
-                DebMes($message, 'websockets');
+                DebMes($message, 'websockets', 'warning');
             }
 
             if (function_exists('posix_kill')) {
@@ -135,7 +135,7 @@ function killProcessesOnPort($port)
                 echo $message . PHP_EOL;
 
                 if (function_exists('DebMes')) {
-                    DebMes($message, 'websockets');
+                    DebMes($message, 'websockets', 'warning');
                 }
 
                 if (function_exists('posix_kill')) {
@@ -157,7 +157,7 @@ try {
 
     throw new Exception('WebSocket server loop exited unexpectedly');
 } catch (Throwable $e) {
-    cycleWebSocketsLog('WebSocket server crashed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString());
+    cycleWebSocketsLog('WebSocket server crashed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString(), 'error');
 
     exit(1);
 }

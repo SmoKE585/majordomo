@@ -32,17 +32,44 @@ final class OperationWorker
                 $name = $data['target'];
                 if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/D', $name)) throw new InvalidArgumentException('Invalid module name');
                 $file = DIR_MODULES . $name . '/' . $name . '.class.php';
-                if (!is_file($file)) throw new RuntimeException('Linked module is not installed');
+                if (!is_file($file)) {
+                    // A deployment can briefly remove the file; confirm through normal retries.
+                    if ((int)($item['ATTEMPTS'] ?? 1) < 3) throw new RuntimeException('Linked module is not installed');
+                    return $this->removeStaleBinding($name, $params, 'module is not installed');
+                }
                 require_once $file;
+                if (!class_exists($name, false)) throw new RuntimeException('Linked module class was not loaded');
+                if (!method_exists($name, 'propertySetHandle')) {
+                    return $this->removeStaleBinding($name, $params, 'module has no property handler');
+                }
                 $module = new $name();
-                if (!method_exists($module, 'propertySetHandle')) throw new RuntimeException('Linked module has no property handler');
                 $result = $module->propertySetHandle($params['object'], $params['property'], $params['value']);
             } else throw new InvalidArgumentException('Unknown core operation');
             if ($item['DATANAME'] === 'modulepropertyset' && $result === false) throw new RuntimeException('Module handler returned false');
             return array('success' => true);
         } catch (Throwable $e) {
-            return array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage());
+            $context = array('target' => $data['target'] ?? null);
+            foreach (array('object', 'property') as $key) {
+                if (isset($params[$key]) && is_string($params[$key])) $context[$key] = $params[$key];
+            }
+            return array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage()
+                . ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
         }
+    }
+
+    private function removeStaleBinding(string $module, array $params, string $reason): array
+    {
+        $object = $params['object'] ?? null;
+        $property = $params['property'] ?? null;
+        if (!is_string($object) || !is_string($property) || $object === '' || $property === '') {
+            throw new InvalidArgumentException('Object and property are required to remove a stale module binding');
+        }
+        if (Core::properties()->removeLinkedModule($object, $property, $module)) {
+            DebMes('Removed stale module binding: ' . json_encode(array('module' => $module,
+                'object' => $object, 'property' => $property, 'reason' => $reason),
+                JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), 'core_runtime', 'warning');
+        }
+        return array('success' => true, 'skipped' => $reason);
     }
 
     public function process($execute = null)
@@ -62,10 +89,10 @@ final class OperationWorker
                     if (!$this->db->insert('operations_failed', $record)) throw new RuntimeException('Cannot preserve failed operation');
                 }
                 $this->queue->acknowledge($item);
-                DebMes('Core operation failed permanently: ' . $error, 'core_runtime');
+                DebMes('Core operation failed permanently: ' . $error, 'core_runtime', 'error');
             } else {
                 $this->queue->release($item, 5);
-                DebMes('Core operation will retry: ' . ($result['error'] ?? 'unknown error'), 'core_runtime');
+                DebMes('Core operation will retry: ' . ($result['error'] ?? 'unknown error'), 'core_runtime', 'warning');
             }
         }
         return count($items);

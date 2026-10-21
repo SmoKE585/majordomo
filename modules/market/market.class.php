@@ -1104,7 +1104,7 @@ class market extends module
                         if ($frame) {
                             $this->echonow("ERROR<br/>", 'red');
                         }
-                        DebMes("Error extracting $file", 'market');
+                        DebMes("Error extracting $file", 'market', 'error');
                         continue;
                     }
 
@@ -1827,7 +1827,7 @@ class market extends module
 
     function echonow($msg, $color = '')
     {
-        DebMes(strip_tags($msg), 'market');
+        DebMes(strip_tags($msg), 'market', $color === 'red' ? 'error' : 'info');
         if ($color) {
             echo '<font color="' . $color . '">';
         }

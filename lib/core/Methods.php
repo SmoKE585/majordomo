@@ -206,7 +206,7 @@ final class Methods
 
         if (is_array($call_stack) && in_array($current_call, $call_stack)) {
             $call_stack[] = $current_call;
-            DebMes("Warning: cross-linked call of " . $current_call . "\nlog:\n" . implode(" -> \n", $call_stack));
+            DebMes("Warning: cross-linked call of " . $current_call . "\nlog:\n" . implode(" -> \n", $call_stack), 'methods', 'warning');
             return 0;
         }
 

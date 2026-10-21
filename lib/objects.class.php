@@ -318,32 +318,8 @@ function removeLinkedPropertyIfNotUsed($table_name, $object, $property, $module)
 
 function removeLinkedProperty($object, $property, $module)
 {
-    $sqlQuery = "SELECT *
-                  FROM pvalues
-                 WHERE ID = '" . getValueIdByName($object, $property) . "'";
-
-    $value = SQLSelectOne($sqlQuery);
-
-    if (isset($value['ID'])) {
-        if (!$value['LINKED_MODULES']) {
-            $tmp = array();
-        } else {
-            $tmp = explode(',', $value['LINKED_MODULES']);
-        }
-        if (in_array($module, $tmp)) {
-            $total = count($tmp);
-            $res = array();
-            for ($i = 0; $i < $total; $i++) {
-                if ($tmp[$i] != $module) {
-                    $res[] = $tmp[$i];
-                }
-            }
-            $value['LINKED_MODULES'] = implode(',', $res);
-            SQLUpdate('pvalues', $value);
-        }
-    } else {
-        return 0;
-    }
+    // Keep legacy callers on the same selective, concurrency-safe removal path.
+    if (!\MajorDoMo\Core\Core::properties()->removeLinkedModule((string)$object, (string)$property, (string)$module)) return 0;
 }
 
 /**

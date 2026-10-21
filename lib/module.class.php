@@ -881,7 +881,7 @@ class module
         $rec["MODULE_NAME"] = $this->name;
         $rec["MESSAGE"] = htmlspecialchars(strip_tags($str));
 
-        DebMes($this->name . ' (' . $rec["TYPE"] . '): ' . $rec["MESSAGE"], 'module_notifications');
+        DebMes($this->name . ' (' . $rec["TYPE"] . '): ' . $rec["MESSAGE"], 'module_notifications', $type);
 
         $unreadRec = SQLSelectOne("SELECT COUNT(*) AS TOTAL_UNREAD FROM `module_notifications` WHERE `MODULE_NAME` = '" . $rec["MODULE_NAME"] . "' AND `IS_READ` = '0'");
         if (isset($unreadRec['TOTAL_UNREAD']) && $unreadRec['TOTAL_UNREAD'] > 10) {

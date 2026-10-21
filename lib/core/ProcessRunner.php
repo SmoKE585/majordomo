@@ -22,7 +22,7 @@ final class ProcessRunner
             $output = substr($output . stream_get_contents($pipes[1]), -65536);
             // Drain stderr to prevent a full pipe from blocking the worker.
             $errors = stream_get_contents($pipes[2]);
-            if ($errors !== '') error_log('MajorDoMo worker: ' . substr($errors, -4096));
+            if ($errors !== '') DebMes('Worker stderr: ' . substr($errors, -4096), 'core_worker', 'error');
             $status = proc_get_status($process);
             if (!$status['running']) break;
             if (microtime(true) >= $deadline) {

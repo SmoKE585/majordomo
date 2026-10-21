@@ -185,7 +185,7 @@ function majordomoGetErrorDetails($e = 0, $error = null)
 
 function majordomoSaveError($details, $type)
 {
-    DebMes($details, $type);
+    DebMes($details, $type, strpos($type, 'warning') !== false ? 'warning' : 'error');
     if (isset($_SERVER['REQUEST_URI'])) {
         return;
     }
@@ -226,8 +226,6 @@ function majordomoExceptionHandler($e)
 function majordomoErrorHandler($errno, $errmsg, $filename, $linenum)
 {
     if (!(error_reporting() & $errno)) return; // suppress warnings hidden by @ or current error_reporting mask
-    if (in_array($errno, array(E_NOTICE, E_DEPRECATED))) return;
-
     $errorCode = $errno;
     $errorType = majordomoGetErrorType($errorCode);
     majordomoRememberCycleCrash("PHP $errorType: $errmsg in " . basename($filename) . ':' . (int)$linenum);
@@ -236,30 +234,22 @@ function majordomoErrorHandler($errno, $errmsg, $filename, $linenum)
     // The error itself is already in the line above: do not repeat it from
     // error_get_last(), which may still hold an older suppressed diagnostics.
     $message .= majordomoGetErrorDetails(0, false);
-    if ($errno == E_WARNING) {
-        if (defined('LOG_PHP_WARNINGS') && LOG_PHP_WARNINGS) {
-            majordomoSaveError($message, 'php_warnings');
-        }
-    } else {
-        majordomoSaveError($message, 'php_errors');
-    }
+    majordomoSaveError($message, in_array($errno, array(E_WARNING, E_USER_WARNING, E_CORE_WARNING, E_COMPILE_WARNING), true) ? 'php_warnings' : 'php_errors');
+    return true;
 }
 
 function phpShutDownFunction()
 {
     $error = error_get_last();
-    if (!is_array($error)) {
+    // Non-fatal diagnostics are handled above. error_get_last() may still hold
+    // a suppressed warning, which must neither be resurrected nor duplicated.
+    if (!is_array($error) || !in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
         return;
     }
+    majordomoRememberCycleCrash('PHP ' . majordomoGetErrorType($error['type']) . ': ' . $error['message'] . ' in ' . basename($error['file']) . ':' . (int)$error['line']);
     $message = majordomoGetErrorDetails();
-    if ($error['type'] === E_ERROR || $error['type'] === E_PARSE || $error['type'] === E_COMPILE_ERROR) {
-        majordomoSaveError($message, 'php_errors_shutdown');
-        $err = new custom_error(nl2br($message));
-    } elseif ($error['type'] === E_WARNING) {
-        if (defined('LOG_PHP_WARNINGS') && LOG_PHP_WARNINGS) {
-            majordomoSaveError($message, 'php_warnings_shutdown');
-        }
-    }
+    majordomoSaveError($message, 'php_errors_shutdown');
+    $err = new custom_error(nl2br($message));
 }
 
 register_shutdown_function('phpShutDownFunction');

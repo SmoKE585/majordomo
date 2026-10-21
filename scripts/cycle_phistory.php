@@ -60,7 +60,7 @@ while (1) {
         }
         if (!$processed) sleep(1);
     } catch (Throwable $e) {
-        DebMes('History queue: ' . $e->getMessage(), 'cycle_phistory');
+        DebMes('History queue: ' . $e->getMessage(), 'cycle_phistory', 'error');
         sleep(1);
     }
     if (isRebootRequired() || isset($_GET['onetime'])) exit;

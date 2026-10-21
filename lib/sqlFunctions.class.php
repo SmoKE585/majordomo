@@ -267,7 +267,7 @@ function SQLMakeDBDump($dump_file, $ignore_tables = 0)
         if (file_exists($dump_file . '.tmp')) {
             unlink($dump_file . '.tmp');
         }
-        debmes('Error saving DB Backup to ' . $dump_file . ': ' . implode("\n", $output), 'db_backup');
+        debmes('Error saving DB Backup to ' . $dump_file . ': ' . implode("\n", $output), 'db_backup', 'error');
         return false;
     }
 }
@@ -299,7 +299,7 @@ function SQLMakeTableDump($dump_file, $table_name)
         if (file_exists($dump_file . '.tmp')) {
             unlink($dump_file . '.tmp');
         }
-        debmes('Error saving table ' . $table_name . ' backup to ' . $dump_file . ': ' . implode("\n", $output), 'db_backup');
+        debmes('Error saving table ' . $table_name . ' backup to ' . $dump_file . ': ' . implode("\n", $output), 'db_backup', 'error');
         return false;
     }
 }
@@ -328,7 +328,7 @@ function SQLRestoreDBDump($dump_file)
         debmes("DB restored from " . $dump_file . " OK.", 'db_backup');
         return true;
     } else {
-        debmes('Error restoring ' . $dump_file . ': ' . implode("\n", $output), 'db_backup');
+        debmes('Error restoring ' . $dump_file . ': ' . implode("\n", $output), 'db_backup', 'error');
         return false;
     }
 }

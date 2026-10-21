@@ -1345,7 +1345,7 @@ class saverestore extends module
         $preflight_issues = $this->collectSystemUpdatePreparationIssues();
         if (count($preflight_issues) > 0) {
             $message = 'System update preflight failed: ' . implode(' | ', $preflight_issues);
-            DebMes($message, 'restore');
+            DebMes($message, 'restore', 'error');
             if ($iframe) {
                 foreach ($preflight_issues as $issue) {
                     echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($issue) . '</div>', 'red');
@@ -2240,7 +2240,7 @@ class saverestore extends module
                 if ($error_message != '') {
                     echonow(htmlspecialchars($error_message), 'red');
                 }
-                DebMes("Unpack failed for " . $archive_path . ': ' . $error_message, "restore");
+                DebMes("Unpack failed for " . $archive_path . ': ' . $error_message, "restore", 'error');
                 return false;
             }
 
@@ -2276,7 +2276,7 @@ class saverestore extends module
                             echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($issue) . '</div>', 'red');
                         }
                     }
-                    DebMes('System update apply preflight failed: ' . implode(' | ', $apply_issues), 'restore');
+                    DebMes('System update apply preflight failed: ' . implode(' | ', $apply_issues), 'restore', 'error');
                     return false;
                 }
             }
@@ -2383,7 +2383,7 @@ class saverestore extends module
                     setGlobal('LatestUpdateBranch', $update_branch);
                     setGlobal('LatestUpdateTimestamp', date('d.m.Y H:i:s'));
                 } else {
-                    DebMes('Cannot detect latest update commit after applying archive.', 'restore');
+                    DebMes('Cannot detect latest update commit after applying archive.', 'restore', 'warning');
                 }
             }
 
@@ -2537,7 +2537,7 @@ class saverestore extends module
             $error_message = '';
             $result = $this->createTarArchiveFromDirectory(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', $archive_path, $error_message);
             if (!$result) {
-                DebMes('Backup archive creation failed: ' . $error_message, 'restore');
+                DebMes('Backup archive creation failed: ' . $error_message, 'restore', 'error');
                 if ($iframe) {
                     echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($error_message) . '</div>', 'red');
                 }
@@ -2592,7 +2592,7 @@ class saverestore extends module
             setGlobal('cycle_mainRun', time());
             return true;
         } else {
-            DebMes("Failed to restore DB:\n" . implode("\n", $output), "restore");
+            DebMes("Failed to restore DB:\n" . implode("\n", $output), "restore", 'error');
             return false;
         }
     }

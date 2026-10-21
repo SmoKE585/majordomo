@@ -5,7 +5,7 @@ function python_run_code($code, $params = '', $object = '') {
     if (defined('PYTHON_PATH')) {
         $python_path = PYTHON_PATH;
     } else {
-        DebMes("Chek config.php file for define path to php ");
+        DebMes('Python path is not configured (PYTHON_PATH)', 'python', 'error');
         return false;
     }
     if ($python_path!='') {

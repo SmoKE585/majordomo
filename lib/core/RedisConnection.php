@@ -99,7 +99,12 @@ final class RedisConnection
         } catch (Throwable $e) {
             $redisConnection = null;
             $retry_after = microtime(true) + 2;
-            error_log('MajorDoMo: Redis connection unavailable (' . get_class($e) . ')');
+            $message = 'Redis connection unavailable (' . get_class($e) . ')';
+            if (function_exists('DebMes')) {
+                DebMes($message, 'redis', 'error');
+            } else {
+                error_log('MajorDoMo: ' . $message);
+            }
             return null;
         }
     }

@@ -53,7 +53,7 @@ final class Scheduler
                 $error = substr((string)($result['error'] ?? 'Unknown worker error'), 0, 4096);
                 $runtime = date('Y-m-d H:i:s', time() + min(300, 5 * (2 ** min(6, (int)$job['ATTEMPTS'] - 1))));
                 $this->db->requireExec("UPDATE jobs SET STARTED=NULL,CLAIM_TOKEN='',RUNTIME='$runtime',EXPIRED=$expired,LAST_ERROR='" . $this->db->escape($error) . "' WHERE ID=$id AND CLAIM_TOKEN='$token' AND PROCESSED=0");
-                DebMes('Scheduled job ' . $id . ($expired ? ' failed permanently: ' : ' will retry: ') . $error, 'scheduled_jobs');
+                DebMes('Scheduled job ' . $id . ($expired ? ' failed permanently: ' : ' will retry: ') . $error, 'scheduled_jobs', $expired ? 'error' : 'warning');
             }
         }
     }

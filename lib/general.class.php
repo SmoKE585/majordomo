@@ -333,11 +333,11 @@ function SendMail_HTML($from, $to, $subj, $body = "", $attach = "")
 
     if ($mailer_type == 'smtp') {
         if ($smtp_auth && (!$smtp_user || !$smtp_password)) {
-            DebMes("SMTP username/password is not set", 'sendmail');
+            DebMes("SMTP username/password is not set", 'sendmail', 'error');
             return false;
         }
         if (!$smtp_host) {
-            DebMes("SMTP host is not set", 'sendmail');
+            DebMes("SMTP host is not set", 'sendmail', 'error');
             return false;
         }
     }
@@ -380,7 +380,7 @@ function SendMail_HTML($from, $to, $subj, $body = "", $attach = "")
         }
         $result = $mail->send();
     } catch (Exception $e) {
-        DebMes("Message could not be sent: " . $mail->ErrorInfo, 'sendmail');
+        DebMes("Message could not be sent: " . $mail->ErrorInfo, 'sendmail', 'error');
         return false;
     }
     return $result;
@@ -461,15 +461,27 @@ function setLocalTime($now_date, $diff = 0)
 }
 
 /**
- * Write Exceptions
+ * Write a diagnostic message; problems share errors.log and retain their source.
  * @param string $errorMessage string Exception message
- * @param string $logLevel exception level, default=debug
+ * @param string $logLevel source channel, default=debug
+ * @param string $severity optional severity (warning/error/critical/...)
  * @return void
  */
-function DebMes($errorMessage, $logLevel = "debug")
+function DebMes($errorMessage, $logLevel = "debug", $severity = '')
 {
 
     if (defined('SETTINGS_SYSTEM_DISABLE_DEBMES') && SETTINGS_SYSTEM_DISABLE_DEBMES == 1) return;
+
+    $source = (string)$logLevel;
+    $severity = strtolower((string)$severity);
+    $problem = in_array($severity, array('warning', 'warn', 'error', 'danger', 'critical', 'alert', 'emergency', 'exception'), true)
+        || preg_match('~(?:^|[/_-])(?:errors?|warnings?|exceptions?)(?:$|[/_-])~i', $source);
+    if ($problem) {
+        if ($severity === '' || !in_array($severity, array('warning', 'warn', 'error', 'danger', 'critical', 'alert', 'emergency', 'exception'), true)) {
+            $severity = preg_match('~(?:^|[/_-])warnings?(?:$|[/_-])~i', $source) ? 'warning' : 'error';
+        }
+        $logLevel = 'errors';
+    }
 
     if (defined('SETTINGS_SYSTEM_DEBMES_PATH') && SETTINGS_SYSTEM_DEBMES_PATH != '') {
         $path = SETTINGS_SYSTEM_DEBMES_PATH;
@@ -510,6 +522,9 @@ function DebMes($errorMessage, $logLevel = "debug")
 
     if (is_array($errorMessage) || is_object($errorMessage)) {
         $errorMessage = json_encode($errorMessage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+    if ($problem) {
+        $errorMessage = '[' . strtoupper($severity) . '] [' . str_replace(array("\r", "\n", ']'), '', $source) . '] ' . $errorMessage;
     }
 
 

@@ -141,7 +141,7 @@ if ($full_backup) {
     if (SQLMakeDBDump($target_file)) {
         DebMes("Backup done.", 'maintenance');
     } else {
-        DebMes("Backup error.", 'maintenance');
+        DebMes("Backup error.", 'maintenance', 'error');
     }
     echo "OK\n";
 }
@@ -164,7 +164,7 @@ if (!isset($run_from_start) || $run_from_start == 0) {
             }
         }
     } else {
-        DebMes(ROOT . 'cms/saverestore - NOT FOUND', 'maintenance');
+        DebMes(ROOT . 'cms/saverestore - NOT FOUND', 'maintenance', 'warning');
     }
 // removing old backus
     DebMes('Checking old backups.', 'maintenance');
@@ -181,13 +181,13 @@ if (!isset($run_from_start) || $run_from_start == 0) {
         }
         echo "OK";
     } else {
-        DebMes($backups_dir . ' - NOT FOUND', 'maintenance');
+        DebMes($backups_dir . ' - NOT FOUND', 'maintenance', 'warning');
         echo $backups_dir . " not found";
     }
 } else {
     // RUN ON START ONLY
     if (time() >= getGlobal('ThisComputer.started_time')) {
-        DebMes("Incorrect date on start, fixing.", 'maintenance');
+        DebMes("Incorrect date on start, fixing.", 'maintenance', 'warning');
         SQLExec("DELETE FROM events WHERE ADDED > NOW()");
         SQLExec("DELETE FROM phistory WHERE ADDED > NOW()");
         SQLExec("DELETE FROM history WHERE ADDED > NOW()");
@@ -441,11 +441,11 @@ function maintenanceCheckAndRepairTable($table_name, $engine)
 
     $message = $check['Msg_text'] ?? 'unknown error';
     echo " broken ...";
-    DebMes("Checking table [$table_name_safe] broken ($message)", 'maintenance');
+    DebMes("Checking table [$table_name_safe] broken ($message)", 'maintenance', 'warning');
 
     if (strtolower((string)$engine) !== 'myisam') {
         echo " repair is not supported for engine " . $engine . "\n";
-        DebMes("Repair skipped for $table_name_safe: engine $engine is not MyISAM", 'maintenance');
+        DebMes("Repair skipped for $table_name_safe: engine $engine is not MyISAM", 'maintenance', 'warning');
         return false;
     }
 
@@ -468,11 +468,11 @@ function maintenanceCheckAndRepairTable($table_name, $engine)
         }
 
         $message = $check['Msg_text'] ?? 'unknown error';
-        DebMes("Repair $repair_label failed for $table_name_safe ($message)", 'maintenance');
+        DebMes("Repair $repair_label failed for $table_name_safe ($message)", 'maintenance', 'warning');
     }
 
     echo "FAILED\n";
-    DebMes("Repair of $table_name_safe failed", 'maintenance');
+    DebMes("Repair of $table_name_safe failed", 'maintenance', 'error');
     return false;
 }
 

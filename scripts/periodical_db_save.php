@@ -50,7 +50,7 @@ while (1) {
             debmes('Main db save OK (in a row: ' . $backups_in_row . ')', 'db_backup');
             echo "OK\n";
         } else {
-            debmes('Main db save failed.', 'db_backup');
+            debmes('Main db save failed.', 'db_backup', 'error');
         }
         if ($backups_in_row >= 10 && is_dir('/tmp/mysql')) {
             debmes('Copying /tmp/mysql to /var/lib/mysql', 'db_backup');
@@ -58,7 +58,7 @@ while (1) {
             $backups_in_row = 0;
         }
         } catch (Exception $e) {
-            debmes('Main db save exception: ' . $e->getMessage(), 'db_backup');
+            debmes('Main db save exception: ' . $e->getMessage(), 'db_backup', 'error');
         }
     }
     if ((time() - $last_backup_history) > $timeout_history || isRebootRequired()) {
@@ -71,10 +71,10 @@ while (1) {
             echo "OK\n";
             debmes('History db save OK', 'db_backup');
         } else {
-            debmes('History db save failed.', 'db_backup');
+            debmes('History db save failed.', 'db_backup', 'error');
         }
         } catch (Exception $e) {
-            debmes('History db save exception: ' . $e->getMessage(), 'db_backup');
+            debmes('History db save exception: ' . $e->getMessage(), 'db_backup', 'error');
         }
     }
     if (isRebootRequired() || isset($_GET['onetime'])) {
@@ -83,4 +83,4 @@ while (1) {
     sleep(1);
 }
 
-DebMes("Unexpected close of cycle: " . basename(__FILE__));
+DebMes("Unexpected close of cycle: " . basename(__FILE__), 'db_backup', 'error');

@@ -28,7 +28,7 @@ while (true) {
     } catch (Throwable $e) {
         $message = 'Core worker: ' . $e->getMessage();
         echo date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
-        DebMes($message, 'cycle_core');
+        DebMes($message, 'cycle_core', 'error');
         sleep(1);
     }
     if (isRebootRequired() || isset($_GET['onetime'])) break;

@@ -104,7 +104,7 @@ while (1) {
             sg($objects[$i]['TITLE'] . '.time', date('Y-m-d H:i:s'));
             callMethodSafe($objects[$i]['TITLE'] . '.onNewMinute');
             } catch (Exception $e) {
-                DebMes('Error in onNewMinute for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main');
+                DebMes('Error in onNewMinute for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main', 'error');
             }
         }
         $old_minute = $m;
@@ -118,7 +118,7 @@ while (1) {
             echo date('H:i:s') . ' ' . $objects[$i]['TITLE'] . "->onNewHour\n";
             callMethodSafe($objects[$i]['TITLE'] . '.onNewHour');
             } catch (Exception $e) {
-                DebMes('Error in onNewHour for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main');
+                DebMes('Error in onNewHour for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main', 'error');
             }
         }
         $old_hour = $h;
@@ -132,7 +132,7 @@ while (1) {
             echo date('H:i:s') . ' ' . $objects[$i]['TITLE'] . "->onNewDay\n";
             callMethodSafe($objects[$i]['TITLE'] . '.onNewDay');
             } catch (Exception $e) {
-                DebMes('Error in onNewDay for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main');
+                DebMes('Error in onNewDay for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main', 'error');
             }
         }
         $old_date = $dt;
@@ -145,4 +145,4 @@ while (1) {
     sleep(1);
 }
 
-DebMes("Unexpected close of cycle: " . basename(__FILE__));
+DebMes("Unexpected close of cycle: " . basename(__FILE__), 'cycle_main', 'error');

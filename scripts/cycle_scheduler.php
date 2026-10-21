@@ -27,12 +27,12 @@ while (1) {
         $checked_time = time();
         setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
     }
-    try { runScheduledJobs(); } catch (Exception $e) { DebMes('Error in runScheduledJobs: ' . $e->getMessage(), 'cycle_scheduler'); }
-    try { $sc->checkScheduledScripts(); } catch (Exception $e) { DebMes('Error in checkScheduledScripts: ' . $e->getMessage(), 'cycle_scheduler'); }
+    try { runScheduledJobs(); } catch (Exception $e) { DebMes('Error in runScheduledJobs: ' . $e->getMessage(), 'cycle_scheduler', 'error'); }
+    try { $sc->checkScheduledScripts(); } catch (Exception $e) { DebMes('Error in checkScheduledScripts: ' . $e->getMessage(), 'cycle_scheduler', 'error'); }
     if (isRebootRequired() || isset($_GET['onetime'])) {
         exit;
     }
     sleep(1);
 }
 
-DebMes("Unexpected close of cycle: " . basename(__FILE__));
+DebMes("Unexpected close of cycle: " . basename(__FILE__), 'cycle_scheduler', 'error');

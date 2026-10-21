@@ -446,7 +446,7 @@ if (!isset($request[0])) {
 
 if (isset($result['error'])) {
     if (function_exists('DebMes')) {
-        DebMes("Incorrect request (" . $method . "): " . json_encode($request) . "\nInput: " . json_encode($input) . "\nResult: " . json_encode($result), 'api');
+        DebMes("Incorrect request (" . $method . "): " . json_encode($request) . "\nInput: " . json_encode($input) . "\nResult: " . json_encode($result), 'api', 'warning');
     }
     http_response_code(400);
 } else {
@@ -485,7 +485,7 @@ function apiShutdown()
     if (isset($a['type']) && ($a['type'] === E_ERROR)) {
         DebMes("Result " . $requestUri . ' ' . json_encode($a), 'api_error');
     } elseif (isset($result['passed']) && $result['passed'] > 5) {
-        DebMes("Result [" . $result['passed'] . "] of : " . $requestUri . "\n" . json_encode($result, JSON_PRETTY_PRINT), 'api_slow');
+        DebMes("Result [" . $result['passed'] . "] of : " . $requestUri . "\n" . json_encode($result, JSON_PRETTY_PRINT), 'api_slow', 'warning');
     }
 }
 
