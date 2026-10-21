@@ -46,5 +46,5 @@ npm install
 npm run build
 ```
 
-Source entry point: `resources/admin/main.js`. Details: `docs/agents/admin-assets.md`.
+Source entry point: `resources/js/app.js`. Details: `docs/agents/admin-assets.md`.
 

@@ -28,10 +28,9 @@
 ├── load_settings.php           # include, не точка входа
 ├── cycle.php                   # CLI-цикл (systemd), вне document root
 ├── dev_server.php              # локальный сервер, повторяет контракт nginx
-├── resources/admin/                  # исходники Vite, в бандл, наружу не отдаются
-│   ├── main.js  charts-entry.js  codeeditor-entry.js
+├── resources/                  # исходники Vite, в бандл, наружу не отдаются
 │   ├── css/                    # admin_panel.css, ui-v2.css, ui-system.css, codeeditor.css
-│   └── js/                     # modules/admin_panel/*, codeeditor.js, codeeditor-loader.js
+│   └── js/                     # app.js, bootstrap.js, charts.js, modules/, codeeditor/
 ├── docs/                       # документация и деплой-конфиги
 │   ├── README.md  agents/  user/  deploy/  dev/  archive/  ui-redesign/
 ├── modules/                    # PHP-модули и их веб-эндпоинты (/modules/...)
@@ -50,7 +49,7 @@
 ```
 
 Правило: если файл скачивает браузер — он в `public/assets/`; если файл
-компилируется Vite — он в `resources/admin/`; если это точка входа — она в `public/`;
+компилируется Vite — он в `resources/`; если это точка входа — она в `public/`;
 документация и деплой — в `docs/`; всё остальное — код приложения.
 
 ## 2. URL → файл
@@ -151,7 +150,7 @@ location ^~ /modules/ {
 1. Статика страницы модуля → `public/assets/modules/<module>/`, подключается
    только в шаблоне этого модуля (`<#ROOTHTML#>assets/modules/<module>/...`).
 2. Общая библиотека → 
-pm install` + импорт в `resources/admin/main.js` (или отдельный
+pm install` + импорт в `resources/js/app.js` (или отдельный
    entry). В `public/assets/vendor/` руками ничего не кладём.
 3. Картинка интерфейса → `public/assets/img/...`, ссылка
    `<#ROOTHTML#>assets/img/...`.

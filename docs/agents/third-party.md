@@ -12,7 +12,7 @@
 | `phpmqtt/` | 18 КБ | Минимальный MQTT-клиент | `modules/mqtt/mqtt.class.php`, `scripts/cycle_mqtt.php` | `php-mqtt/client` |
 | `Paginator/` | 9 КБ | Постраничная навигация | `modules/actions_log/actions_log_search.inc.php` | `jasongrimes/paginator` |
 | `elFinder/` | 4.5 МБ | Файловый менеджер (UI + PHP-коннектор) | `public/assets/js/admin/panel.js` → `/3rdparty/elFinder/elfinder.html`, PHP-коннектор через URL | `studio-42/elfinder` (PHP), JS идёт в комплекте |
-| `fonts/` | 1.2 МБ | Шрифт Rubik (woff2) | импорт Vite: `resources/admin/main.js` → `../../3rdparty/fonts/rubik/rubik.css` | `@fontsource/rubik` (npm) |
+| `fonts/` | 1.2 МБ | Шрифт Rubik (woff2) | импорт Vite: `resources/js/app.js` → `../../3rdparty/fonts/rubik/rubik.css` | `@fontsource/rubik` (npm) |
 
 Итого ~7 МБ. Только `smarty3`, `php-mailer`, `phpmqtt` и `Paginator`
 подключаются из PHP; `elFinder` и `fonts` — это веб-ресурсы.
@@ -70,7 +70,7 @@ git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard
    оставить `3rdparty/elFinder` как есть или перенести UI в `public/assets/vendor/elfinder`.
    Это отдельная задача, к Composer не критична.
 
-7. **Rubik** — `npm install @fontsource/rubik` и импорт в `resources/admin/main.js`;
+7. **Rubik** — `npm install @fontsource/rubik` и импорт в `resources/js/app.js`;
    `3rdparty/fonts` после этого удаляется (шрифт попадает в бандл `public/assets/admin/fonts`).
 
 После каждого шага: `php -l`, `npm run build` (если затронут фронтенд),
@@ -86,7 +86,7 @@ git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard
 - **Веб-ресурсы.** `elFinder` и `fonts` отдаются браузеру; для них нужен либо
   URL-путь в `public/assets/vendor/`, либо `root`-override в nginx.
 - **Сборка.** `fonts` импортируется Vite — путь является частью сборки, менять
-  его нужно вместе с `resources/admin/main.js`.
+  его нужно вместе с `resources/js/app.js`.
 - **Бандл коммитится.** После переезда шрифтов не забудьте `npm run build` и
   поднять `?v=` в `templates/common_header_admin.html`.
 

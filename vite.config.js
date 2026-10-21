@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
  * Admin bundle build.
  *
  * Output is committed to public/assets/admin so the PHP application does not need
- * Node.js at runtime. Run `npm run build` after changing resources/admin.
+ * Node.js at runtime. Run `npm run build` after changing resources/js or resources/css.
  */
 export default defineConfig({
   base: './',
@@ -19,7 +19,7 @@ export default defineConfig({
     target: 'es2018',
     chunkSizeWarningLimit: 700,
     rollupOptions: {
-      input: 'resources/admin/main.js',
+      input: 'resources/js/app.js',
       output: {
         format: 'iife',
         entryFileNames: 'admin.js',

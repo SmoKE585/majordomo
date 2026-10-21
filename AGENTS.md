@@ -9,7 +9,7 @@
 - Проект — MajorDoMo (PHP 8.4+), идёт поэтапный редизайн админки на Bootstrap 5.
 - Перед любым UI-изменением читать `docs/agents/DESIGN_SYSTEM.md`; новые компоненты — только `MDJUI` + `md-*`.
 - Старые модули должны продолжать работать: не ломать URL, формат данных, глобалы jQuery/Bootstrap, `partLoad`.
-- Статика — только в `public/assets/`, исходники бандла — в `resources/admin/`; сборка `npm run build`.
+- Статика — только в `public/assets/`, исходники бандла — в `resources/js/` и `resources/css/`; сборка `npm run build`.
 - Никаких новых `<script>`/`<link>` на библиотеки в шаблонах: только npm + бандл.
 - Проверка перед сдачей: `php -l`, `node --check`, `npm run build`, `php tests/routing_smoke.php`.
 
