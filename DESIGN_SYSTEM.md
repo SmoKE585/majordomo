@@ -1184,6 +1184,10 @@ Alpine запускается один раз после boot shell; на `partL
 
 `120_linkedobject.js` — общий контроллер `[data-md-linkedobject]`, `window.MDLinkedObjectUI`. Он не инициализирует Tom Select и не зависит от jQuery; native input остаётся источником значения. Модуль регистрируется через `MDJAdminUI.registerModuleUI('linkedobject', …)`, поэтому работает после `partLoad`. Стили — в `css/admin/ui-system.css`, секция LinkedObject.
 
+#### Плотные таблицы связей
+
+Для таблицы с отдельными колонками объекта, свойства и метода используйте `<table class="md-table" data-md-linkedobject-layout="table">`. Контроллер `linkedobject` включает общий режим `md-linkedobject--table`: скрывает повторные подписи и нижние панели, оставляет native input, поиск, очистку и portal-dropdown. Поля сохраняют `name`, `id`, события и свободный ввод. У каждого input задавайте `aria-label`, названия колонок — в `th`. Без атрибута существующий вид компонента сохраняется. Демо: UI Kit → LinkedObject → «Компактная таблица связей».
+
 ### Тема
 
 `window.MDJAdminUI` + `data-md-theme-choice`; cookie `theme` (light/dark). Тему меняет только shell, не отдельные страницы.
@@ -1289,6 +1293,3 @@ public static function myWidget(array $props = array(), $slot = '')
 - `admin_panel.css` — legacy. Не добавляйте туда новые компоненты.
 - Если для компонента нужна сложная логика (data grid, date range, chart), сначала проверьте готовую библиотеку в общем бандле. Свой код — только тонкий слой.
 - Графики с осями/tooltip — через библиотеку, не самописный canvas/SVG. Компактные sparkline-бары — разрешённый примитив.
-
-
-

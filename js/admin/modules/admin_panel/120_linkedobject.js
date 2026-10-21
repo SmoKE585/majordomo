@@ -1338,6 +1338,13 @@
             inst.field.classList.add('md-linkedobject--compact');
         }
 
+        if (closest(inst.field, '[data-md-linkedobject-layout="table"]')) {
+            inst.field.classList.add('md-linkedobject--table');
+            if (!inst.input.getAttribute('aria-label') && !inst.input.getAttribute('aria-labelledby')) {
+                inst.input.setAttribute('aria-label', inst.field.getAttribute('data-md-linkedobject-label') || inst.role);
+            }
+        }
+
         detectLabel(inst);
         bindInstance(inst);
         updateValueUI(inst);

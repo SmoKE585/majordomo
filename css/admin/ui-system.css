@@ -2235,6 +2235,17 @@ body.md-admin-shell .md-linkedobject--compact .md-linkedobject__badge {
   font-size: .625rem;
 }
 
+/* Explicit dense table layout: column headings label the native controls. */
+body.md-admin-shell .md-linkedobject--table {
+  position: relative;
+  gap: 0;
+}
+
+body.md-admin-shell .md-linkedobject--table .md-linkedobject__head,
+body.md-admin-shell .md-linkedobject--table .md-linkedobject__foot {
+  display: none;
+}
+
 /* Portal dropdown */
 body.md-admin-shell .md-linkedobject-popover {
   position: fixed;

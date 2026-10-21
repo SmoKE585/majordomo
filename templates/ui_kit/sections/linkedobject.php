@@ -177,13 +177,13 @@ CODE,
     <?php }); ?>
 
     <?php md_ui_demo(array(
-        'title' => 'Старая таблица: компактный режим',
-        'desc' => 'Тот же native input внутри td. Компонент автоматически включает compact-режим, чтобы не раздвигать старую таблицу, и подгружает список объектов, даже если серверный JSON уже был отдан другому экземпляру.',
-        'api' => 'td · compact · shared object list',
+        'title' => 'Компактная таблица связей',
+        'desc' => 'Режим data-md-linkedobject-layout="table" убирает повторные подписи и нижние панели: остаётся строка контролов с поиском, свободным вводом и portal-dropdown. Заголовки колонок и aria-label подписывают поля.',
+        'api' => 'data-md-linkedobject-layout="table"',
         'canvas_class' => 'md-ui-demo__canvas--block',
     ), function () { ?>
         <div class="md-table-wrap">
-            <table class="md-table">
+            <table class="md-table" data-md-linkedobject-layout="table">
                 <thead>
                     <tr>
                         <th>Параметр</th>
@@ -201,6 +201,7 @@ CODE,
                                    name="ui_kit_table_object"
                                    value=""
                                    placeholder="Объект"
+                                   aria-label="Связанный объект"
                                    autocomplete="off">
                             <?= md_ui_render_linkedobject('ui_kit_table_object', '', '', '') ?>
                         </td>
