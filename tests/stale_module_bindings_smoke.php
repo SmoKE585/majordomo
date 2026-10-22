@@ -194,14 +194,17 @@ $before = count($calls);
 check(runModule('goodsubscriber')['success'] && runModule('inheritedsubscriber')['success'] && count($calls) === $before + 2, 'Existing and inherited handlers must still execute');
 check(links() === 'goodsubscriber,inheritedsubscriber', 'Working subscribers must remain bound');
 
-// A module writing another property must not be echoed back to itself.
+// Модуль исключается только из того свойства, о котором его уведомили.
+// Запись другого свойства должна доходить до него: иначе вложенная привязка
+// (zigbee → кнопка → устройство) молча теряет модуль, который управляет
+// устройством, и команда не уходит.
 $pdo->exec("UPDATE pvalues SET LINKED_MODULES='echoingsubscriber' WHERE ID=3");
 setLinks('echoingsubscriber');
 $pdo->exec('DELETE FROM operations_queue');
 $echo = runModule('echoingsubscriber');
-check($echo['success'] && (int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 0
+check($echo['success'] && (int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 1
     && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=3')->fetchColumn() === 'private value',
-    'The module handling a notification is excluded from its own property write');
+    'A module writing another property is still notified about that property');
 
 foreach (array('falsesubscriber', 'throwsubscriber', 'constructorfailure', 'brokenmodule', 'wrongclass') as $module) {
     setLinks($module . ',goodsubscriber');

@@ -10,6 +10,17 @@ namespace MajorDoMo\Core;
  * visited by the delivery. A repeated property means an automation loop
  * (A -> script -> B -> script -> A): the value is still stored, but no further
  * notifications/ONCHANGE are queued for it.
+ *
+ * Кроме цепочки доставка помнит модуль и свойство, о котором этот модуль был
+ * уведомлён. Это нужно, чтобы гасить только собственное эхо: модуль не должен
+ * получать уведомление о свойстве, которое сам же записал, но обязан получать
+ * уведомления о других своих свойствах — даже если они записаны в том же
+ * процессе, глубже по цепочке.
+ *
+ * Изменения:
+ * 2026-10-22 — добавлена точка доставки (модуль + свойство). Исключение модуля
+ *              из уведомлений больше не распространяется на всю цепочку:
+ *              привязки свойств второго и следующих уровней не теряются.
  */
 final class PropertyChain
 {
@@ -17,18 +28,21 @@ final class PropertyChain
 
     private static array $chain = array();
     private static string $source = '';
+    private static string $point = '';
 
     /** @param string[] $chain */
-    public static function enter(array $chain, string $source = ''): void
+    public static function enter(array $chain, string $source = '', string $point = ''): void
     {
         self::$chain = self::clean($chain);
         self::$source = trim($source);
+        self::$point = trim($point);
     }
 
     public static function leave(): void
     {
         self::$chain = array();
         self::$source = '';
+        self::$point = '';
     }
 
     /** @return string[] */
@@ -40,6 +54,22 @@ final class PropertyChain
     public static function source(): string
     {
         return self::$source;
+    }
+
+    /** Свойство, о котором уведомили модуль-источник ('' — источник не модуль). */
+    public static function point(): string
+    {
+        return self::$point;
+    }
+
+    /**
+     * Текущая доставка в виде, пригодном для параметров очереди.
+     *
+     * @return array{module:string,point:string}
+     */
+    public static function delivery(): array
+    {
+        return array('module' => self::$source, 'point' => self::$point);
     }
 
     public static function token(string $object, string $property): string

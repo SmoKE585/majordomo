@@ -1,121 +1,50 @@
-# MajorDoMo — эталонный конфиг nginx (единственный источник правды).
-#
-# Деплой только на nginx: все rewrite- и access-правила живут здесь,
-# .htaccess в проекте нет и добавлять его не нужно.
-#
-# Использование:
-#   cp docs/deploy/nginx.conf.sample /etc/nginx/sites-available/majordomo
-#   # замените example.com, пути и сокет php-fpm на свои
-#   ln -s /etc/nginx/sites-available/majordomo /etc/nginx/sites-enabled/
-#   nginx -t && systemctl reload nginx
-#
-# ---------------------------------------------------------------------------
-# Схема: public/ — document root
-# ---------------------------------------------------------------------------
-#   <project>/public/     index.php, admin.php, nf.php, api.php, 404.php,
-#                         favicon.ico, robots.txt, assets/
-#   <project>/            .env, bootstrap.php, config.php, lib/, modules/,
-#                         templates/, cms/, packages/, scripts/, vendor/, docs/
-#
-# Вне document root и недоступны по HTTP: .env, config.php, bootstrap.php,
-# load_settings.php, lib/, scripts/, packages/, vendor/, cycle.php, tools/.
-#
-# Каталоги, которые обязаны сохранить свои URL, смонтированы из корня проекта
-# через `root`-override:
-#   /cms/...      медиа (аватары, картинки, звуки); cached/debmes закрыты
-#   /modules/...  PHP-эндпоинты модулей (autosave, iframe-воркеры, widgets)
-#   /docs/...     документация (sql/log закрыты)
-#
-# Старые URL:
-#   /css|/js|/img/...           301 -> /assets/...
-#   /templates/<module>/*.css|js 301 -> /assets/modules/<module>/...
-#   /public/...                 301 -> /...            (старый префикс docroot)
-#   /rc/...                     301 -> /panel/         (функция удалена)
-#
-# Если нужны поддомены с отдельными каталогами, добавьте до `root`:
-#   set $subdomain "";
-#   if ($host ~* ^([a-z0-9-]+)\.example\.com$) { set $subdomain $1; }
-#   set $root_path /var/www/example/data/www/example.com/$subdomain;
-# и используйте `root $root_path/public;` / `root $root_path;` в locations.
+# MajorDoMo — пример nginx. 2026-10-22: /ws, API v1 и закрытые системные пути.
+# Подставьте домен, сертификат, каталог проекта и сокет PHP-FPM.
+# Авторизацию админки проверяет PHP; API и WS используют собственную проверку.
+# WebSocket слушает только 127.0.0.1:8001, публичный адрес — /ws.
+# 3rdparty/ и objects/ удалены; scripts/, packages/, vendor/ не публикуются.
 
 server {
     listen 443 ssl;
     http2 on;
-
     server_name example.com www.example.com;
-
-    ssl_certificate     /etc/nginx/ssl/example.com.crt;
+    ssl_certificate /etc/nginx/ssl/example.com.crt;
     ssl_certificate_key /etc/nginx/ssl/example.com.key;
     ssl_protocols TLSv1.2 TLSv1.3;
-
     charset utf-8;
-    autoindex off;
-
-    gzip on;
-    gzip_proxied expired no-cache no-store private auth;
-    gzip_types text/css text/xml application/javascript text/plain application/json image/svg+xml image/x-icon;
-    gzip_comp_level 1;
-
-    # Опционально: закрыть сайт basic-auth.
-    # auth_basic "closed site";
-    # auth_basic_user_file /var/www/example/data/www/example.com/.httpauth;
-
     root /var/www/example/data/www/example.com/public;
     index index.php;
+    autoindex off;
+    absolute_redirect off;
+    auth_basic off;
+    client_max_body_size 512m;
 
-    # Системные каталоги и удалённые HTTP-входы не публикуются.
-    location ~ ^/(scripts|objects|3rdparty|packages|vendor)(/|$) {
-        return 404;
-    }
-
-    # Опционально: требует nginx со встроенным модулем disable_symlinks
-    # (сборки fastpanel и т.п.). В стандартном nginx директивы нет.
-    # disable_symlinks if_not_owner from=/var/www/example/data/www/example.com;
-
-    # Обязательный WebSocket ядра: тот же публичный порт, путь /ws.
-    # Внутренний сервер слушает только loopback; TLS завершается здесь.
+    # Общий публичный путь; авторизацию проверяет сервер WebSocket.
     location = /ws {
-        auth_basic off;
         proxy_pass http://127.0.0.1:8001/majordomo;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $http_host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header Authorization $http_authorization;
         proxy_set_header X-API-Key $http_x_api_key;
         proxy_read_timeout 75s;
+        proxy_send_timeout 75s;
         proxy_buffering off;
-        access_log off; # Одноразовый билет не попадает в access log.
+        proxy_cache off;
+        access_log off;
     }
 
-    # --- Точки входа -----------------------------------------------------
-    # Setup wizard: the canonical URL is install.php (it must work even when
-    # rewrites are stale), the pretty alias is a convenience.
-    location = /install {
-        return 302 /install.php;
-    }
-
-    location = /install/ {
-        return 302 /install.php;
-    }
-
-    location = /panel {
-        return 301 /panel/;
-    }
-
+    location = /install { return 302 /install.php; }
+    location = /install/ { return 302 /install.php; }
+    location = /panel { return 301 /panel/; }
     location ^~ /panel/ {
         try_files $uri $uri/ /nf.php?$query_string;
     }
 
-    # API ядра: /api/v1/* и совместимые /api/*, /api.php/*.
-    # Один обработчик без redirect/rewrite: метод, JSON и исходный URI сохраняются.
-    # Должен стоять ПЕРЕД общим regex-location для PHP.
+    # Сохраняются метод, JSON и исходный URI, включая legacy /api.php/.
     location ~ ^/api(?:\.php)?(?:/|$) {
-        # API проверяет токен самостоятельно. Basic Auth панели сюда не наследуем.
-        # Если Basic Auth включён на вышестоящем прокси, используйте X-API-Key.
-        auth_basic off;
-
         include /etc/nginx/fastcgi_params;
         fastcgi_pass unix:/var/run/php/php-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root/api.php;
@@ -126,19 +55,15 @@ server {
         fastcgi_param HTTP_AUTHORIZATION $http_authorization;
         fastcgi_param HTTP_X_API_KEY $http_x_api_key;
         fastcgi_param HTTP_X_FORWARDED_FOR $http_x_forwarded_for;
-
-        # PHP определяет LAN по HOME_NETWORK и клиенту за TRUSTED_PROXIES.
-        # Не подменяйте REMOTE_ADDR адресом прокси и не разрешайте API по Host.
-        # X-Forwarded-For здесь передаётся, а доверие к нему проверяет ядро.
         fastcgi_intercept_errors off;
         fastcgi_next_upstream off;
+        fastcgi_cache off;
         fastcgi_read_timeout 600s;
         fastcgi_send_timeout 600s;
         client_max_body_size 1m;
         error_page 413 = @majordomo_api_body_too_large;
     }
 
-    # Превышение лимита nginx тоже возвращает JSON, без HTML страницы ошибки.
     location @majordomo_api_body_too_large {
         default_type application/json;
         add_header Cache-Control "no-store" always;
@@ -148,227 +73,119 @@ server {
 
     error_page 404 /404.php;
 
-    # --- Статика ---------------------------------------------------------
     location ^~ /assets/ {
+        location ~* (?:/\.|\.(?:php[0-9]*|phtml|phar|ini|sql|log|sh|py|bak)$) { return 404; }
+        try_files $uri =404;
         expires 30d;
         access_log off;
     }
 
-    # --- Старые URL ассетов -> /assets/ ---------------------------------
+    # Редиректы ассетов стоят до запрета остальных файлов templates/.
     location ~ ^/(css|js|img)/(.+)$ {
         return 301 /assets/$1/$2$is_args$args;
     }
-
     location ~ ^/templates/([a-z0-9_-]+)/(.+\.(?:css|js))$ {
         return 301 /assets/modules/$1/$2$is_args$args;
     }
+    location ~ ^/public/(.*)$ { return 301 /$1$is_args$args; }
+    location = /rc { return 301 /panel/; }
+    location ^~ /rc/ { return 301 /panel/; }
 
-    # --- Удалённые/устаревшие пути --------------------------------------
-    location ~ ^/public/(.*)$ {
-        return 301 /$1$is_args$args;
+    # Эти каталоги не монтируются из корня приложения ни для LAN, ни извне.
+    location ~ ^/(scripts|objects|3rdparty|packages|vendor)(/|$) {
+        return 404;
     }
-
-    location = /rc {
-        return 301 /panel/;
+    location ~ ^/(lib|resources|templates|tests|tools|backup|var|node_modules|languages|src)(/|$) {
+        return 404;
     }
-
-    location ^~ /rc/ {
-        return 301 /panel/;
+    location ~ ^/(config\.php|bootstrap\.php|load_settings\.php|cycle\.php|dev_server\.php|majordomo|composer\.(json|lock)|package(-lock)?\.json)(/|$) {
+        return 404;
     }
+    location = /debmes.txt { return 404; }
+    location ~ /\. { return 404; }
+    location ~* \.(htaccess|htpasswd|ini|phps|fla|sql|log|sh|py|bak)$ { return 404; }
 
-    # --- PHP-эндпоинты вне document root ---------------------------------
-    # ^~ перекрывает regex-локации, поэтому PHP обрабатывается вложенной
-    # location: иначе nginx отдал бы исходники modules/*.php как текст.
+    # Рабочие PHP-входы установленных модулей сохраняются.
     location ^~ /modules/ {
         root /var/www/example/data/www/example.com;
-
-        location ~ [^/]\.php(/|$) {
+        location ~ /\. { return 404; }
+        location ~* \.(htaccess|htpasswd|ini|phps|sql|log|sh|py|bak)$ { return 404; }
+        location ~* [^/]\.php(/|$) {
+            fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+            set $md_path_info $fastcgi_path_info;
+            try_files $fastcgi_script_name =404;
             include /etc/nginx/fastcgi_params;
-            fastcgi_split_path_info ^(.+\.php)(/.*)$;
             fastcgi_pass unix:/var/run/php/php-fpm.sock;
-
             fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
             fastcgi_param DOCUMENT_ROOT /var/www/example/data/www/example.com/public;
-            fastcgi_param PATH_INFO $fastcgi_path_info;
-
-            fastcgi_read_timeout 240;
+            fastcgi_param SCRIPT_NAME $fastcgi_script_name;
+            fastcgi_param PATH_INFO $md_path_info;
+            fastcgi_param HTTPS $https if_not_empty;
+            fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+            fastcgi_param HTTP_X_API_KEY $http_x_api_key;
+            fastcgi_param HTTP_X_FORWARDED_FOR $http_x_forwarded_for;
+            fastcgi_read_timeout 600s;
+            fastcgi_send_timeout 600s;
         }
+        try_files $uri $uri/ =404;
     }
 
-    # --- Медиа и документация --------------------------------------------
-    # Только медиа; runtime-данные (кэш, логи, маркеры установки, бэкапы) закрыты.
+    # Из cms публикуются только медиа, без PHP и runtime-данных.
     location ^~ /cms/ {
         root /var/www/example/data/www/example.com;
-
-        location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ {
-            deny all;
-        }
-
-        location ~* \.(gif|jpe?g|png|svg|webp|ico)$ {
+        deny all;
+        location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ { deny all; }
+        location ~ /\. { deny all; }
+        location ~* \.(gif|jpe?g|png|svg|webp|ico|ogg|mp3|wav|mp4|webm|pdf|woff2?|ttf|otf)$ {
+            allow all;
+            try_files $uri =404;
             expires 7d;
         }
     }
 
-    # На документацию ссылается UI Kit. SQL-дампы и скрипты закрыты.
     location ^~ /docs/ {
         root /var/www/example/data/www/example.com;
-
-        location ~* \.(sql|log|sh|py|ini|phps|fla)$ {
-            deny all;
+        deny all;
+        location ~ /\. { deny all; }
+        location ~* \.(md|txt|pdf|gif|jpe?g|png|svg|webp|ico)$ {
+            allow all;
+            default_type text/plain;
+            try_files $uri =404;
         }
-    }
-
-    # --- Защита -----------------------------------------------------------
-    location ~ /\. {
-        deny all;
-    }
-
-    location ~* \.(htaccess|htpasswd|ini|phps|fla|sql|log|sh|py)$ {
-        deny all;
-    }
-
-    # --- Кэш и friendly URL ----------------------------------------------
-    location ~* \.(gif|jpe?g|png|svg|webp|ico|ogg|mp3|mp4|mkv|flv|swf|wmv|asf|asx|wma|wax|wmx|wm)$ {
-        expires 7d;
-        add_header Cache-Control "public";
     }
 
     location ~* ^/module/app_mediabrowser\..*$ {
         try_files $uri $uri/ /nf.php?$query_string;
     }
-
     location ~* \.(html|xml)$ {
         try_files $uri $uri/ /nf.php?$query_string;
     }
 
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    # --- PHP из document root --------------------------------------------
-    location ~ [^/]\.php(/|$) {
+    location ~* [^/]\.php(/|$) {
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        set $md_path_info $fastcgi_path_info;
+        try_files $fastcgi_script_name =404;
         include /etc/nginx/fastcgi_params;
-        fastcgi_split_path_info ^(.+\.php)(/.*)$;
         fastcgi_pass unix:/var/run/php/php-fpm.sock;
-
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         fastcgi_param DOCUMENT_ROOT $realpath_root;
         fastcgi_param SCRIPT_NAME $fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
-        fastcgi_param HTTPS on;
-
-        # Обновление/бэкап/восстановление могут идти дольше 60 секунд.
-        fastcgi_read_timeout 600s;
-        fastcgi_send_timeout 600s;
-        client_max_body_size 512m;
-    }
-}
-
-# HTTP -> HTTPS
-server {
-    listen 80;
-    server_name example.com www.example.com;
-    return 301 https://$host$request_uri;
-}
-
-# Локальный вход (внутренние запросы приложения, health-checks).
-server {
-    listen 127.0.0.1:80;
-    server_name localhost;
-
-    charset utf-8;
-
-    root /var/www/example/data/www/example.com/public;
-    index index.php;
-
-    # Системные каталоги и удалённые HTTP-входы не публикуются.
-    location ~ ^/(scripts|objects|3rdparty|packages|vendor)(/|$) {
-        return 404;
-    }
-
-    location = /ws {
-        auth_basic off;
-        proxy_pass http://127.0.0.1:8001/majordomo;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Authorization $http_authorization;
-        proxy_set_header X-API-Key $http_x_api_key;
-        proxy_read_timeout 75s;
-        proxy_buffering off;
-        access_log off;
-    }
-
-    # Setup wizard: the canonical URL is install.php (it must work even when
-    # rewrites are stale), the pretty alias is a convenience.
-    location = /install {
-        return 302 /install.php;
-    }
-
-    location = /install/ {
-        return 302 /install.php;
-    }
-
-    location = /panel {
-        return 301 /panel/;
-    }
-
-    location ^~ /panel/ {
-        try_files $uri $uri/ /nf.php?$query_string;
-    }
-
-    # Тот же API-контракт для loopback: локальный адрес проверяет PHP.
-    location ~ ^/api(?:\.php)?(?:/|$) {
-        auth_basic off;
-        include /etc/nginx/fastcgi_params;
-        fastcgi_pass unix:/var/run/php/php-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root/api.php;
-        fastcgi_param DOCUMENT_ROOT $realpath_root;
-        fastcgi_param SCRIPT_NAME /api.php;
-        fastcgi_param REQUEST_URI $request_uri;
+        fastcgi_param PATH_INFO $md_path_info;
         fastcgi_param HTTPS $https if_not_empty;
         fastcgi_param HTTP_AUTHORIZATION $http_authorization;
         fastcgi_param HTTP_X_API_KEY $http_x_api_key;
         fastcgi_param HTTP_X_FORWARDED_FOR $http_x_forwarded_for;
-        fastcgi_intercept_errors off;
-        fastcgi_next_upstream off;
         fastcgi_read_timeout 600s;
         fastcgi_send_timeout 600s;
-        client_max_body_size 1m;
-        error_page 413 = @majordomo_api_body_too_large;
-    }
-
-    location @majordomo_api_body_too_large {
-        default_type application/json;
-        add_header Cache-Control "no-store" always;
-        add_header X-Request-ID $request_id always;
-        return 413 '{"ok":false,"error":{"code":"payload_too_large","message":"Request body exceeds 1 MiB","details":{}},"meta":{"request_id":"$request_id","generated_by":"nginx"}}';
-    }
-
-    error_page 404 /404.php;
-
-    location ~ ^/(css|js|img)/(.+)$ {
-        return 301 /assets/$1/$2$is_args$args;
-    }
-
-    location ~ [^/]\.php(/|$) {
-        include /etc/nginx/fastcgi_params;
-        fastcgi_split_path_info ^(.+\.php)(/.*)$;
-        fastcgi_pass unix:/var/run/php/php-fpm.sock;
-
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        fastcgi_param DOCUMENT_ROOT $realpath_root;
-        fastcgi_param SCRIPT_NAME $fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
-
-        fastcgi_read_timeout 600s;
-        fastcgi_send_timeout 600s;
-        client_max_body_size 512m;
     }
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
+}
+
+server {
+    listen 80;
+    server_name example.com www.example.com;
+    return 301 https://$host$request_uri;
 }

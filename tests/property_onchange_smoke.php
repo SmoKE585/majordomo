@@ -82,6 +82,28 @@ namespace {
         && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === '0',
         'Repeated property in a delivery chain stops notifications but saves the value');
 
+    // Вложенная привязка: модуль, который доставил предыдущее свойство, не
+    // должен выпадать из уведомлений о другом своём свойстве. Иначе цепочка
+    // «zigbee → кнопка → метод → свойство устройства» не доходит до устройства.
+    $pdo->exec("INSERT INTO properties VALUES (2,1,0,'cmd',0,0,0,'cmdChanged')");
+    $pdo->exec("INSERT INTO pvalues VALUES (2,2,1,'0','','','Sensor.cmd','zigbee,yandexhome')");
+    MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.motion'), 'zigbee', 'property:Sensor.motion');
+    $queued = array(); $before = count($object->calls);
+    try { $properties->set($object, 'cmd', 1, array('zigbee' => 0), 'zigbee'); } finally { MajorDoMo\Core\PropertyChain::leave(); }
+    check($queued === array(array('modulepropertyset', 'zigbee'), array('modulepropertyset', 'yandexhome')),
+        'Source module stays subscribed to another property in the same chain');
+    check(count($object->calls) === $before + 1 && !isset(end($object->calls)[1]['NO_LINKED']['zigbee']),
+        'Nested ONCHANGE does not inherit the source module exclusion');
+    check((end($object->calls)[1]['_delivery'] ?? null) === array('module' => 'zigbee', 'point' => 'property:Sensor.motion'),
+        'ONCHANGE receives the delivery point needed for cross-process echo scoping');
+
+    // Собственное эхо по тому же свойству по-прежнему гасится.
+    MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.other'), 'zigbee', 'property:Sensor.cmd');
+    $queued = array(); $before = count($object->calls);
+    try { $properties->set($object, 'cmd', 0); } finally { MajorDoMo\Core\PropertyChain::leave(); }
+    check($queued === array(array('modulepropertyset', 'yandexhome')),
+        'Source module does not receive its own echo for the delivered property');
+
     // Событие должно объяснять себя: причину, что сохранено и что делать.
     $propertiesWithErrors = new MajorDoMo\Core\Properties(
         new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(),

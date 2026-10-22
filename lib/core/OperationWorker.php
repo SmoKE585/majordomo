@@ -10,6 +10,8 @@ use \InvalidArgumentException;
  * Выполнение фоновых операций из очереди (методы, модули, сообщения, подписки).
  *
  * Изменения:
+ * 2026-10-22 — воркер восстанавливает точку доставки (модуль + свойство), чтобы
+ *              исключение эха не распространялось на вложенные привязки.
  * 2026-10-22 — сценарии, сообщения и подписки вызывают функции ядра напрямую.
  * 2026-10-22 — ошибка внутреннего API показывает путь и причину отказа,
  *              а не только тип операции.
@@ -37,9 +39,24 @@ final class OperationWorker
             $data = json_decode($item['DATAVALUE'], true, 512, JSON_THROW_ON_ERROR);
             $params = $data['params'];
             $chain = is_array($params['_chain'] ?? null) ? $params['_chain'] : array();
-            $delivery_source = in_array($item['DATANAME'], array('modulepropertyset', 'moduleevent'), true)
-                ? (string)($data['target'] ?? '') : '';
-            PropertyChain::enter($chain, $delivery_source);
+            $source = '';
+            $point = '';
+            if (in_array($item['DATANAME'], array('modulepropertyset', 'moduleevent'), true)) {
+                // Модуль уведомили о конкретном свойстве: именно на нём гасится
+                // его собственное эхо, а не на всей дальнейшей цепочке.
+                $source = (string)($data['target'] ?? '');
+                if ($item['DATANAME'] === 'modulepropertyset') {
+                    $point = PropertyChain::token((string)($params['object'] ?? ''), (string)($params['property'] ?? ''));
+                }
+            } else {
+                // Метод/сценарий продолжает доставку, начатую модулем: точку
+                // нужно сохранить, иначе на следующем уровне модуль-источник
+                // снова выпадет из собственных привязок.
+                $delivery = is_array($params['_delivery'] ?? null) ? $params['_delivery'] : array();
+                $source = (string)($delivery['module'] ?? '');
+                $point = (string)($delivery['point'] ?? '');
+            }
+            PropertyChain::enter($chain, $source, $point);
             $_GET = $params;
             $_GET['r_s_m'] = 1;
             $_REQUEST = $_GET;

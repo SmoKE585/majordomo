@@ -220,7 +220,7 @@ final class Methods
     private function auditParams(mixed $params): array
     {
         if (!is_array($params)) return array();
-        foreach (array('m_c_s', 'r_s_m', 'r_s_s', 'raiseEvent', '_trace', '_chain') as $key) {
+        foreach (array('m_c_s', 'r_s_m', 'r_s_s', 'raiseEvent', '_trace', '_chain', '_delivery') as $key) {
             unset($params[$key]);
         }
         return $params;

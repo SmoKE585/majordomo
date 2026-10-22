@@ -13,6 +13,9 @@ use \RuntimeException;
  * изменений не даёт автоматизации зациклиться.
  *
  * Изменения:
+ * 2026-10-22 — исключение модуля-источника действует только на то свойство,
+ *              о котором его уведомили; вложенные привязки больше не теряют
+ *              подписчика.
  * 2026-10-22 — уведомления модулей ставятся напрямую в очередь ядра.
  * 2026-10-22 — сообщение об остановке цепочки объясняет причину и что делать.
  */
@@ -62,6 +65,35 @@ final class Properties
         } elseif (function_exists('DebMes')) {
             DebMes($message, 'property_chain', 'warning');
         }
+    }
+
+    /**
+     * Гасит эхо модуля только на том свойстве, о котором его уведомили.
+     *
+     * Обработчик модуля (и любой следующий метод цепочки) часто передаёт
+     * NO_LINKED дальше. Раньше из-за этого модуль-источник навсегда выпадал из
+     * уведомлений для всех следующих свойств: например, zigbee записывал кнопку,
+     * её метод — свойство устройства, и устройство уже не получало команду,
+     * хотя визуально значение менялось. Теперь исключение источника действует
+     * ровно на одно свойство, а на остальных он остаётся обычным подписчиком.
+     *
+     * @param mixed $no_linked
+     * @return mixed
+     */
+    private function scopeDeliveryExclusions($no_linked, string $target_token)
+    {
+        if (!is_array($no_linked)) return $no_linked;
+        $module = PropertyChain::source();
+        if ($module === '') return $no_linked;
+        $point = PropertyChain::point();
+        // Пустая точка — старый вызов без сведений о доставке: поведение
+        // прежнее, исключаем источник для всех записей.
+        if ($point === '' || $point === $target_token) {
+            $no_linked[$module] = 0;
+        } else {
+            unset($no_linked[$module]);
+        }
+        return $no_linked;
     }
 
     /**
@@ -395,6 +427,12 @@ final class Properties
             $chain_token = PropertyChain::token($object->object_title, $property);
             $chain_stopped = count($chain) >= PropertyChain::MAX_LENGTH || in_array($chain_token, $chain, true);
             $next_chain = PropertyChain::append($chain, $chain_token);
+            // Эхо гасим только для того свойства, о котором уведомили модуль.
+            // Всё, что записано глубже по цепочке, должно доходить до него как
+            // до обычного подписчика — иначе привязка «пропадает» на втором
+            // уровне вложенности (модуль записал кнопку, её метод — устройство,
+            // а устройство команду уже не получает).
+            $no_linked = $this->scopeDeliveryExclusions($no_linked, $chain_token);
             if ($chain_stopped) {
                 $this->reportChainStop($object->object_title, $property, $chain);
                 $this->audit?->note('chain', 'Цикл привязок остановлен', array(
@@ -455,9 +493,10 @@ final class Properties
                     if (!is_array($no_linked)) {
                         $no_linked = array();
                     }
-                    // A module handling a notification must not receive its own echo.
-                    $delivery_source = PropertyChain::source();
-                    if ($delivery_source !== '') $no_linked[$delivery_source] = 0;
+                    // Для записи без явного NO_LINKED исключение источника
+                    // добавляется здесь; для переданного массива оно уже
+                    // ограничено своим свойством выше.
+                    $no_linked = $this->scopeDeliveryExclusions($no_linked, $chain_token);
 
                     $tmp = explode(',', $v['LINKED_MODULES']);
                     $total = count($tmp);
@@ -526,6 +565,10 @@ final class Properties
                     $params['SOURCE'] = (string)$source;
                     $params['NO_LINKED'] = $no_linked;
                     $params['_chain'] = $next_chain;
+                    // Обработчик выполнится, возможно, в другом процессе:
+                    // передаём ему точку доставки, чтобы и там исключение
+                    // модуля-источника действовало только на одно свойство.
+                    $params['_delivery'] = PropertyChain::delivery();
                     PropertyAudit::attach($params);
                     try {
                         // Always enqueue: a web request must not wait for user code,

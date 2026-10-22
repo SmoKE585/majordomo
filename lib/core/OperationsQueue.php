@@ -6,7 +6,10 @@ use \RuntimeException;
 
 /**
  * Персистентная очередь и постановка внутренних фоновых операций.
- * Изменения: 2026-10-22 — внутренние операции ставятся без HTTP и API.
+ * Изменения:
+ * 2026-10-22 — вместе с цепочкой передаётся точка доставки: вложенный вызов
+ *              знает, какой модуль и по какому свойству его запустил.
+ * 2026-10-22 — внутренние операции ставятся без HTTP и API.
  */
 final class OperationsQueue
 {
@@ -16,6 +19,7 @@ final class OperationsQueue
     {
         PropertyAudit::attach($params);
         if (!isset($params['_chain']) && PropertyChain::current()) $params['_chain'] = PropertyChain::current();
+        if (!isset($params['_delivery']) && PropertyChain::source() !== '') $params['_delivery'] = PropertyChain::delivery();
         $target ??= (string)($params['event'] ?? $operation);
         $payload = array('target' => $target, 'path' => 'core:' . $operation . '/' . $target, 'params' => $params);
         return (bool)$this->enqueue('core_runtime', $operation, json_encode($payload, JSON_THROW_ON_ERROR), false, 3600);

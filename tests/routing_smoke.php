@@ -426,6 +426,12 @@ $nginxChecks = [
     'location ^~ /cms/ {' => 'cms media location',
     'location ^~ /docs/ {' => 'documentation location',
     'location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ {' => 'cms runtime data is private',
+    'location = /ws {' => 'same-origin WebSocket path',
+    'proxy_pass http://127.0.0.1:8001/majordomo;' => 'loopback WebSocket upstream',
+    'proxy_set_header X-Forwarded-For $remote_addr;' => 'WebSocket proxy replaces client forwarding headers',
+    'set $md_path_info $fastcgi_path_info;' => 'PATH_INFO saved before try_files',
+    'try_files $fastcgi_script_name =404;' => 'only existing PHP scripts reach FastCGI',
+    'fastcgi_param PATH_INFO $md_path_info;' => 'saved PATH_INFO reaches PHP',
 ];
 
 foreach ($nginxChecks as $needle => $name) {

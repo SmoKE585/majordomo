@@ -100,7 +100,10 @@ order: 20
 - `ApiClient` в `/api/method/*` и `/api/modulePropertySet/*`.
 
 `PropertyChain` продолжает отвечать только за защиту от циклов свойств. Trace id
-и цепочка шагов — отдельная ответственность `PropertyAudit`.
+и цепочка шагов — отдельная ответственность `PropertyAudit`. Вместе с `_chain`
+идёт служебная точка доставки `_delivery` (`module` + `point`): она говорит,
+какому модулю и по какому свойству принадлежит текущий шаг, чтобы его эхо
+гасилось только на этом свойстве.
 
 `OperationWorker` вызывает `PropertyAudit::enter($traceId)` для продолжения
 родительского запуска и `PropertyAudit::begin()` только если trace отсутствует
@@ -109,7 +112,7 @@ order: 20
 ## 4. Что попадает в параметры
 
 - Метод: `$params` до выполнения (без `m_c_s`, `r_s_m`, `r_s_s`, `raiseEvent`,
-  `_trace`), `OUT_PARAMS` после выполнения и возвращённый результат.
+  `_trace`, `_chain`, `_delivery`), `OUT_PARAMS` после выполнения и возвращённый результат.
 - Сценарий: входные `$params` и `OUT_PARAMS`.
 - Задача: `COMMANDS` и результат `eval`.
 - Модуль: `object/property/value` или `event/details`.
