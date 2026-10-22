@@ -75,7 +75,7 @@
                 modal.hide();
                 if (form) perform(form);
             });
-            modalElement.addEventListener('hidden.bs.modal', function () { pending = null; });
+            modalElement.addEventListener('hide.bs.modal', function () { pending = null; });
             window.addEventListener('pagehide', function () { secret.replaceChildren(); secret.hidden = true; }, {once: true});
         });
     }

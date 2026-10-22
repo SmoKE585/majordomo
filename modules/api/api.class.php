@@ -42,8 +42,7 @@ class api extends module
                     if ($operation === 'rotate') $issued = $store->rotate((int)$id);
                     else $store->revoke((int)$id);
                 } else throw new InvalidArgumentException('Неизвестное действие.');
-                $tokens = $store->all();
-                ob_start(); require ROOT . 'templates/api/tokens.php'; $listHtml = ob_get_clean();
+                $listHtml = self::tokenList($store->all(), $csrf);
                 $secretHtml = $issued ? MDJUI::hint(array('tone' => 'warning', 'title' => 'Сохраните токен сейчас', 'text' => 'Он показывается один раз. После закрытия страницы можно только перевыпустить токен.')) . MDJUI::codeSample(array('language' => 'text', 'title' => 'API-токен', 'code' => $issued['token'], 'line_numbers' => false, 'wrap' => true)) : '';
                 $payload = array('ok' => true, 'list_html' => $listHtml, 'secret_html' => $secretHtml);
             } catch (InvalidArgumentException $error) { $status = $status === 403 ? 403 : 422; $payload = array('ok' => false, 'message' => $error->getMessage()); }
@@ -69,5 +68,10 @@ class api extends module
         $value = $_POST[$key] ?? '';
         if (!is_string($value)) throw new InvalidArgumentException('Некорректное поле формы.');
         return $value;
+    }
+
+    private static function tokenList(array $tokens, string $csrf): string
+    {
+        ob_start(); require ROOT . 'templates/api/tokens.php'; return ob_get_clean();
     }
 }

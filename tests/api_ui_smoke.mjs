@@ -80,12 +80,14 @@ try {
     await waitFor('!document.querySelector("[data-api-secret]").hidden');
     check(await evaluate('document.querySelector("[data-api-token-list]").textContent.includes("Browser integration")'), 'Issue token updates list');
     check(await evaluate('/mdm_[a-f0-9]{64}/.test(document.querySelector("[data-api-secret]").textContent)'), 'Full token shown once');
+    const firstSecret = await evaluate('document.querySelector("[data-api-secret]").textContent');
     await evaluate('[...document.querySelectorAll("[data-api-token-list] form")].find(f => f.elements.operation.value === "rotate").requestSubmit()');
     await waitFor('document.querySelector("#md-api-confirm").classList.contains("show")');
+    await waitFor('document.querySelector("#md-api-confirm").contains(document.activeElement)');
     check(await evaluate('document.querySelector("#md-api-confirm").contains(document.activeElement)'), 'Confirmation traps focus');
     await evaluate('document.querySelector("[data-api-confirm-submit]").click()');
-    await waitFor('!document.querySelector("#md-api-confirm").classList.contains("show") && document.querySelector("[data-api-secret]").textContent.includes("mdm_")');
-    await pause(300);
+    await waitFor('!document.querySelector("#md-api-confirm").classList.contains("show") && document.querySelector("[data-api-secret]").textContent.includes("mdm_") && document.querySelector("[data-api-secret]").textContent !== ' + JSON.stringify(firstSecret));
+    await pause(400);
     await evaluate('[...document.querySelectorAll("[data-api-token-list] form")].find(f => f.elements.operation.value === "revoke").requestSubmit()');
     await waitFor('document.querySelector("#md-api-confirm").classList.contains("show")');
     await pause(200);

@@ -7,7 +7,7 @@
  * @param mixed $title Title
  * @param mixed $commands Commands
  * @param mixed $datetime Date
- * @param mixed $expire Expire time (default 60)
+ * @param mixed $expire Expire time (default 1800)
  * @return mixed
  */
 function addScheduledJob($title, $commands, $datetime, $expire = 1800)

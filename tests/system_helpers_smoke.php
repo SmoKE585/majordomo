@@ -184,7 +184,7 @@ PHP
     require_once $project . '/lib/knowledge_base.php';
     $article = (new MDKnowledgeBase($project . '/docs', '/'))->document('user/system-functions');
     helpersCheck(is_array($article) && $article['audience'] === array('user', 'agent'), 'Reference is discoverable by users and agents in the knowledge base');
-    helpersCheck(substr_count($article['html'], 'md-prose__table') === 43, 'Every helper group renders as a knowledge base table');
+    helpersCheck(substr_count($article['html'], '<table class="md-prose__table">') === 43, 'Every helper group renders as a knowledge base table');
     helpersCheck(count($article['toc']) >= 43 && str_contains($article['html'], 'callScript'), 'Reference renders with navigation and examples');
     foreach (array_merge(array_unique(array_column($contracts, 'source')), array('request')) as $entry) {
         $process = proc_open(array(PHP_BINARY, __FILE__, $entry), array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, $project);
