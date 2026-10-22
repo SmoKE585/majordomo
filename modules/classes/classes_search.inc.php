@@ -25,24 +25,24 @@ $qry = "1";
 // QUERY READY
 global $save_qry;
 if ($save_qry) {
-    $qry = $session->data['classes_qry'];
+    $qry = $session->get('classes_qry');
 } else {
-    $session->data['classes_qry'] = $qry;
+    $session->set('classes_qry', $qry);
 }
 if (!$qry) $qry = "1";
 // FIELDS ORDER
 global $sortby;
 if (!$sortby) {
-    $sortby = isset($session->data['classes_sort']) ? $session->data['classes_sort'] : '';
+    $sortby = $session->has('classes_sort') ? $session->get('classes_sort') : '';
 } else {
-    if ($session->data['classes_sort'] == $sortby) {
+    if ($session->get('classes_sort') == $sortby) {
         if (Is_Integer(strpos($sortby, ' DESC'))) {
             $sortby = str_replace(' DESC', '', $sortby);
         } else {
             $sortby = $sortby . " DESC";
         }
     }
-    $session->data['classes_sort'] = $sortby;
+    $session->set('classes_sort', $sortby);
 }
 if (!$sortby) $sortby = "TITLE";
 $out['SORTBY'] = $sortby;

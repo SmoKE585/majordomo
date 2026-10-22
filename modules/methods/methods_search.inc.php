@@ -33,24 +33,24 @@
   // QUERY READY
   global $save_qry;
   if ($save_qry) {
-   $qry=$session->data['methods_qry'];
+   $qry=$session->get('methods_qry');
   } else {
-   $session->data['methods_qry']=$qry;
+   $session->set('methods_qry', $qry);
   }
   if (!$qry) $qry="1";
   // FIELDS ORDER
   global $sortby;
   if (!$sortby) {
-   $sortby=isset($session->data['methods_sort'])?$session->data['methods_sort']:'';
+   $sortby=$session->has('methods_sort')?$session->get('methods_sort'):'';
   } else {
-   if ($session->data['methods_sort']==$sortby) {
+   if ($session->get('methods_sort')==$sortby) {
     if (Is_Integer(strpos($sortby, ' DESC'))) {
      $sortby=str_replace(' DESC', '', $sortby);
     } else {
      $sortby=$sortby." DESC";
     }
    }
-   $session->data['methods_sort']=$sortby;
+   $session->set('methods_sort', $sortby);
   }
   if (!$sortby) $sortby="methods.TITLE";
   if ($sortby=='TITLE') {

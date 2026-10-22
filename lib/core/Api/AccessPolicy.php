@@ -32,7 +32,7 @@ final class AccessPolicy
         return $this->network->inNetworks($this->clientIp($server), $networks);
     }
 
-    public function authorize(array $server, callable $verify): string
+    public function authorize(array $server, callable $verify, ?callable $sessionVerifier = null): string
     {
         // Browser navigation from another site must not invoke a legacy GET action.
         if (in_array(strtolower((string)($server['HTTP_SEC_FETCH_SITE'] ?? '')), array('cross-site'), true)) {
@@ -51,6 +51,7 @@ final class AccessPolicy
             if (!$verify($token)) throw new ApiException(401, 'invalid_token', 'Токен недействителен, отозван или истёк.', array(), array('WWW-Authenticate' => 'Bearer'));
             return 'token';
         }
+        if ($sessionVerifier !== null && $sessionVerifier()) return 'session';
         if ($this->isLocal($server)) return 'local';
         throw new ApiException(401, 'token_required', 'Для внешнего доступа требуется API-токен.', array(), array('WWW-Authenticate' => 'Bearer'));
     }

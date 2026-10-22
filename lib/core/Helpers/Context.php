@@ -151,15 +151,12 @@ function context_getuser()
     }
 
     global $session;
-    if (isset($session->data['SITE_USER_ID'])) {
-        return (int)$session->data['SITE_USER_ID'];
+    if ($session instanceof \MajorDoMo\Core\Http\Session && $session->user() !== null) {
+        return (int)$session->user()['id'];
     }
 
     $user = SQLSelectOne("SELECT ID FROM users WHERE IS_DEFAULT=1");
     $user_id = isset($user['ID']) ? (int)$user['ID'] : 0;
-    if(isset($session->data)){
-        $session->data['SITE_USER_ID'] = $user_id;
-    }
 
     return $user_id;
 }

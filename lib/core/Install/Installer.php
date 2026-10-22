@@ -578,6 +578,13 @@ final class Installer
             return '';
         }
 
+        if ($id === 'WEBSOCKETS_PUBLIC_URL') {
+            $url = parse_url($value);
+            if (!is_array($url) || !in_array($url['scheme'] ?? '', array('ws', 'wss'), true) || empty($url['host']) || isset($url['user']) || isset($url['pass']) || isset($url['fragment']) || isset($url['query'])) {
+                return 'Укажите ws:// или wss:// адрес без пароля, токена и параметров запроса.';
+            }
+        }
+
         if ($type === 'number') {
             if (!is_numeric($value)) {
                 return 'Введите число.';
@@ -622,6 +629,8 @@ final class Installer
             if (mb_strlen($value) < 8) {
                 return 'Пароль должен быть не короче 8 символов.';
             }
+            try { \MajorDoMo\Core\Users\Passwords::validate($value); }
+            catch (\InvalidArgumentException $error) { return $error->getMessage(); }
         }
 
         if ($id === 'admin_login' && !preg_match('/^[A-Za-z0-9_.-]{3,64}$/D', $value)) {

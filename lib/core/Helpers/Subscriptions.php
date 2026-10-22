@@ -98,9 +98,6 @@ function processSubscriptionsSafe($event_name, $details = '')
         'params' => json_encode($details),
 
     );
-    if (session_id()) {
-        $data[session_name()] = session_id();
-    }
     $url = BASE_URL . ROOTHTML . 'objects/?';
     postURLBackground($url, $data);
     return 1;

@@ -34,8 +34,8 @@ class modes extends module
         $this->getParams();
         require_once ROOT . 'lib/ui/MDJUI.php';
         global $session;
-        if (!isset($session->data['modes_csrf'])) $session->data['modes_csrf'] = bin2hex(random_bytes(32));
-        $token = $session->data['modes_csrf'];
+        if (!$session->has('modes_csrf')) $session->set('modes_csrf', bin2hex(random_bytes(32)));
+        $token = $session->get('modes_csrf');
         $manager = ModeManager::shared();
         $error = ''; $success = ''; $draft = null;
         $view = (string)$this->view_mode; $id = max(0, (int)$this->id);

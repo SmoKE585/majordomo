@@ -48,12 +48,9 @@ final class UserAccounts
 
     public function changePassword(int $id, string $password): array
     {
-        if ($password === '' || trim($password) === '' || strlen($password) > 1024 || preg_match('/[\x00-\x1F\x7F]/', $password)) {
-            throw new \InvalidArgumentException('Пароль должен содержать от 1 до 1024 байт, без управляющих символов и переводов строк.');
-        }
+        Passwords::validate($password);
         $user = $this->find($id);
-        // Keep the login contract used by modules/users and the installer.
-        $hash = hash('sha512', $password);
+        $hash = Passwords::hash($password);
         $statement = $this->statement('UPDATE users SET PASSWORD = ? WHERE ID = ?', array($hash, $id));
         $affected = $statement instanceof \PDOStatement ? $statement->rowCount() : $statement->affected_rows;
         if ($statement instanceof \mysqli_stmt) $statement->close();
@@ -61,6 +58,36 @@ final class UserAccounts
         // selected account still exists without ever returning its hash.
         if ($affected === 0) $this->find($id);
         return $user;
+    }
+
+    /** Authentication-only state; never expose the fingerprint in HTTP responses. */
+    public function adminState(int $id): ?array
+    {
+        $rows = $this->rows('SELECT ID,USERNAME,NAME,PASSWORD,IS_ADMIN FROM users WHERE ID=?', array($id));
+        return count($rows) === 1 ? self::state($rows[0]) : null;
+    }
+
+    public function verifyAdmin(string $username, string $password): ?array
+    {
+        if ($username === '' || strlen($username) > 1020 || strlen($password) > 1024) return null;
+        $rows = $this->rows('SELECT ID,USERNAME,NAME,PASSWORD,IS_ADMIN FROM users WHERE USERNAME=? LIMIT 2', array($username));
+        if (count($rows) !== 1 || !Passwords::verify($password, (string)$rows[0]['PASSWORD']) || (int)$rows[0]['IS_ADMIN'] !== 1) return null;
+        $user = $rows[0];
+        if (Passwords::needsRehash($user['PASSWORD'])) {
+            $hash = Passwords::hash($password);
+            $statement = $this->statement('UPDATE users SET PASSWORD=? WHERE ID=? AND PASSWORD=? AND IS_ADMIN=1', array($hash, (int)$user['ID'], $user['PASSWORD']));
+            $affected = $statement instanceof \PDOStatement ? $statement->rowCount() : $statement->affected_rows;
+            if ($statement instanceof \mysqli_stmt) $statement->close();
+            if ($affected !== 1) return null;
+            $user['PASSWORD'] = $hash;
+        }
+        return self::state($user);
+    }
+
+    private static function state(array $user): ?array
+    {
+        if ((int)$user['IS_ADMIN'] !== 1 || $user['PASSWORD'] === '' || hash_equals(hash('sha512', ''), $user['PASSWORD'])) return null;
+        return array('id' => (int)$user['ID'], 'username' => $user['USERNAME'], 'name' => $user['NAME'], 'stamp' => hash('sha256', $user['PASSWORD'] . "\0" . $user['USERNAME']));
     }
 
     private function rows(string $sql, array $parameters): array

@@ -120,6 +120,7 @@ final class ConfigSchema
             'DISABLE_WEBSOCKETS' => array('type' => 'boolean', 'optional' => true),
             'WEBSOCKETS_HOST' => array('type' => 'string', 'default' => '0.0.0.0'),
             'WEBSOCKETS_PORT' => array('type' => 'integer', 'default' => 8001),
+            'WEBSOCKETS_PUBLIC_URL' => array('type' => 'string', 'default' => '', 'constant' => false),
             'WEBSOCKETS_TLS' => array('type' => 'boolean', 'default' => false),
             'WEBSOCKETS_MAX_CLIENTS' => array('type' => 'integer', 'default' => 100),
             'WEBSOCKETS_MAX_CONNECTIONS_PER_IP' => array('type' => 'integer', 'default' => 100),

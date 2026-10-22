@@ -1,7 +1,14 @@
 <?php
 /*
-* @version 0.3 (wizard)
-*/
+ * Подготовка данных страницы группы ошибок.
+ *
+ * Дополняет запись описанием из ErrorCatalog, чтобы группа объясняла себя
+ * без чтения исходников.
+ *
+ * Изменения:
+ * 2026-10-22 — описание подставляется из ErrorCatalog; ручная правка
+ *              администратора не перезаписывается.
+ */
 
 require_once(__DIR__ . '/system_errors_helpers.inc.php');
 
@@ -49,6 +56,12 @@ if ($this->tab == '') {
             $out['ERR'] = 1;
         }
     }
+}
+
+// Известные коды объясняют себя сразу, не дожидаясь следующего срабатывания;
+// ручная правка администратора всегда важнее текста из каталога.
+if (class_exists('MajorDoMo\\Core\\ErrorCatalog')) {
+    $rec = \MajorDoMo\Core\ErrorCatalog::fill($rec, isset($rec['CODE']) ? (string)$rec['CODE'] : '');
 }
 
 $display_title = md_system_errors_title(

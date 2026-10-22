@@ -1,4 +1,36 @@
+---
+title: Аудит работы с базой данных (снимок)
+audience: agent
+category: core
+tags: база данных, аудит, SQL, N+1, MyISAM, история
+description: Разовый аудит SQL-слоя lib (июнь 2026) с отметками о том, что уже исправлено, а что осталось.
+order: 90
+---
+
 # Анализ работы с базой данных в `lib`
+
+> Статус: снимок на июнь 2026; выводы проверены октябрь 2026.
+>
+> Что изменилось с тех пор (подтверждено кодом):
+>
+> - реализации SQL-функций и объектных функций переехали в `lib/core/Helpers/`
+>   (`Database.php`, `Objects.php`, `ObjectHistory.php`, `Scheduler.php`);
+>   `lib/sqlFunctions.class.php`, `lib/objects.class.php`, `lib/common.class.php`,
+>   `lib/caching.class.php` — адаптеры совместимости;
+> - `SQLExec()` с пустым запросом исправлен (`lib/core/Helpers/Database.php`);
+> - N+1 в `getObjectsByProperty()`, `getObjectsByClass()`, `getClassProperties()`
+>   (обычная ветка) и `objectClassChanged()` устранены;
+> - `Select()`/`SelectOne()` больше не вызывают `Error()` повторно;
+> - `SQLMakeDBDump()`/`SQLRestoreDBDump()` работают через `proc_open()` с массивом
+>   аргументов;
+> - `runScheduledJobs()` больше не ходит по HTTP: задание забирает `Core::scheduler()`
+>   и выполняет отдельный процесс `scripts/core_worker.php`;
+> - `cleanUpPropertyHistory()` по-прежнему содержит N+1, `Insert()` по-прежнему
+>   превращает `null` в пустую строку, а `SQLTruncateTable()`/`SQLDropTable()`/
+>   `SQLGetFields()`/`SQLGetIndexes()` по-прежнему подставляют имя таблицы строкой;
+> - в `docs/dev/db_terminal.sql` сейчас 26 таблиц MyISAM, 12 InnoDB и 2 MEMORY
+>   (на момент анализа было 35/4/3); горячие таблицы переводит в InnoDB
+>   `lib/core/Migrations.php`.
 
 Дата анализа: 2026-06-06.
 
@@ -32,7 +64,7 @@
 
 ### `SQLExec()` и пустой запрос
 
-Файл: `lib/sqlFunctions.class.php`.
+Файл: `lib/core/Helpers/Database.php` (старый `lib/sqlFunctions.class.php` — адаптер).
 
 Проблема: `SQLExec()` проверял `$query[0]` до проверки пустой строки. На PHP 8 это может давать предупреждение при пустом запросе. Исправление не меняет SQL-логику: пустой, `null` и `false` запросы по-прежнему не выполняются, но первый символ читается только после этой проверки.
 
@@ -146,7 +178,7 @@
 
 ## Дополнение по аварийному выключению питания
 
-После дополнительной проверки найдено, что базовая схема `docs/dev/db_terminal.sql` содержит 35 таблиц `ENGINE=MyISAM`, 4 таблицы `ENGINE=InnoDB` и 3 таблицы `ENGINE=MEMORY`. Для сценария резкого выключения питания это критично: MyISAM не журналирует изменения как InnoDB и существенно чаще требует `CHECK/REPAIR TABLE` после падения питания или процесса MySQL.
+После дополнительной проверки найдено, что базовая схема `docs/dev/db_terminal.sql` на момент анализа содержала 35 таблиц `ENGINE=MyISAM`, 4 таблицы `ENGINE=InnoDB` и 3 таблицы `ENGINE=MEMORY` (текущие цифры — в блоке статуса выше). Для сценария резкого выключения питания это критично: MyISAM не журналирует изменения как InnoDB и существенно чаще требует `CHECK/REPAIR TABLE` после падения питания или процесса MySQL.
 
 ### Что исправлено в maintenance
 
@@ -249,7 +281,10 @@
 - `php -l lib/objects.class.php`
 - `php -l lib/sqlFunctions.class.php`
 - `php -l scripts/startup_maintenance.php`
-- `php -l public/index.php public/admin.php public/api.php cycle.php`
+- `php -l public/index.php`
+- `php -l public/admin.php`
+- `php -l public/api.php`
+- `php -l cycle.php`
 - smoke-test со стабами `SQLSelect`, `SQLSelectOne`, `DBSafe` для `getObjectsByProperty()`, `getObjectsByClass()`, `getClassProperties()`.
 
 Ограничение проверки: реальные SQL-планы и поведение на живой БД не запускались. Перед релизом желательно прогнать на копии базы сценарии API `/api.php` по классам/свойствам, смену класса объекта в админке и очистку истории свойства.
@@ -341,11 +376,14 @@
 - `setTimeOut()` теперь вызывает `addScheduledJob(..., $expire = 0)`, то есть новые таймеры не получают автоматическое истечение через 30 минут;
 - `addScheduledJob()` теперь не пишет `EXPIRE`, если `$expire <= 0`, и оставляет `EXPIRE = NULL`;
 - для прямых вызовов `addScheduledJob()` старый дефолт `1800` сохранен, чтобы не менять чужую явную семантику;
-- `runScheduledJobs()` теперь передает в `getURL()` отдельный timeout для jobs: `JOBS_EXECUTION_TIMEOUT`, по умолчанию 300 секунд;
+- `runScheduledJobs()` тогда получил отдельный timeout для jobs `JOBS_EXECUTION_TIMEOUT`
+  (по умолчанию 300 секунд); позже HTTP-вызов убран совсем — см. обновление в конце раздела;
 - `objects/index.php` теперь ловит `Throwable` при выполнении scheduled job.
 
-### Что не менялось намеренно
+### Что не менялось намеренно (на момент правок)
 
-Полностью убирать HTTP-вызов и выполнять `eval()` прямо внутри `runScheduledJobs()` рискованно: `eval()` внутри функции меняет область видимости PHP-кода. Сейчас job-код выполняется в `objects/index.php` на верхнем уровне, и часть старых пользовательских команд может неявно зависеть от такой области видимости.
+Полностью убирать HTTP-вызов и выполнять `eval()` прямо внутри `runScheduledJobs()` рискованно: `eval()` внутри функции меняет область видимости PHP-кода. На момент правок job-код выполнялся в `objects/index.php` на верхнем уровне, и часть старых пользовательских команд могла неявно зависеть от такой области видимости.
 
 Если потом делать локальное выполнение без HTTP, нужно сначала вынести исполнение в отдельный runner с совместимой областью видимости или проверить реальные пользовательские сценарии.
+
+> Обновление (октябрь 2026): HTTP-вызов из планировщика убран. `Core::scheduler()->run()` забирает задание и запускает `scripts/core_worker.php` через `ProcessRunner`, а `eval()` выполняется в `Scheduler::execute()` уже в отдельном процессе. Endpoint `/objects/?system_call=1&job=...` остался для совместимости.

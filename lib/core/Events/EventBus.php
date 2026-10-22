@@ -79,14 +79,7 @@ final class EventBus
         $database = self::database();
         if ($database !== null) {
             try {
-                $record = array(
-                    'NAME' => $name,
-                    'PAYLOAD' => $json,
-                    'SOURCE' => $source,
-                    'CREATED' => date('Y-m-d H:i:s'),
-                    'PROCESSED' => 0,
-                );
-                $id = $database->insert('system_events', $record);
+                $id = self::store($database, $name, $json, $source, date('Y-m-d H:i:s'));
             } catch (Throwable $error) {
                 self::log('Cannot write system event ' . $name . ': ' . $error->getMessage());
             }
@@ -95,6 +88,89 @@ final class EventBus
         self::mirror($name, $payload);
         self::dispatch($name, $payload, $source);
 
+        return $id;
+    }
+
+    /** Durable early-boot outbox; no DB, modules or listeners run in the caller. */
+    public static function defer(string $root, string $name, array $payload, string $source = 'core'): void
+    {
+        $event = array('name' => self::normalizeName($name), 'payload' => $payload,
+            'source' => substr($source, 0, self::MAX_SOURCE_LENGTH), 'created' => date('Y-m-d H:i:s'));
+        $json = json_encode($event, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+        $directory = rtrim($root, '/\\') . '/var/events';
+        if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new \RuntimeException('Cannot create system event outbox');
+        $target = $directory . '/' . hash('sha256', $json) . '.json';
+        if (is_file($target)) return;
+        $temporary = $target . '.' . bin2hex(random_bytes(6)) . '.tmp';
+        try {
+            if (file_put_contents($temporary, $json, LOCK_EX) !== strlen($json) || !rename($temporary, $target)) throw new \RuntimeException('Cannot publish deferred system event');
+        } finally { if (is_file($temporary)) unlink($temporary); }
+    }
+
+    /** Called from an authenticated admin boot or cycle_core after runtime boot. */
+    public static function flushDeferred(string $root, int $limit = 20): int
+    {
+        $directory = rtrim($root, '/\\') . '/var/events';
+        if (!is_dir($directory) || $limit < 1) return 0;
+        $database = self::database();
+        if ($database === null) return 0;
+        $processed = 0; $seen = 0;
+        foreach (new \DirectoryIterator($directory) as $file) {
+            if (!$file->isFile() || !preg_match('/^[a-f0-9]{64}\.json$/D', $file->getFilename())) continue;
+            if (++$seen > $limit) break;
+            $path = $file->getPathname();
+            // Another consumer may remove the entry between readdir and fopen.
+            $handle = self::openDeferred($path);
+            if ($handle === null) continue;
+            $acknowledged = false;
+            try {
+                if (!flock($handle, LOCK_EX | LOCK_NB)) continue;
+                $raw = stream_get_contents($handle, 1048577);
+                if ($raw === '') { $acknowledged = true; continue; }
+                if ($raw === false || strlen($raw) > 1048576) throw new \RuntimeException('Invalid deferred system event');
+                $event = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
+                $name = self::normalizeName((string)($event['name'] ?? ''));
+                if (!is_array($event['payload'] ?? null)) throw new \RuntimeException('Invalid deferred event payload');
+                $payload = $event['payload']; $json = self::encodePayload($payload);
+                $source = substr((string)($event['source'] ?? 'core'), 0, self::MAX_SOURCE_LENGTH);
+                $created = (string)($event['created'] ?? '');
+                if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/D', $created)) throw new \RuntimeException('Invalid deferred event date');
+                // A crash after the DB insert must not append a duplicate journal row.
+                $existing = $database->one("SELECT ID FROM system_events WHERE NAME='" . $database->escape($name)
+                    . "' AND SOURCE='" . $database->escape($source) . "' AND CREATED='" . $database->escape($created)
+                    . "' AND PAYLOAD='" . $database->escape($json) . "' LIMIT 1");
+                if ($existing === null) self::store($database, $name, $json, $source, $created);
+                self::mirror($name, $payload);
+                self::dispatch($name, $payload, $source);
+                if (!ftruncate($handle, 0)) throw new \RuntimeException('Cannot acknowledge deferred event');
+                $acknowledged = true;
+                $processed++;
+            } catch (Throwable $error) {
+                self::log('Cannot flush deferred system event: ' . get_class($error));
+            } finally {
+                fclose($handle);
+                if ($acknowledged && is_file($path)) unlink($path);
+            }
+        }
+        return $processed;
+    }
+
+    private static function openDeferred(string $path): mixed
+    {
+        set_error_handler(static function (int $severity, string $message): bool {
+            if (!str_contains($message, 'No such file') && !str_contains($message, 'not find the file')) throw new \RuntimeException('Cannot open deferred system event');
+            return true;
+        });
+        try { $handle = fopen($path, 'r+'); }
+        finally { restore_error_handler(); }
+        return $handle === false ? null : $handle;
+    }
+
+    private static function store(Database $database, string $name, string $json, string $source, string $created): int
+    {
+        $record = array('NAME' => $name, 'PAYLOAD' => $json, 'SOURCE' => $source, 'CREATED' => $created, 'PROCESSED' => 0);
+        $id = $database->insert('system_events', $record);
+        if ($id < 1) throw new \RuntimeException('System event was not saved');
         return $id;
     }
 

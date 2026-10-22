@@ -22,6 +22,7 @@ final class AdminApplication extends Application
         // A fresh installation must not expose the panel (or module AJAX)
         // before the setup wizard has written .env and the install marker.
         \MajorDoMo\Core\Install\InstallGate::redirectIfRequired($this->root);
+        \MajorDoMo\Core\Auth\AuthGate::enforce($this->root);
 
         require_once $this->root . '/lib/admin_router.php';
 
@@ -41,6 +42,7 @@ final class AdminApplication extends Application
         endMeasure('loader');
 
         $this->bootSettings();
+        Events\EventBus::flushDeferred($this->root);
 
         if (isset($_GET['part_load']) && checkFromCache('reload:' . md5($_SERVER['REQUEST_URI']))) {
             $res = array();
@@ -170,7 +172,6 @@ final class AdminApplication extends Application
 
             header("HTTP/1.0 200 OK\n");
             header('Content-Type: application/json; charset=utf-8');
-            $session->save();
             echo $result;
             exit;
         }
@@ -204,8 +205,6 @@ final class AdminApplication extends Application
 
         echo $result;
         endMeasure('echoall');
-
-        $session->save();
 
         endMeasure('TOTAL');
         performanceReport();

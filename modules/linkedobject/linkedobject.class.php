@@ -585,11 +585,8 @@ class linkedobject extends module
         }
 
         $out = array();
-        if ($this->action == 'admin') {
-            $this->admin($out);
-        } else {
-            $this->usual($out);
-        }
+        $this->action = 'admin';
+        $this->admin($out);
         if (isset($this->owner->action)) {
             $out['PARENT_ACTION'] = $this->owner->action;
         }
@@ -702,17 +699,8 @@ class linkedobject extends module
     {
     }
 
-    /**
-     * FrontEnd
-     *
-     * Module frontend
-     *
-     * @access public
-     */
-    function usual(&$out)
-    {
-        $this->admin($out);
-    }
+
+
 
     /**
      * Install

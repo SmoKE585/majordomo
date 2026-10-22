@@ -1,4 +1,18 @@
+---
+title: "Сторонние библиотеки: Composer и 3rdparty"
+audience: agent
+category: integration
+category_label: Интеграции
+category_icon: plug-connected
+category_order: 70
+tags: Composer, 3rdparty, библиотеки, PHPMailer, MQTT
+description: Что лежит в 3rdparty, как подключать PHP-пакеты через Composer и какие правила нельзя нарушать при обновлении зависимостей.
+order: 10
+---
+
 # Сторонние библиотеки: Composer и 3rdparty
+
+**Коротко:** старые библиотеки остаются в `3rdparty/` и подключаются вручную, а новые PHP-пакеты ставятся через Composer в `vendor/`. Оба механизма работают параллельно; нельзя ставить вторую копию той же библиотеки. Перед переносом проверяйте входящие ссылки по всему проекту.
 
 Документ отвечает на три вопроса: что лежит в `3rdparty/`, зачем это нужно, где
 используется и как добавлять PHP-пакеты через Composer. Composer и `3rdparty/`
@@ -8,14 +22,19 @@
 
 | Каталог | Размер | Что это | Где используется | Composer-пакет |
 | --- | --- | --- | --- | --- |
-| `php-mailer/` | 204 КБ | PHPMailer 6 | `lib/general.class.php` (`sendMail`) | `phpmailer/phpmailer` |
+| `php-mailer/` | 204 КБ | PHPMailer 6.0.1 | `lib/general.class.php` (`sendMail`) | `phpmailer/phpmailer` |
 | `phpmqtt/` | 24 КБ | Минимальный MQTT-клиент | `modules/mqtt/mqtt.class.php`, `scripts/cycle_mqtt.php` | `php-mqtt/client` |
 | `Paginator/` | 9 КБ | Постраничная навигация | `modules/actions_log/actions_log_search.inc.php` | `jasongrimes/paginator` |
 | `fonts/` | 1.2 МБ | Шрифт Rubik (woff2) | импорт Vite: `resources/js/app.js` → `../../3rdparty/fonts/rubik/rubik.css` | `@fontsource/rubik` (npm) |
 
 Итого ~1,4 МБ. Только `php-mailer`, `phpmqtt` и `Paginator`
 подключаются из PHP; `fonts` — веб-ресурс. Smarty удалён: шаблонный слой
-(`lib/core/Template/`) использует один движок jTemplates и PHP-партиалы.
+(`lib/core/Template/`) использует один движок `JTemplate` и PHP-партиалы.
+
+WebSocket использует `workerman/workerman` 5.x через Composer (`vendor/`),
+с совместимостью PHP 8.1. Старый `lib/websockets/` удалён; сервер и протокол
+находятся в `lib/core/WebSockets/`. После обновления выполните `composer install`
+на сервере. Протокол — [WebSocket ядра](websocket-ui-migration.md).
 
 Локальная версия `phpmqtt/phpMQTT.php` содержит ограниченный приёмник пакетов:
 `setReadLimits()`, таймаут незавершённого пакета, ожидание сокета, потоковый
@@ -55,7 +74,7 @@ composer install
 
 Команда создаёт `vendor/` и автозагрузку из `composer.lock`. В репозитории
 хранятся `composer.json` и `composer.lock`; `vendor/` и локальный `auth.json`
-исключены из Git. Пока сторонних Composer-зависимостей нет.
+исключены из Git. Через Composer установлен Workerman для WebSocket ядра.
 
 Добавить новый пакет:
 

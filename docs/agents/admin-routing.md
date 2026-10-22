@@ -1,4 +1,15 @@
-# Admin routing and 404
+---
+title: Маршрутизация админки и 404
+audience: agent
+category: api
+tags: маршруты, URL, 404, nginx, legacy
+description: Контракт чистых URL /panel/..., совместимость со старыми pd-ссылками, правила 302 и 404, таблица маршрутов и nginx.
+order: 40
+---
+
+# Маршрутизация админки и 404
+
+**Коротко:** все страницы админки живут под `/panel/...`, а inbound- и outbound-преобразования идут через одну таблицу `lib/admin_router.php`. Старые ссылки с `pd` открываются, а GET-запросы по возможности получают 302 на канонический URL. Неизвестные страницы отдают настоящий 404 — HTML или JSON.
 
 Документ описывает, как в админке MajorDoMo устроены «красивые» URL, почему старые
 ссылки с `pd` продолжают работать и как добавить новый маршрут.
@@ -18,7 +29,8 @@
 
 ## 2. Схема URL
 
-Все страницы админки живут под `/panel/`:
+Все страницы админки живут под `/panel/`. Ниже — основные маршруты; полный и
+актуальный список всегда задаёт `mdj_admin_route_table()`.
 
 | URL | Что открывает |
 | --- | --- |
@@ -40,8 +52,8 @@
 | `/panel/class/10/object/7/delete.html` | удаление объекта (GET-действие) |
 | `/panel/class/10/object/7/clone.html` | клонирование объекта |
 | `/panel/class/10/export.html` | экспорт класса |
-| `/panel/script/10.html` | сценарий |
-| `/panel/event/12.html` | событие |
+| `/panel/scripts.html`, `/panel/script/10.html` | список сценариев и сценарий |
+| `/panel/events.html`, `/panel/event/12.html` | список событий и событие |
 | `/panel/users.html` | список пользователей |
 | `/panel/users/add.html` | новый пользователь |
 | `/panel/users/10.html` | карточка пользователя |
@@ -71,11 +83,23 @@
 | `/panel/mqtt/settings.html` | настройки брокера |
 | `/panel/mqtt/clear-trash.html` | очистка непривязанных топиков |
 | `/panel/mqtt/optimize.html` | оптимизация истории MQTT |
+| `/panel/zigbee.html` | Zigbee-устройства |
+| `/panel/zigbee/bridges.html` | экземпляры Zigbee2MQTT |
+| `/panel/zigbee/discovered.html` | обнаруженные устройства |
+| `/panel/zigbee/device/10.html` | карточка Zigbee-устройства |
+| `/panel/zigbee/property/18.html` | свойство Zigbee-устройства |
+| `/panel/zigbee/journal.html` | журнал Zigbee |
+| `/panel/zigbee/monitoring.html` | мониторинг доступности и батарей |
+| `/panel/modes.html` | режимы дома |
+| `/panel/modes/add.html` | новый режим |
+| `/panel/modes/10.html` | карточка режима |
 | `/panel/knowledge_base.html` | база знаний (список материалов) |
 | `/panel/knowledge_base/<path>.html` | материал базы знаний (путь без `.md`) |
+| `/panel/xray.html` | X-Ray |
 | `/panel/settings.html?filter_name=codeeditor` | настройки с фильтром |
 | `/panel/<module>.html` | список любого модуля |
 | `/panel/<module>/<id>.html` | карточка любого модуля (generic) |
+| `/panel/<module>/<id>/<tab>.html` | вкладка любого модуля (generic) |
 
 Дополнительные параметры, которые не выражаются сегментом пути, остаются в
 query-строке: фильтры, страницы, `view_mode` для нестандартных действий.
@@ -85,8 +109,7 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 Единый источник правды — `lib/admin_router.php`:
 
 - `mdj_admin_route_table()` — таблица inbound-маршрутов (pretty path → legacy query).
-  Её использует 
-f.php`.
+  Её использует `public/nf.php`.
 - `mdj_admin_pretty_url()` — outbound-преобразователь (legacy query → pretty path).
   Его используют `parseLinks()`, `module::redirect()` и AJAX-поиск в шапке.
 - `mdj_admin_resolve_path()` / `mdj_admin_state_from_query()` — разбор и нормализация
@@ -97,8 +120,7 @@ f.php`.
 один параметр теряется, ссылка остаётся legacy. Поэтому непортированные модули
 продолжают работать без изменений.
 
-
-f.php` при открытии pretty URL собирает те же `$_REQUEST['pd']`, `md`, `inst` и
+`public/nf.php` при открытии pretty URL собирает те же `$_REQUEST['pd']`, `md`, `inst` и
 параметры модуля, что и раньше. Старые модули не знают, что URL изменился.
 
 Значения из маршрута — это состояние **по умолчанию**. Явные GET/POST-параметры
@@ -111,17 +133,20 @@ f.php` при открытии pretty URL собирает те же `$_REQUEST[
 - Старые URL с `pd`/`md` по-прежнему открываются.
 - Если состояние можно выразить красиво и без потерь, `admin.php` отвечает
   `302 Location: /panel/...` на канонический URL.
+- Редирект выполняется только для GET-запроса к `admin.php` и только если запрос
+  не служебный: `part_load`, `ajax`, `ajax_panel`, `print`, `popup`, `dynids`,
+  `ajt`, `_`, а также `view_mode` со словом `ajax` исключены.
 - POST, `part_load`, `ajax`, `print`, `popup` и прочие служебные запросы **не**
   редиректятся.
 - Старые закладки после первого открытия попадают на красивый URL.
 
 ## 5. 404
 
-- Неизвестный `*.html` → 
-f.php` не находит маршрут и отдаёт `lib/error_page.php`
-  со статусом `404`.
+- Неизвестный `*.html` → `public/nf.php` не находит маршрут и отдаёт
+  `lib/error_page.php` со статусом `404`.
 - Неизвестный модуль в админке (`/panel/foo.html`) → `panel.class.php` проверяет
-  наличие класса модуля и показывает 404 внутри shell, тоже со статусом `404`.
+  наличие класса модуля через `mdj_admin_module_exists()` и показывает 404 внутри
+  shell, тоже со статусом `404`.
 - `public/404.php` — публичная точка входа для nginx `error_page 404`.
 - `ajax`/`part_load`/`Accept: application/json` получают JSON, а не HTML.
 - Страница использует те же токены и `md-*` компоненты, светлую и тёмную тему.
@@ -154,13 +179,21 @@ f.php` не находит маршрут и отдаёт `lib/error_page.php`
 (`/modules/`, `/cms/`, `/objects/`, `/scripts/`, `/3rdparty/`, `/docs/`) смонтированы
 через `root`-override с вложенной PHP-локацией.
 
-Для pretty URL в конфиге обязательны:
+Для pretty URL и API в конфиге обязательны:
 
 - `location = /panel { return 301 /panel/; }`;
 - `location ^~ /panel/ { try_files $uri $uri/ /nf.php?$query_string; }`;
-- `location ^~ /api/ { rewrite ^ /api.php last; }`;
-- `deny` для `.env`, `config.php` и `/lib/` через `=`/`^~`, а не обычный prefix:
-  prefix-location проигрывает regex-локации `~ \.php$`;
-- запрет `templates/*.html`, `templates/ui/`, `templates/ui_kit/`, dotfiles и
-  служебных расширений (`sql`, `log`, ...).
+- `location ~ ^/api(?:\.php)?(?:/|$) { ... }` — отдельный FastCGI-обработчик без
+  `rewrite`: он передаёт исходный `REQUEST_URI`, `Authorization`, `X-API-Key` и
+  `X-Forwarded-For`, отключает `fastcgi_intercept_errors` и ограничивает тело 1 МиБ;
+- `error_page 413` отдаёт JSON с `request_id`, `error_page 404 /404.php` — общую
+  страницу 404;
+- запрет dotfiles и служебных расширений (`sql`, `log`, `sh`, `ini`, ...).
+  `config.php`, `.env` и `lib/` находятся вне document root, поэтому отдельный
+  `deny` для них не нужен — важно не поднимать `root` выше `public/`.
 
+## 9. История
+
+Как были устроены `index.php` и `nf.php` до перехода на `Application`-адаптеры —
+[исторический разбор](../archive/routing-index-nf.md). Его не нужно использовать
+как инструкцию по текущему коду.

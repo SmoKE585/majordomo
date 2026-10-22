@@ -3,10 +3,15 @@ title: Доступные команды
 audience: user, agent
 category: user
 tags: команды, cli, инструменты, установка, проверки, сборка
-description: Единая консоль php majordomo — справка, диагностика, циклы, перезапуск, журналы, установка и конфигурация; команды разработки.
+description: Единая консоль php majordomo — справка, диагностика, циклы, режимы, журналы, установка и конфигурация; команды разработки.
+order: 10
 ---
 
 # Доступные команды
+
+Авторизация: `php majordomo auth:unblock <ip>` снимает временную блокировку входа; `php majordomo logs:tail auth` показывает журнал попыток. Подробности — [вход в панель](authentication.md).
+
+**Коротко:** служебные операции собраны в единой консоли `php majordomo`; отдельные скрипты в `tools/` остались для совместимости и вспомогательных задач. Здесь собраны команды для циклов, журналов, пользователей, установки, конфигурации, API и режимов, а также проверки перед сдачей. Команды, которые пишут в базу, меняют `.env` или перезапускают циклы, запускайте осознанно.
 
 Все команды выполняются из корня проекта — там, где лежат `bootstrap.php`, `package.json` и каталоги `tools/`, `tests/`, `scripts/`.
 
@@ -14,7 +19,8 @@ description: Единая консоль php majordomo — справка, ди�
 cd /path/to/majordomo
 ```
 
-Для PHP-команд нужен PHP 8.4+. Справка и `about` работают без `.env` и БД;
+Для PHP-команд нужен PHP 8.1+ (локально проект проверяется на PHP 8.4).
+Справка и `about` работают без `.env` и БД;
 операции с конфигурацией и сервисами используют настройки текущей установки.
 Для команд `npm` — Node.js и установленные зависимости (`npm install`).
 
@@ -73,6 +79,19 @@ php majordomo doctor
 останется без циклов, поэтому без флага команда отказывается выполнять запрос.
 
 У CLI и веб-сервера должны быть права на общий каталог `cms/cycles`.
+
+### Режимы дома
+
+```bash
+php majordomo modes:list
+php majordomo modes:set night on
+php majordomo modes:set night off
+```
+
+`modes:list` показывает код, название, состояние и статус автоматики каждого
+режима. `modes:set <код> <on|off>` переключает режим, сохраняя работу
+автоматических правил; при ошибке действия команда возвращает код 1 и выводит
+текст ошибки. Подробности — [Режимы дома](modes.md).
 
 ### Журналы
 
@@ -203,6 +222,12 @@ php tools/config-audit.php --no-log
 | --- | --- |
 | `php tests/routing_smoke.php` | Чистые URL `/panel/...`, legacy `pd`-ссылки, round-trip маршрутов, nginx-контракт. |
 | `php tests/config_smoke.php` | Парсер `.env`, типы и кеш конфигурации, легаси-мост. |
+| `php tests/docs_quality_smoke.php` | Документация: front matter, известные категории, рабочие относительные ссылки и русский язык. |
+| `php tests/api_smoke.php` | Каталог API, маршруты, валидация и хранилище токенов на SQLite. |
+| `php tests/api_http_smoke.php` | HTTP-контракт API на loopback: статусы, JSON, заголовки и лимит тела. |
+| `php tests/logging_smoke.php` | Единый `errors.log`, каналы `DebMes`, уровни и подавление предупреждений. |
+| `php tests/network_memory_smoke.php` | MQTT-приёмник и WebSocket на loopback: лимиты, порядок, память и подписки. |
+| `php tests/zigbee_smoke.php` | Zigbee-модуль на SQLite: discovery, привязки, комнаты, преобразования и батареи. |
 | `php tests/console_smoke.php` | CLI: справка, строгие аргументы, JSON, циклы, журналы и адаптеры на временных файлах без БД/Redis. |
 | `php tests/console_users_smoke.php` | Оформление CLI, список пользователей и смена пароля на SQLite в памяти, без рабочей БД. |
 | `php tests/install_smoke.php` | Мастер настройки, `.env`-писатель, маркер установки, схема и gate. |
@@ -232,13 +257,15 @@ node tools/check-admin-assets.mjs
 | Команда | Что делает |
 | --- | --- |
 | `npm install` | Устанавливает зависимости. |
-| `npm run build` | Полная сборка: админ-бандл, редактор кода и графики. |
+| `npm run build` | Полная сборка: админ-бандл, редактор кода, графики и подсветка примеров. |
 | `npm run build:admin` | Только основной бандл `public/assets/admin/admin.*`. |
 | `npm run build:editor` | Только lazy-chunk редактора CodeMirror. |
 | `npm run build:charts` | Только lazy-chunk графиков ApexCharts. |
+| `npm run build:highlight` | Только lazy-chunk подсветки примеров кода. |
 | `npm run watch` | Пересобирает основной бандл при изменениях. |
 | `npm run watch:editor` | Пересобирает редактор при изменениях. |
 | `npm run watch:charts` | Пересобирает графики при изменениях. |
+| `npm run watch:highlight` | Пересобирает подсветку примеров при изменениях. |
 | `npm run icons` | Обновляет каталог иконок Tabler после обновления пакета. |
 | `npm run check` | Синтаксическая проверка `resources/js/app.js`. |
 
@@ -292,7 +319,6 @@ node tools/screenshot.mjs \
 | `scripts/cycle_mqtt.php` | Обработка MQTT. |
 | `scripts/cycle_ping.php` | Мониторинг доступности хостов. |
 | `scripts/cycle_phistory.php` | Запись истории свойств. |
-| `scripts/cycle_wscache.php` | Кеш WebSocket-данных. |
 | `scripts/cycle_execs.php` | Выполнение заданий. |
 | `scripts/cycle_websockets.php` | WebSocket-сервер. |
 | `scripts/core_worker.php` | Воркер фоновых задач ядра. |
@@ -301,6 +327,12 @@ node tools/screenshot.mjs \
 
 Для диагностики используйте `php majordomo cycles:status`, `logs:tail` или
 раздел **X-Ray** в админке.
+
+WebSocket сам читает очередь ядра; отдельного `cycle_wscache` и перезапуска
+каждые шесть часов больше нет. Запуск в терминале — `php majordomo websockets:serve`.
+В обычной установке сервером управляет супервизор: `cycles:stop websockets` /
+`cycles:restart websockets`. Команда `websockets:serve` не поддерживает `--json`;
+для состояния используйте `cycles:status --json`.
 
 ## 8. Типовой порядок работ
 
@@ -313,6 +345,7 @@ php tests/routing_smoke.php
 php tests/config_smoke.php
 php tests/install_smoke.php
 php tests/knowledge_base_smoke.php
+php tests/docs_quality_smoke.php
 npm run build
 php tools/config-audit.php
 ```
@@ -325,6 +358,10 @@ php tools/config-audit.php
 `php majordomo api:revoke <id>` — немедленный отзыв;
 `php majordomo api:spec` — спецификация OpenAPI без БД. Для автоматизации
 доступен `--json`. Выпуск и перевыпуск — в разделе API панели.
+
+Команды режимов: `php majordomo modes:list` — состояние режимов и автоматики;
+`php majordomo modes:set <код> on|off` — переключение с сохранением
+автоматических правил. Подробности — [Режимы дома](modes.md).
 
 - Запускать `php majordomo install:reset` на рабочей системе «просто так»: мастер перехватит админку, сайт и API до завершения настройки.
 - Запускать `php majordomo config:migrate --write --force` без резервной копии `.env`.

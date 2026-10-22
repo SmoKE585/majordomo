@@ -58,9 +58,6 @@ startMeasure('TOTAL'); // start calculation of execution time
 include_once(DIR_MODULES . "application.class.php");
 include_once("./load_settings.php");
 
-if (gr('prj')) {
-    $session = new session("prj");
-}
 
 $commandLine = 0;
 
@@ -109,9 +106,10 @@ if (!isset($commandLine)) {
 
 $module = gr('module');
 if ($module != '') {
-    include_once(DIR_MODULES . $module . '/' . $module . '.class.php');
-    $mdl = new $module();
-    echo $mdl->usual($_GET);
+    http_response_code(410);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(array('error' => 'module_frontend_removed', 'message' => 'Используйте /api/v1/module/{name}.'));
+    exit;
 }
 
 $job = gr('job');

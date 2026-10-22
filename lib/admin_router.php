@@ -223,22 +223,9 @@ function mdj_admin_route_table($rootHtml = null)
         '/^' . $root . 'panel\/?$/is'
             => '',
 
-        // --- Public frontend routes (legacy) ------------------------------
-        '/^' . $root . 'pages\.html/is' => '?(application:{action=pages})',
-        '/^' . $root . 'popup\/(shoutbox)\.html/is' => '?(application:{action=\1, popup=1, app_action=1})',
-        '/^' . $root . 'module\/(.+?)\.html/is' => '?(application:{action=\1, popup=1, app_action=1})',
-        '/^' . $root . 'module\/app_mediabrowser\.(.+?)\?play=/is' => '?(application:{action=app_mediabrowser, popup=1, app_action=1})',
-        '/^' . $root . 'apps\/(.+?)\.html/is' => '?(application:{action=apps, popup=1, app_action=\1})',
-        '/^' . $root . 'apps\.html/is' => '?(application:{action=apps, popup=1})',
-        '/^' . $root . 'popup\/(.+?)\/(.+?)\.html/is' => '?(application:{action=\1, popup=1})',
-        '/^' . $root . 'popup\/(.+?)\.html/is' => '?(application:{action=\1, popup=1})',
-        '/^' . $root . 'ajax\/(.+?)\.html/is' => '?(application:{action=\1, ajax=1})',
-        '/^' . $root . 'page\/(\w+?)\.html/is' => '?(application:{action=layouts, popup=1, id=\1}layouts:{view_mode=view_layouts, id=\1})',
-        '/^' . $root . 'getnextevent\.html/is' => '?(application:{action=events})',
-        '/^' . $root . 'getlatestnote\.html/is' => '?(application:{action=getlatestnote})',
-        '/^' . $root . 'getlatestmp3\.html/is' => '?(application:{action=getlatestmp3})',
-        '/^' . $root . 'design_sample\.html/is' => '?(application:{action=design_sample})',
-        '/^' . $root . 'settings\/(.+?)\.html/is' => '?(application:{app_action=1, action=settings}settings:{filter_name=\1})',
+        // Temporary admin AJAX aliases; all requests require an admin session.
+        '/^' . $root . 'ajax\/([a-zA-Z0-9_]+)\.html$/s' => '?action=\1&ajax=1',
+        '/^' . $root . 'getlatestnote\.html$/s' => '?action=getlatestnote',
     );
 }
 

@@ -94,11 +94,8 @@ class users extends module
     {
         global $session;
         $out = array();
-        if ($this->action == 'admin') {
-            $this->admin($out);
-        } else {
-            $this->usual($out);
-        }
+        $this->action = 'admin';
+        $this->admin($out);
         if (isset($this->owner->action)) {
             $out['PARENT_ACTION'] = $this->owner->action;
         }
@@ -144,37 +141,8 @@ class users extends module
         }
     }
 
-    /**
-     * FrontEnd
-     *
-     * Module frontend
-     *
-     * @access public
-     */
-    function usual(&$out)
-    {
-        global $session;
 
-        // The old user picker is intentionally gone: the next authentication
-        // layer will replace it. Always show the username/password form.
-        $username = gr('username');
-        $password = gr('password');
 
-        if ($username != '' && $password != '') {
-            $user = SQLSelectOne("SELECT * FROM users WHERE USERNAME LIKE '" . DBSafe($username) . "'");
-            if (!empty($user['ID']) && $user['PASSWORD'] !== '' && hash('sha512', $password) === $user['PASSWORD']) {
-                $session->data['SITE_USERNAME'] = $user['USERNAME'];
-                $session->data['SITE_USER_ID'] = $user['ID'];
-                $this->redirect(ROOTHTML);
-            }
-            $out['INCORRECT'] = 1;
-        } elseif ($username != '') {
-            // A username alone is no longer enough: a password is mandatory.
-            $out['INCORRECT'] = 1;
-        }
-
-        $out['USERNAME'] = $username;
-    }
 
     /**
      * users search
@@ -245,15 +213,6 @@ class users extends module
         /*
         users - Users
         */
-
-        // update password for users
-        $users = SQLSelect("SELECT * FROM users");
-        foreach ($users as $user) {
-            if (strlen($user['PASSWORD']) < 128) {
-                $user['PASSWORD'] = hash('sha512', $user['PASSWORD']);
-                SQLUpdate('users', $user);
-            }
-        }
 
         $data = <<<EOD
  users: ID int(10) unsigned NOT NULL auto_increment

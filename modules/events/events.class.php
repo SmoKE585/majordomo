@@ -94,11 +94,8 @@ class events extends module
     {
         global $session;
         $out = array();
-        if ($this->action == 'admin') {
-            $this->admin($out);
-        } else {
-            $this->usual($out);
-        }
+        $this->action = 'admin';
+        $this->admin($out);
         if (IsSet($this->owner->action)) {
             $out['PARENT_ACTION'] = $this->owner->action;
         }
@@ -127,6 +124,11 @@ class events extends module
      */
     function admin(&$out)
     {
+        if ($this->ajax && gr('getlatest')) {
+            header('Content-Type: text/html; charset=utf-8');
+            echo $this->renderEventsFeedHtml(12);
+            exit;
+        }
         if (isset($this->data_source) && !$_GET['data_source'] && !$_POST['data_source']) {
             $out['SET_DATASOURCE'] = 1;
         }
@@ -192,91 +194,8 @@ class events extends module
         }
     }
 
-    /**
-     * FrontEnd
-     *
-     * Module frontend
-     *
-     * @access public
-     */
-    function usual(&$out)
-    {
-        global $session;
 
-        if ($this->ajax) {
-            echo $this->renderEventsFeedHtml(12);
-            exit;
-        }
 
-        if ($this->action == 'addevent') {
-
-            global $mode;
-            $this->mode = $mode;
-
-            if ($this->mode == 'update') {
-                global $type;
-                global $window;
-                global $details;
-                global $terminal_to;
-                global $user_to;
-                $event = array();
-                $event['EVENT_TYPE'] = $type;
-                $event['WINDOW'] = $window;
-                $event['DETAILS'] = $details;
-                $event['TERMINAL_TO'] = $terminal_to;
-                $event['TERMINAL_FROM'] = $session->data['TERMINAL'];
-                $event['USER_TO'] = $user_to;
-                $event['USER_FROM'] = $session->data['USERNAME'];
-                $event['ADDED'] = date('Y-m-d H:i:s');
-                $event['EXPIRE'] = date('Y-m-d H:i:s', time() + 5 * 60); //5 minutes expire
-                SQLInsert('events', $event);
-                postToWebSocketQueue('TERMINAL_EVENT', $event, 'PostEvent');
-            }
-
-            $terminals = getAllTerminals(-1, 'TITLE');
-            $total = count($terminals);
-            for ($i = 0; $i < $total; $i++) {
-                if ($terminals[$i]['NAME'] == $session->data['TERMINAL']) {
-                    $terminals[$i]['SELECTED'] = 1;
-                    $out['TERMINAL_TITLE'] = $terminals[$i]['TITLE'];
-                }
-            }
-            $out['TERMINALS'] = $terminals;
-
-            $users = SQLSelect("SELECT * FROM users ORDER BY NAME");
-            $total = count($users);
-            for ($i = 0; $i < $total; $i++) {
-                if ($users[$i]['USERNAME'] == $session->data['USERNAME']) {
-                    $users[$i]['SELECTED'] = 1;
-                    $out['USER_TITLE'] = $users[$i]['NAME'];
-                }
-            }
-            $out['USERS'] = $users;
-
-        }
-
-        if ($this->action == 'getnextevent') {
-            if (!$session->data['TERMINAL']) {
-                $session->data['TERMINAL'] = 'temp' . date('YmdHis');
-            }
-            //echo "next event for ".$session->data['USERNAME']." on ".$session->data['TERMINAL'];//.date('H:i:s')
-            SQLExec("DELETE FROM events WHERE EXPIRE<NOW() AND EVENT_TYPE!='system'");
-            $qry = "1";
-            //$qry.=" AND TERMINAL_FROM!='".DBSafe($session->data['TERMINAL'])."'";
-            $qry .= " AND EVENT_TYPE!='system'";
-            $qry .= " AND PROCESSED=0";
-            $qry .= " AND (TERMINAL_TO='*' OR TERMINAL_TO='" . DBSafe(isset($session->data['TERMINAL'])?$session->data['TERMINAL']:'') . "')";
-            $qry .= " AND (USER_TO='*' OR USER_TO='" . DBSafe(isset($session->data['USERNAME'])?$session->data['USERNAME']:'') . "')";
-            $event = SQLSelectOne("SELECT * FROM events WHERE $qry ORDER BY ADDED");
-            if (isset($event['ID'])) {
-                $res = $event['ID'] . '|' . $event['EVENT_TYPE'] . '|' . $event['WINDOW'] . '|' . str_replace("\n", '\n', $event['DETAILS']);
-                echo $res;
-                $event['PROCESSED'] = 1;
-                SQLUpdate('events', $event);
-            }
-            exit;
-        }
-    }
 
     /**
      * Recent events feed used by the admin page and its live AJAX refresh.
@@ -610,6 +529,9 @@ class events extends module
     private function systemEventText(string $name, array $payload): string
     {
         switch ($name) {
+            case \MajorDoMo\Core\Events\SystemEvents::AUTH_BRUTE_FORCE:
+                return 'IP ' . (string)($payload['ip'] ?? '') . ': ' . (int)($payload['attempts'] ?? 0)
+                    . ' неудачных попытки входа. Блокировка на 15 минут. Логин: ' . (string)($payload['login'] ?? '') . '.';
             case \MajorDoMo\Core\Events\SystemEvents::MODULE_INSTALLED:
                 return 'Модуль ' . (string)($payload['module'] ?? '') . ' установлен.';
             case \MajorDoMo\Core\Events\SystemEvents::MODULE_REMOVED:
@@ -657,6 +579,7 @@ class events extends module
     private function systemEventIcon(string $name): string
     {
         $icons = array(
+            \MajorDoMo\Core\Events\SystemEvents::AUTH_BRUTE_FORCE => 'shield-lock',
             \MajorDoMo\Core\Events\SystemEvents::MODULE_INSTALLED => 'puzzle',
             \MajorDoMo\Core\Events\SystemEvents::MODULE_REMOVED => 'puzzle-off',
             \MajorDoMo\Core\Events\SystemEvents::MODULE_UPDATED => 'package',

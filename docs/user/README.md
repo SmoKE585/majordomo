@@ -1,59 +1,54 @@
-![MajorDoMo](https://majordomohome.com/img/slider/slider3.png)
+---
+title: "MajorDoMo: краткий обзор"
+audience: user, agent
+category: user
+category_label: Пользователю
+category_icon: user
+category_order: 90
+tags: обзор, установка, сообщество, документация, сборка
+description: Что такое MajorDoMo, где взять документацию и сообщество, как пройти первый запуск и собрать статику админки.
+order: 5
+---
 
-What is MajorDoMo
-=========
+# MajorDoMo
 
-MajorDoMo (Major Domestic Module) is an open-source DIY smarthome automation platform aimed to be used in multi-protocol and multi-services environment. It is based on web-technologies stack and ready to be delivered to any modern device. It is very flexible in configuration with OOP paradigm used to set up automation rules and scripts. This platform can be installed on almost any personal computer running Windows or Linux OS.
+**Коротко:** MajorDoMo — открытая платформа домашней автоматизации на PHP: объекты, свойства, методы и сценарии связывают железо, сервисы и интерфейс. Система работает на обычном компьютере или сервере под Windows/Linux и настраивается через веб-панель. Этот файл — точка входа для пользователя; технические детали лежат в остальной документации.
 
-Web-sites
-=========
+## Что это
 
-English: [majordomohome.com](http://majordomohome.com/?utm_source=github&utm_medium=link&utm_campaign=main_page) + [forum](https://majordomo.smartliving.ru/forum/?utm_source=github&utm_medium=link&utm_campaign=forum)
+MajorDoMo (Major Domestic Module) — открытая DIY-платформа для умного дома, рассчитанная на работу с разными протоколами и сервисами. Она построена на веб-технологиях и открывается с любого современного устройства. Правила автоматизации описываются объектами, свойствами, методами и сценариями, поэтому систему можно подстроить под конкретный дом, не меняя ядро.
 
-Russian: [majordomo.smartliving.ru](https://majordomo.smartliving.ru/?utm_source=github&utm_medium=link&utm_campaign=main_page) + [forum](https://majordomo.smartliving.ru/forum/viewforum.php?f=12&utm_source=github&utm_medium=link&utm_campaign=forum)
+## Сайты и сообщество
 
-Our mission
-=========
+- Английский сайт: [majordomohome.com](https://majordomohome.com/?utm_source=github&utm_medium=link&utm_campaign=main_page), [форум](https://majordomo.smartliving.ru/forum/?utm_source=github&utm_medium=link&utm_campaign=forum).
+- Русский сайт: [majordomo.smartliving.ru](https://majordomo.smartliving.ru/?utm_source=github&utm_medium=link&utm_campaign=main_page), [форум](https://majordomo.smartliving.ru/forum/viewforum.php?f=12&utm_source=github&utm_medium=link&utm_campaign=forum).
 
-Our goal is to create most flexible but still easy to use platform for all kind of automation projects involving hardware and software interaction.
+Сообщество — одна из главных сильных сторон проекта: на форумах помогают с железом, модулями и сценариями. Присоединиться можно через форумы или письмом на `ip@mdmi.by`.
 
-Our plans
-=========
+## Первый запуск
 
-More hardware to integrate, make everything much more user-friendly, get the code in order, add more languages (translations)... And much more :)
+На чистой установке откройте `/install.php` (можно просто `/panel/` — он перенаправит на мастер). Мастер проверяет PHP, расширения и права на файлы, подключается к базе, записывает `.env`, сохраняет настройки интерфейса (тема, название системы, язык, часовой пояс) и при необходимости создаёт первого администратора. Пока мастер не завершён, `/panel/`, сайт, `/api/` и прямые эндпоинты модулей закрыты шлюзом настройки.
 
-Community
-=========
+Подробности: [мастер установки](../agents/install.md), [конфигурация](../agents/configuration.md).
 
-One of the things we really proud of is supportive and friendly world-wide community.
-![Map](http://c2n.me/3Q3Sh8e.jpg)
+## Сборка админки
 
-Contribution
-=========
-
-Feel free to join our team! Join discussions on forums below or mail us directly at ip@mdmi.by 
-Any help is much appreciated. 
-
-Docs for shared CodeMirror integration:
-- [docs/agents/codemirror-module-integration.md](docs/agents/codemirror-module-integration.md)
-
-First run
-=========
-On a fresh installation open `/install.php` (or just `/panel/` — it redirects to
-the wizard). The wizard checks PHP/extensions/file permissions, connects to the
-database, writes `.env`, saves interface settings (theme, system name, language,
-timezone) and creates the first administrator when needed. Until the wizard is
-finished, `/panel/`, the site, `/api/` and direct module endpoints stay behind
-the setup gate. Details: `docs/agents/install.md`.
-
-Admin asset build
-=========
-The admin panel assets are built with npm + Vite into `public/assets/admin/` and committed, so PHP hosting does not need Node.js at runtime.
+Статика админки собирается через npm + Vite в `public/assets/admin/` и коммитится в репозиторий, поэтому на рабочем сервере Node.js не нужен.
 
 ```bash
 npm install
 npm run build
 ```
 
-Source entry point: `resources/js/app.js`. Details: `docs/agents/admin-assets.md`.
+Исходная точка сборки — `resources/js/app.js`. Подробности: [сборка и статика админки](../agents/admin-assets.md).
 
+## Документация
+
+Полная карта материалов — [docs/README.md](../README.md). Полезные разделы:
+
+- [Доступные команды](commands.md) — `php majordomo`, циклы, журналы, пользователи, проверки.
+- [Журналы системы](logs.md) — где искать ошибки и как писать диагностику.
+- [Режимы дома](modes.md) — сценарии «день/ночь/отпуск» и автоматические правила.
+- [API и токены](api.md) — доступ к API ядра извне.
+- [Zigbee-устройства](zigbee.md) — Zigbee2MQTT, привязки и комнаты.
+- [Интеграция CodeMirror в модули](../agents/codemirror-module-integration.md) — для разработчиков модулей.

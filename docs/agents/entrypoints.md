@@ -1,8 +1,25 @@
+---
+title: Точки входа и Application
+audience: agent
+category: core
+tags: точки входа, Application, bootstrap, глобалы, nf.php
+description: Устройство HTTP-точек входа и порядок загрузки Application, AdminApplication, SiteApplication и InstallApplication.
+order: 20
+---
+
 # Точки входа и `Application`
 
+Авторизация, сессии и удаление старого фронтенда описаны в [authentication.md](authentication.md). `AuthGate` проверяет доступ до loader, `SiteApplication` оставлен только для редиректа в админку и временных защищённых AJAX-входов.
+
+## Коротко
+
+Здесь описано, как `public/*.php` превращаются в `Application`-наследников и в каком порядке грузятся конфигурация, библиотеки, настройки и сессия. Читайте перед новой точкой входа или правкой boot-последовательности. Нельзя ломать порядок `config → loader → settings`, контракт глобалов (`$session`, `$db`, `$action`) и тонкие адаптеры в `public/`.
+
 Консольная точка входа — `majordomo` в корне: `php majordomo <команда>`.
-Она использует отдельный `MajorDoMo\Core\Console\Application`, без HTTP boot,
-legacy loader и `load_settings.php`. Правила добавления команд: [console.md](console.md).
+Она использует отдельный `MajorDoMo\Core\Console\Application` и по умолчанию
+не делает HTTP boot, не подключает legacy loader и `load_settings.php`. Полный
+рантайм грузит только та команда, которой он действительно нужен (например,
+`modes:set` через `Context::modes()`). Правила добавления команд: [console.md](console.md).
 
 Документ для агентов, которые добавляют или меняют HTTP-точки входа.
 Цель — не возвращать бизнес-логику в `public/*.php`.
@@ -12,10 +29,10 @@ legacy loader и `load_settings.php`. Правила добавления ком
 ```
 public/admin.php   ─┐
 public/index.php   ─┼─> bootstrap.php ─> MajorDoMo\Core\Application
-public/nf.php      ─┘                         │
-                                              ├─ AdminApplication  (panel)
-                                              └─ SiteApplication   (сайт)
+                   │                         ├─ AdminApplication  (panel)
+                   │                         └─ SiteApplication   (сайт)
 
+public/nf.php ──> таблица маршрутов ──> public/admin.php или public/index.php
 public/install.php ───> InstallApplication (config only, без loader/settings)
 public/api.php     ───> ApiApplication (config → доступ/JSON → loader/settings → Dispatcher)
 ```
@@ -34,9 +51,12 @@ public/api.php     ───> ApiApplication (config → доступ/JSON → l
 - [lib/core/SiteApplication.php](../../lib/core/SiteApplication.php) — сайт:
   `application`, 404, postprocess, вывод.
 
-`nf.php` пока остаётся процедурным роутером, но для `/panel/...` и для
-сайтовых маршрутов он подключает те же тонкие `admin.php` / `index.php`,
-поэтому жизненный цикл один и тот же.
+`nf.php` остаётся процедурным роутером: он сам поднимает `config.php` и
+`lib/loader.php`, находит маршрут по таблице `lib/admin_router.php`, а затем
+подключает тонкие `admin.php` / `index.php`. Повторная загрузка тех же файлов
+внутри `Application` идёт через `require_once`, поэтому двойной инициализации нет,
+но порядок «сначала роутинг, потом boot приложения» отличается от прямого
+`/admin.php`.
 
 ## 2. Порядок загрузки
 
@@ -59,7 +79,7 @@ public/api.php     ───> ApiApplication (config → доступ/JSON → l
 `Application::bootSettings()`:
 
 1. `load_settings.php` — `SETTINGS_*`, timezone, токены WebSocket;
-2. может вызвать `exit` (main cycle down) — это ожидаемо. Авторизацию выполняет reverse proxy, встроенной Basic Auth больше нет.
+2. может вызвать `exit` (main cycle down) — это ожидаемо. Авторизация уже проверена `AuthGate`; встроенной Basic Auth нет.
 
 `Application::startSession('prj')`:
 
@@ -76,7 +96,7 @@ public/api.php     ───> ApiApplication (config → доступ/JSON → l
 | --- | --- | --- |
 | `$session` | почти все модули, `panel` | `Application::startSession()` |
 | `$db` | `objects`, `control_modules` | `lib/loader.php` |
-| `$md` | `jTemplate`, модули | `AdminApplication` / `SiteApplication` |
+| `$md` | шаблоны, модули | `AdminApplication` / `SiteApplication` |
 | `$action` | `panel`, `control_modules` | роутер `nf.php` или `AdminApplication` |
 | `$view_mode` | модули | роутер/`$_REQUEST` (как раньше) |
 | `$fake_doc` | `AdminApplication`, `SiteApplication` | `nf.php` |
@@ -111,9 +131,9 @@ public/api.php     ───> ApiApplication (config → доступ/JSON → l
 `lib/loader.php` и `load_settings.php`. Причина — база может быть недоступна или
 ещё не содержать таблиц, а мастер обязан показать диагностику и форму, а не
 `Fatal error`. `InstallGate` при этом подключён в обычных `AdminApplication`,
-`SiteApplication`, `public/api.php` и `objects/index.php`, поэтому до завершения
-настройки пользователь не попадёт в остальные разделы. Подробно —
-[`install.md`](install.md).
+`SiteApplication`, `ApiApplication` (через `public/api.php`), `objects/index.php`
+и `lib/loader.php`, поэтому до завершения настройки пользователь не попадёт в
+остальные разделы. Подробно — [`install.md`](install.md).
 
 ## 5. Правила для правок
 
@@ -132,12 +152,13 @@ public/api.php     ───> ApiApplication (config → доступ/JSON → l
 
 Пока не переведены:
 
-- `public/nf.php` — роутер pretty URL и legacy `pd`;
-- `public/api.php` уже переведён в тонкий адаптер `ApiApplication`:
-  маршруты, JSON, сети и токены находятся в `lib/core/Api/`, см. [api.md](api.md);
+- `public/nf.php` — роутер pretty URL и legacy `pd` (сам поднимает config и loader);
 - `public/404.php` — рендер 404;
 - `objects/index.php` — обработчик объектов;
 - `cycle.php` и `scripts/*` — CLI-циклы.
+
+`public/api.php` уже переведён в тонкий адаптер `ApiApplication`:
+маршруты, JSON, сети и токены находятся в `lib/core/Api/`, см. [api.md](api.md).
 
 Их можно переводить по одному на `Application`-наследников. Начинать лучше с
 `nf.php`: он уже подключает тонкие `admin.php`/`index.php`, осталось вынести
@@ -149,7 +170,8 @@ public/api.php     ───> ApiApplication (config → доступ/JSON → l
 php -l lib/core/Application.php
 php -l lib/core/AdminApplication.php
 php -l lib/core/SiteApplication.php
-php -l public/admin.php public/index.php
+php -l public/admin.php
+php -l public/index.php
 php tests/routing_smoke.php
 php tests/config_smoke.php
 ```

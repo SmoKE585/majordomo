@@ -89,11 +89,8 @@ class settings extends module {
    $this->folderListing();
    return;
   }
-  if ($this->action=='admin') {
-   $this->admin($out);
-  } else {
-   $this->usual($out);
-  }
+  $this->action = 'admin';
+        $this->admin($out);
   if (IsSet($this->owner->action)) {
    $out['PARENT_ACTION']=$this->owner->action;
   }
@@ -165,17 +162,8 @@ class settings extends module {
  }
 
 }
-/**
-* FrontEnd
-*
-* Module frontend
-*
-* @access public
-*/
- function usual(&$out) {
- $this->admin($out);
- $out['HIDE_FILTERS'] = 1;
-}
+
+
 /**
 * settings search
 *

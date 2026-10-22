@@ -80,8 +80,8 @@ require_once $sourceRoot . '/lib/core.class.php';
 \MajorDoMo\Core\Config::boot($fixture);
 $originalDirectory = getcwd();
 chdir($fixture);
-require_once $sourceRoot . '/lib/websockets/server/lib/WebSocket/Application/Application.php';
-require_once $sourceRoot . '/lib/websockets/server/lib/WebSocket/Application/MajordomoApplication.php';
+
+
 
 $checks = 0;
 $logs = array();
@@ -144,11 +144,7 @@ class MemoryTestWsClient
 }
 function wsAction($app, $client, string $action, array $data): void
 {
-    $app->onData(json_encode(array('action' => $action, 'data' => $data)), $client);
-}
-function wsValue($app, string $field)
-{
-    return (new ReflectionProperty($app, $field))->getValue($app);
+    $app->receive('fixture-client', json_encode(array('action' => $action, 'data' => $data)));
 }
 $remove = static function (string $path) use (&$remove): void {
     if (is_dir($path)) {
@@ -270,53 +266,47 @@ try {
     check(proc_close($broker) === 0 && $brokerErrors === '' && count($latencies) === 7, 'multiple SUBACKs, retained and delayed messages preserve delivery order');
     check(max($latencies) < 0.25, 'socket waiting wakes promptly on new sensor data');
 
-    $objects_module = new class {
-        public function getWatchedProperties($ids) {
-            return array_map(static fn($id) => array('PROPERTY' => 'room' . $id . '.state', 'OBJECT_ID' => $id), explode(',', $ids));
-        }
-        public function processObject($id) { return array('OBJECT_ID' => $id, 'HTML' => 'object'); }
-    };
-    $app = new \WebSocket\Application\MajordomoApplication();
+    $pages = static function (): Generator { if (false) yield array(); };
+    $app = new \MajorDoMo\Core\WebSockets\Protocol($pages, static fn($names) => array(), 8, 8, 2048, 1048576, 20000,
+        static fn($id) => 'object-' . $id);
     $client = new MemoryTestWsClient();
-    ob_start(); $app->onConnect($client); ob_end_clean();
-    wsAction($app, $client, 'PostProperty', array('NAME' => 'room.value', 'VALUE' => 'single'));
+    $app->connect('fixture-client', static fn($message) => $client->send($message), static function ($code, $reason): void {}, false);
+    $app->publish(array(array('PROPERTY' => 'room.value', 'VALUE' => 'single')));
     check($client->lastMessage['decoded'][0]['VALUE'] === 'single', 'single property update is delivered correctly');
-    for ($i = 0; $i < 8; $i++) wsAction($app, $client, 'PostProperty', array('NAME' => 'room.p' . $i, 'VALUE' => 'v' . $i));
-    wsAction($app, $client, 'GetProperties', array('PROPERTIES' => 'room.p0'));
-    wsAction($app, $client, 'PostProperty', array('NAME' => 'room.new', 'VALUE' => 'new'));
-    $cache = wsValue($app, '_cachedProperties');
-    check(count($cache) === 8 && isset($cache['room.p0']) && !isset($cache['room.p1']), 'cache evicts the least recently used entry');
-    wsAction($app, $client, 'GetProperties', array('PROPERTIES' => 'room.p1'));
-    check($client->lastMessage['decoded']['DATA'][0]['VALUE'] === 'fresh:room.p1', 'evicted values are reloaded from the authoritative source');
-    $expires = new ReflectionProperty($app, 'cacheExpires');
-    $expires->setValue($app, array_fill_keys(array_keys($cache), time() - 1));
-    wsAction($app, $client, 'GetProperties', array('PROPERTIES' => 'room.p0'));
-    check($client->lastMessage['decoded']['DATA'][0]['VALUE'] === 'fresh:room.p0', 'expired cache values are not served');
-    wsAction($app, $client, 'PostProperty', array('NAME' => 'room.big', 'VALUE' => str_repeat('x', 3000)));
-    check(strlen($client->lastMessage['decoded'][0]['VALUE']) === 3000 && !isset(wsValue($app, '_cachedProperties')['room.big']), 'large updates are delivered without being retained in cache');
+    $app->publish(array(array('PROPERTY' => 'room.big', 'VALUE' => str_repeat('x', 3000))));
+    check(strlen($client->lastMessage['decoded'][0]['VALUE']) === 3000, 'large update is delivered without a value cache');
     $baseline = memory_get_usage();
-    for ($i = 0; $i < 10000; $i++) wsAction($app, $client, 'PostProperty', array('NAME' => 'dynamic.' . $i, 'VALUE' => str_repeat('v', 320)));
+    for ($i = 0; $i < 10000; $i++) $app->publish(array(array('PROPERTY' => 'dynamic.' . $i, 'VALUE' => str_repeat('v', 320))));
     $wsGrowth = memory_get_usage() - $baseline;
-    check(count(wsValue($app, '_cachedProperties')) <= 8 && wsValue($app, 'cacheBytes') <= 2048 && $wsGrowth < 1048576, '10,000 unique property updates keep cache memory bounded');
+    check($wsGrowth < 1048576, '10,000 unique property updates do not retain a value history');
 
     wsAction($app, $client, 'Subscribe', array('TYPE' => 'properties', 'PROPERTIES' => 'room.a', 'REPLACE' => true));
     wsAction($app, $client, 'Subscribe', array('TYPE' => 'properties', 'PROPERTIES' => 'room.b'));
-    check(isset($client->watchedProperties['room.a'], $client->watchedProperties['room.b']), 'legacy property subscriptions remain additive');
+    $app->publish(array(array('PROPERTY' => 'room.a', 'VALUE' => 1)));
+    check($client->lastMessage['action'] === 'properties', 'legacy subscriptions remain additive');
     wsAction($app, $client, 'Unsubscribe', array('TYPE' => 'properties', 'PROPERTIES' => 'room.a'));
-    check(!isset($client->watchedProperties['room.a']) && isset($client->watchedProperties['room.b']), 'explicit unsubscribe removes only the requested property');
+    $before = $client->sent;
+    $app->publish(array(array('PROPERTY' => 'room.a', 'VALUE' => 2)));
+    check($client->sent === $before, 'explicit unsubscribe removes only requested property');
+    $app->publish(array(array('PROPERTY' => 'room.b', 'VALUE' => 3)));
+    check($client->sent === $before + 1, 'other subscriptions survive unsubscribe');
     wsAction($app, $client, 'Subscribe', array('TYPE' => 'events', 'EVENTS' => 'SAY'));
-    for ($i = 0; $i < 1000; $i++) wsAction($app, $client, 'Subscribe', array('TYPE' => 'objects', 'OBJECT_ID' => (string)$i));
-    check(count($client->watchedProperties) === 2 && isset($client->watchedProperties['room999.state']), 'scene changes replace old object watches');
+    for ($i = 1; $i <= 1000; $i++) wsAction($app, $client, 'Subscribe', array('TYPE' => 'objects', 'OBJECT_ID' => (string)$i));
+    $app->publish(array(array('PROPERTY' => 'room1000.state', 'VALUE' => 1, 'OBJECT_ID' => 1000), array('PROPERTY' => 'room999.state', 'VALUE' => 1, 'OBJECT_ID' => 999)));
+    check($client->lastMessage['action'] === 'objects' && count($client->lastMessage['decoded']['DATA']) === 1 && $client->lastMessage['decoded']['DATA'][0]['OBJECT_ID'] === 1000, 'object changes replace old watches');
     wsAction($app, $client, 'Subscribe', array('TYPE' => 'properties', 'PROPERTIES' => 'room.c', 'REPLACE' => true));
-    check(!isset($client->watchedProperties['room.b']) && isset($client->watchedProperties['room999.state'], $client->subscribedTo['events']['say']), 'replace preserves other subscription types');
-    $old = $client->watchedProperties;
+    $app->event('SAY', 'hello');
+    check($client->lastMessage['action'] === 'events', 'replace preserves other subscription types');
     wsAction($app, $client, 'Subscribe', array('TYPE' => 'properties', 'PROPERTIES' => 'a,b,c,d,e,f,g,h,i'));
-    check($client->watchedProperties === $old && $client->lastMessage['decoded']['SUCCESS'] === 0, 'subscription limit rejects changes atomically');
+    check($client->lastMessage['decoded']['SUCCESS'] === 0, 'subscription limit rejects changes atomically');
+    $app->publish(array(array('PROPERTY' => 'room.c', 'VALUE' => 1)));
+    check($client->lastMessage['action'] === 'properties', 'rejected subscription preserves old selection');
     wsAction($app, $client, 'Unsubscribe', array('TYPE' => 'objects'));
-    check(!isset($client->watchedProperties['room999.state']) && isset($client->watchedProperties['room.c']), 'object unsubscribe preserves property watches');
-    ob_start(); $app->onDisconnect($client); ob_end_clean();
-    check(wsValue($app, '_clients') === array(), 'disconnected clients are not retained by the application');
-
+    $before = $client->sent;
+    $app->publish(array(array('PROPERTY' => 'room1000.state', 'VALUE' => 1, 'OBJECT_ID' => 1000)));
+    check($client->sent === $before, 'object unsubscribe removes object watches');
+    $app->disconnect('fixture-client');
+    check($app->count() === 0, 'disconnected clients are not retained');
     printf("Network memory smoke: %d passed; MQTT 30000 messages %.3fs, retained growth %d bytes; WebSocket growth %d bytes; loopback max latency %.2fms.\n",
         $checks, $loadSeconds, $mqttGrowth, $wsGrowth, max($latencies) * 1000);
 } catch (Throwable $e) {

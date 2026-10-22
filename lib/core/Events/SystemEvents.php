@@ -30,6 +30,8 @@ final class SystemEvents
 
     /** General settings were saved. */
     public const SETTINGS_CHANGED = 'SETTINGS_CHANGED';
+    /** Failed admin logins reached the IP ban threshold. */
+    public const AUTH_BRUTE_FORCE = 'AUTH_BRUTE_FORCE';
 
     /** A cycle script appeared in `scripts/` and was picked up by the supervisor. */
     public const CYCLE_SCRIPT_ADDED = 'CYCLE_SCRIPT_ADDED';
@@ -49,6 +51,7 @@ final class SystemEvents
             self::SYSTEM_UPDATE_FAILED,
             self::SYSTEM_UPDATE_ABORTED,
             self::SETTINGS_CHANGED,
+            self::AUTH_BRUTE_FORCE,
             self::CYCLE_SCRIPT_ADDED,
             self::CYCLE_SCRIPT_REMOVED,
         );
@@ -67,6 +70,7 @@ final class SystemEvents
             self::SYSTEM_UPDATE_FAILED => 'Обновление системы не выполнено',
             self::SYSTEM_UPDATE_ABORTED => 'Обновление системы отменено',
             self::SETTINGS_CHANGED => 'Изменены настройки',
+            self::AUTH_BRUTE_FORCE => 'Обнаружен подбор пароля',
             self::CYCLE_SCRIPT_ADDED => 'Добавлен цикл',
             self::CYCLE_SCRIPT_REMOVED => 'Удалён цикл',
         );
@@ -79,7 +83,7 @@ final class SystemEvents
         if (in_array($name, array(self::SYSTEM_UPDATE_FAILED, self::SYSTEM_UPDATE_ABORTED), true)) {
             return 'error';
         }
-        if (in_array($name, array(self::MODULE_REMOVED, self::CYCLE_SCRIPT_REMOVED), true)) {
+        if (in_array($name, array(self::MODULE_REMOVED, self::CYCLE_SCRIPT_REMOVED, self::AUTH_BRUTE_FORCE), true)) {
             return 'warning';
         }
         if (in_array($name, array(self::SYSTEM_UPDATED, self::MODULE_INSTALLED, self::SYSTEM_INSTALLED), true)) {
@@ -170,6 +174,15 @@ final class SystemEvents
     public static function cycleScriptAdded(string $cycle): int
     {
         return EventBus::emit(self::CYCLE_SCRIPT_ADDED, array('cycle' => $cycle), 'cycle');
+    }
+
+    /** Auth runs before the legacy runtime; publish durably without booting it. */
+    public static function authBruteForce(string $root, string $ip, string $login, int $attempts, int $blockedUntil): void
+    {
+        EventBus::defer($root, self::AUTH_BRUTE_FORCE, array(
+            'ip' => $ip, 'login' => mb_substr($login, 0, 255), 'attempts' => $attempts,
+            'window_seconds' => 900, 'blocked_seconds' => 900, 'blocked_until' => $blockedUntil,
+        ), 'auth');
     }
 
     public static function cycleScriptRemoved(string $cycle): int

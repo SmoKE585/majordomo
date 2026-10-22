@@ -1,18 +1,20 @@
-# MajorDoMo Design System
+---
+title: Дизайн-система MajorDoMo
+audience: agent
+category: ui
+category_label: Интерфейс
+category_icon: layout-dashboard
+category_order: 50
+tags: дизайн-система, интерфейс, md-*, mdjui, bootstrap 5, tabler, компоненты
+description: Обязательное руководство по интерфейсу админки MajorDoMo — токены, компоненты MDJUI, классы md-*, правила применения и чек-лист.
+order: 10
+---
 
-### Общие раскрывающиеся блоки и модальные окна
+# Дизайн-система MajorDoMo
 
-`MDJUI::disclosure($props, $slot)` — native details/summary с клавиатурной
-навигацией. Параметры: `title`, `description`, `badge`, `badge_tone`, `open`,
-`id`, `class`, `attrs`. CSS — `md-disclosure__*`, цвета/отступы на токенах.
-Используется для описания операций API; подходит для инструкций и подробностей.
+## Коротко
 
-`MDJUI::modal($props, $slot)` — единая оболочка Bootstrap 5 modal с `md-modal`,
-заголовком и кнопкой закрытия. Обязателен уникальный `id`; параметры `title`,
-`footer` (HTML из компонентов), `size` (`sm/lg/xl`), `attrs`.
-Открытие — Bootstrap `data-bs-toggle="modal"`/`data-bs-target` или Modal API.
-Не вставляйте интерактивные элементы в summary раскрывающегося блока.
-Демо обоих компонентов — UI Kit → «Лента, подсказки и код».
+Админка строится на Bootstrap 5.3, локальных токенах `--md-ui-*`, серверных компонентах `MDJUI` и классах `md-*` из `resources/css/ui-system.css`. Новые страницы собираются только из этих компонентов; альтернативные кнопки, поля, карточки, модалки и наборы иконок запрещены. Живая документация — UI Kit (`/admin.php?action=ui_kit`), канонический CSS — `resources/css/ui-system.css`.
 
 Единая дизайн-система админки MajorDoMo. Документ обязателен для людей и ИИ-агентов, которые создают или меняют интерфейс панели управления.
 
@@ -33,7 +35,7 @@
 
 | Слой | Технология |
 | --- | --- |
-| Backend | PHP 8.4, MajorDoMo modules и шаблоны |
+| Backend | PHP 8.1+ (локальное окружение — 8.4), MajorDoMo modules и шаблоны |
 | UI base | Bootstrap 5.3 + Tabler Icons 3.49 |
 | Локальные токены и компоненты | `resources/css/ui-system.css` |
 | Сборка | Vite (`npm run build` → `public/assets/admin/admin.css` + `admin.js`) |
@@ -661,6 +663,15 @@ legacy-обработчики продолжают работать. JS API: `MD
 
 Типы: `info`, `success`, `warning`, `danger`. `dismissible => true` для второстепенных сообщений.
 
+#### Disclosure
+
+`MDJUI::disclosure($props, $slot)` — native details/summary с клавиатурной
+навигацией. Параметры: `title`, `description`, `badge`, `badge_tone`, `open`,
+`id`, `class`, `attrs`. CSS — `md-disclosure__*`, цвета/отступы на токенах.
+Используется для описания операций API; подходит для инструкций и подробностей.
+Не вставляйте интерактивные элементы в summary раскрывающегося блока.
+Демо — UI Kit → «Лента и код».
+
 #### Toast
 
 ```php
@@ -675,6 +686,8 @@ legacy-обработчики продолжают работать. JS API: `MD
 #### Modal и confirmation
 
 Используйте Bootstrap 5 modal с классами `modal fade md-modal`. Обязательны `aria-labelledby`, заголовок и кнопка закрытия. Destructive-кнопка — `md-btn--danger` справа. Не используйте `alert()` и `confirm()` браузера.
+
+Для готовой оболочки используйте `MDJUI::modal($props, $slot)`: уникальный `id`, `title`, `footer` (HTML из компонентов), `size` (`sm/lg/xl`), `attrs`. Открытие — Bootstrap `data-bs-toggle="modal"`/`data-bs-target` или Modal API. Демо modal и disclosure — UI Kit → «Лента и код».
 
 #### Drawer
 
@@ -1188,7 +1201,7 @@ Read-only пример кода с подсветкой PHP/Python, номера
 
 | Параметр | Назначение |
 | --- | --- |
-| `language` + `code` | один язык: `php`, `python`, `javascript`, `html`, `css`, `bash`, `json`, `yaml`, `sql` |
+| `language` + `code` | один язык: `php`, `python`, `javascript`, `html` (рендерится как XML), `css`, `bash`, `json`, `yaml`, `sql` (принимается, но в текущем чанке подсветки языка нет) |
 | `tabs` | несколько языков: `language`, `label`, `code`; вкладки переключаются мышью и клавиатурой |
 | `title`, `eyebrow`, `caption`, `footer` | подписи блока |
 | `copy` | кнопка копирования (по умолчанию `true`); копируется активная вкладка |

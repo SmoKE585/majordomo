@@ -100,11 +100,8 @@ class scripts extends module
     {
         global $session;
         $out = array();
-        if ($this->action == 'admin') {
-            $this->admin($out);
-        } else {
-            $this->usual($out);
-        }
+        $this->action = 'admin';
+        $this->admin($out);
         if (isset($this->owner->action)) {
             $out['PARENT_ACTION'] = $this->owner->action;
         }
@@ -590,17 +587,8 @@ class scripts extends module
         $this->redirect("?view_mode=edit_scripts&id=" . $rec['ID']);
     }
 
-    /**
-     * FrontEnd
-     *
-     * Module frontend
-     *
-     * @access public
-     */
-    function usual(&$out)
-    {
-        $this->admin($out);
-    }
+
+
 
     /**
      * scripts search

@@ -7,6 +7,28 @@ if (!headers_sent()) {
     header('Content-Type: text/html; charset=utf-8');
 }
 
+if ($op == 'websocket') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    try {
+        $session = \MajorDoMo\Core\Core::session(ROOT);
+        $user = (new \MajorDoMo\Core\Auth\Authentication($session, \MajorDoMo\Core\Core::users()))->current();
+        if ($user === null) {
+            http_response_code(401);
+            echo json_encode(array('error' => 'authentication_required'));
+        } else {
+            $ticket = (new \MajorDoMo\Core\WebSockets\Tickets(rtrim(ROOT, '/\\')))->issue($user, session_id(), (int)$_SESSION['md_admin']['created']);
+            echo json_encode(array('ticket' => $ticket), JSON_THROW_ON_ERROR);
+        }
+    } catch (\Throwable $error) {
+        error_log('WebSocket ticket unavailable: ' . get_class($error));
+        http_response_code(503);
+        echo json_encode(array('error' => 'authentication_unavailable'));
+    }
+    exit;
+}
+
 if ($op == 'dashboard') {
     require_once(ROOT . 'lib/dashboard_data.php');
     $payload = mdj_dashboard_collect((string)gr('fresh') === '1');

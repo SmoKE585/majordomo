@@ -109,7 +109,8 @@ class xray extends module
         } elseif ($this->action == 'context' || $action == 'context') {
             $this->context($out);
         } else {
-            $this->usual($out);
+            $this->action = 'admin';
+            $this->admin($out);
         }
         if (isset($this->owner->action)) {
             $out['PARENT_ACTION'] = $this->owner->action;
@@ -1619,18 +1620,6 @@ class xray extends module
         $out['FILTER'] = gr('filter'); //
 
 
-    }
-
-    /**
-     * FrontEnd
-     *
-     * Module frontend
-     *
-     * @access public
-     */
-    function usual(&$out)
-    {
-        $this->admin($out);
     }
 
     function dbInstall($data)

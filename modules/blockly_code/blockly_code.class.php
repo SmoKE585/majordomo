@@ -137,11 +137,8 @@ class blockly_code extends module
     {
         global $session;
         $out = array();
-        if ($this->action == 'admin') {
-            $this->admin($out);
-        } else {
-            $this->usual($out);
-        }
+        $this->action = 'admin';
+        $this->admin($out);
         if (isset($this->owner->action)) {
             $out['PARENT_ACTION'] = $this->owner->action;
         }
@@ -355,17 +352,8 @@ class blockly_code extends module
 
     }
 
-    /**
-     * FrontEnd
-     *
-     * Module frontend
-     *
-     * @access public
-     */
-    function usual(&$out)
-    {
-        $this->admin($out);
-    }
+
+
 
     /**
      * blockly_code search

@@ -102,11 +102,8 @@ class mqtt extends module
     {
         global $session;
         $out = array();
-        if ($this->action == 'admin') {
-            $this->admin($out);
-        } else {
-            $this->usual($out);
-        }
+        $this->action = 'admin';
+        $this->admin($out);
         if (isset($this->owner->action)) {
             $out['PARENT_ACTION'] = $this->owner->action;
         }
@@ -373,7 +370,7 @@ class mqtt extends module
                 //$v['RESULT'] = $items;
                 unset($v['CHILDS']);
             }
-            if (isset($session->data['branches'][$v['TITLE']])) {
+            if (isset($session->get('branches')[$v['TITLE']])) {
                 $v['IS_VISIBLE'] = 1;
             }
             if (!isset($v['PATH'])) {
@@ -833,18 +830,15 @@ class mqtt extends module
                 $status = (int)gr('status');
                 $branch = $this->normalizeMqttTreePath(gr('branch'));
                 if ($branch != '') {
-                    if (!isset($session->data['mqtt_tree_branches']) || !is_array($session->data['mqtt_tree_branches'])) {
-                        $session->data['mqtt_tree_branches'] = array();
-                    }
+                    $branches = $session->get('mqtt_tree_branches', array());
+                    $legacyBranches = $session->get('branches', array());
                     if (!$status) {
-                        unset($session->data['mqtt_tree_branches'][$branch]);
-                        if (isset($session->data['branches'][$branch])) {
-                            unset($session->data['branches'][$branch]);
-                        }
+                        unset($branches[$branch], $legacyBranches[$branch]);
                     } else {
-                        $session->data['mqtt_tree_branches'][$branch] = 1;
+                        $branches[$branch] = 1;
                     }
-                    $session->save();
+                    $session->set('mqtt_tree_branches', $branches);
+                    $session->set('branches', $legacyBranches);
                 }
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(array('OK' => 1));
@@ -1019,15 +1013,15 @@ class mqtt extends module
     {
         global $session;
         $path = $this->normalizeMqttTreePath($path);
-        if ($path == '' || !isset($session) || !isset($session->data) || !is_array($session->data)) {
+        if ($path == '' || !$session instanceof \MajorDoMo\Core\Http\Session) {
             return false;
         }
 
-        if (isset($session->data['mqtt_tree_branches']) && is_array($session->data['mqtt_tree_branches']) && isset($session->data['mqtt_tree_branches'][$path])) {
+        if ($session->has('mqtt_tree_branches') && is_array($session->get('mqtt_tree_branches')) && isset($session->get('mqtt_tree_branches')[$path])) {
             return true;
         }
 
-        return isset($session->data['branches']) && is_array($session->data['branches']) && isset($session->data['branches'][$path]);
+        return $session->has('branches') && is_array($session->get('branches')) && isset($session->get('branches')[$path]);
     }
 
     function getMqttTreeChildren($root = '', $limit = 200)
@@ -1249,84 +1243,8 @@ class mqtt extends module
         }
     }
 
-    /**
-     * FrontEnd
-     *
-     * Module frontend
-     *
-     * @access public
-     */
-    function usual(&$out)
-    {
-        if ($this->ajax) {
-            global $op;
-            $result = array();
-            if ($op == 'process') {
-                $topic = gr('topic');
-                $msg = gr('msg');
-                $this->processMessage($topic, $msg);
-            }
-            if ($op == 'getvalues') {
-                global $ids;
-                $qry = '1';
-                if (is_array($ids)) {
-                    $qry .= " AND mqtt.ID IN (" . implode(',', $ids) . ")";
-                } elseif ($ids == 'all') {
-                    $qry = '1';
-                } else {
-                    $qry = 0;
-                }
-                $root = gr('root');
-                if ($root!='') {
-                    $qry.=" AND PATH LIKE '" . DBSafe($root) . "%'";
-                }
 
-                $data = SQLSelect("SELECT ID,VALUE FROM mqtt WHERE " . $qry);
-                $total = count($data);
-                for ($i = 0; $i < $total; $i++) {
-                    $data[$i]['VALUE'] = str_replace('":', '": ', $data[$i]['VALUE']);
-                }
-                $result['DATA'] = $data;
 
-                $history = SQLSelect("SELECT mqtt_history.* FROM mqtt_history LEFT JOIN mqtt ON mqtt_history.MQTT_ID=mqtt.ID WHERE $qry ORDER BY mqtt_history.UPDATED DESC, mqtt_history.ID DESC LIMIT 20");
-                $total = count($history);
-                for ($i = 0; $i < $total; $i++) {
-                    $result['HISTORY'] .= "<div>";
-                    if ($history[$i]['DESTINATION'] == 1) {
-                        $result['HISTORY'] .= '<i class="glyphicon glyphicon-export" style="color:blue"></i> ';
-                    } else {
-                        $result['HISTORY'] .= '<i class="glyphicon glyphicon-import" style="color:green"></i> ';
-                    }
-
-                    $updated_tm = strtotime($history[$i]['UPDATED']);
-                    $diff_str = getPassedText($updated_tm);
-
-                    $result['HISTORY'] .= '<span title="' . $history[$i]['UPDATED'] . '">' . $diff_str . '</span> ';
-                    $result['HISTORY'] .= "<br/><small>";
-                    $result['HISTORY'] .= "<a href='#' onclick='return editItem(" . $history[$i]['MQTT_ID'] . ");'>" . $history[$i]['TOPIC'] . "</a><br/>";
-                    if ($history[$i]['DESTINATION'] == 1) {
-                        //out
-                        if ($history[$i]['LINKED_DATA'] != '') $result['HISTORY'] .= $history[$i]['LINKED_DATA'] . ' = ';
-                        $result['HISTORY'] .= '<b>' . $history[$i]['VALUE'] . '</b> &xrarr; ' . htmlspecialchars($history[$i]['DATA_PAYLOAD']);
-                    } else {
-                        //in
-                        $result['HISTORY'] .= '' . htmlspecialchars($history[$i]['DATA_PAYLOAD']) . ' &xrarr; <b>' . $history[$i]['VALUE'] . "</b>";
-                        if ($history[$i]['LINKED_DATA'] != '') $result['HISTORY'] .= ' &xrarr; ' . $history[$i]['LINKED_DATA'];
-                    }
-                    $result['HISTORY'] .= "</small></div>&nbsp;";
-
-                }
-            }
-
-            if ($op == 'send') {
-                $topic = gr('topic');
-                $value = gr('value');
-            }
-            echo json_encode($result);
-            exit;
-        }
-        $this->admin($out);
-    }
 
     /**
      * mqtt search

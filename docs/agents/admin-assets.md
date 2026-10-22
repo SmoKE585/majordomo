@@ -1,4 +1,17 @@
+---
+title: Сборка админских ассетов
+audience: agent
+category: ui
+tags: vite, сборка, бандл, codeeditor, charts, codehighlight, npm
+description: Как устроена сборка админки MajorDoMo: Vite, основной бандл, lazy-chunk редактора/графиков/подсветки, команды npm и правила добавления пакетов.
+order: 30
+---
+
 # Сборка админских ассетов
+
+## Коротко
+
+Админка собирается Vite: основной бандл `public/assets/admin/admin.css` + `admin.js` плюс три lazy-chunk — `codeeditor.js/css`, `charts.js/css` и `codehighlight.js/css`. Исходники лежат в `resources/`, готовые файлы коммитятся, PHP в runtime Node.js не нужен. Тяжёлые библиотеки (CodeMirror, ApexCharts, highlight.js) не входят в основной бандл.
 
 Админка MajorDoMo собирается одним Vite-бандлом. PHP-приложению Node.js в runtime не нужен: готовые файлы лежат в `public/assets/admin/` и коммитятся вместе с кодом.
 
@@ -22,11 +35,11 @@ npm run watch:highlight # пересборка подсветки примеро
 - `public/assets/admin/codehighlight.js` + `public/assets/admin/codehighlight.css` — отдельный lazy-chunk подсветки read-only примеров (highlight.js);
 - `public/assets/admin/fonts/*` — шрифты Bootstrap Icons, Tabler Icons и Rubik.
 
-Шаблон `templates/common_header_admin.html` подключает только `admin.css` и `admin.js`. Отдельные подключения Bootstrap, jQuery, Bootstrap Icons, Tom Select, fancybox, toast, duration-picker, codeeditor и модулей `resources/js/modules/admin_panel/*` из шаблонов убраны.
+Шаблон `templates/common_header_admin.html` из библиотек подключает только `admin.css` и `admin.js`; после бандла идут legacy-скрипты `scripts.js` и `admin/panel.js`. Отдельные подключения Bootstrap, jQuery, Bootstrap Icons, Tom Select, fancybox, toast, duration-picker, codeeditor и модулей `resources/js/modules/admin_panel/*` из шаблонов убраны.
 
 `codeeditor.js` не входит в основной бандл. `resources/js/codeeditor/loader.js` загружает его только когда на странице есть `[data-code-editor]` (или когда открывается консоль). Поэтому dashboard и другие страницы без редактора не скачивают CodeMirror и языковые парсеры.
 
-`charts.js` не входит в основной бандл. `resources/js/modules/admin_panel/101_dashboard_charts.js` загружает его при первом построении графика, поэтому остальные страницы не скачивают ApexCharts.
+`charts.js` не входит в основной бандл. Общий загрузчик `resources/js/modules/admin_panel/100_chart_runtime.js` скачивает его при первом построении графика; используют его дашборд (`101_dashboard_charts.js`) и drawer истории свойства (`40_history.js`), поэтому остальные страницы не скачивают ApexCharts.
 
 `codehighlight.js` не входит в основной бандл. `resources/js/modules/admin_panel/123_code_sample.js` загружает его только при наличии `[data-md-code-sample]`; вкладки и копирование при этом работают сразу из основного бандла.
 
@@ -43,12 +56,17 @@ npm run watch:highlight # пересборка подсветки примеро
 - `html-duration-picker`;
 - `jquery.cookie`, `jquery.tiny-pubsub` (локальные плагины);
 - загрузчик редактора `resources/js/codeeditor/loader.js` (сам редактор — отдельный lazy-chunk);
-- `apexcharts` — отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css` для дашборда и будущих страниц с графиками;
+- `apexcharts` — отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css` для дашборда и истории свойства;
 - `highlight.js` — отдельный lazy-chunk `public/assets/admin/codehighlight.js` + `codehighlight.css` для `MDJUI::codeSample()`;
 - admin shell modules из `resources/js/modules/admin_panel/`, включая `101_dashboard_charts.js` (графики дашборда), `120_linkedobject.js` (компонент связей объектов) и `123_code_sample.js` (вкладки/копирование примеров кода);
 - `resources/css/admin_panel.css` (legacy), `resources/css/ui-v2.css` (shell/dashboard) и `resources/css/ui-system.css` (дизайн-система, включая LinkedObject).
 
 ## Что пока не в бандле
+
+Общий WebSocket-клиент находится в `resources/js/modules/admin_panel/06_websockets.js`
+и входит в `admin.js`: сессионный билет, синхронизация, повторное подключение и
+совместимые события jQuery/native. `templates/websockets.html` подключает только
+PHP-конфигурацию из `websockets_config.php`; постоянного WS-секрета в HTML нет.
 
 - `public/assets/js/scripts.js` — legacy-хелперы, которые вызываются из inline-обработчиков старых шаблонов. Загружается одним классическим `<script>` после бандла.
 - `public/assets/js/admin/panel.js` — legacy-хелперы shell (`partLoad`, фильтр меню, collapse, file browser). Загружается классическим `<script>` после `scripts.js`, потому что функции вызываются из inline-атрибутов старых шаблонов.

@@ -42,7 +42,8 @@ check(count($fields) > 70, 'settings schema reuses the wizard field set');
 check(!isset($fields['admin_password']), 'admin creation fields are not shown in general settings');
 check(!isset($fields['create_schema']), 'automatic schema creation is wizard-only');
 check(isset($fields['DB_HOST']) && isset($fields['PROJECT_TITLE']) && isset($fields['THEME']), 'core wizard fields are present');
-check(isset($fields['SYSTEM_DEBMES_PATH']) && isset($fields['SYSTEM_WEBSOCKETS_TOKEN']), 'legacy-only settings are preserved');
+check(isset($fields['SYSTEM_DEBMES_PATH']), 'legacy logging setting is preserved');
+check(!isset($fields['SYSTEM_WEBSOCKETS_TOKEN'], $fields['WEBSOCKETS_AUTH_TOKEN']) && isset($fields['WEBSOCKETS_PUBLIC_URL']), 'WebSocket uses API credentials and a public endpoint instead of shared secrets');
 
 $config = ConfigSchema::all();
 $missingConfig = array();
@@ -91,6 +92,10 @@ $otherSection = $manager->validate(array('value_PROJECT_TITLE' => 'Дом тес
 check(($otherSection['values']['DEBUG_MODE'] ?? '') === '1', 'switches from other sections are preserved');
 $plainPost = $manager->validate(array('PROJECT_TITLE' => 'Значение из мастера'));
 check(($plainPost['values']['PROJECT_TITLE'] ?? '') === 'Значение из мастера', 'plain field ids still work for the wizard and reset');
+$socketPost = $manager->validate(array('WEBSOCKETS_PUBLIC_URL' => 'wss://home.test:8002/majordomo'));
+check(!isset($socketPost['errors']['WEBSOCKETS_PUBLIC_URL']), 'public WebSocket URL accepts WSS with a custom port');
+$socketPost = $manager->validate(array('WEBSOCKETS_PUBLIC_URL' => 'wss://home.test/ws?token=secret'));
+check(isset($socketPost['errors']['WEBSOCKETS_PUBLIC_URL']), 'public WebSocket URL rejects embedded permanent credentials');
 
 file_put_contents($root . '/scripts/cycle_test.php', "<?php\n");
 file_put_contents($root . '/scripts/cycle_other.php', "<?php\n");

@@ -1,4 +1,22 @@
+---
+title: Управление фоновыми циклами
+audience: agent
+category: automation
+category_label: Автоматизация
+category_icon: bolt
+category_order: 40
+tags: циклы, супервизор, watchdog, xray, state.json, обновление, systemd
+description: Персистентные состояния running/stopped/disabled, поколения, супервизор cycle.php, watchdog, X-Ray и пауза циклов при обновлении системы.
+order: 10
+---
+
 # Управление фоновыми циклами
+
+## Коротко
+
+Как устроены фоновые циклы, чем `running`/`stopped`/`disabled` отличаются и
+как супервизор перезапускает процессы. Читайте перед изменением `cycle.php`,
+`lib/core/Cycles/` или команд `cycles:*`.
 
 Консольное управление: `php majordomo cycles:status`,
 `php majordomo cycles:restart mqtt`, `php majordomo cycles:restart --all`,
@@ -80,12 +98,12 @@ Threads              запуск/остановка процессов (legacy,
 - `restart` увеличивает `generation`. Супервизор видит новое поколение,
   ставит процесс в `$to_stop`, а через несколько секунд — в `$to_start`.
   Это не зависит от доставки одного флага и не может «потерять» рестарт.
-- `restartAll()` увеличивает поколение только у циклов в состоянии `running`:
+- `restartAll()` увеличивает поколение только у циклов с `desired=running`:
   отключённые и остановленные администратором циклы не включаются.
 - После сохранения настроек вызывается `restartAll()`, чтобы дочерние процессы
-  перечитали `.env`. Если изменилось подключение к БД — `requestReload()`:
-  супервизор останавливает все процессы и завершается, systemd запускает его
-  заново с новыми credentials.
+  перечитали `.env`. Если изменилось подключение к БД **или** настройка
+  WebSockets — `requestReload()`: супервизор останавливает все процессы и
+  завершается, systemd запускает его заново с новыми credentials.
 
 ## 4. Совместимость со старыми модулями
 
@@ -94,8 +112,9 @@ Threads              запуск/остановка процессов (legacy,
 - `cycle_<name>Run` остаётся heartbeat-ом.
 - `cycle_<name>Disabled` читается при старте: старая установка с этим флагом
   мигрирует в `disabled` в state-файле.
-- `CycleManager::state()` отдаёт те же поля, что X-Ray использовал раньше,
-  плюс `desired`, `disabled` и `generation`.
+- `CycleManager::state()` отдаёт `name`, `desired`, `status`, `online`,
+  `updated`, `status_updated`, `details` и `generation`. Признак `disabled`
+  X-Ray вычисляет из `status`; отдельного поля `disabled` в этом массиве нет.
 - `Threads::closeThread()` сначала отправляет `SIGTERM` и ждёт до 3 секунд,
   затем делает `kill -9` / `taskkill /F /T`. Это даёт циклам шанс закрыть
   файлы и очередь.
@@ -141,8 +160,9 @@ php tests/settings_cycles_smoke.php
 
 ## 8. Watchdog и восстановление
 
-- Контроль процесса начинается сразу после запуска. Выход в первые 30 секунд,
-  выход с кодом 0 и ошибка запуска тоже приводят к повторной попытке.
+- Контроль процесса начинается сразу после запуска. Любой неожиданный выход —
+  сразу после старта, с кодом 0 или с ошибкой запуска — приводит к повторной
+  попытке.
 - `CYCLE_HEARTBEAT_TIMEOUT` — максимальная пауза heartbeat (по умолчанию 120 сек).
   `CYCLE_STARTUP_TIMEOUT` — ожидание первого heartbeat (180 сек). Старый heartbeat
   предыдущего процесса и timestamp из будущего не подтверждают готовность.

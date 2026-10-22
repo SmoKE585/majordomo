@@ -1,4 +1,17 @@
+---
+title: Первичная настройка (мастер установки)
+audience: user, agent
+category: general
+tags: установка, мастер, .env, InstallGate, первый запуск
+description: Как работает мастер первого запуска, маркер установки, InstallGate и что проверять после чистой установки.
+order: 20
+---
+
 # Первичная настройка (setup wizard)
+
+## Коротко
+
+Это инструкция по первому запуску: мастер проверяет окружение, пишет `.env`, настройки интерфейса и создаёт администратора. Пользователю — как пройти мастер; агенту — какие файлы и контракты менять. Нельзя удалять маркер установки на рабочей системе и импортировать `schema.sql` в базу с таблицами.
 
 Страница первого запуска: `public/install.php`. Пока мастер не завершён,
 админка, сайт, API и прямые object-эндпоинты не открываются — пользователь
@@ -28,8 +41,8 @@ DB-настройки; после сохранения циклы перезап
 public/install.php
   └─ MajorDoMo\Core\InstallApplication
        ├─ bootConfiguration()          только config.php, без legacy loader
-       ├─ InstallGate / InstallState   состояние установки (файл-маркер)
        ├─ Installer                    валидация, запись, создание admin
+       │    ├─ InstallState            состояние установки (файл-маркер)
        │    ├─ InstallSchema           декларативная схема полей и шагов
        │    ├─ InstallEnvironment      read-only проверки окружения
        │    ├─ InstallDatabase         mysqli без legacy-слоя
@@ -56,7 +69,8 @@ public/install.php
 
 - `lib/core/AdminApplication.php` — все страницы `/panel/...` и `admin.php`;
 - `lib/core/SiteApplication.php` — сайт;
-- `public/api.php` — API (JSON 503 с `install_url`);
+- `lib/core/ApiApplication.php` (через `public/api.php`) — API (JSON 503 с
+  `install_url`);
 - `objects/index.php` — прямые object-эндпоинты;
 - `lib/loader.php` — дополнительные прямые веб-эндпоинты `modules/*.js.php`,
   `scripts/*` и подобные, которые подключают загрузчик без `Application`.
@@ -67,7 +81,8 @@ public/install.php
 {"ok":false,"error":"install_required","install_url":"/install.php"}
 ```
 
-CLI-запуски (`php-fpm`/CLI-скрипты) gate не трогает.
+CLI-запуски (CLI-скрипты и циклы) gate не трогает: проверка идёт по
+`PHP_SAPI === 'cli'`, поэтому php-fpm по-прежнему получает редирект.
 
 ## 4. Что настраивается
 
@@ -129,9 +144,8 @@ CLI-запуски (`php-fpm`/CLI-скрипты) gate не трогает.
 
 Если администратор уже есть, шаг его не трогает.
 
-Панель больше не показывает форму входа: доступ закрывает reverse proxy
-(nginx basic auth), а новая авторизация будет построена на модуле
-«Пользователи» и таблице `users`. Старый `control_access`, `admin_users` и
+Панель показывает форму входа и принимает только администратора из модуля
+«Пользователи» (таблица `users`). Старый `control_access`, `admin_users` и
 встроенная проверка Basic Auth удалены.
 
 ## 7. CLI
@@ -170,8 +184,7 @@ php tests/install_smoke.php
 - «Проверить подключение» на шаге БД возвращает JSON без записи;
 - после завершения `/install.php` → `302 /panel/`, а `/install.php?done=1`
   показывает экран успеха;
-- `/panel/` после завершения открывается без формы входа (доступ закрывает
-  reverse proxy); созданный пользователь есть в `users` с `IS_ADMIN=1`;
+- `/panel/` после завершения требует входа; созданный пользователь есть в `users` с `IS_ADMIN=1`;
 - `/api/` до завершения → `503` JSON.
 
 ## 10. Ограничения

@@ -40,12 +40,7 @@ class panel extends module
     function run()
     {
         global $session;
-        if (!$session instanceof session) {
-            $session = new session("prj");
-        }
-        if (!is_array($session->data)) {
-            $session->data = array();
-        }
+        $session = \MajorDoMo\Core\Core::session();
 
         Define('ALTERNATIVE_TEMPLATES', 'templates_alt');
 
@@ -97,30 +92,8 @@ class panel extends module
 
         $out['SETTINGS_SITE_LANGUAGE'] = SETTINGS_SITE_LANGUAGE;
 
-        if (!isset($session->data['SITE_USERNAME'])) {
-            $users = SQLSelect("SELECT * FROM users ORDER BY NAME");
-            $total = count($users);
-
-            if ($total == 1) {
-                $session->data['SITE_USERNAME'] = $users[0]['USERNAME'];
-                $session->data['SITE_USER_ID'] = $users[0]['ID'];
-            } else {
-                for ($i = 0; $i < $total; $i++) {
-                    if ($users[$i]['HOST'] && $users[$i]['HOST'] == $_SERVER['REMOTE_ADDR']) {
-                        $session->data['SITE_USERNAME'] = $users[$i]['USERNAME'];
-                        $session->data['SITE_USER_ID'] = $users[$i]['ID'];
-                    } elseif ($users[$i]['IS_DEFAULT']) {
-                        $session->data['SITE_USERNAME'] = $users[$i]['USERNAME'];
-                        $session->data['SITE_USER_ID'] = $users[$i]['ID'];
-                    }
-                }
-            }
-        }
-
-
-        // Authentication is delegated to the reverse proxy (nginx basic auth).
-        // The in-app login/ACL layer was removed together with control_access;
-        // the new user-based layer will be built on top of the users module.
+        $out['AUTH_CSRF'] = $session->csrfToken();
+        $out['AUTH_USERNAME'] = $session->user()['username'] ?? '';
 
         global $ajax_panel;
         if ($ajax_panel) {
@@ -429,12 +402,12 @@ class panel extends module
 
         if ($request_method == 'GET') {
             $route_key = $module_name . '|' . $view_mode . '|' . (string)gr('id') . '|' . $record_context['url'];
-            $last_route = isset($session->data['ACTIONS_LOG_LAST_ROUTE']) ? (string)$session->data['ACTIONS_LOG_LAST_ROUTE'] : '';
-            $last_route_ts = isset($session->data['ACTIONS_LOG_LAST_ROUTE_TS']) ? (int)$session->data['ACTIONS_LOG_LAST_ROUTE_TS'] : 0;
+            $last_route = $session->has('ACTIONS_LOG_LAST_ROUTE') ? (string)$session->get('ACTIONS_LOG_LAST_ROUTE') : '';
+            $last_route_ts = $session->has('ACTIONS_LOG_LAST_ROUTE_TS') ? (int)$session->get('ACTIONS_LOG_LAST_ROUTE_TS') : 0;
             if ($route_key != $last_route || (time() - $last_route_ts) > 10) {
                 logAction('control_panel_navigation', $module_name, $record_context);
-                $session->data['ACTIONS_LOG_LAST_ROUTE'] = $route_key;
-                $session->data['ACTIONS_LOG_LAST_ROUTE_TS'] = time();
+                $session->set('ACTIONS_LOG_LAST_ROUTE', $route_key);
+                $session->set('ACTIONS_LOG_LAST_ROUTE_TS', time());
             }
         } elseif ($request_method == 'POST') {
             $post_fields = array_keys($_POST);

@@ -1,7 +1,13 @@
 <?php
 /*
-* @version 0.2 (wizard)
-*/
+ * Подготовка данных списка групп ошибок.
+ *
+ * Подставляет название и описание кода из ErrorCatalog для карточки и поиска,
+ * не меняя запись в базе.
+ *
+ * Изменения:
+ * 2026-10-22 — название и описание берутся из ErrorCatalog.
+ */
 
 require_once(__DIR__ . '/system_errors_helpers.inc.php');
 
@@ -51,6 +57,10 @@ for ($i = 0; $i < $total; $i++) {
     }
 
     $last_event_formatted = $history['LAST_ADDED'] !== '' ? md_system_errors_date($history['LAST_ADDED']) : '—';
+
+    if (class_exists('MajorDoMo\\Core\\ErrorCatalog')) {
+        $res[$i] = \MajorDoMo\Core\ErrorCatalog::fill($res[$i], (string)$res[$i]['CODE']);
+    }
 
     $title = trim((string)$res[$i]['TITLE']);
     $code = (string)$res[$i]['CODE'];

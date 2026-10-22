@@ -1,16 +1,30 @@
-# Cycle status and control components
+---
+title: Компоненты состояния и управления циклами
+audience: agent
+category: automation
+tags: циклы, xray, виджет, md-cycle, интерфейс, data-атрибуты
+description: Переиспользуемые компоненты статуса и управления циклами для страниц модулей и X-Ray: cycleCard, md-cycle-table, data-атрибуты и контракт endpoint.
+order: 20
+---
 
-Reusable cycle UI for module pages and X-Ray.
+# Компоненты состояния и управления циклами
 
-## What is available
+## Коротко
 
-- `MDJUI::cycleCard()` — server-rendered cycle widget.
-  - `compact => true` — compact strip for a module page (MQTT, etc.).
-  - `compact => false` — full card (alternative for a standalone page).
-- `md-cycle-table` — row/table layout for the X-Ray services list.
-- `resources/js/modules/admin_panel/119_cycle_widget.js` — polling, AJAX commands and live state updates for both variants.
+Готовые компоненты для статуса и управления циклами в модулях и X-Ray:
+`MDJUI::cycleCard()`, таблица `md-cycle-table`, data-атрибуты и контракт
+endpoint. Читайте, когда выводите состояние цикла на странице модуля.
 
-## Server component
+## Что доступно
+
+- `MDJUI::cycleCard()` — серверный виджет цикла.
+  - `compact => true` — компактная полоса для страницы модуля (MQTT и т. п.);
+  - `compact => false` — полная карточка (вариант для отдельной страницы).
+- `md-cycle-table` — построчная/табличная раскладка для списка сервисов X-Ray.
+- `resources/js/modules/admin_panel/119_cycle_widget.js` — опрос, AJAX-команды и
+  обновление состояния на месте для обоих вариантов.
+
+## Серверный компонент
 
 ```php
 <?= MDJUI::cycleCard([
@@ -20,34 +34,40 @@ Reusable cycle UI for module pages and X-Ray.
     'status_text' => 'Остановлен',
     'online' => false,
     'updated' => '08.07.2020 17:55:07',
-    'auto_restart' => false,        // null hides the row
+    'auto_restart' => false,        // null скрывает строку автоперезапуска
     'compact' => true,
     'poll' => true,
     'endpoint' => ROOTHTML . 'ajax/xray.html?action=service',
-    'log_url' => '',                // optional link; omit for no Log action
+    'log_url' => '',                // необязательная ссылка; без неё кнопки «Лог» нет
 ]) ?>
 ```
 
-Rendering rules:
+Правила отрисовки:
 
-- stopped/unknown — **Запуск** and **Отключить**.
-- running/starting/stopping/hang — **Рестарт**, **Остановить** and **Отключить**.
-- disabled — only **Включить** (and **Лог**, if configured).
-- `disabled` is a persisted state: the process is stopped and is not restarted
-  until an administrator enables it. It is not a UI pause.
-- status badge and signal dot are both driven by the state; do not hardcode colors in module templates.
-- compact strip is limited to `500px` so it does not turn into an empty full-width card.
-- full card shows label, details, updated and auto-restart; compact shows name, state, online, updated and actions.
+- `stopped`/`unknown` — **Запуск** и **Отключить**.
+- `running`/`starting`/`stopping`/`hang` — **Рестарт**, **Остановить** и
+  **Отключить**.
+- `disabled` — только **Включить** и **Лог**, если задан `log_url`.
+- `disabled` — сохранённое состояние: процесс остановлен и не запускается, пока
+  администратор не включит цикл. Это не пауза интерфейса.
+- Бейдж состояния и сигнальная точка берут цвет из состояния; не задавайте цвета
+  вручную в шаблонах модулей.
+- Компактная полоса ограничена шириной `500px`, чтобы не превращаться в пустую
+  карточку на всю ширину.
+- Полная карточка показывает название, описание, «Обновлено» и
+  «Автоперезапуск»; компактная — имя, состояние, ONLINE/OFFLINE, «Обновлено» и
+  действия.
 
-## X-Ray table
+## Таблица X-Ray
 
-`public/assets/modules/xray/xray.js` renders:
+`public/assets/modules/xray/xray.js` формирует разметку:
 
 ```html
 <div class="md-cycle-table">
   <div class="md-cycle-table__head">…</div>
   <div class="md-cycle-table__row is-stopped" data-md-cycle
        data-md-cycle-name="cycle_mqtt"
+       data-md-cycle-state="stopped"
        data-md-cycle-endpoint="/ajax/xray.html?action=service"
        data-md-cycle-poll="0">
     … идентификация / состояние / обновлено / действия …
@@ -55,22 +75,33 @@ Rendering rules:
 </div>
 ```
 
-Columns: **цикл**, **состояние**, **обновлено**, **действия**. On `≤900px` the header is hidden and each row folds into two lines. Actions are icon buttons with `title`/`aria-label`.
+Колонки: **цикл**, **состояние**, **обновлено**, **действия** (четвёртая
+колонка в шапке пустая). На ширине `≤900px` шапка скрывается, а строка
+складывается в две линии. Действия — иконочные кнопки с `title`/`aria-label`.
 
-## Data attributes
+## Data-атрибуты
 
-- `data-md-cycle` — marks a widget/row for the shared controller.
-- `data-md-cycle-name` — cycle name sent to the endpoint.
-- `data-md-cycle-endpoint` — JSON endpoint; default is `ROOTHTML + ajax/xray.html?action=service`.
-- `data-md-cycle-poll="1|0"` — enable/disable periodic refresh. X-Ray rows are refreshed by the page poller; the module mini widget polls itself.
-- `data-md-cycle-command="start|stop|restart|disable|enable"` — action buttons.
-- `data-md-cycle-status` — status badge.
-- `data-md-cycle-online` — ONLINE/OFFLINE indicator.
-- `data-md-cycle-updated` — last activity text.
+- `data-md-cycle` — отмечает виджет/строку для общего контроллера.
+- `data-md-cycle-name` — имя цикла, которое уходит в endpoint.
+- `data-md-cycle-state` — текущее состояние для CSS/JS; дублирует `status`.
+- `data-md-cycle-endpoint` — JSON endpoint; по умолчанию
+  `ROOTHTML + ajax/xray.html?action=service`.
+- `data-md-cycle-poll="1|0"` — включает/выключает периодическое обновление.
+  Строки X-Ray обновляет общий опрос страницы, мини-виджет модуля опрашивает
+  себя сам.
+- `data-md-cycle-command="start|stop|restart|disable|enable"` — кнопки действий.
+- `data-md-cycle-status` — бейдж состояния.
+- `data-md-cycle-online` — индикатор ONLINE/OFFLINE.
+- `data-md-cycle-updated` — текст последнего обновления.
+- `data-md-cycle-log-url` — необязательная ссылка на лог: шаблон выводит её,
+  если передан `log_url`; общий контроллер её не читает.
 
-## Backend contract
+Служебный `data-md-cycle-bound` контроллер ставит сам, чтобы не инициализировать
+один виджет дважды; вручную его задавать не нужно.
 
-`modules/xray/xray.class.php::service_control()` returns:
+## Контракт бэкенда
+
+`modules/xray/xray.class.php::service_control()` возвращает:
 
 ```json
 {
@@ -81,21 +112,22 @@ Columns: **цикл**, **состояние**, **обновлено**, **дей�
   "ONLINE": 1,
   "DISABLED": 0,
   "DESIRED": "running",
-  "BODY": "…legacy summary…"
+  "BODY": "…legacy-сводка…"
 }
 ```
 
-Commands are queued through the same endpoint
-(`op=start|stop|restart|disable|enable`). They go through
-`MajorDoMo\Core\Cycles\CycleManager`; do not create a second control API for a
-module. See `docs/agents/cycles.md` for persistence and supervisor behaviour.
+Команды отправляются на тот же endpoint (`op=start|stop|restart|disable|enable`,
+GET или POST). Они проходят через `MajorDoMo\Core\Cycles\CycleManager`; не
+создавайте второй API управления для модуля. Устройство хранения состояния и
+поведение супервизора описаны в [циклах](cycles.md).
 
-## Files
+## Файлы
 
 - `lib/ui/MDJUI.php` — `cycleCard()`.
-- `templates/ui/components/cycle-card.php` — markup.
-- `resources/css/ui-system.css` — `.md-cycle-card`, `.md-cycle-table`, states, responsive rules.
-- `resources/js/modules/admin_panel/119_cycle_widget.js` — controller.
-- `templates/xray/xray.html` — X-Ray layout / service action.
-- `public/assets/modules/xray/xray.js` — X-Ray table rows.
-- `modules/xray/xray.class.php` — initial state + JSON endpoint.
+- `templates/ui/components/cycle-card.php` — разметка.
+- `resources/css/ui-system.css` — `.md-cycle-card`, `.md-cycle-table`,
+  состояния и адаптивные правила.
+- `resources/js/modules/admin_panel/119_cycle_widget.js` — контроллер.
+- `templates/xray/xray.html` — раскладка X-Ray и действия сервиса.
+- `public/assets/modules/xray/xray.js` — строки таблицы X-Ray.
+- `modules/xray/xray.class.php` — начальное состояние и JSON endpoint.

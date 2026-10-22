@@ -36,9 +36,10 @@ PHP-пакеты устанавливаются через Composer из кор�
 [инструкция](docs/user/commands.md); создание новых команд —
 [правила для агентов](docs/agents/console.md).
 
-- [docs/README.md](docs/README.md) — карта всей документации.
+- [docs/README.md](docs/README.md) — карта всей документации по категориям.
 - [docs/user/README.md](docs/user/README.md) — описание проекта, установка, деплой.
 - [docs/agents/AGENTS.md](docs/agents/AGENTS.md) — инструкции для агентов и контрибьюторов.
+- [docs/agents/legacy-module-migration.md](docs/agents/legacy-module-migration.md) — переписывание старых модулей.
 - [docs/agents/configuration.md](docs/agents/configuration.md) — `.env`, `Config` и правила для модулей.
 - [docs/agents/DESIGN_SYSTEM.md](docs/agents/DESIGN_SYSTEM.md) — дизайн-система админки.
 - [docs/agents/project-structure.md](docs/agents/project-structure.md) — структура проекта и URL-контракт.

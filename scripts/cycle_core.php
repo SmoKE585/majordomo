@@ -30,6 +30,7 @@ while (true) {
         // never blocks on a slow module.
         if (time() - $eventsDrainedAt >= 2) {
             $eventsDrainedAt = time();
+            \MajorDoMo\Core\Events\EventBus::flushDeferred(ROOT, 20);
             \MajorDoMo\Core\Events\EventBus::drain(20);
         }
         if (!\MajorDoMo\Core\Core::worker()->process()) usleep(100000);

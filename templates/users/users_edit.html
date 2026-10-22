@@ -13,7 +13,7 @@
     <i class="ti ti-alert-triangle md-alert__icon" aria-hidden="true"></i>
     <div class="md-alert__body">
         <div class="md-alert__title">Не удалось сохранить пользователя</div>
-        <div class="md-alert__text">[#if ERR_PASSWORD#]Пароли не совпадают. Проверьте оба поля.[#else#]<#LANG_FILLOUT_REQURED#>[#endif#]</div>
+        <div class="md-alert__text">[#if ERR_ADMIN_PASSWORD#]Для администратора обязателен пароль.[#else#][#if ERR_PASSWORD#]Проверьте пароль и его подтверждение: от 1 до 1024 байт без управляющих символов.[#else#]<#LANG_FILLOUT_REQURED#>[#endif#][#endif#]</div>
     </div>
 </div>
 [#endif ERR#]
@@ -80,7 +80,7 @@
                             <div class="md-field__control">
                                 <input type="text" id="mdUserHost" class="md-input" name="host" value="[#HOST#]" maxlength="255" autocomplete="off" placeholder="192.168.1.20">
                             </div>
-                            <div class="md-field__hint">IP-адрес, с которого пользователь определяется автоматически.</div>
+                            <div class="md-field__hint">Адрес пользователя для модулей. Автоматический вход в админку по IP отключён.</div>
                         </div>
 
                         <div class="md-field">
@@ -147,7 +147,7 @@
                                 <span class="md-check__box md-radio__dot" aria-hidden="true"></span>
                                 <span class="md-check__text">
                                     <span class="md-check__label">Убрать пароль</span>
-                                    <span class="md-check__desc">Вход для пользователя будет без пароля</span>
+                                    <span class="md-check__desc">Без пароля вход в админку невозможен. Для администратора пароль обязателен.</span>
                                 </span>
                             </label>
                         </div>

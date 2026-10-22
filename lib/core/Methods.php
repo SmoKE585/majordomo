@@ -4,6 +4,16 @@ namespace MajorDoMo\Core;
 
 use \Throwable;
 
+/**
+ * Вызов методов объектов и классов.
+ *
+ * Находит метод по объекту или классу с учётом наследования, выполняет его код
+ * либо связанный сценарий, пишет ошибки в журнал и возвращает результат
+ * вызывающему коду.
+ *
+ * Изменения:
+ * 2026-10-22 — текст исключения метода больше не ломает формат сообщения.
+ */
 final class Methods
 {
     public function __construct(private Database $db, private MetadataCache $metadata, private CodeExecutor $code, private ?PropertyAudit $audit = null) {}
@@ -148,7 +158,7 @@ final class Methods
                         }
                     } catch (Throwable $e) {
                         //getLogger($this)->error(sprintf('Exception in "%s.%s" method', $object->object_title, $name), $e);
-                        registerError('method', sprintf('Exception in "%s.%s" method ' . $e->getMessage(), $object->object_title, $name));
+                        registerError('method', sprintf('Exception in "%s.%s" method: %s', $object->object_title, $name, $e->getMessage()));
                         throw $e;
                     }
                 }

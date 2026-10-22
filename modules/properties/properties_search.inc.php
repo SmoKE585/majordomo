@@ -26,24 +26,24 @@
   // QUERY READY
   global $save_qry;
   if ($save_qry) {
-   $qry=$session->data['properties_qry'];
+   $qry=$session->get('properties_qry');
   } else {
-   $session->data['properties_qry']=$qry;
+   $session->set('properties_qry', $qry);
   }
   if (!$qry) $qry="1";
   // FIELDS ORDER
   global $sortby;
   if (!$sortby) {
-   $sortby=isset($session->data['properties_sort'])?$session->data['properties_sort']:'';
+   $sortby=$session->has('properties_sort')?$session->get('properties_sort'):'';
   } else {
-   if ($session->data['properties_sort']==$sortby) {
+   if ($session->get('properties_sort')==$sortby) {
     if (Is_Integer(strpos($sortby, ' DESC'))) {
      $sortby=str_replace(' DESC', '', $sortby);
     } else {
      $sortby=$sortby." DESC";
     }
    }
-   $session->data['properties_sort']=$sortby;
+   $session->set('properties_sort', $sortby);
   }
   if (!$sortby) $sortby="properties.TITLE";
   if ($sortby=='TITLE') {

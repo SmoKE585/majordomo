@@ -1,355 +1,183 @@
-# WebSocket UI Migration Guide
+---
+title: WebSocket ядра — протокол и подключение
+audience: agent
+category: api
+tags: websocket, протокол, подписки, свойства, realtime, авторизация
+description: Сервер Workerman в ядре, доступ как у API, начальный снимок, поток изменений и клиент админки только для чтения.
+order: 60
+---
 
-This document describes the updated MajorDoMo websocket protocol and what UI code must change.
-It is written for an AI/code assistant that needs to update frontend templates or JS without re-analyzing the backend.
+# WebSocket ядра
 
-## Runtime Endpoint
+WebSocket передаёт начальное состояние и изменения свойств. Изменять значения,
+вызывать методы и запускать сценарии по WS нельзя. HTTP API развивается отдельно.
 
-Browser clients connect to:
+## Реализация
+
+- `lib/core/WebSockets/Runtime.php` — сборка сервера и чтение очереди ядра.
+- `Server.php` в том же каталоге — транспорт Workerman, handshake, лимиты, ping и проверка доступа.
+- `Access.php`, `Tickets.php` — сеть/API-токены и одноразовые билеты администратора.
+- `Protocol.php`, `Peer.php` — подписки, снимок, события и состояние соединения.
+- `lib/core/PropertyValues.php` — пакетное чтение значений с учётом наследования и переопределений.
+- `lib/core/WebSocketQueue.php` — существующая очередь, MySQL или Redis по конфигурации.
+- `resources/js/modules/admin_panel/06_websockets.js` — один клиент админки в общем бандле.
+- `templates/websockets.html` и `websockets_config.php` — только конфигурация клиента.
+
+Транспорт устанавливается через Composer: `workerman/workerman` 5.x, PHP 8.1+.
+Старый `lib/websockets/` удалён. `scripts/cycle_websockets.php` — тонкий адаптер
+супервизора к ядру. Отдельного `cycle_wscache` нет: очередь читает сам сервер
+каждые 100 мс. Запланированный рестарт каждые шесть часов удалён.
+
+## Адрес и запуск
+
+Основной адрес через nginx: `wss://home.example.com/ws`. TLS завершает nginx,
+который проксирует на `127.0.0.1:8001/majordomo` при `WEBSOCKETS_TLS=0`.
+Пример: [конфигурация nginx](../deploy/nginx.conf.sample).
+
+Добавьте адрес nginx в `TRUSTED_PROXIES`; доверенная цепочка и `HOME_NETWORK`
+обрабатываются тем же `Api\AccessPolicy`, что у HTTP API. Без доверия к прокси
+соединение с X-Forwarded-For не получает локальный доступ. Не доверяйте всем сетям.
+
+Прямой адрес: `ws://192.168.1.10:8001/majordomo`. Для другого публичного адреса
+задайте `WEBSOCKETS_PUBLIC_URL`, например `wss://home.example.com:8002/majordomo`.
+Пустое значение означает `/ws` относительно ROOTHTML. Порт клиента больше не
+зашит в шаблоне. Для установки в подкаталог добавьте аналогичный location nginx
+на соответствующий `<ROOTHTML>ws`.
+
+В обычной установке процесс запускает супервизор циклов. Ручной запуск:
 
 ```text
-ws://<host>:<WEBSOCKETS_PORT>/majordomo
-wss://<host>:<WEBSOCKETS_PORT>/majordomo
+php majordomo websockets:serve
+php majordomo cycles:status --json
+php majordomo cycles:restart websockets
 ```
 
-If websocket authorization token is configured, append it as query string:
+Не запускайте второй сервер поверх уже работающего цикла. Занятый порт вызывает
+ошибку запуска; сервер не убивает посторонние процессы на этом порту.
+`websockets:serve` — длительная команда без поддержки `--json`.
+
+## Доступ
+
+- Локальные сети — без ключа, как в HTTP API. Учитывается `HOME_NETWORK`.
+- Внешние интеграции — существующий API-токен: `Authorization: Bearer <token>`
+  либо `X-API-Key: <token>` при handshake. Если клиент не умеет заголовки,
+  поддерживается `?token=<token>`; используйте WSS и исключите URL из журналов.
+- Админка получает одноразовый билет из
+  `admin.php?ajax_panel=1&op=websocket`. Endpoint требует действующую сессию
+  администратора и возвращает JSON `{ticket}` с `Cache-Control: no-store`.
+  Клиент передаёт `?ticket=...`; билет действует 30 секунд и используется один раз.
+- Постоянный WS-секрет в HTML не передаётся. Старые `WEBSOCKETS_AUTH_TOKEN`,
+  `WEBSOCKETS_TOKEN`, `SYSTEM_WEBSOCKETS_TOKEN` больше не разрешают подключение.
+- Явно переданный неверный токен/билет не заменяется локальным доступом.
+- Каждые пять секунд сервер перепроверяет API-токен либо билетную идентичность:
+  наличие исходной сессии, срок и текущие права/отпечаток пользователя.
+  Выход удаляет прежний session id; смена пароля/логина и снятие прав также
+  закрывают соединение. Сессионный допуск действует до часа и не дольше общего
+  срока сессии; клиент сам получает новый билет после переподключения.
+- При ошибке проверки доступа сервер закрывает соединение, а не разрешает чтение.
+
+Origin браузера проверяется всегда, включая локальную сеть. По умолчанию нужен
+тот же hostname, что у WS endpoint; порт сайта может отличаться от порта WS.
+`WEBSOCKETS_ALLOWED_ORIGINS` задаёт точный список вместо этого правила.
+Клиенты без Origin разрешены по сетевой/токенной политике. Старый переключатель
+`WEBSOCKETS_CHECK_ORIGIN` больше не отключает проверку. Межсайтовый fetch запрещён.
+
+## Начальная синхронизация
+
+Подключившийся клиент автоматически подписан на все свойства, включая будущие
+изменения новых свойств. Получать список свойств по AJAX и отправлять его в WS
+не требуется. Сервер отправляет:
+
+1. `ready` с `READ_ONLY: true`, `SUBSCRIPTIONS: ["*"]`, `SNAPSHOT: true`.
+2. `snapshot_start`.
+3. Пакеты `properties` с текущими значениями всех определённых свойств, включая
+   унаследованные, переопределённые и ещё не заданные (`VALUE: null`).
+4. Изменения, накопленные во время передачи снимка.
+5. `snapshot_end`, затем обычный поток `properties`.
+
+Снимок читается пакетами; глобальной копии всех значений в памяти WS нет.
+Очередь используется как сигнал изменения: перед отправкой сохранённые свойства
+перечитываются из источника. Старая запись очереди не должна откатывать более
+новое значение из снимка. Промежуточные состояния могут объединяться очередью:
+это синхронизация текущего состояния, а не аудит каждого изменения.
+
+`?snapshot=0` отключает начальный снимок. Команда `Snapshot` запускает его
+повторно для текущего фильтра. После обрыва клиент переподключается и получает
+новый снимок. Гарантии replay пропущенных событий нет.
+
+## Сообщения
+
+Сохранён конверт легаси-клиентов: запрос `{action, data}`, ответ `{action, data}`,
+причём ответное `data` — JSON-строка. Дополнительные поля ответа: `epoch`
+(случайный id запуска), `sequence` (номер публикации), `snapshot` (пакет снимка).
+`sequence` не является уникальным id каждого кадра и не даёт resume/replay.
+
+Запрос:
+
+```json
+{"action":"Subscribe","data":{"TYPE":"properties"}}
+```
+
+Содержимое `data` сообщения `properties`:
+
+```json
+[{"PROPERTY":"Room.temperature","VALUE":"21","OBJECT_ID":7}]
+```
+
+Клиент разбирает `JSON.parse(response.data)`. `OBJECT_ID` может отсутствовать
+у уведомления, опубликованного внутренним кодом без сохранённого свойства.
+
+Разрешённые клиентские команды:
+
+| Команда | Назначение |
+| --- | --- |
+| `Subscribe` / `Unsubscribe` | Свойства (`TYPE: properties`), события (`events`) и совместимые HTML-объекты (`objects`). |
+| `GetProperty` / `GetProperties` / `GetValues` | Разовое чтение `PROPERTY` или `PROPERTIES`, строка/массив. Ответ `property_values`, поля `DATA`, `REQUEST_ID`. |
+| `Snapshot` | Повторный снимок текущего фильтра. |
+| `Ping` | Прикладной `pong`; транспортные ping/pong сервер поддерживает сам. |
+| `Status` | Число клиентов и признак только чтения, без IP/секретов других подключений. |
+
+`SetGlobal`, `CallMethod`, `RunScript`, `PostProperty`, `PostEvent`, `SetFilename`
+и любые неизвестные команды возвращают `error` с `CODE: read_only`.
+Нет динамического вызова PHP-метода по присланному action.
+
+Для фильтра передайте `PROPERTIES: ["Room.temperature", "Room.humidity"]` либо
+имя объекта `"Room"`. Подписки добавляются; `REPLACE: true` заменяет фильтр
+этого типа. Без `REPLACE` исходная подписка `*` остаётся активной. Пустой список
+свойств в Subscribe означает `*`, в Unsubscribe снимает все подписки этого типа.
+`SNAPSHOT: true` в Subscribe запрашивает начальные значения выбранного фильтра.
+
+Для событий используйте `TYPE: events`, `EVENTS: "SAY,CustomEvent"`.
+Ответ `events` содержит `EVENT_DATA: {NAME, VALUE}`. События публикуются только
+доверенным кодом ядра, не сетевым клиентом. HTML-подписка `TYPE: objects`,
+`OBJECT_ID: "7,8"` сохраняет старый ответ `objects` с `DATA: [{OBJECT_ID, DATA}]`;
+новые подписки этого типа заменяют старый набор объектов.
+
+## Публикация из PHP и ограничения
+
+Используйте `Core::websockets()->post(...)` или совместимый
+`postToWebSocketQueue(...)`. `postToWebSocket(...)` теперь также ставит в очередь,
+не открывая сетевое соединение. Результат означает постановку, а не доставку.
+Публичные имена и сигнатуры сохранены.
+
+`WEBSOCKETS_MAX_CLIENTS`, `WEBSOCKETS_MAX_CONNECTIONS_PER_IP`,
+`WEBSOCKETS_MAX_REQUESTS_PER_MINUTE`, `WEBSOCKETS_MAX_FRAME_BYTES` и
+`WEBSOCKETS_MAX_SUBSCRIPTIONS` ограничивают клиентов и сообщения.
+`WEBSOCKETS_CACHE_MAX_ENTRIES` / `WEBSOCKETS_CACHE_MAX_BYTES` теперь ограничивают
+только буфер обновлений во время снимка, а не кэш всех значений. При переполнении
+соединение закрывается с запросом повторной синхронизации. Медленный потребитель
+с переполненным выходным буфером отключается. Таймаут handshake — 10 секунд.
+
+Старые `WEBSOCKETS_CACHE_TTL`, `WEBSOCKETS_WRITE_TIMEOUT`,
+`WEBSOCKETS_CLIENT_WRITE_TIMEOUT`, настройки проверки клиентского TLS-сертификата
+и `SYSTEM_WEBSOCKETS_RESTART_TIMEOUT` больше не управляют сервером.
+
+Проверки без рабочей БД и внешних сервисов:
 
 ```text
-ws://<host>:<WEBSOCKETS_PORT>/majordomo?token=<urlencoded-token>
-```
-
-Token sources, in priority order:
-
-1. `SETTINGS_SYSTEM_WEBSOCKETS_TOKEN`
-2. `WEBSOCKETS_AUTH_TOKEN`
-3. `WEBSOCKETS_TOKEN`
-
-In templates, use already prepared constant:
-
-```js
-var wsAuthToken = <#WEBSOCKETS_AUTH_TOKEN_JSON#>;
-if (wsAuthToken) {
-  serverUrl += '?token=' + encodeURIComponent(wsAuthToken);
-}
-```
-
-If token is empty, auth is disabled and old connections still work.
-
-## Message Envelope
-
-All websocket requests use this JSON envelope:
-
-```json
-{
-  "action": "ActionName",
-  "data": {}
-}
-```
-
-All backend responses also use:
-
-```json
-{
-  "action": "response_action",
-  "data": "json-string"
-}
-```
-
-Important: `response.data` is usually a JSON-encoded string, so UI should parse it when it expects structured data:
-
-```js
-var data = typeof response.data === 'string'
-  ? JSON.parse(response.data)
-  : response.data;
-```
-
-## Default Property Subscription
-
-Old behavior: UI sent a comma-separated list of properties:
-
-```js
-payload.action = 'Subscribe';
-payload.data = {};
-payload.data.TYPE = 'properties';
-payload.data.PROPERTIES = 'Object.prop1,Object.prop2';
-wsSocket.send(JSON.stringify(payload));
-```
-
-New behavior: do not send `PROPERTIES`.
-
-```js
-payload.action = 'Subscribe';
-payload.data = {};
-payload.data.TYPE = 'properties';
-wsSocket.send(JSON.stringify(payload));
-```
-
-Backend subscribes every new client to all property updates automatically on connect. Explicit `Subscribe` with `TYPE='properties'` and no `PROPERTIES` is still allowed and returns `subscribed`.
-
-UI migration rule:
-
-- Remove all client-side property list building for websocket subscription.
-- Keep local filtering in UI if a widget only cares about specific properties.
-- Continue listening for `response.action === 'properties'` for live property updates.
-
-Live property update payload is still a JSON array:
-
-```json
-[
-  {"PROPERTY":"Object.prop1","VALUE":"123"},
-  {"PROPERTY":"Object.prop2","VALUE":"456"}
-]
-```
-
-Example handler:
-
-```js
-$.subscribe('wsData', function (_, response) {
-  if (response.action !== 'properties') return;
-
-  var updates = JSON.parse(response.data);
-  updates.forEach(function (item) {
-    var property = String(item.PROPERTY || '').toLowerCase();
-    var value = item.VALUE;
-    // Update widgets that are interested in property.
-  });
-});
-```
-
-## Request Current Property Values
-
-Use this when UI needs one-time values immediately, without waiting for live updates.
-
-Supported actions:
-
-- `GetProperty`
-- `GetProperties`
-- `GetValues`
-
-Accepted input shapes:
-
-```json
-{"PROPERTY":"Object.prop"}
-```
-
-```json
-{"PROPERTIES":["Object.prop1", "Object.prop2"]}
-```
-
-```json
-{"PROPERTIES":"Object.prop1,Object.prop2"}
-```
-
-Optional `REQUEST_ID` is echoed back.
-
-Request example:
-
-```js
-wsSocket.send(JSON.stringify({
-  action: 'GetProperties',
-  data: {
-    REQUEST_ID: 'init-values-1',
-    PROPERTIES: ['Object.prop1', 'Object.prop2']
-  }
-}));
-```
-
-Response action is `property_values`, not `properties`. This is intentional so one-time responses do not conflict with live update handlers.
-
-Response example:
-
-```json
-{
-  "action": "property_values",
-  "data": "{\"REQUEST_ID\":\"init-values-1\",\"DATA\":[{\"PROPERTY\":\"Object.prop1\",\"VALUE\":\"123\"}]}"
-}
-```
-
-UI handler:
-
-```js
-$.subscribe('wsData', function (_, response) {
-  if (response.action !== 'property_values') return;
-
-  var result = JSON.parse(response.data);
-  if (result.SUCCESS === 0) {
-    console.error('WebSocket property request failed:', result.ERROR);
-    return;
-  }
-
-  (result.DATA || []).forEach(function (item) {
-    // item.PROPERTY, item.VALUE
-  });
-});
-```
-
-## Set a Property
-
-Use action `SetGlobal` to call backend `setGlobal`.
-
-Request:
-
-```js
-wsSocket.send(JSON.stringify({
-  action: 'SetGlobal',
-  data: {
-    REQUEST_ID: 'set-1',
-    PROPERTY: 'Object.prop',
-    VALUE: '123'
-  }
-}));
-```
-
-Optional fields:
-
-```json
-{
-  "NO_LINKED": 0,
-  "SOURCE": "websocket"
-}
-```
-
-Response action: `setGlobal`.
-
-```json
-{
-  "SUCCESS": 1,
-  "PROPERTY": "Object.prop",
-  "VALUE": "123",
-  "RESULT": 1,
-  "REQUEST_ID": "set-1"
-}
-```
-
-UI should treat `SUCCESS: 0` as failure and read `ERROR`.
-
-## Call an Object Method
-
-Use action `CallMethod` to call backend `callMethod`.
-
-Request:
-
-```js
-wsSocket.send(JSON.stringify({
-  action: 'CallMethod',
-  data: {
-    REQUEST_ID: 'method-1',
-    METHOD: 'Object.method',
-    PARAMS: { value: 123 }
-  }
-}));
-```
-
-Response action: `callMethod`.
-
-```json
-{
-  "SUCCESS": 1,
-  "METHOD": "Object.method",
-  "RESULT": "...",
-  "REQUEST_ID": "method-1"
-}
-```
-
-## Run a Script
-
-Use action `RunScript` to call backend `runScript`.
-
-`SCRIPT` can be script id or script title, following existing MajorDoMo `runScript` behavior.
-
-Request:
-
-```js
-wsSocket.send(JSON.stringify({
-  action: 'RunScript',
-  data: {
-    REQUEST_ID: 'script-1',
-    SCRIPT: 'MyScript',
-    PARAMS: { value: 123 }
-  }
-}));
-```
-
-Response action: `runScript`.
-
-```json
-{
-  "SUCCESS": 1,
-  "SCRIPT": "MyScript",
-  "RESULT": "...",
-  "REQUEST_ID": "script-1"
-}
-```
-
-## Recommended UI Helper
-
-Add one small helper instead of duplicating message assembly:
-
-```js
-function wsSend(action, data) {
-  if (!window.wsSocket || wsSocket.readyState !== WebSocket.OPEN) {
-    return false;
-  }
-  wsSocket.send(JSON.stringify({
-    action: action,
-    data: data || {}
-  }));
-  return true;
-}
-```
-
-Optional request id helper:
-
-```js
-function wsRequest(action, data) {
-  data = data || {};
-  data.REQUEST_ID = data.REQUEST_ID || ('ws-' + Date.now() + '-' + Math.random().toString(16).slice(2));
-  wsSend(action, data);
-  return data.REQUEST_ID;
-}
-```
-
-## UI Refactor Checklist
-
-1. Find all websocket property subscriptions.
-2. Remove `payload.data.PROPERTIES = ...` from `TYPE='properties'` subscriptions.
-3. Keep `Subscribe` calls for other types: `scenes`, `plans`, `commands`, `devices`, `devices_data`, `objects`, `events`.
-4. Add token to websocket URL using `<#WEBSOCKETS_AUTH_TOKEN_JSON#>`.
-5. Add a handler for `property_values` for one-time value reads.
-6. Keep existing handler for `properties` live updates.
-7. Replace AJAX calls for simple operations with websocket actions where appropriate:
-   - read values: `GetProperty` / `GetProperties`
-   - set property: `SetGlobal`
-   - method action: `CallMethod`
-   - script action: `RunScript`
-8. Use `REQUEST_ID` when UI needs to match a response to a specific request.
-9. Do not rely on `property_values` for live updates; use `properties` for live updates.
-10. Restart websocket cycle after backend changes.
-
-## Current Backend Files
-
-Protocol implementation:
-
-```text
-lib/websockets/server/lib/WebSocket/Application/MajordomoApplication.php
-lib/websockets/server/lib/WebSocket/Connection.php
-lib/websockets/server/server.php
-```
-
-Browser websocket bootstrap:
-
-```text
-templates/websockets.html
-```
-
-Autogenerated property placeholders:
-
-```text
-lib/utils/postprocess_result.inc.php
-```
-
-Internal PHP publisher:
-
-```text
-lib/caching.class.php
+php tests/websocket_smoke.php
+php tests/websocket_transport_smoke.php
+php tests/network_memory_smoke.php
+node tests/websocket_client_smoke.mjs
+node tests/websocket_subscriptions_smoke.mjs
 ```

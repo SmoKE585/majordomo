@@ -1,12 +1,18 @@
 ---
 title: API ядра — разработка
 audience: agent
-category: development
-tags: API, OpenAPI, ядро, совместимость
+category: api
+category_label: API и маршруты
+category_icon: route
+category_order: 60
+tags: API, OpenAPI, ядро, совместимость, токены
 description: Общий диспетчер API, токены, проверка сетей, каталог операций и изолированные тесты.
+order: 10
 ---
 
 # API ядра
+
+**Коротко:** HTTP-API v1 обслуживает `public/api.php` через `ApiApplication`, а маршруты, валидация, описания панели и OpenAPI строятся из одного каталога `lib/core/Api/Contract.php`. Локальная сеть может работать без токена, внешние запросы требуют `Authorization: Bearer` или `X-API-Key`. Старые URL `/api/*` сохранены как совместимый адаптер.
 
 Для агента-клиента: [инструкция по использованию HTTP API](api-client.md).
 Пример nginx — `docs/deploy/nginx.conf.sample`: выделенный FastCGI location
@@ -22,7 +28,8 @@ Core::apiDispatcher → Response. Ошибки и завершение legacy-к
 `lib/core/Api/Contract.php` — источник маршрутов v1, схем валидации, описаний
 панели и OpenAPI. Новую операцию добавляйте в каталог и Dispatcher; не заводите
 независимый роутер/статическую копию документации. Публичная спецификация —
-`/api/v1/openapi.json`; в панели доступна загрузка под доступом админки.
+`/api/v1/openapi.json`; в разделе API панели её можно скачать (доступ к панели
+закрывает reverse proxy, встроенной авторизации в приложении нет).
 Формат соответствует [OpenAPI 3.0.3](https://spec.openapis.org/oas/v3.0.3.html).
 
 `Dispatcher` не знает об HTTP-авторизации. В него можно войти только из уже

@@ -1,11 +1,15 @@
 ---
 title: Модуль Zigbee и общий MQTT-транспорт
-category: architecture
+category: integration
 audience: agent
-order: 36
+tags: Zigbee, Zigbee2MQTT, MQTT, привязки, диагностика
+description: Устройство модуля zigbee, общий MQTT-транспорт, привязки, комнаты, мониторинг и изолированные проверки.
+order: 20
 ---
 
 # Zigbee
+
+**Коротко:** `zigbee` — обычный модуль стандартной поставки для Zigbee2MQTT, который использует общий цикл MQTT, а не собственный клиент. Он хранит экземпляры, устройства, свойства и привязки в отдельных таблицах и ставит события в `core_runtime`. Zigbee-логику нельзя переносить в `lib/core`.
 
 Обычный модуль стандартной поставки: `modules/zigbee/`, `templates/zigbee/`,
 `public/assets/modules/zigbee/`. Не переносить Zigbee-логику в `lib/core`.
@@ -13,10 +17,13 @@ order: 36
 и технические имена не используются для текущей работы. Одноразовый SQL-перенос
 привязок — `tools/sql/import_zigbeedev_bindings.sql`; инструкции в пользовательском документе.
 
-- `Schema` — пять таблиц InnoDB/utf8mb4 с уникальными идентификаторами.
+- `Schema` — семь таблиц InnoDB/utf8mb4: `zigbee_bridges`, `zigbee_devices`,
+  `zigbee_properties`, `zigbee_bindings`, `zigbee_events`, а также
+  `zigbee_health_settings` и `zigbee_health_state` для мониторинга.
 - `Repository` — хранение и транзакции.
 - `ValueTransformer` — проверяемые декларативные правила; без eval и SQL-кода.
 - `Service` — Zigbee2MQTT discovery, exposes, события и команды.
+- `HealthMonitor` / `HealthSettings` / `Battery` — доступность, батареи и оценка заряда по напряжению.
 - `zigbee` — стандартный module-фасад, подписки, формы и CSRF сессии панели.
 
 ## Общий транспорт
@@ -76,7 +83,20 @@ Loopback HTTP и дополнительного MQTT-соединения нет
 обработчика из-за сбоя другого подписчика. Ошибка всё равно возвращается
 вызывающему, lock освобождается, остальные подписчики уведомляются.
 
-Проверки без окружения приложения:
+## Мониторинг
+
+`HealthMonitor::tick()` вызывается по `MINUTELY`, берёт advisory-lock и проверяет
+доступность MQTT-цикла/брокера, экземпляров и добавленных устройств. Настройки
+глобальные, у устройства может быть переопределение в `HEALTH_CONFIG`. События —
+`offline`, `online`, `battery_low`, `battery_critical`, `battery_ok`; для каждого
+задаются включение, `say`, уровень, интервал повтора, текст и необязательный
+PHP-код без открывающих тегов. Заряд берётся из `battery`, из флага
+`battery_low` или оценивается по напряжению (`battery_source`: `auto`,
+`voltage`, `off`). Состояние инцидентов хранится в `zigbee_health_state`,
+ошибки обработчиков — в журнале `zigbee_events`. Сбой MQTT-транспорта подавляет
+зависимые события устройств, чтобы не рассылать лавину уведомлений.
+
+## Проверки без окружения приложения
 
 ```text
 php tests/zigbee_smoke.php

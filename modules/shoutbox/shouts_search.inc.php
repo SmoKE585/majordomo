@@ -5,12 +5,6 @@
 
 global $session;
 
-if (isset($this->owner->room_id) && $this->owner->room_id) {
-    $session->data['SHOUT_ROOM_ID'] = $this->owner->room_id;
-}
-
-$msg = gr('msg');
-$getdata = gr('getdata');
 $clear = gr('clear', 'int');
 $room_id = gr('room_id', 'int');
 $importance = gr('importance', 'int');
@@ -20,28 +14,6 @@ if ($this->action == 'admin' && $clear) {
     $this->redirect("?");
 }
 
-if (!$session->data['SITE_USERNAME']) {
-    $out['NOT_LOGGED'] = 1;
-}
-
-if ($this->action == '' && $session->data['SITE_USER_ID'] && $msg != '') {
-
-    if ($session->data['TERMINAL']) {
-        $terminal_rec = getTerminalsByName($session->data['TERMINAL'], 1)[0];
-
-        if ($terminal_rec['ID']) {
-            $terminal_rec['LATEST_ACTIVITY'] = date('Y-m-d H:i:s');
-            $terminal_rec['LATEST_REQUEST_TIME'] = $terminal_rec['LATEST_ACTIVITY'];
-            $terminal_rec['LATEST_REQUEST'] = $rec['MESSAGE'] . '';
-            $terminal_rec['IS_ONLINE'] = 1;
-            SQLUpdate('terminals', $terminal_rec);
-        }
-    }
-    say(htmlspecialchars($msg), 0, $session->data['SITE_USER_ID'], 'terminal' . $terminal_rec['ID']);
-
-    $getdata = 1;
-}
-
 if (is_object($this->owner) && $this->owner->name == 'panel') {
     $out['CONTROLPANEL'] = 1;
 }
@@ -49,7 +21,6 @@ $qry = "1";
 
 if ($room_id) {
     $qry .= " AND ROOM_ID=" . (int)$room_id;
-    $session->data['SHOUT_ROOM_ID'] = (int)$room_id;
 }
 
 if ($importance) {
@@ -63,32 +34,28 @@ if ($this->importance) {
 // QUERY READY
 global $save_qry;
 if ($save_qry) {
-    $qry = $session->data['shouts_qry'];
+    $qry = $session->get('shouts_qry');
 } else {
-    $session->data['shouts_qry'] = $qry;
+    $session->set('shouts_qry', $qry);
 }
 if (!$qry) $qry = "1";
 // FIELDS ORDER
 $sortby = gr('sortby');
-if (!$sortby && isset($session->data['shouts_sort'])) {
-    $sortby = $session->data['shouts_sort'];
+if (!$sortby && $session->has('shouts_sort')) {
+    $sortby = $session->get('shouts_sort');
 } else {
-    if (isset($session->data['shouts_sort']) && $session->data['shouts_sort'] == $sortby) {
+    if ($session->has('shouts_sort') && $session->get('shouts_sort') == $sortby) {
         if (Is_Integer(strpos($sortby, ' DESC'))) {
             $sortby = str_replace(' DESC', '', $sortby);
         } else {
             $sortby = $sortby . " DESC";
         }
     }
-    $session->data['shouts_sort'] = $sortby;
+    $session->set('shouts_sort', $sortby);
 }
 if (!$sortby) $sortby = "shouts.ADDED DESC";
 $out['SORTBY'] = $sortby;
 // SEARCH RESULTS
-if ($this->action != 'admin') {
-    $limit = "LIMIT 50";
-}
-
 $limit = gr('limit', 'int');
 if ($limit) {
     $this->limit = $limit;
@@ -116,62 +83,15 @@ if (!$this->reverse) {
 } else {
     $out['REVERSE'] = 1;
 }
-$txtdata = '';
-
-if ($this->mobile) {
-    $out['MOBILE'] = 1;
+$comp_name = defined('SETTINGS_GENERAL_ALICE_NAME') && SETTINGS_GENERAL_ALICE_NAME !== '' ? SETTINGS_GENERAL_ALICE_NAME : LANG_DEFAULT_COMPUTER_NAME;
+foreach ($res as &$row) {
+    $parts = explode(' ', $row['ADDED']);
+    $row['ADDED'] = fromDBDate($parts[0]) . ' ' . ($parts[1] ?? '');
+    if ((int)$row['MEMBER_ID'] === 0) $row['NAME'] = $comp_name;
+    $row['MESSAGE_HTML'] = htmlspecialchars($row['MESSAGE']);
 }
-
-if (isset($session->data['SHOUT_ROOM_ID']) && $session->data['SHOUT_ROOM_ID'] && defined('LOGGED_USER') && LOGGED_USER) {
-    $room = SQLSelectOne("SELECT * FROM shoutrooms WHERE ID='" . (int)$session->data['SHOUT_ROOM_ID'] . "'");
-    //print_r($room);
-    if ($room['ADDED_BY'] == LOGGED_USER_ID) {
-        $txtdata .= "<small>[ <a href='/chat.html?delete_room=" . $room['ID'] . "' onClick=\"return confirm('" . LANG_STRING_DELETE_CONFIRM . "')\">" . LANG_STRING_DELETE . "</a> ]</small>&nbsp;&nbsp;&nbsp;";
-        $roomType = $room['IS_PUBLIC'] ? LANG_SHOUTROOMS_STRING_PRIVATE : LANG_SHOUTROOMS_STRING_PUBLIC;
-        $txtdata .= "<small>[ <a href='/chat.html?change_visibility=" . $room['ID'] . "' onClick=\"return confirm('" . LANG_STRING_OPERATION_CONFIRM . "')\">$roomType</a> ]</small><br><br>";
-    }
-}
-
-if (defined('SETTINGS_GENERAL_ALICE_NAME') && SETTINGS_GENERAL_ALICE_NAME != '') {
-    $comp_name = SETTINGS_GENERAL_ALICE_NAME;
-} else {
-    $comp_name = LANG_DEFAULT_COMPUTER_NAME;
-}
-
-if ($res[0]['ID']) {
-    $old_dt = $res[0]['DT'];
-    $total = count($res);
-    for ($i = 0; $i < $total; $i++) {
-        // some action for every record if required
-        $tmp = explode(' ', $res[$i]['ADDED']);
-        $res[$i]['ADDED'] = fromDBDate($tmp[0]) . " " . $tmp[1];
-        if ($res[$i]['DT'] != $old_dt) {
-            $txtdata .= "<hr size=1><b>" . $tmp[0] . "</b><br>";
-            $old_dt = $res[$i]['DT'];
-        }
-        if ($res[$i]['MEMBER_ID'] == 0) {
-            $res[$i]['NAME'] = $comp_name;
-        }
-        $stl = '';
-        if (isset($res[$i]['COLOR']) && trim($res[$i]['COLOR'])) {
-            $stl = ' style="color:' . $res[$i]['COLOR'] . '"';
-        }
-        $txtdata .= "<span$stl>" . $res[$i]['DAT'] . " <b>" . htmlspecialchars($res[$i]['NAME']) . "</b>: " . nl2br(htmlspecialchars($res[$i]['MESSAGE'])) . "</span><br>";
-        if ($res[$i]['IMAGE'] != '' && file_exists($res[$i]['IMAGE'])) {
-            if (preg_match('/^\//is', $res[$i]['IMAGE'])) {
-                $res[$i]['IMAGE'] = str_replace(ROOT, ROOTHTML, $res[$i]['IMAGE']);
-            }
-            $txtdata .= "<div class='thumbnail' style='max-width: 600px'><img src='" . $res[$i]['IMAGE'] . "' alt=''/></div>";
-        }
-    }
-    for ($i = 0; $i < $total; $i++) {
-        $res[$i]['MESSAGE_HTML'] = htmlspecialchars($res[$i]['MESSAGE']);
-    }
-    $out['RESULT'] = $res;
-    $out['TXT_DATA'] = $txtdata;
-} else {
-    $txtdata .= 'No data';
-}
+unset($row);
+$out['RESULT'] = $res;
 
 // Admin UI: build the design-system activity feed from the same rows.
 if ($this->action == 'admin') {
@@ -317,35 +237,7 @@ if ($this->action == 'admin') {
         ),
         'line_numbers' => false,
         'max_height' => '180px',
-        'caption' => 'Сообщение появится в журнале и в чате.',
+        'caption' => 'Сообщение появится в журнале.',
     ));
 }
-
-if (!isset($session->data['SHOUT_ROOM_ID'])) {
-    $session->data['SHOUT_ROOM_ID'] = 0;
-}
-if (!isset($session->data['logged_user'])) {
-    $session->data['logged_user'] = 0;
-}
-$rooms = SQLSelect("SELECT * FROM shoutrooms WHERE (IS_PUBLIC=1) OR (IS_PUBLIC=0 AND ADDED_BY=" . (int)$session->data['logged_user'] . ") OR (IS_PUBLIC=0 AND ID=" . (int)$session->data['SHOUT_ROOM_ID'] . ") ORDER BY PRIORITY DESC, TITLE");
-if (isset($rooms[0])) {
-    $rooms[0]['FIRST'] = 1;
-    $out['ROOMS'] = $rooms;
-    if ($session->data['SHOUT_ROOM_ID']) {
-        $out['INIT_ROOM_ID'] = $session->data['SHOUT_ROOM_ID'];
-    } else {
-        $out['INIT_ROOM_ID'] = $rooms[0]['ID'];
-    }
-}
-
-$out['SERVER_NAME'] = $_SERVER['SERVER_NAME'];
-
-if ($this->action == '' && $getdata != '') {
-    header("HTTP/1.0 200 OK\n");
-    header('Content-Type: text/html; charset=utf-8');
-    echo $txtdata;
-    $session->save();
-    exit;
-}
-
 

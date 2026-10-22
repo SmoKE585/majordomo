@@ -2,55 +2,82 @@
 title: Документация
 audience: user, agent
 category: general
-description: Карта документации MajorDoMo: материалы для агентов, пользователей, DevOps и разработки.
+category_label: Общее
+category_icon: book-2
+category_order: 10
+tags: документация, карта, навигация, категории
+description: Карта документации MajorDoMo по категориям — что читать человеку, что агенту и что менять при доработках.
+order: 1
 ---
 
 # Документация
 
-Всё, что не код и не статика, живёт здесь. Две основные аудитории разделены
-по каталогам, чтобы агент и пользователь не читали лишнего.
+Документация — часть репозитория. Это же содержимое показывает раздел
+**«База знаний»** в админке (`/panel/knowledge_base.html`), поэтому тексты
+пишутся один раз здесь и не дублируются в шаблонах или базе данных.
 
-## Карта
+## Как пользоваться
 
-| Каталог | Для кого | Что внутри |
+- **Пользователю** — начните с [`user/README.md`](user/README.md), затем
+  [`user/commands.md`](user/commands.md) и [`user/modes.md`](user/modes.md).
+- **Агенту** — сначала [`agents/AGENTS.md`](agents/AGENTS.md): правила проекта
+  и текущее состояние. Перед переписыванием старого модуля —
+  [`agents/legacy-module-migration.md`](agents/legacy-module-migration.md).
+- **Перед изменением интерфейса** — [`agents/DESIGN_SYSTEM.md`](agents/DESIGN_SYSTEM.md)
+  и [`agents/admin-module-ui-guidelines.md`](agents/admin-module-ui-guidelines.md).
+- **В админке** — тот же материал с категориями, поиском и оглавлением.
+
+## Категории
+
+| Категория | Что внутри | Ключевые документы |
 | --- | --- | --- |
-| [`agents/`](agents/) | агенты и контрибьюторы | `AGENTS.md` (полные правила), `DESIGN_SYSTEM.md`, `configuration.md`, `entrypoints.md`, `install.md`, `project-structure.md`, `admin-assets.md`, `admin-module-ui-guidelines.md`, `admin-routing.md`, `third-party.md`, технические заметки по ядру и циклам |
-| [`user/`](user/) | пользователи и администраторы | описание проекта (`README.md`), `commands.md` (CLI-команды), блог, контракты API (Postman) |
-| [`deploy/`](deploy/) | DevOps | `nginx.conf.sample`, боевой `nginx.conf.may-13.ru.sample`, systemd-unit, `install-linux.sh` |
-| [`dev/`](dev/) | разработка | `db_terminal.sql` — схема + демо-данные для локальной базы |
-| [`archive/`](archive/) | история | разовые отчёты и разборы, не актуальные для ежедневной работы |
-| `ui-redesign/` | локально | скриншоты итераций редизайна (в git не попадают) |
+| **Общее** | Обзор проекта, структура каталогов, установка | [`README`](README.md), [`project-structure`](agents/project-structure.md), [`install`](agents/install.md), [`AGENTS`](agents/AGENTS.md) |
+| **Ядро** | Точки входа, конфигурация, авторизация, сервисы, ошибки, состояние БД, комментарии в коде | [`core-runtime`](agents/core-runtime.md), [`entrypoints`](agents/entrypoints.md), [`configuration`](agents/configuration.md), [`authentication`](agents/authentication.md), [`errors`](agents/errors.md), [`code-comments`](agents/code-comments.md), [`db-lib-analysis`](agents/db-lib-analysis.md) |
+| **Свойства и данные** | Запись свойств, `ONCHANGE`, привязки, журнал изменений, справочник функций | [`property-bindings`](agents/property-bindings.md), [`property-audit`](agents/property-audit.md), [`system-functions`](user/system-functions.md) |
+| **Автоматизация** | Циклы, супервизор, события, режимы | [`cycles`](agents/cycles.md), [`cycle-components`](agents/cycle-components.md), [`events`](agents/events.md), [`modes`](user/modes.md) |
+| **Интерфейс** | Дизайн-система, UI-правила модулей, сборка статики, настройки, база знаний, WebSocket, редактор кода | [`DESIGN_SYSTEM`](agents/DESIGN_SYSTEM.md), [`admin-module-ui-guidelines`](agents/admin-module-ui-guidelines.md), [`admin-assets`](agents/admin-assets.md), [`settings`](agents/settings.md), [`knowledge-base`](agents/knowledge-base.md), [`websocket-ui-migration`](agents/websocket-ui-migration.md), [`codemirror-module-integration`](agents/codemirror-module-integration.md) |
+| **API и маршруты** | REST API, токены, чистые URL, 404 | [`api`](agents/api.md), [`api-client`](agents/api-client.md), [`admin-routing`](agents/admin-routing.md), [`user/api`](user/api.md) |
+| **Интеграции** | Сторонние библиотеки, Zigbee, сеть и память MQTT/WebSocket | [`third-party`](agents/third-party.md), [`zigbee`](agents/zigbee.md), [`user/zigbee`](user/zigbee.md), [`network-memory`](user/network-memory.md) |
+| **Переписывание модулей** | Пошаговый порядок перевода legacy-модуля на новый формат | [`legacy-module-migration`](agents/legacy-module-migration.md) |
+| **Пользователю** | Команды, журналы, режимы, вход в панель, инструкции | [`user/README`](user/README.md), [`commands`](user/commands.md), [`logs`](user/logs.md), [`modes`](user/modes.md), [`authentication`](user/authentication.md) |
 
-## База знаний в админке
+Исторические разборы и разовые отчёты лежат в [`archive/`](archive/) и не
+являются инструкциями: актуальное поведение описано в профильных документах
+категорий.
 
-Все Markdown-файлы из этого каталога отображаются в админке в разделе
-**«База знаний»** (`/panel/knowledge_base.html`): с категориями, метками
-аудитории (`user`/`agent`), поиском и оглавлением. Менять тексты нужно здесь,
-в `docs/`; отдельной копии в базе данных нет.
+## Быстрые маршруты
 
-- Как добавить метки и категорию: [`agents/knowledge-base.md`](agents/knowledge-base.md).
-- Пользовательская инструкция по командам: [`user/commands.md`](user/commands.md).
-- API и токены: [`user/api.md`](user/api.md); инструкция ИИ-клиенту — [`agents/api-client.md`](agents/api-client.md).
-- Системные PHP-функции для сценариев, модулей и агентов: [`user/system-functions.md`](user/system-functions.md).
-
-## С чего начать
-
-- Впервые в проекте: [`user/README.md`](user/README.md) → [`agents/project-structure.md`](agents/project-structure.md).
-- Первый запуск и мастер настройки: [`agents/install.md`](agents/install.md).
-- Меняете интерфейс: [`agents/DESIGN_SYSTEM.md`](agents/DESIGN_SYSTEM.md) → [`agents/admin-module-ui-guidelines.md`](agents/admin-module-ui-guidelines.md).
-- Читаете или добавляете настройки: [`agents/configuration.md`](agents/configuration.md) → [`agents/settings.md`](agents/settings.md).
-- Меняете управление циклами: [`agents/cycles.md`](agents/cycles.md).
-- Добавляете CLI-команду: [`agents/console.md`](agents/console.md); список команд для пользователя — [`user/commands.md`](user/commands.md).
-- Добавляете системное событие или подписку: [`agents/events.md`](agents/events.md).
-- Меняете свойства, `ONCHANGE` или привязку модуля к свойству: [`agents/property-bindings.md`](agents/property-bindings.md).
-- Разбираете цепочку изменений свойства: [`agents/property-audit.md`](agents/property-audit.md).
-- Меняете точку входа или boot: [`agents/entrypoints.md`](agents/entrypoints.md).
-- Трогаете сборку: [`agents/admin-assets.md`](agents/admin-assets.md).
-- Трогаете URL/роутинг: [`agents/admin-routing.md`](agents/admin-routing.md).
-- Настраиваете сервер: [`deploy/`](deploy/).
+| Задача | Что читать |
+| --- | --- |
+| Первый запуск и настройка | [`install`](agents/install.md) → [`configuration`](agents/configuration.md) |
+| Вход в панель и сессии | [`user/authentication`](user/authentication.md) → [`agents/authentication`](agents/authentication.md) |
+| Понять, где что лежит | [`project-structure`](agents/project-structure.md) |
+| Поменять свойство, `ONCHANGE` или привязку | [`property-bindings`](agents/property-bindings.md) |
+| Разобрать цепочку изменения свойства | [`property-audit`](agents/property-audit.md) |
+| Добавить или разобрать ошибку | [`errors`](agents/errors.md) |
+| Переписать старый модуль | [`legacy-module-migration`](agents/legacy-module-migration.md) |
+| Сделать страницу в админке | [`DESIGN_SYSTEM`](agents/DESIGN_SYSTEM.md) → [`admin-module-ui-guidelines`](agents/admin-module-ui-guidelines.md) |
+| Добавить маршрут или 404 | [`admin-routing`](agents/admin-routing.md) |
+| Фоновый цикл или событие | [`cycles`](agents/cycles.md) → [`events`](agents/events.md) |
+| CLI-команда | [`console`](agents/console.md) → [`user/commands`](user/commands.md) |
+| API-клиент | [`api`](agents/api.md) → [`api-client`](agents/api-client.md) |
+| Деплой и nginx | [`deploy/`](deploy/) |
 
 ## Правила
 
-- Документация — часть репозитория: обновляйте её вместе с кодом в том же коммите.
-- Пути в тексте указываются от корня репозитория (`public/assets/...`, `resources/...`).
-- Ссылки — относительные, чтобы работали и на GitHub, и локально.
+- Документация меняется в том же коммите, что и код.
+- Весь текст — на русском. Технические имена файлов, классов, функций и
+  ключей остаются как есть; английские куски переводятся.
+- У каждого файла — front matter: `title`, `audience`, `category`,
+  `description`, `tags`, `order`. Категория задаётся явно, а не по каталогу:
+  в `agents/` лежат документы разных категорий.
+- Пути указываются от корня репозитория (`public/assets/...`, `lib/core/...`).
+- Ссылки — относительные, чтобы работали и на GitHub, и в админке.
+- Документация конкретного модуля живёт в `modules/<name>/docs/` и видна в
+  «Базе знаний» только у установленного модуля.
+- Не дублируйте один и тот же текст в двух документах: дайте ссылку.
+- Проверяйте изменения командой `php tests/docs_quality_smoke.php`: она ловит
+  отсутствующий front matter, неизвестную категорию, битые относительные ссылки
+  и английский текст.
+
+Правила разметки и метаданных — [`agents/knowledge-base.md`](agents/knowledge-base.md).

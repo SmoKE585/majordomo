@@ -7,7 +7,9 @@ if ($this->owner->name == 'panel') {
     $out['CONTROLPANEL'] = 1;
 }
 $table_name = 'users';
-$rec = SQLSelectOne("SELECT * FROM $table_name WHERE ID='$id'");
+$rec = SQLSelectOne("SELECT * FROM $table_name WHERE ID='" . (int)$id . "'");
+if (!is_array($rec)) $rec = array();
+$rec += array('ID' => 0, 'PASSWORD' => '');
 if ($this->mode == 'update') {
     $ok = 1;
     $rec['USERNAME'] = gr('username');
@@ -25,16 +27,28 @@ if ($this->mode == 'update') {
     $rec['COLOR'] = gr('color');
     $rec['IS_ADMIN'] = (int)gr('is_admin');
     $rec['IS_DEFAULT'] = (int)gr('is_default');
-    if (gr('passwordnew') && gr('passwordnew') == gr('passwordrepeat')) {
-        $rec['PASSWORD'] = hash('sha512', gr('passwordnew'));
-    } else if (gr('passwordnew') && gr('passwordnew') != gr('passwordrepeat')) {
+    $newPassword = is_string($_POST['passwordnew'] ?? null) ? $_POST['passwordnew'] : '';
+    $repeatPassword = is_string($_POST['passwordrepeat'] ?? null) ? $_POST['passwordrepeat'] : '';
+    if ($newPassword !== '' && $newPassword === $repeatPassword) {
+        try {
+            $rec['PASSWORD'] = \MajorDoMo\Core\Users\Passwords::hash($newPassword);
+        } catch (\InvalidArgumentException $error) {
+            $out['ERR_PASSWORD'] = 1;
+            $ok = 0;
+        }
+    } else if ($newPassword !== $repeatPassword) {
         $out['ERR_PASSWORD'] = 1;
         $ok = 0;
-    } else if (gr('passwordnew') == '' && gr('passwordrepeat') == '' && !gr('use_password', 'int')) {
+    } else if ($newPassword === '' && $repeatPassword === '' && !gr('use_password', 'int')) {
         $rec['PASSWORD'] = '';
     }
     $rec['LINKED_OBJECT'] = trim(gr('linked_object'));
     $rec['HOST'] = gr('host');
+
+    if ($rec['IS_ADMIN'] && ($rec['PASSWORD'] === '' || $rec['PASSWORD'] === hash('sha512', ''))) {
+        $out['ERR_ADMIN_PASSWORD'] = 1;
+        $ok = 0;
+    }
 
     global $avatar;
     global $avatar_name;

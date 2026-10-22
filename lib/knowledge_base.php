@@ -1,12 +1,12 @@
 <?php
 /**
- * Knowledge base registry.
+ * Реестр раздела «База знаний».
  *
- * The knowledge base deliberately has no database table: the source of truth is
- * the same `docs/` directory that agents already read. Add or edit a Markdown
- * file and it appears in the admin section on the next request.
+ * Отдельной таблицы в БД нет: источник истины — те же Markdown-файлы в docs/,
+ * которые читают агенты. Добавили или изменили файл — он появится в админке
+ * при следующем запросе.
  *
- * Metadata is optional. It can be declared in the file's front matter:
+ * Метаданные необязательны, но лучше задавать их во front matter:
  *
  *   ---
  *   title: Доступные команды
@@ -16,7 +16,7 @@
  *   order: 10
  *   ---
  *
- * Defaults are derived from the path:
+ * По умолчанию аудитория и категория выводятся из пути:
  *   docs/user/**   -> audience user,  category user
  *   docs/agents/** -> audience agent, category agents
  *   docs/deploy/** -> audience agent, category deploy
@@ -24,9 +24,9 @@
  *   docs/archive/**-> audience agent, category archive
  *   docs/*.md      -> audience user + agent, category general
  *
- * Installed modules may ship their own documentation. Those files are scanned
- * from `modules/<name>/docs/**` (or a root `modules/<name>/README.md` when the
- * module has no docs directory) and only when the module is installed:
+ * Установленные модули могут поставлять свою документацию. Она читается из
+ * `modules/<name>/docs/**` (или из корневого `modules/<name>/README.md`, если
+ * каталога docs/ нет) и только пока модуль установлен:
  *
  *   modules/yandexhome/docs/setup.md -> id module/yandexhome/setup,
  *                                       category module-yandexhome
@@ -36,26 +36,37 @@
 
 require_once __DIR__ . '/markdown.php';
 
+/**
+ * Реестр документации для раздела «База знаний».
+ *
+ * Сканирует docs/ и документацию установленных модулей, читает front matter,
+ * строит категории, поиск и HTML статей. Отдельной таблицы в БД нет: источник
+ * истины — Markdown-файлы.
+ *
+ * Изменения:
+ * 2026-10-22 — front matter с кириллицей больше не режется на байте 0x85;
+ *              битые байты отбрасываются при чтении файла.
+ */
 final class MDKnowledgeBase
 {
-    /** @var string Absolute docs directory without a trailing slash. */
+    /** @var string Абсолютный путь к docs/ без завершающего слеша. */
     private $root;
 
-    /** @var string Project root URL. */
+    /** @var string Корневой URL проекта. */
     private $rootHtml;
 
     /** @var array<string,array<string,mixed>>|null */
     private $documents = null;
 
     /**
-     * Additional documentation sources (installed modules).
+     * Дополнительные источники документации (установленные модули).
      *
      * @var array<int,array<string,mixed>>
      */
     private $sources = array();
 
     /**
-     * Category defaults declared by module sources, keyed by category key.
+     * Метаданные категорий, объявленные источниками модулей.
      *
      * @var array<string,array{label:string,icon:string,order:int}>
      */
@@ -531,6 +542,31 @@ final class MDKnowledgeBase
     }
 
     /**
+     * Приводит прочитанный файл к валидному UTF-8.
+     *
+     * Деплой, сохранение в редакторе или синхронизация могут заменить файл
+     * между сканированием каталога и чтением. Битые многобайтовые
+     * последовательности попали бы в карточку как «�», поэтому убираем только
+     * повреждённые байты, а не весь файл.
+     *
+     * @param string $text
+     * @return string
+     */
+    private function sanitizeUtf8($text)
+    {
+        if (mb_check_encoding($text, 'UTF-8')) {
+            return $text;
+        }
+        if (function_exists('iconv')) {
+            $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
+            if ($clean !== false) {
+                return $clean;
+            }
+        }
+        return mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+    }
+
+    /**
      * Read and normalise one Markdown file.
      *
      * @param string $relative
@@ -544,6 +580,7 @@ final class MDKnowledgeBase
         if (!is_string($raw)) {
             return null;
         }
+        $raw = $this->sanitizeUtf8($raw);
 
         list($meta, $body) = $this->splitFrontMatter($raw);
 
@@ -702,7 +739,10 @@ final class MDKnowledgeBase
     private function parseMeta($block)
     {
         $meta = array();
-        foreach (preg_split('/\R/', (string)$block) as $line) {
+        // Флаг `/u` обязателен: без него PCRE считает байт 0x85 внутри буквы
+        // «х» (U+0445, `d1 85`) переводом строки NEL и режет строку посередине
+        // символа — получается «админски�» вместо «админских».
+        foreach (preg_split('/\R/u', (string)$block) as $line) {
             $line = trim($line);
             if ($line === '' || strncmp($line, '#', 1) === 0) {
                 continue;

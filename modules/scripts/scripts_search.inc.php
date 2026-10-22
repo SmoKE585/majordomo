@@ -24,24 +24,24 @@ if ($title != '') {
 // QUERY READY
 global $save_qry;
 if ($save_qry) {
-    $qry = $session->data['scripts_qry'];
+    $qry = $session->get('scripts_qry');
 } else {
-    $session->data['scripts_qry'] = $qry;
+    $session->set('scripts_qry', $qry);
 }
 if (!$qry) $qry = "1";
 // FIELDS ORDER
 global $sortby;
 if (!$sortby) {
-    $sortby = isset($session->data['scripts_sort']) ? $session->data['scripts_sort'] : '';
+    $sortby = $session->has('scripts_sort') ? $session->get('scripts_sort') : '';
 } else {
-    if (isset($session->data['scripts_sort']) ? $session->data['scripts_sort'] : '' == $sortby) {
+    if ($session->has('scripts_sort') ? $session->get('scripts_sort') : '' == $sortby) {
         if (Is_Integer(strpos($sortby, ' DESC'))) {
             $sortby = str_replace(' DESC', '', $sortby);
         } else {
             $sortby = $sortby . " DESC";
         }
     }
-    $session->data['scripts_sort'] = $sortby;
+    $session->set('scripts_sort', $sortby);
 }
 $sortby = "script_categories.TITLE, scripts.TITLE";
 $out['SORTBY'] = $sortby;

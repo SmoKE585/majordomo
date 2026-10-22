@@ -87,11 +87,8 @@ function getParams($data = 1) {
 */
 function run() {
  global $session;
-  if ($this->action=='admin') {
-   $this->admin($out);
-  } else {
-   $this->usual($out);
-  }
+  $this->action = 'admin';
+        $this->admin($out);
   if (IsSet($this->owner->action)) {
    $out['PARENT_ACTION']=$this->owner->action;
   }
@@ -125,43 +122,6 @@ function admin(&$out) {
   $out['SET_DATASOURCE']=1;
  }
 
- global $delete_room;
- if ($delete_room!='' && LOGGED_USER) {
-  $room=SQLSelectOne("SELECT * FROM shoutrooms WHERE ID='".(int)$delete_room."' AND ADDED_BY=".(int)$session->data['SITE_USER_ID']);
-  if ($room['ID']) {
-   SQLExec("DELETE FROM shouts WHERE ROOM_ID=".$room['ID']);
-   SQLExec("DELETE FROM shoutrooms WHERE ID='".$room['ID']."'");
-  }
-  unset($session->data['SHOUT_ROOM_ID']);
-  $this->redirect("/chat.html");
- }
- 
- global $change_visibility;
- if ($change_visibility && LOGGED_USER)
- {
-        $room=SQLSelectOne("SELECT * FROM shoutrooms WHERE ID='".(int)$change_visibility."' AND ADDED_BY=".LOGGED_USER_ID);
-        if ($room['ID'])
-        {
-                $room['IS_PUBLIC'] = $room['IS_PUBLIC']?0:1;
-                SQLUpdate('shoutrooms',$room);
-        }
-        $this->redirect("/chat/room".$room['ID'].'.html');
- }
- 
- if ($this->mode=='newroom' && $session->data['LOGGED_USER_ID']) {
-  $rec=array();
-  global $room_title;
-  global $make_public;
-  $rec['TITLE']=htmlspecialchars($room_title);
-  $rec['ADDED_BY']=$session->data['LOGGED_USER_ID'];
-  $rec['ADDED']=date('Y-m-d H:i:s');
-  $rec['IS_PUBLIC']=(int)$make_public;
-  if ($rec['TITLE']) {
-   $rec['ID']=SQLInsert('shoutrooms', $rec);
-   $this->redirect("/chat/room".$rec['ID'].'.html');
-  }
- }
-
  if ($this->data_source=='shouts' || $this->data_source=='') {
   if ($this->view_mode=='' || $this->view_mode=='search_shouts') {
    $this->search_shouts($out);
@@ -173,17 +133,8 @@ function admin(&$out) {
   }
  }
 }
-/**
-* FrontEnd
-*
-* Module frontend
-*
-* @access public
-*/
-function usual(&$out) {
- SQLExec("DELETE FROM shouts WHERE (TO_DAYS(NOW())-TO_DAYS(ADDED))>7");
- $this->admin($out);
-}
+
+
 /**
 * shouts search
 *

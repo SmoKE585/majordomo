@@ -8,11 +8,10 @@ const template = readFileSync(new URL('../templates/objects/objects_edit_propert
 const scripts = [...template.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
 const source = scripts.at(-1)[1];
 const panelSource = readFileSync(new URL('../public/assets/js/admin/panel.js', import.meta.url), 'utf8');
-const socketTemplate = readFileSync(new URL('../templates/websockets.html', import.meta.url), 'utf8');
-new vm.Script(socketTemplate.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1]
-    .replace('<#WEBSOCKETS_AUTH_TOKEN_JSON#>', '""').replace(/\[#.*?#\]/g, ''));
-assert.ok(socketTemplate.includes("document.dispatchEvent(new Event('md:ws-connected'))"));
-assert.ok(socketTemplate.includes("document.dispatchEvent(new CustomEvent('md:ws-data', {detail: response}))"));
+const socketSource = readFileSync(new URL('../resources/js/modules/admin_panel/06_websockets.js', import.meta.url), 'utf8');
+new vm.Script(socketSource);
+assert.ok(socketSource.includes("wsConnected: 'md:ws-connected'"));
+assert.ok(socketSource.includes("wsData: 'md:ws-data'"));
 assert.equal(panelSource.match(/dispatchEvent\(new Event\('md:before-part-content-replace'\)\)/g).length, 3);
 
 class FixtureDocument extends EventTarget {

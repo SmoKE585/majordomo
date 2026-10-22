@@ -1,12 +1,19 @@
 ---
 title: Журнал изменений свойств
 audience: agent
-category: development
+category: data
 tags: свойства, аудит, журнал, цепочка, trace, onchange, методы, сценарии
 description: Устройство always-on журнала изменений свойств: таблицы, trace id, передача параметров и цепочки, API для модалки, retention.
+order: 20
 ---
 
 # Журнал изменений свойств
+
+## Коротко
+
+Устройство всегда включённого журнала изменений свойств: какие таблицы он
+пишет, как передаётся trace id и как открыть цепочку в админке. Читайте, когда
+разбираете цепочку автоматизации или добавляете шаг в журнал.
 
 Журнал включён всегда: отдельного `ENABLED`-флага нет. Отключать его нельзя,
 потому что он является частью диагностики цепочек автоматизации. Настраивается
@@ -39,11 +46,15 @@ description: Устройство always-on журнала изменений с
 
 - `ID`, `TRACE_ID` (32 hex);
 - `STARTED`, `LAST_SEEN`, `FINISHED`, `STATUS`;
-- `TRIGGER_TYPE` (`web`, `property`, `method`, `script`, `job`, `timer`,
-  `module`, `event`, `system`);
+- `TRIGGER_TYPE` — `property`, `method`, `script`, `job`, `timer`, `module`,
+  `event`; `resume` — продолжение запуска в `core_worker`;
 - `TRIGGER_TITLE`, `SOURCE`, `ACTOR`, `IP`, `REQUEST_URI`;
 - `PARAMS` — входные параметры запуска;
 - `RESULT`, `ERROR`, `CHAIN`, `EVENTS_COUNT`.
+
+Колонки `CHAIN` и `EVENTS_COUNT` есть в схеме, но текущая реализация их не
+заполняет: цепочка хранится в каждом событии, а число событий считается
+запросом при чтении.
 
 ### `property_audit_events`
 
@@ -75,7 +86,11 @@ description: Устройство always-on журнала изменений с
 - `OperationWorker::execute()` — очередь `core_runtime`;
 - `EventBus::drain()` — доставка системного события модульным подписчикам;
 - `Properties::set()` — прямое изменение свойства без метода (ручное или API);
-- `public/api.php` — прямой HTTP API, если пришёл `_trace`.
+- `ApiClient` — синхронный внутренний API (`/api/method/*`,
+  `/api/modulePropertySet/*`), если в параметрах есть `_trace`.
+
+Внешний HTTP API (`public/api.php`) `_trace` не принимает: `ApiApplication`
+вырезает его из query/body пользовательских запросов.
 
 Дальше `_trace` передаётся через:
 

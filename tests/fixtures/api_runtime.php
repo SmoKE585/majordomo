@@ -119,7 +119,7 @@ PHP);
     public static function remove(string $root): void
     {
         // Only our exact random fixture tree, never a workspace or inferred root.
-        if (!preg_match('/^mjd-api-[a-f0-9]+$/D', basename($root)) || realpath(dirname($root)) !== realpath(sys_get_temp_dir())) throw new RuntimeException('Unsafe fixture cleanup');
+        if (!preg_match('/^mjd-(?:api|auth-http)-[a-f0-9]+$/D', basename($root)) || realpath(dirname($root)) !== realpath(sys_get_temp_dir())) throw new RuntimeException('Unsafe fixture cleanup');
         foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST) as $file) {
             if ($file->isDir()) rmdir($file->getPathname()); else unlink($file->getPathname());
         }

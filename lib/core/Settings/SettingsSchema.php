@@ -127,15 +127,6 @@ final class SettingsSchema
                 'default' => '',
                 'width' => 'full',
             ),
-            'SYSTEM_WEBSOCKETS_TOKEN' => array(
-                'section' => self::SECTION_WEBSOCKETS,
-                'type' => 'password',
-                'label' => 'Токен WebSocket (старая настройка)',
-                'description' => 'Используется клиентами и старыми модулями. Новый токен можно задать в поле WEBSOCKETS_AUTH_TOKEN.',
-                'default' => '',
-                'secret' => true,
-                'width' => 'half',
-            ),
         );
         foreach ($legacy as $id => $field) {
             $field['id'] = $id;

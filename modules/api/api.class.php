@@ -20,8 +20,8 @@ class api extends module
         require_once ROOT . 'modules/api/lib/ApiDocs.php';
         global $session;
         header('Cache-Control: no-store');
-        if (!isset($session->data['api_csrf'])) $session->data['api_csrf'] = bin2hex(random_bytes(32));
-        $csrf = $session->data['api_csrf'];
+        if (!$session->has('api_csrf')) $session->set('api_csrf', bin2hex(random_bytes(32)));
+        $csrf = $session->get('api_csrf');
         $store = Core::apiTokens();
         if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $status = 200;
@@ -67,7 +67,6 @@ class api extends module
                 $payload = array('ok' => true, 'list_html' => $listHtml, 'secret_html' => $secretHtml, 'stats' => $stats, 'labels' => self::summaryLabels($stats));
             } catch (InvalidArgumentException $error) { $status = $status === 403 ? 403 : 422; $payload = array('ok' => false, 'message' => $error->getMessage()); }
             catch (Throwable $error) { $status = 500; $payload = array('ok' => false, 'message' => 'Не удалось выполнить операцию с токеном. Проверьте схему БД.'); }
-            $session->save();
             http_response_code($status); header('Content-Type: application/json; charset=utf-8');
             echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
             exit;
@@ -75,7 +74,6 @@ class api extends module
         if (isset($_GET['api_spec'])) {
             header('Content-Type: application/json; charset=utf-8');
             header('Content-Disposition: attachment; filename="majordomo-openapi.json"');
-            $session->save();
             echo json_encode(Contract::openApi(ROOTHTML), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }

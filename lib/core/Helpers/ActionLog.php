@@ -140,15 +140,15 @@ function logAction($action_type, $details = '', $context = array(), ...$legacy_a
     global $session;
     $rec = array();
     $rec['ADDED'] = date('Y-m-d H:i:s');
-    if (isset($session->data['SITE_USERNAME']) && $session->data['SITE_USERNAME'] !== '') {
-        $rec['USER'] = $session->data['SITE_USERNAME'];
+    if ($session instanceof \MajorDoMo\Core\Http\Session && $session->user() !== null) {
+        $rec['USER'] = $session->user()['username'];
     } elseif (isset($_SERVER['REQUEST_URI']) && preg_match('/^\/admin\.php/', $_SERVER['REQUEST_URI'])) {
         $rec['USER'] = 'Control Panel';
     } else {
         $rec['USER'] = '';
     }
-    if (isset($session->data['TERMINAL'])) {
-        $rec['TERMINAL'] = $session->data['TERMINAL'];
+    if ($session instanceof \MajorDoMo\Core\Http\Session && $session->has('TERMINAL')) {
+        $rec['TERMINAL'] = $session->get('TERMINAL');
     } else {
         $rec['TERMINAL'] = '';
     }
@@ -247,9 +247,18 @@ function logAction($action_type, $details = '', $context = array(), ...$legacy_a
 }
 
 /**
- * Summary of registerError
- * @param mixed $code Code (default 'custom')
- * @param mixed $details Details (default '')
+ * Регистрирует ошибку в журнале «Ошибки системы».
+ *
+ * Создаёт группу по коду или дописывает событие: сообщение, стек вызовов,
+ * URL/метод/IP запроса. Постоянное описание группы (TITLE/DETAILS) берётся из
+ * ErrorCatalog, пока эти поля пусты; ручная правка администратора не
+ * перезаписывается.
+ *
+ * Изменения:
+ * 2026-10-22 — TITLE/DETAILS заполняются из ErrorCatalog.
+ *
+ * @param string $code Код ошибки (группа в журнале)
+ * @param string $details Понятное описание для администратора
  * @return void
  */
 function registerError($code = 'custom', $details = '')
@@ -270,11 +279,21 @@ function registerError($code = 'custom', $details = '')
     }
 
     $error_rec = SQLSelectOne("SELECT * FROM system_errors WHERE CODE = '" . DBSafe($code) . "'");
+    if (!is_array($error_rec)) {
+        $error_rec = array();
+    }
 
-    if (!$error_rec['ID']) {
+    if (empty($error_rec['ID'])) {
         $error_rec['CODE'] = $code;
         $error_rec['KEEP_HISTORY'] = 1;
         $error_rec['ID'] = SQLInsert('system_errors', $error_rec);
+    }
+
+    // Группа должна объяснять код без чтения исходников: что произошло,
+    // почему, чем грозит и что делать. Текст берём из каталога и не
+    // перезаписываем: администратор мог отредактировать его вручную.
+    if (class_exists('MajorDoMo\\Core\\ErrorCatalog')) {
+        $error_rec = \MajorDoMo\Core\ErrorCatalog::fill($error_rec, $code);
     }
 
     $error_rec['LATEST_UPDATE'] = date('Y-m-d H:i:s');

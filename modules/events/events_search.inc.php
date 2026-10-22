@@ -12,9 +12,9 @@ $qry = "1";
 // QUERY READY
 global $save_qry;
 if ($save_qry) {
-    $qry = $session->data['events_qry'];
+    $qry = $session->get('events_qry');
 } else {
-    $session->data['events_qry'] = $qry;
+    $session->set('events_qry', $qry);
 }
 if (!$qry) {
     $qry = "1";
@@ -23,16 +23,16 @@ if (!$qry) {
 // FIELDS ORDER
 global $sortby;
 if (!$sortby) {
-    $sortby = $session->data['events_sort'];
+    $sortby = $session->get('events_sort');
 } else {
-    if ($session->data['events_sort'] == $sortby) {
+    if ($session->get('events_sort') == $sortby) {
         if (Is_Integer(strpos($sortby, ' DESC'))) {
             $sortby = str_replace(' DESC', '', $sortby);
         } else {
             $sortby = $sortby . " DESC";
         }
     }
-    $session->data['events_sort'] = $sortby;
+    $session->set('events_sort', $sortby);
 }
 if (!$sortby) {
     $sortby = "ID DESC";

@@ -17,12 +17,7 @@ if (str_starts_with($path, '/assets/')) {
 }
 if ($path === '/panel/api.html' || $path === '/preview') {
     chdir($root); ApiFixture::boot($root);
-    session_save_path($root . '/sessions'); session_start();
-    $GLOBALS['session'] = new class {
-        public array $data;
-        public function __construct() { if (!isset($_SESSION['data'])) $_SESSION['data'] = array(); $this->data =& $_SESSION['data']; }
-        public function save(): void {}
-    };
+    $GLOBALS['session'] = \MajorDoMo\Core\Core::session($root);
     // Only the shell module contract is substituted; the real API module and
     // template run against the same SQLite token service as HTTP API tests.
     class module {

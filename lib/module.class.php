@@ -606,8 +606,6 @@ class module
             $new_url = str_replace('nf.php', 'admin.php', $new_url);
         }
 
-        $session->save();
-
         $part_load = gr('part_load');
         if ($part_load) {
             $res = array();
@@ -642,14 +640,6 @@ class module
         preg_match("<a href=\"(.*?)\">", $param_str, $matches);
 
         $url = isset($matches[1]) ? $matches[1] : $url;
-
-        // Pretty admin URLs are stable and use the session cookie; adding a
-        // session id to them only makes them ugly and breaks sharing.
-        $root = defined('ROOTHTML') ? ROOTHTML : '/';
-        $panelPrefix = rtrim($root, '/') . '/panel/';
-        if (strpos($url, $panelPrefix) !== 0) {
-            $url = str_replace("?", "?" . session_name() . "=" . session_id() . "&", $url);
-        }
 
         return $url;
     }

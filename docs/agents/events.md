@@ -1,4 +1,19 @@
+---
+title: Системные события
+audience: agent
+category: automation
+tags: события, eventbus, подписки, журнал, модули, циклы
+description: Слой системных событий MajorDoMo — словарь событий, EventBus, доставка модульным подписчикам, журнал и реакция супервизора циклов.
+order: 30
+---
+
 # Системные события
+
+## Коротко
+
+Слой системных событий: какие события публикует ядро, как на них подписаться и
+где смотреть журнал. Читайте перед добавлением события, подписчика или
+изменением `cycle.php`.
 
 Событийный слой для изменений самой системы: установка и удаление модулей,
 обновления, настройки, изменения набора циклов. Он же — публичный API для
@@ -43,6 +58,7 @@ cycle_core → EventBus::drain() → processSubscriptions(NAME, payload)
 | `SYSTEM_UPDATE_FAILED` | обновление не применено | `reason` |
 | `SYSTEM_UPDATE_ABORTED` | пауза циклов отменена | `reason` |
 | `SETTINGS_CHANGED` | сохранены общие настройки | `section`, `keys[]` (без значений) |
+| `AUTH_BRUTE_FORCE` | три ошибки входа с IP за 15 минут, включена блокировка | `ip`, `login`, `attempts`, `window_seconds`, `blocked_seconds`, `blocked_until` |
 | `CYCLE_SCRIPT_ADDED` | супервизор увидел новый `scripts/cycle_*.php` | `cycle` |
 | `CYCLE_SCRIPT_REMOVED` | скрипт цикла исчез, надзор снят | `cycle` |
 
@@ -85,6 +101,15 @@ EventBus::on(SystemEvents::MODULE_REMOVED, function (string $name, array $payloa
 ```
 
 ## 4. Чтение и обслуживание
+
+Ранний boot (в частности, неуспешная авторизация до loader) использует
+`EventBus::defer($root, $name, $payload, $source)`: запись атомарно попадает в
+приватный `var/events/`, без запуска модулей. `cycle_core` и уже авторизованная
+админка вызывают `flushDeferred()`: запись сохраняется в `system_events`,
+зеркалируется в `events` и попадает в обычную доставку подписчикам. При отказе
+БД запись остаётся для повторной попытки; HTTP-ответ входа не запускает хуки.
+Один период блокировки создаёт одно `AUTH_BRUTE_FORCE`, повторные заблокированные
+запросы его не повторяют. Пароль и cookie не входят в payload.
 
 - `EventBus::since($id)` — события новее `$id` (для супервизора и интеграций).
 - `EventBus::lastId([$names])` — максимальный id, опционально по списку имён.

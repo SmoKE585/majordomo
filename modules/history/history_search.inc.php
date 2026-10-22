@@ -40,9 +40,9 @@
   // QUERY READY
   global $save_qry;
   if ($save_qry) {
-   $qry=$session->data['history_qry'];
+   $qry=$session->get('history_qry');
   } else {
-   $session->data['history_qry']=$qry;
+   $session->set('history_qry', $qry);
   }
   if (!$qry) $qry="1";
 
@@ -55,16 +55,16 @@
   // FIELDS ORDER
   global $sortby;
   if (!$sortby) {
-   $sortby=$session->data['history_sort'];
+   $sortby=$session->get('history_sort');
   } else {
-   if ($session->data['history_sort']==$sortby) {
+   if ($session->get('history_sort')==$sortby) {
     if (Is_Integer(strpos($sortby, ' DESC'))) {
      $sortby=str_replace(' DESC', '', $sortby);
     } else {
      $sortby=$sortby." DESC";
     }
    }
-   $session->data['history_sort']=$sortby;
+   $session->set('history_sort', $sortby);
   }
   $sortby="ADDED DESC, ID DESC";
   $out['SORTBY']=$sortby;

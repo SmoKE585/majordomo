@@ -12,24 +12,24 @@
   // QUERY READY
   global $save_qry;
   if ($save_qry) {
-   $qry=$session->data['pvalues_qry'];
+   $qry=$session->get('pvalues_qry');
   } else {
-   $session->data['pvalues_qry']=$qry;
+   $session->set('pvalues_qry', $qry);
   }
   if (!$qry) $qry="1";
   // FIELDS ORDER
   global $sortby;
   if (!$sortby) {
-   $sortby=$session->data['pvalues_sort'];
+   $sortby=$session->get('pvalues_sort');
   } else {
-   if ($session->data['pvalues_sort']==$sortby) {
+   if ($session->get('pvalues_sort')==$sortby) {
     if (Is_Integer(strpos($sortby, ' DESC'))) {
      $sortby=str_replace(' DESC', '', $sortby);
     } else {
      $sortby=$sortby." DESC";
     }
    }
-   $session->data['pvalues_sort']=$sortby;
+   $session->set('pvalues_sort', $sortby);
   }
   if (!$sortby) $sortby="ID DESC";
   $out['SORTBY']=$sortby;

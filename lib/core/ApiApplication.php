@@ -8,7 +8,7 @@ use MajorDoMo\Core\Install\{InstallGate, InstallState};
 final class ApiApplication extends Application
 {
     /** Optional verifier is for isolated HTTP tests/embedded deployments. */
-    public function __construct(?string $root = null, private ?\Closure $tokenVerifier = null) { parent::__construct($root); }
+    public function __construct(?string $root = null, private ?\Closure $tokenVerifier = null, private ?\Closure $usersFactory = null) { parent::__construct($root); }
 
     public function run(): void
     {
@@ -31,7 +31,8 @@ final class ApiApplication extends Application
             $legacy = $probe->legacy;
             if (!InstallState::isComplete($this->root)) throw new ApiException(503, 'install_required', 'Система ещё не настроена.', array('install_url' => InstallGate::installUrl()), array('Retry-After' => '30'));
             $policy = new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), Config::string('TRUSTED_PROXIES'));
-            $policy->authorize($_SERVER, $this->tokenVerifier ?? static fn($token) => preg_match('/^mdm_[a-f0-9]{64}$/D', $token) === 1 && TokenStore::connect()->verify($token));
+            $gate = new Auth\AuthGate($this->root, $this->usersFactory);
+            $policy->authorize($_SERVER, $this->tokenVerifier ?? static fn($token) => preg_match('/^mdm_[a-f0-9]{64}$/D', $token) === 1 && TokenStore::connect()->verify($token), fn() => $gate->authorizeApi());
             $stream = fopen('php://input', 'rb');
             if ($stream === false) throw new ApiException(400, 'invalid_json', 'Не удалось прочитать тело запроса.');
             try { $raw = stream_get_contents($stream, 1048577); } finally { fclose($stream); }
@@ -54,7 +55,6 @@ final class ApiApplication extends Application
                 $language = $_SERVER['HTTP_APP_LANGUAGE'] ?? '';
                 if (is_string($language) && preg_match('/^[a-z]{2}(?:-[A-Z]{2})?$/D', $language)) $_GET['lang'] = $language;
                 $this->bootSettings();
-                if ($legacy && isset($_REQUEST['prj']) && is_scalar($_REQUEST['prj']) && $_REQUEST['prj'] !== '') $this->startSession();
                 $data = Core::apiDispatcher()->dispatch($request);
             }
             $payload = !$legacy && $request->segments === array('openapi.json') ? $data : $response->success($data, $legacy, $request);

@@ -3,7 +3,7 @@
 /** Actual property writer, SQLite :memory:, mocked side effects; no app boot. */
 namespace MajorDoMo\Core {
     class Config { public static function bool($key) { return false; } }
-    class Cache { public function set($key, $value) {} public function delete($key) {} }
+    class Cache { public function get($key) { return false; } public function set($key, $value) {} public function delete($key) {} }
     class MetadataCache { public function get($key, $load) { return $load(); } }
     class PropertyLock {
         public bool $released = false;
@@ -32,6 +32,8 @@ namespace {
     $pdo->exec("INSERT INTO properties VALUES (1,1,0,'motion',0,0,0,'onMotion')");
     $pdo->exec("INSERT INTO pvalues VALUES (1,1,1,'0','','','Sensor.motion','zigbee')");
     function startMeasure($name) {} function endMeasure($name, $flag = 0) {}
+    function registerError($code, $message) { $GLOBALS['reported'][] = array($code, $message); }
+    $reported = array();
     $connection = new class($pdo) {
         public function __construct(private PDO $pdo) {}
         public function SelectOne($sql) { return $this->pdo->query($sql)->fetch(PDO::FETCH_ASSOC); }
@@ -41,7 +43,7 @@ namespace {
         }
         public function DbSafe1($value) { return str_replace("'", "''", $value); }
     };
-    require dirname(__DIR__) . '/lib/core/Database.php'; require dirname(__DIR__) . '/lib/core/PropertyChain.php'; require dirname(__DIR__) . '/lib/core/PropertyAudit.php'; require dirname(__DIR__) . '/lib/core/Properties.php';
+    require dirname(__DIR__) . '/lib/core/Database.php'; require dirname(__DIR__) . '/lib/core/PropertyChain.php'; require dirname(__DIR__) . '/lib/core/PropertyAudit.php'; require dirname(__DIR__) . '/lib/core/ErrorReporter.php'; require dirname(__DIR__) . '/lib/core/Properties.php';
     $locks = new MajorDoMo\Core\PropertyLock();
     $properties = new MajorDoMo\Core\Properties(new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(), new MajorDoMo\Core\MetadataCache(), $locks, new MajorDoMo\Core\WebSocketQueue(), new MajorDoMo\Core\CodeExecutor());
     $object = new class {
@@ -79,6 +81,28 @@ namespace {
     check($queued === array() && count($object->calls) === $before
         && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === '0',
         'Repeated property in a delivery chain stops notifications but saves the value');
+
+    // Событие должно объяснять себя: причину, что сохранено и что делать.
+    $propertiesWithErrors = new MajorDoMo\Core\Properties(
+        new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(),
+        new MajorDoMo\Core\MetadataCache(), new MajorDoMo\Core\PropertyLock(),
+        new MajorDoMo\Core\WebSocketQueue(), new MajorDoMo\Core\CodeExecutor(),
+        new MajorDoMo\Core\ErrorReporter(new MajorDoMo\Core\Cache())
+    );
+    MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.motion'), 'mqtt');
+    try { $propertiesWithErrors->set($object, 'motion', 1); } finally { MajorDoMo\Core\PropertyChain::leave(); }
+    check(count($reported) === 1 && $reported[0][0] === 'property_chain', 'Chain stop is registered under its own code');
+    check(str_contains($reported[0][1], 'повторно изменилось') && str_contains($reported[0][1], 'Значение сохранено')
+        && str_contains($reported[0][1], 'Цепочка') && str_contains($reported[0][1], 'Что делать:'),
+        'Chain stop message explains what happened, what was saved and what to do');
+
+    MajorDoMo\Core\ErrorReporter::reset();
+    $longChain = array();
+    for ($i = 1; $i <= MajorDoMo\Core\PropertyChain::MAX_LENGTH; $i++) $longChain[] = 'property:Other' . $i;
+    MajorDoMo\Core\PropertyChain::enter($longChain, 'mqtt');
+    try { $propertiesWithErrors->set($object, 'motion', 0); } finally { MajorDoMo\Core\PropertyChain::leave(); }
+    check(count($reported) === 2 && str_contains($reported[1][1], 'превысила ' . MajorDoMo\Core\PropertyChain::MAX_LENGTH . ' шагов'),
+        'Only a repeated property is reported as a loop; the depth limit is named separately');
 
     echo 'Property ONCHANGE smoke tests passed: ' . $checks . " checks; SQLite :memory:, no external connections.\n";
 }

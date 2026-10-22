@@ -1,4 +1,17 @@
+---
+title: UI-гайд для модулей админки MajorDoMo
+audience: agent
+category: ui
+tags: интерфейс, модули, bootstrap 5, md-*, миграция, partload, codemirror
+description: Как оформлять страницы модулей админки на Bootstrap 5 и md-*: готовые компоненты, формы, таблицы, модалки, иконки, JS и чек-лист миграции.
+order: 20
+---
+
 # UI-гайд для сторонних модулей админки MajorDoMo
+
+## Коротко
+
+Гайд описывает, как оформлять страницы модулей в админке: Bootstrap 5, компоненты `MDJUI`, классы `md-*`, Tabler Icons и локальные CSS/JS модуля. Для новых страниц приоритет — `docs/agents/DESIGN_SYSTEM.md`; этот документ помогает мигрировать legacy-модули и не ломать общую оболочку. Старые Bootstrap 3-разметка, jQuery-плагины и глобальные переопределения в новом коде запрещены.
 
 Этот документ описывает, как оформлять страницы сторонних модулей в админке MajorDoMo, чтобы они соответствовали общей дизайн-системе и не ломали интерфейс.
 
@@ -56,7 +69,7 @@
 3. Не добавляйте inline styles без крайней необходимости.
 4. Не подключайте глобальные CSS-файлы из модуля, которые меняют `body`, `.row`, `.btn`, `.modal`, `.table` во всей админке.
 5. Не добавляйте новый jQuery UI-код. Новый UI пишется на vanilla JS + Bootstrap 5 API.
-6. Для новых классов используйте префикс модуля или `md-admin-`, если компонент общий.
+6. Для новых классов используйте префикс модуля; общие компоненты — только `md-*` в `ui-system.css`, не `md-admin-*`.
 7. Сохраняйте мобильную адаптивность.
 8. Не ломайте dark/light theme: используйте CSS variables и Bootstrap variables.
 
@@ -143,10 +156,12 @@ body {
 
 ## Bootstrap 5
 
+Bootstrap 5 остаётся базой, но для новых страниц используйте `MDJUI`/`md-btn` и другие `md-*` компоненты. Примеры ниже показывают именно Bootstrap 5 API и атрибуты; классы `btn` допустимы в legacy-разметке, которую вы ещё не перевели.
+
 Используйте Bootstrap 5 API:
 
 ```html
-<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#settingsModal">
+<button class="md-btn md-btn--primary" data-bs-toggle="modal" data-bs-target="#settingsModal">
   Настройки
 </button>
 ```
@@ -232,7 +247,7 @@ modal.show();
 Хорошо:
 
 ```html
-<button class="btn btn-light" data-bs-toggle="tooltip" data-bs-title="Перезапустить сервис">
+<button class="md-btn md-btn--secondary" data-bs-toggle="tooltip" data-bs-title="Перезапустить сервис">
   Restart
 </button>
 ```
@@ -247,20 +262,33 @@ modal.show();
 
 ## Карточки и панели
 
-Новые страницы должны использовать карточную структуру, а не Bootstrap 3 `panel`.
+Новые страницы должны использовать карточную структуру (`md-card` или `MDJUI::card()`), а не Bootstrap 3 `panel` и не legacy `md-admin-section-card` из `admin_panel.css`.
 
 Хорошо:
 
 ```html
-<section class="md-admin-section-card my-module-card">
-  <header class="md-admin-section-card__header">
-    <h2>Сценарии</h2>
-    <a class="btn btn-primary btn-sm" href="?view_mode=edit">Добавить</a>
+<section class="md-card my-module-card">
+  <header class="md-card__head">
+    <div class="md-card__titles">
+      <h2 class="md-card__title">Сценарии</h2>
+    </div>
+    <div class="md-card__actions">
+      <a class="md-btn md-btn--primary md-btn--sm" href="?view_mode=edit">Добавить</a>
+    </div>
   </header>
-  <div class="md-admin-section-card__body">
+  <div class="md-card__body">
     ...
   </div>
 </section>
+```
+
+Для PHP-шаблона предпочтителен компонент:
+
+```php
+<?= MDJUI::card([
+    'title' => 'Сценарии',
+    'actions' => MDJUI::button('Добавить', ['variant' => 'primary', 'size' => 'sm', 'href' => '?view_mode=edit']),
+], $cardBody) ?>
 ```
 
 Плохо:
@@ -398,6 +426,22 @@ jQuery допускается только как временная legacy-за
 
 Нельзя писать новый UI на jQuery. Нельзя добавлять новые jQuery-плагины. Нельзя делать новые inline handlers с `$('#...')`.
 
+## Повторная инициализация после partLoad
+
+`partLoad()` заменяет содержимое `#partLoadContent` без перезагрузки страницы. Всё, что инициализируется на `DOMContentLoaded`, после такого перехода нужно запускать снова.
+
+- общий JS оформляйте модулем в `resources/js/modules/admin_panel/` и регистрируйте через `MDJAdminUI.registerModuleUI('my-module', {init: function (root) { ... }})`; shell вызывает `init` при загрузке и после `partLoad`;
+- `data-md-searchable`, range, password-toggle и `data-md-dismiss` повторно инициализирует `70_controls.js` — не навешивайте на них свои обработчики;
+- `linkedobject`, drawer, history и trace переинициализируются после `partLoad` сами;
+- tooltip/popover после динамической вставки — `MDJAdminUI.initBootstrapWidgets(root)`;
+- не вызывайте `Alpine.start()` в шаблоне: Alpine запускает `115_alpine.js`, после partLoad вызывается `Alpine.initTree(root)`.
+
+## Редактор кода
+
+CodeMirror 6 — общий lazy-chunk. В шаблоне нужна только разметка `[data-code-editor]` с классами `md-code-editor__*`; загрузчик уже входит в `admin.js`, отдельные `<script>`/`<link>` не добавляйте. Для редактора в закрытом drawer/modal добавьте `data-code-editor-lazy="1"` и вызовите `window.MDCodeEditor.init(container)` при открытии.
+
+Полный контракт, разметка toolbar, режимы PHP/Python, автосохранение и горячие клавиши — в [codemirror-module-integration.md](codemirror-module-integration.md).
+
 ## Inline styles
 
 Inline styles почти всегда запрещены.
@@ -432,7 +476,7 @@ Inline styles почти всегда запрещены.
 - CSS custom property с динамическим значением:
 
 ```html
-<span class="my-module-color" style="--item-color:#4792d1"></span>
+<span class="my-module-color" style="--item-color: var(--md-ui-primary)"></span>
 ```
 
 - координаты/размеры, которые генерирует сторонний виджет;
@@ -440,11 +484,11 @@ Inline styles почти всегда запрещены.
 
 ## Цвета
 
-Основной цвет: `#4792d1`.
+Основной цвет нового UI — токен `--md-ui-primary` (`#2f7fbd` в светлой теме, `#6cb2e8` в тёмной). Исторический брендовый `#4792d1` остаётся только в legacy-слое: не используйте его в новых стилях.
 
-Используйте его для:
+Используйте `--md-ui-primary` для:
 
-- primary buttons;
+- primary buttons (`md-btn--primary`);
 - active states;
 - важных ссылок;
 - акцентов;
@@ -464,9 +508,9 @@ Inline styles почти всегда запрещены.
 Хорошо:
 
 ```html
-<span class="badge text-bg-success">OK</span>
-<span class="badge text-bg-warning">Warning</span>
-<span class="badge text-bg-danger">Error</span>
+<span class="md-badge md-badge--success">OK</span>
+<span class="md-badge md-badge--warning">Внимание</span>
+<span class="md-badge md-badge--danger">Ошибка</span>
 ```
 
 ## Типографика
@@ -574,8 +618,8 @@ Inline styles почти всегда запрещены.
 
 - использовать карточки и секции;
 - держать actions справа или в явной action row;
-- использовать `btn-primary` только для главного действия;
-- использовать `btn-light`, `btn-outline-secondary` для вторичных действий;
+- использовать `md-btn--primary` только для главного действия;
+- использовать `md-btn--secondary`, `md-btn--outline` или `md-btn--ghost` для вторичных действий;
 - выносить повторяющиеся блоки в include/template;
 - делать понятные empty states;
 - показывать loading/error/success состояния;
@@ -598,6 +642,8 @@ Inline styles почти всегда запрещены.
 - Таблицы адаптивны.
 - Формы имеют labels.
 - Loading state не использует `img/ajax-loader.gif`.
+- Редактор кода подключён через `data-code-editor`, без ручного CodeMirror.
+- JS и контролы работают после `partLoad` (повторная инициализация).
 - На мобильном ничего не вылезает за viewport.
 - Важные кнопки доступны с клавиатуры.
 - Проверен внешний вид в общей админке, а не только отдельно в модуле.
@@ -605,17 +651,20 @@ Inline styles почти всегда запрещены.
 ## Пример структуры страницы модуля
 
 ```html
-<div class="my-module-page">
-  <section class="md-admin-section-card my-module-card">
-    <header class="md-admin-section-card__header">
-      <div>
-        <h2>Название модуля</h2>
-        <p class="my-module-subtitle">Краткое описание состояния или назначения страницы.</p>
-      </div>
-      <a href="?view_mode=edit" class="btn btn-primary btn-sm">Добавить</a>
-    </header>
+<div class="md-ui-page md-ui-page--stack my-module-page">
+  <section class="md-ui-hero">
+    <div>
+      <div class="md-ui-hero__eyebrow"><i class="ti ti-puzzle" aria-hidden="true"></i> Модуль</div>
+      <h1 class="md-ui-hero__title">Название модуля</h1>
+      <p class="md-ui-hero__lede">Краткое описание состояния или назначения страницы.</p>
+    </div>
+    <div class="md-ui-hero__actions">
+      <a href="?view_mode=edit" class="md-btn md-btn--primary">Добавить</a>
+    </div>
+  </section>
 
-    <div class="md-admin-section-card__body">
+  <section class="md-card">
+    <div class="md-card__body">
       <div class="table-responsive">
         <table class="table table-hover align-middle my-module-table">
           ...
@@ -627,20 +676,12 @@ Inline styles почти всегда запрещены.
 ```
 
 ```css
-.my-module-page {
-  display: grid;
-  gap: 18px;
-}
-
-.my-module-subtitle {
-  margin: 4px 0 0;
-  color: var(--bs-secondary-color);
-}
-
 .my-module-table {
   margin-bottom: 0;
 }
 ```
+
+Страничный CSS/JS держите в `public/assets/modules/my_module/` и подключайте только в шаблоне этого модуля, например `<link rel="stylesheet" href="<#ROOTHTML#>assets/modules/my_module/my_module.css">`. В общий бандл их не добавляйте.
 
 ## Миграция старого модуля
 

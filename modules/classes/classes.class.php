@@ -99,11 +99,8 @@ function getParams() {
 function run() {
  global $session;
   $out=array();
-  if ($this->action=='admin') {
-   $this->admin($out);
-  } else {
-   $this->usual($out);
-  }
+  $this->action = 'admin';
+        $this->admin($out);
   if (IsSet($this->owner->action)) {
    $out['PARENT_ACTION']=$this->owner->action;
   }
@@ -513,16 +510,8 @@ function admin(&$out) {
  }
 
 
-/**
-* FrontEnd
-*
-* Module frontend
-*
-* @access public
-*/
-function usual(&$out) {
- $this->admin($out);
-}
+
+
 /**
 * classes search
 *

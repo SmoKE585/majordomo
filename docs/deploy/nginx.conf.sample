@@ -71,6 +71,24 @@ server {
     # (сборки fastpanel и т.п.). В стандартном nginx директивы нет.
     # disable_symlinks if_not_owner from=/var/www/example/data/www/example.com;
 
+    # WebSocket только для чтения. Укажите IP nginx в TRUSTED_PROXIES,
+    # иначе исходный адрес не считается доверенным и локальный доступ требует токен.
+    # При WEBSOCKETS_TLS=1 используйте https upstream с проверкой сертификата.
+    location = /ws {
+        auth_basic off;
+        proxy_pass http://127.0.0.1:8001/majordomo;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Authorization $http_authorization;
+        proxy_set_header X-API-Key $http_x_api_key;
+        proxy_read_timeout 75s;
+        proxy_buffering off;
+        access_log off; # Одноразовый билет не попадает в access log.
+    }
+
     # --- Точки входа -----------------------------------------------------
     # Setup wizard: the canonical URL is install.php (it must work even when
     # rewrites are stale), the pretty alias is a convenience.
@@ -321,6 +339,21 @@ server {
 
     root /var/www/example/data/www/example.com/public;
     index index.php;
+
+    location = /ws {
+        auth_basic off;
+        proxy_pass http://127.0.0.1:8001/majordomo;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Authorization $http_authorization;
+        proxy_set_header X-API-Key $http_x_api_key;
+        proxy_read_timeout 75s;
+        proxy_buffering off;
+        access_log off;
+    }
 
     # Setup wizard: the canonical URL is install.php (it must work even when
     # rewrites are stale), the pretty alias is a convenience.

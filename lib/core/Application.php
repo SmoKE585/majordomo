@@ -62,7 +62,7 @@ abstract class Application
     protected function startSession(string $name = 'prj'): void
     {
         global $session;
-        $session = new \session($name);
+        $session = $name === 'prj' ? Core::session($this->root) : new Http\Session($name, $this->root);
     }
 
     protected function rootPath(): string

@@ -320,7 +320,7 @@ final class InstallDatabase
             return $result;
         }
 
-        $hash = hash('sha512', $password);
+        $hash = \MajorDoMo\Core\Users\Passwords::hash($password);
         $statement = @$this->db->prepare(
             "INSERT INTO users (USERNAME, NAME, PASSWORD, IS_ADMIN, IS_DEFAULT, LINKED_OBJECT, HOST, COLOR) VALUES (?,?,?,1,1,'','','')"
         );

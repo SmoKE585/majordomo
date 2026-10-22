@@ -1,4 +1,17 @@
+---
+title: Структура проекта
+audience: agent
+category: general
+tags: структура, каталоги, public, nginx, URL
+description: Раскладка каталогов MajorDoMo, соответствие URL файлам, правила nginx и локального dev-сервера.
+order: 10
+---
+
 # Структура проекта
+
+## Коротко
+
+Это карта каталогов и таблица «URL → файл» после перехода на `public/` как document root. Читайте перед добавлением точки входа, ассета или nginx-правила. Нельзя переносить `modules/`, `cms/`, `objects/`, `scripts/`, `3rdparty/` и `docs/` внутрь `public/`: их старые URL обязаны сохраниться.
 
 Раскладка каталогов после перехода на `public/` как document root (структура
 «а-ля Laravel»): веб-точки входа и статика лежат в `public/`, код приложения —
@@ -34,8 +47,8 @@
 ├── cycle.php                   # CLI-цикл (systemd), вне document root
 ├── dev_server.php              # локальный сервер, повторяет контракт nginx
 ├── resources/                  # исходники Vite, в бандл, наружу не отдаются
-│   ├── css/                    # admin_panel.css, ui-v2.css, ui-system.css, codeeditor.css
-│   └── js/                     # app.js, bootstrap.js, charts.js, modules/, codeeditor/
+│   ├── css/                    # admin_panel.css, ui-v2.css, ui-system.css, codeeditor.css, codehighlight.css
+│   └── js/                     # app.js, bootstrap.js, charts.js, modules/, codeeditor/, codehighlight/
 ├── docs/                       # документация и деплой-конфиги
 │   ├── README.md  agents/  user/  deploy/  dev/  archive/  ui-redesign/
 ├── modules/                    # PHP-модули и их веб-эндпоинты (/modules/...)
@@ -51,7 +64,7 @@
 ├── backup/                     # резервные копии saverestore (runtime, gitignored)
 ├── 3rdparty/                   # PHP-библиотеки (/3rdparty/...)
 ├── objects/                    # /objects/?script=…
-├── scripts/                    # CLI-циклы и smoke-тесты (/scripts/…)
+├── scripts/                    # CLI-циклы и служебные скрипты (/scripts/…)
 ├── tools/                      # dev-инструменты (скриншоты, иконки, config, install)
 ├── tests/                      # smoke/regression: routing, config, install, settings/cycles, core runtime
 ├── package.json / vite.*.js    # сборка статики
@@ -70,25 +83,24 @@
 | `/admin.php`, `/admin.php?...` | `public/admin.php` |
 | `/panel/...` (pretty URL) | `public/nf.php` + `lib/admin_router.php` |
 | `/install.php` | `public/install.php` (канонический URL мастера) |
-| `/install`, `/install/` | 302 → `/install.php` (nginx/dev_server) |
+| `/install`, `/install/` | nginx: 302 → `/install.php`; `dev_server.php` отдаёт тот же файл |
 | `/api/...` | `public/api.php` |
 | `/404.php` | `public/404.php` |
 | `/assets/...` | `public/assets/...` |
 | `/cms/avatars/...`, `/cms/images/...` | `cms/...` (медиа) |
 | `/modules/...` | `modules/...` (включая PHP-эндпоинты) |
 | `/objects/?script=...` | `objects/index.php` |
-
 | `/scripts/...` | `scripts/...` |
 | `/3rdparty/...` | `3rdparty/...` (PHP-библиотеки) |
 | `/docs/...` | `docs/...` (UI Kit ссылается на документацию) |
-| `/css|/js|/img/...` | 301 → `/assets/...` |
+| `/css`, `/js`, `/img/...` | 301 → `/assets/...` |
 | `/3rdparty/<browser-lib>/...` | 301 → `/assets/vendor/<browser-lib>/...` |
-| `/templates/<module>/*.css|js` | 301 → `/assets/modules/<module>/...` |
+| `/templates/<module>/*.css`, `*.js` | 301 → `/assets/modules/<module>/...` |
 | `/public/...` | 301 → `/...` (старый префикс docroot) |
 | `/rc/...` | 301 → `/panel/` (функция удалена) |
 
 Вне document root и недоступны по HTTP: `.env`, `config.php`, `bootstrap.php`,
-`load_settings.php`, `lib/`, `cycle.php`, `dev_server.php`, `src/`, `tools/`.
+`load_settings.php`, `lib/`, `cycle.php`, `dev_server.php`, `tools/`.
 
 Приватные подкаталоги `cms/` (`cached`, `debmes`, `modules_installed`,
 `saverestore`) закрыты в nginx; `docs/**/*.sql` и скрипты тоже.

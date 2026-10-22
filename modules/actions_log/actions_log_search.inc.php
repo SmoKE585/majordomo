@@ -135,9 +135,9 @@ $out['FILTERS_ACTIVE'] = $filters_active ? 1 : 0;
 // QUERY READY
 global $save_qry;
 if ($save_qry) {
-    $qry = $session->data['actions_log_qry'];
+    $qry = $session->get('actions_log_qry');
 } else {
-    $session->data['actions_log_qry'] = $qry;
+    $session->set('actions_log_qry', $qry);
 }
 if (!$qry) {
     $qry = "1";

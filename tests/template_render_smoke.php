@@ -34,6 +34,23 @@ function dprint($data = 0, $stop = 1, $show_history = 0)
 }
 
 require ROOT . 'lib/core.class.php';
+// PHP config partials must never read the working installation's .env.
+putenv('APP_ENV=testing');
+putenv('DB_CONNECTION=sqlite');
+putenv('DB_DATABASE=:memory:');
+putenv('DB_HOST=');
+putenv('DB_NAME=');
+putenv('USE_REDIS=false');
+$templateConfigRoot = sys_get_temp_dir() . '/mjd-template-config-' . bin2hex(random_bytes(6));
+mkdir($templateConfigRoot, 0700, true);
+\MajorDoMo\Core\Config::boot($templateConfigRoot);
+register_shutdown_function(static function () use ($templateConfigRoot): void {
+    $remove = static function (string $path) use (&$remove): void {
+        if (is_dir($path)) { foreach (scandir($path) as $name) if ($name !== '.' && $name !== '..') $remove($path . '/' . $name); rmdir($path); }
+        else unlink($path);
+    };
+    $remove($templateConfigRoot);
+});
 require ROOT . 'lib/jTemplate.class.php';
 
 $failures = 0;

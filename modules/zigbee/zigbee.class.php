@@ -86,8 +86,8 @@ class zigbee extends module
         $repo = $this->service()->repository;
         $error = ''; $success = '';
         global $session;
-        if (!isset($session->data['zigbee_csrf'])) $session->data['zigbee_csrf'] = bin2hex(random_bytes(32));
-        $token = $session->data['zigbee_csrf'];
+        if (!$session->has('zigbee_csrf')) $session->set('zigbee_csrf', bin2hex(random_bytes(32)));
+        $token = $session->get('zigbee_csrf');
         if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             try {
                 if (!hash_equals($token, self::posted('_token'))) throw new InvalidArgumentException('Форма устарела. Обновите страницу.');

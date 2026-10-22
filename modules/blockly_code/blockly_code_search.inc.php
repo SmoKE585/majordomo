@@ -11,24 +11,24 @@ $qry = "1";
 // QUERY READY
 global $save_qry;
 if ($save_qry) {
-    $qry = $session->data['blockly_code_qry'];
+    $qry = $session->get('blockly_code_qry');
 } else {
-    $session->data['blockly_code_qry'] = $qry;
+    $session->set('blockly_code_qry', $qry);
 }
 if (!$qry) $qry = "1";
 // FIELDS ORDER
 global $sortby_blockly_code;
 if (!$sortby_blockly_code) {
-    $sortby_blockly_code = isset($session->data['blockly_code_sort']) ? $session->data['blockly_code_sort'] : '';
+    $sortby_blockly_code = $session->has('blockly_code_sort') ? $session->get('blockly_code_sort') : '';
 } else {
-    if ($session->data['blockly_code_sort'] == $sortby_blockly_code) {
+    if ($session->get('blockly_code_sort') == $sortby_blockly_code) {
         if (Is_Integer(strpos($sortby_blockly_code, ' DESC'))) {
             $sortby_blockly_code = str_replace(' DESC', '', $sortby_blockly_code);
         } else {
             $sortby_blockly_code = $sortby_blockly_code . " DESC";
         }
     }
-    $session->data['blockly_code_sort'] = $sortby_blockly_code;
+    $session->set('blockly_code_sort', $sortby_blockly_code);
 }
 if (!$sortby_blockly_code) $sortby_blockly_code = "ID DESC";
 $out['SORTBY'] = $sortby_blockly_code;

@@ -21,6 +21,7 @@ if (isset($_SERVER['REQUEST_URI'])) {
 // The guard runs before library includes and the DB connection.
 if (PHP_SAPI !== 'cli' && class_exists('\\MajorDoMo\\Core\\Install\\InstallGate')) {
     \MajorDoMo\Core\Install\InstallGate::redirectIfRequired(dirname(__DIR__));
+    \MajorDoMo\Core\Auth\AuthGate::enforce(dirname(__DIR__));
 }
 
 $ignore_libs = array();

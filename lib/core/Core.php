@@ -14,6 +14,14 @@ final class Core
 
     public static function code(): CodeExecutor { return self::service(__FUNCTION__, fn() => new CodeExecutor()); }
 
+    public static function users(): Users\UserAccounts { return self::service(__FUNCTION__, fn() => Users\UserAccounts::connect()); }
+    public static function session(?string $root = null): Http\Session
+    {
+        $session = self::service(__FUNCTION__, fn() => new Http\Session('prj', $root));
+        $GLOBALS['session'] = $session;
+        return $session;
+    }
+
     public static function database(): Database
     {
         return self::service(__FUNCTION__, function () { return new Database($GLOBALS['db']); });

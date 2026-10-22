@@ -1,12 +1,20 @@
 ---
 title: Свойства, ONCHANGE и подписки модулей
 audience: agent
-category: development
+category: data
+category_label: Свойства и данные
+category_icon: database
+category_order: 30
 tags: свойства, подписки, привязки, linked_modules, onchange, модули
 description: Полная цепочка записи свойства, вызова ONCHANGE и доставки значения привязанному модулю; правила владения привязкой и разбор старых поломок.
+order: 10
 ---
 
 # Свойства, ONCHANGE и подписки модулей
+
+## Коротко
+
+Как свойство сохраняется, как вызывается `ONCHANGE` и как привязанный модуль получает значение. Читайте перед изменением записи свойств, `LINKED_MODULES` или обработчика `propertySetHandle()`.
 
 Документ описывает обе стороны одной цепочки:
 
@@ -38,15 +46,20 @@ description: Полная цепочка записи свойства, вызо
 setGlobal('Lamp.status', 1, array('mqtt' => 0), 'zigbee')
   → Objects::setValue()
     → Properties::set()
-      1. нормализация значения и источника
-      2. валидация свойства (число/да/список/код)
+      1. нормализация значения и источника (массив → JSON, null → '')
+      2. необязательный лог TRACK_DATA_CHANGES в .data
       3. PropertyLock по (OBJECT_ID, PROPERTY) — сериализация записи одного свойства
       4. resolve свойства: объекта → класса → родительских классов
-      5. UPDATE/INSERT pvalues.VALUE, SOURCE, UPDATED
-      6. cache → WebSocket (если значение изменилось) → phistory_queue
-      7. для каждого токена LINKED_MODULES:
+      5. валидация свойства (число/да/список/код)
+      6. чтение старого значения, UPDATE/INSERT pvalues.VALUE, SOURCE, UPDATED
+      7. cache; при фактическом изменении значения — property_audit
+      8. WebSocket (если значение изменилось) → phistory_queue (если KEEP_HISTORY)
+      9. проверка _chain: повтор свойства или 32 шага → property_chain,
+         дальнейшие уведомления и ONCHANGE для шага не ставятся
+     10. для каждого токена LINKED_MODULES:
              ApiClient → OperationsQueue('modulepropertyset')
-      8. ONCHANGE: всегда raiseEvent → OperationsQueue (web и CLI одинаково)
+     11. ONCHANGE (если цепочка не остановлена):
+             raiseEvent → OperationsQueue (web и CLI одинаково)
 ```
 
 Важные детали:
@@ -88,8 +101,11 @@ setGlobal('Lamp.status', 1, array('mqtt' => 0), 'zigbee')
 Контракт модуля:
 
 ```php
-public function propertySetHandle($object, $property, $value): void
+public function propertySetHandle($object, $property, $value)
 ```
+
+Возвращаемое значение не обязательно; `false` означает временную ошибку и
+повтор операции. Не указывайте `: void`, если обработчик может вернуть `false`.
 
 Требования:
 
@@ -126,8 +142,11 @@ Core::bindings()->modules('Lamp', 'status'); // ['mqtt', 'scripts']
 Правила:
 
 - `attach/detach` меняют **только** `LINKED_MODULES` compare-and-swap-запросом.
-  Они не перезаписывают `VALUE`, `UPDATED`, `SOURCE` и не теряют подписчика,
-  добавленного параллельно.
+  `VALUE`, `UPDATED`, `SOURCE` не перезаписываются, параллельно добавленный
+  подписчик не теряется. Если строки значения ещё нет, `attach` создаёт её с
+  пустым `VALUE`; `detach` ничего не создаёт и возвращает `false`, если строки
+  или подписки нет. `attach` возвращает ID строки значения (`0`, если объект
+  или свойство не найдены).
 - Токены нормализуются: пробелы и дубликаты удаляются при ближайшей записи.
 - Имя модуля проверяется тем же шаблоном, что и worker:
   `^[A-Za-z_][A-Za-z0-9_]*$`.
@@ -248,7 +267,9 @@ SELECT COUNT(*) FROM operations_failed;
 - Прямое эхо модуля автоматически подавляется, а повтор свойства в цепочке
   обрывает дальнейшие уведомления. Это защита от `A → script → A` и
   `A → script1 → B → script2 → A`; при повторном срабатывании пишется
-  предупреждение `property_chain`.
+  предупреждение `property_chain` с причиной (повтор свойства или лимит
+  `PropertyChain::MAX_LENGTH`), последними шагами цепочки и подсказкой, что
+  делать.
 - Очередь операции живёт 1 час. Долгий простой `cycle_core` означает потерю
   уведомлений, но не значения свойства.
 - В web-запросе `ONCHANGE` теперь тоже асинхронный: страница не ждёт метод.
@@ -260,10 +281,32 @@ SELECT COUNT(*) FROM operations_failed;
 1. Добавьте в таблицу модуля поля `LINKED_OBJECT` и `LINKED_PROPERTY`
    (по необходимости `LINKED_METHOD`).
 2. При сохранении записи: сначала `UPDATE/INSERT`, затем
-   `addLinkedProperty($object, $property, $module)`.
+   `addLinkedProperty($object, $property, $module)` — или сразу
+   `Core::bindings()->attach($object, $property, 'my_module')`.
 3. При удалении/смене привязки: сначала удалите/сохраните запись, затем
-   `removeLinkedPropertyIfNotUsed('<table>', $oldObject, $oldProperty, $module)`.
+   `removeLinkedPropertyIfNotUsed('<table>', $oldObject, $oldProperty, $module)`
+   (`Core::bindings()->detachIfUnused(...)`). Иначе проверка увидит текущую
+   запись и оставит подписку.
 4. Реализуйте `propertySetHandle($object, $property, $value)`; не полагайтесь на
    web-сессию и делайте обработчик идемпотентным.
 5. Не добавляйте модуль в `LINKED_MODULES` вручную и не пишите `pvalues`
    целиком.
+
+Минимальный шаблон сохранения и снятия привязки:
+
+```php
+use MajorDoMo\Core\Core;
+
+// 1. Сохранили/обновили запись модуля (UPDATE/INSERT).
+// 2. Подписались на изменение свойства.
+Core::bindings()->attach($object, $property, 'my_module');
+
+// При удалении или смене привязки:
+// 1. Удалили/сохранили запись модуля.
+// 2. Сняли подписку, только если пара OBJECT/PROPERTY больше не используется.
+// Первый аргумент — таблица модуля-владельца, последний — имя модуля.
+Core::bindings()->detachIfUnused('my_module', $oldObject, $oldProperty, 'my_module');
+```
+
+Старые имена `addLinkedProperty()`, `removeLinkedProperty()` и
+`removeLinkedPropertyIfNotUsed()` остаются фасадами над этими же методами.

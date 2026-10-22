@@ -1,13 +1,19 @@
 ---
 title: Системные PHP-функции MajorDoMo
 audience: user, agent
-category: user
-tags: функции, PHP, сценарии, helpers, setGlobal, getGlobal, sg, gg, cm, API
-description: Справочник встроенных функций: свойства, методы, сценарии, таймеры, события, история, кэш, файлы и совместимость модулей.
-order: 20
+category: data
+tags: функции, PHP, сценарии, helpers, setGlobal, getGlobal, sg, gg, cm, API, режимы, привязки
+description: Справочник встроенных функций: свойства, методы, сценарии, таймеры, события, история, кэш, файлы, режимы, привязки и совместимость модулей.
+order: 30
 ---
 
 # Системные PHP-функции MajorDoMo
+
+## Коротко
+
+Справочник публичных PHP-функций MajorDoMo: что вызывать из сценариев, методов
+и модулей, какие параметры и результаты ожидать. Открывайте, когда нужна
+готовая операция вместо прямого SQL, и сверяйтесь перед изменением общего API.
 
 Справочник для авторов сценариев, модулей и агентов. Здесь перечислены 272 функции общего PHP API с точными именами, параметрами, значениями по умолчанию и описанием. Они доступны в штатном окружении MajorDoMo после загрузки библиотек. Код в редакторе сценариев вводится без открывающего тега PHP.
 
@@ -41,6 +47,8 @@ $average = getHistoryAvg('Sensor.temperature', -3600);
 ## Результаты и совместимость
 
 Синхронные обёртки возвращают исходное значение исполнителя без приведения к bool: `false`, `0`, пустая строка, массив и `null` могут быть допустимым результатом. Проверяйте их строго. Если сам сценарий или метод ничего не возвращает, результат остаётся `null`: для получения данных добавьте в его код `return`.
+
+`setGlobal()`/`sg()` при успешной записи возвращают `null`, при отклонённой валидации — `false`, а если объект не найден — `0`. Это результат сервиса записи, а не подтверждение того, что `ONCHANGE` или модульный обработчик уже выполнились: они идут через очередь.
 
 `runScript()`, `callScript()` и `rs()` теперь одинаково передают результат сценария. Сохранено различие параметров по умолчанию: у `runScript`/`callScript` это пустая строка, у `rs` — `0`. `clearScheduledJob()`, `deleteScheduledJob()` и `clearTimeOut()` возвращают результат удаления; `processCommand()` передаёт результат вызванного метода, если вызов состоялся. Раньше некоторые обёртки теряли результат. Это намеренное изменение: код, специально сравнивавший их результат с `null`, нужно проверить.
 
@@ -98,7 +106,7 @@ $average = getHistoryAvg('Sensor.temperature', -3600);
 | `function returnTypedValue($value)` | Приводит числовые строки к int/float; сохраняет строки с ведущим нулём и обычный текст. |
 | `function rs($script_id, $params = 0)` | Алиас runScript; возвращает результат. Собственное значение params по умолчанию — 0. |
 | `function runMethod($method_name, $params = 0)` | Алиас callMethod с тем же результатом. |
-| `function setGlobal($varname, $value, $no_linked = 0, $source = '')` | Записывает свойство через объектный API: обработчики, привязки, кэш и аудит проходят штатный путь. Возвращает результат записи. |
+| `function setGlobal($varname, $value, $no_linked = 0, $source = '')` | Записывает свойство через объектный API: обработчики, привязки, кэш и аудит проходят штатный путь. При успехе возвращает `null`, при отклонённой валидации — `false`, если объект не найден — `0`. |
 | `function sg($varname, $value, $no_linked = 0, $source = '')` | Алиас setGlobal; передаёт все параметры и возвращает тот же результат. |
 
 ### Привязки модулей к свойствам
@@ -195,7 +203,7 @@ $average = getHistoryAvg('Sensor.temperature', -3600);
 | `function disableMode(string $name, string $source = 'code'): bool` | Алиас setMode с active=false. |
 | `function enableMode(string $name, string $source = 'code'): bool` | Алиас setMode с active=true. |
 | `function isModeActive(string $name): bool` | Возвращает bool: включён ли именованный режим системы. |
-| `function modesProcessEvent(string $event, array $details): void` | Служебная доставка события правилам режимов через существующую шину подписок. |
+| `function modesProcessEvent(string $event, array $details): void` | Вызывается шиной подписок и передаёт событие в `ModeManager::tick()`; без установленного модуля `modes` ничего не делает. |
 | `function setMode(string $name, bool $active, string $source = 'code'): bool` | Включает или выключает режим через ModeManager; возвращает bool по контракту менеджера. |
 
 ### Сообщения и озвучивание
@@ -294,7 +302,7 @@ $average = getHistoryAvg('Sensor.temperature', -3600);
 | Сигнатура | Назначение и результат |
 | --- | --- |
 | `function getWebSocketClientPath()` | Возвращает путь подключения WebSocket с системным токеном при наличии. |
-| `function postToWebSocket($property, $value, $post_action = 'PostProperty')` | Legacy-прямая отправка WebSocket с результатом отправки; для штатных уведомлений предпочтительна очередь. |
+| `function postToWebSocket($property, $value, $post_action = 'PostProperty')` | Совместимый алиас очереди WebSocket. Возвращает результат постановки, а не доставки; массивы свойств и значений ставятся поэлементно. Прямого подключения к WS больше нет. |
 | `function postToWebSocketQueue($property, $value, $post_action = 'PostProperty')` | Ставит уведомление свойства или события в очередь WebSocket. |
 
 ### Внутренний API

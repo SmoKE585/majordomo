@@ -11,7 +11,7 @@ include_once(ROOT . '3rdparty/php-mailer/SMTP.php');
 
 if (isset($_SERVER['REQUEST_METHOD'])) {
     $blocked = array('_SERVER', '_COOKIE', 'HTTP_POST_VARS', 'HTTP_GET_VARS', 'HTTP_SERVER_VARS',
-        '_FILES', '_REQUEST', '_ENV', 'GLOBALS');
+        '_GET', '_POST', '_FILES', '_REQUEST', '_ENV', '_SESSION', 'GLOBALS', 'session', 'db');
 
     if ($_SERVER['REQUEST_METHOD'] == "POST") {
         $blocked[] = '_GET';
@@ -67,6 +67,7 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
 
         for ($i = 0; $i < $ksCnt; $i++) {
             $k = $ks[$i];
+            if (in_array($k, $blocked, true)) continue;
 
             $GLOBALS[$k] = $_FILES[$k]['tmp_name'];
             $GLOBALS[$k . "_name"] = $_FILES[$k]['name'];

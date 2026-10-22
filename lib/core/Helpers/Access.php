@@ -55,13 +55,7 @@ function checkAccess($object_type, $object_id)
 
     if (isset($rule['USERS']) && $rule['USERS']) {
         $users_matched = false;
-        if ($session->data['SITE_USERNAME'] && !$session->data['SITE_USER_ID']) {
-            $user = SQLSelectOne("SELECT ID FROM users WHERE USERNAME='" . DBSafe($session->data['SITE_USERNAME']) . "'");
-            if ($user['ID']) {
-                $session->data['SITE_USER_ID'] = $user['ID'];
-            }
-        }
-        $user_id = (int)$session->data['SITE_USER_ID'];
+        $user_id = $session instanceof \MajorDoMo\Core\Http\Session ? (int)($session->user()['id'] ?? 0) : 0;
         $tmp = explode(',', $rule['USERS']);
         if (in_array($user_id, $tmp)) {
             $users_matched = true;
@@ -77,13 +71,14 @@ function checkAccess($object_type, $object_id)
 
     if (isset($rule['TERMINALS']) && $rule['TERMINALS']) {
         $terminals_matched = false;
-        if ($session->data['TERMINAL']) {
-            $terminal = getTerminalsByName($session->data['TERMINAL'], 1);
+        $terminal_name = $session instanceof \MajorDoMo\Core\Http\Session ? $session->get('TERMINAL', '') : '';
+        if ($terminal_name !== '') {
+            $terminal = getTerminalsByName($terminal_name, 1);
             if ($terminal[0]['ID']) {
-                $session->data['TERMINAL_ID'] = $terminal[0]['ID'];
+                $session->set('TERMINAL_ID', $terminal[0]['ID']);
             }
         }
-        $terminal_id = (int)$session->data['TERMINAL_ID'];
+        $terminal_id = $session instanceof \MajorDoMo\Core\Http\Session ? (int)$session->get('TERMINAL_ID', 0) : 0;
         $tmp = explode(',', $rule['TERMINALS']);
         if (in_array($terminal_id, $tmp)) {
             $terminals_matched = true;

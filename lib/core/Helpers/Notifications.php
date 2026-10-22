@@ -31,24 +31,12 @@ function mdjCollectRequestFlashNotifications($scope = 'admin')
 function mdjConsumeFlashNotifications($scope = 'admin')
 {
     $session = mdjEnsureSession();
-    $result = array();
-    if (isset($session->data['MDJ_FLASH_NOTIFICATIONS'][$scope]) && is_array($session->data['MDJ_FLASH_NOTIFICATIONS'][$scope])) {
-        $result = $session->data['MDJ_FLASH_NOTIFICATIONS'][$scope];
-        unset($session->data['MDJ_FLASH_NOTIFICATIONS'][$scope]);
-    }
-    return $result;
+    return $session->pull('flash:' . $scope, array());
 }
 
 function mdjEnsureSession()
 {
-    global $session;
-    if (!isset($session) || !$session instanceof session) {
-        $session = new session('prj');
-    }
-    if (!is_array($session->data)) {
-        $session->data = array();
-    }
-    return $session;
+    return \MajorDoMo\Core\Core::session();
 }
 
 function mdjExtractFlashNotificationsFromUrl($url, $scope = 'admin')
@@ -170,18 +158,13 @@ function mdjPushFlashNotification($message, $type = 'info', $title = '', $scope 
     }
 
     $session = mdjEnsureSession();
-    if (!isset($session->data['MDJ_FLASH_NOTIFICATIONS']) || !is_array($session->data['MDJ_FLASH_NOTIFICATIONS'])) {
-        $session->data['MDJ_FLASH_NOTIFICATIONS'] = array();
-    }
-    if (!isset($session->data['MDJ_FLASH_NOTIFICATIONS'][$scope]) || !is_array($session->data['MDJ_FLASH_NOTIFICATIONS'][$scope])) {
-        $session->data['MDJ_FLASH_NOTIFICATIONS'][$scope] = array();
-    }
-
-    $session->data['MDJ_FLASH_NOTIFICATIONS'][$scope][] = array(
+    $notifications = $session->get('flash:' . $scope, array());
+    $notifications[] = array(
         'message' => $message,
         'title' => trim((string)$title),
         'type' => mdjNormalizeFlashType($type)
     );
+    $session->set('flash:' . $scope, $notifications);
 
     return true;
 }

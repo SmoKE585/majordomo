@@ -5,6 +5,16 @@ namespace MajorDoMo\Core;
 use \Throwable;
 use \RuntimeException;
 
+/**
+ * Запись и чтение свойств объектов.
+ *
+ * Сохраняет значение, обновляет кеш и историю, ведёт журнал изменений,
+ * вызывает ONCHANGE и ставит уведомления привязанным модулям. Цепочка
+ * изменений не даёт автоматизации зациклиться.
+ *
+ * Изменения:
+ * 2026-10-22 — сообщение об остановке цепочки объясняет причину и что делать.
+ */
 final class Properties
 {
     public function __construct(
@@ -29,11 +39,25 @@ final class Properties
 
     private function reportChainStop(string $object, string $property, array $chain): void
     {
+        $full = $object . '.' . $property;
+        $token = PropertyChain::token($object, $property);
+        if (in_array($token, $chain, true)) {
+            $reason = 'свойство повторно изменилось во время обработки собственного изменения';
+            $action = 'найдите в стеке обработчик (модуль, метод или сценарий), который записывает это же свойство в ответ на его изменение, и уберите обратную запись; если она нужна другим подписчикам, вынесите её в отдельное свойство или источник';
+        } else {
+            $reason = 'цепочка изменений превысила ' . PropertyChain::MAX_LENGTH . ' шагов';
+            $action = 'проверьте цепочку: автоматизация ходит по кругу через разные свойства';
+        }
         $tail = array_slice($chain, -5);
-        $message = 'Цикл привязок остановлен для ' . $object . '.' . $property
-            . '; цепочка: ' . ($tail ? implode(' -> ', $tail) : 'начало');
+        if (($tail[count($tail) - 1] ?? null) !== $token) {
+            $tail[] = $token;
+        }
+        $message = 'Цикл привязок остановлен для ' . $full . ': ' . $reason . '.'
+            . "\nЗначение сохранено; уведомления модулям и ONCHANGE для этого шага не отправлены."
+            . "\nЦепочка (последние шаги): " . implode(' -> ', $tail)
+            . "\nЧто делать: " . $action . '.';
         if ($this->errors) {
-            $this->errors->report('property_chain', $message, $object . '.' . $property, 60);
+            $this->errors->report('property_chain', $message, $full, 60);
         } elseif (function_exists('DebMes')) {
             DebMes($message, 'property_chain', 'warning');
         }
@@ -364,6 +388,8 @@ final class Properties
 
             $this->cache->set($cached_name, $value);
 
+            // Останавливаем цепочку, если это свойство уже встречалось или шагов
+            // стало слишком много: так автоматизация A → модуль → A не зациклится.
             $chain = PropertyChain::current();
             $chain_token = PropertyChain::token($object->object_title, $property);
             $chain_stopped = count($chain) >= PropertyChain::MAX_LENGTH || in_array($chain_token, $chain, true);

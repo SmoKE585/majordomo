@@ -568,6 +568,13 @@ final class SettingsManager
             return '';
         }
 
+        if ($id === 'WEBSOCKETS_PUBLIC_URL') {
+            $url = parse_url($value);
+            if (!is_array($url) || !in_array($url['scheme'] ?? '', array('ws', 'wss'), true) || empty($url['host']) || isset($url['user']) || isset($url['pass']) || isset($url['fragment']) || isset($url['query'])) {
+                return 'Укажите ws:// или wss:// адрес без пароля, токена и параметров запроса.';
+            }
+        }
+
         if ($type === 'number') {
             if (!is_numeric($value)) {
                 return 'Введите число.';

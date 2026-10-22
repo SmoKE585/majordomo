@@ -100,11 +100,8 @@ class objects extends module
     {
         global $session;
         $out = array();
-        if ($this->action == 'admin') {
-            $this->admin($out);
-        } else {
-            $this->usual($out);
-        }
+        $this->action = 'admin';
+        $this->admin($out);
         if (isset($this->owner->action)) {
             $out['PARENT_ACTION'] = $this->owner->action;
         }
@@ -135,7 +132,11 @@ class objects extends module
     {
         if ($this->ajax) {
             global $op;
-            if ($op == 'property_history') {
+            if ($op == 'get_object') {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode($this->processObject((int)gr('id')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            } elseif ($op == 'property_history') {
                 $this->renderPropertyHistoryJson();
             } elseif ($op == 'property_trace') {
                 $this->renderPropertyTraceJson();
@@ -223,72 +224,8 @@ class objects extends module
 
     }
 
-    /**
-     * FrontEnd
-     *
-     * Module frontend
-     *
-     * @access public
-     */
-    function usual(&$out)
-    {
 
-        if ($this->ajax) {
 
-            header("HTTP/1.0 200 OK\n");
-            header('Content-Type: application/json; charset=utf-8');
-
-            global $op;
-            global $id;
-            $res = array();
-            if ($op == 'get_object') {
-                $res = $this->processObject($id);
-            } elseif ($op == 'property_history') {
-                $property_id = (int)gr('property_id');
-                $range = gr('history_range', 'trim');
-                $page = (int)gr('history_page');
-                $res = $this->buildPropertyHistoryResponse((int)$id, $property_id, $range, $page);
-            } elseif ($op == 'property_trace') {
-                $property_id = (int)gr('property_id');
-                $range = gr('trace_range', 'trim');
-                $page = (int)gr('trace_page');
-                $res = $this->buildPropertyTraceResponse((int)$id, $property_id, $range, $page);
-            }
-            echo json_encode($res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-            global $db;
-            exit;
-        }
-
-        if ($this->class) {
-            $objects = getObjectsByClass($this->class);
-            if (!$this->code) {
-                $template = '#title# <i>#description#</i><br/>';
-            } else {
-                $template = $this->code;
-            }
-            $result = '';
-            if ($objects[0]['ID']) {
-                $total = count($objects);
-                for ($i = 0; $i < $total; $i++) {
-                    $objects[$i] = SQLSelectOne("SELECT * FROM objects WHERE ID='" . $objects[$i]['ID'] . "'");
-                    $line = $template;
-                    $line = preg_replace('/\#title\#/is', $objects[$i]['TITLE'], $line);
-                    $line = preg_replace('/\#description\#/is', $objects[$i]['DESCRIPTION'], $line);
-                    if (preg_match_all('/\#([\w\d_-]+?)\#/is', $line, $m)) {
-                        $totalm = count($m[0]);
-                        for ($im = 0; $im < $totalm; $im++) {
-                            $property = trim($objects[$i]['TITLE'] . '.' . $m[1][$im]);
-                            $line = str_replace($m[0][$im], getGlobal($property), $line);
-                        }
-                    }
-                    $result .= $line;
-                }
-            }
-            $out['RESULT'] = $result;
-        }
-
-    }
 
     /**
      * objects search

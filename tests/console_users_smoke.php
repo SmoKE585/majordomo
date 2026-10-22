@@ -80,7 +80,7 @@ try {
     [$code, $data, $stdout, $stderr] = executeCli($app, array('users:password', '2', '--password-stdin'));
     check($code === 0 && $data['data']['changed'] && (int)$data['data']['user']['ID'] === 2, 'Password-stdin updates selected account');
     $after = $db->query('SELECT * FROM users WHERE ID=2')->fetch(PDO::FETCH_ASSOC);
-    check($after['PASSWORD'] === hash('sha512', 'Новый пароль123'), 'Stored password matches the existing user login contract');
+    check(\MajorDoMo\Core\Users\Passwords::verify('Новый пароль123', $after['PASSWORD']) && !\MajorDoMo\Core\Users\Passwords::needsRehash($after['PASSWORD']), 'Password recovery stores a salted modern hash');
     unset($beforeGuest['PASSWORD'], $after['PASSWORD']);
     check($beforeGuest === $after && $db->query('SELECT * FROM users WHERE ID=1')->fetch(PDO::FETCH_ASSOC) === $beforeAdmin, 'Only selected password changes; roles and other accounts are preserved');
     check(!str_contains($stdout . $stderr, 'Новый пароль123') && !str_contains($stdout, hash('sha512', 'Новый пароль123')), 'Password and its hash never reach output');
@@ -106,7 +106,7 @@ try {
     check(!str_contains($stdout . $stderr, 'interactive-secret'), 'Hidden mismatch error reveals no secret');
     $secrets = array('interactive-secret', 'interactive-secret');
     [$code, , $stdout, $stderr] = executeCli($interactive, array('users:password', '2'), false);
-    check($code === 0 && $db->query('SELECT PASSWORD FROM users WHERE ID=2')->fetchColumn() === hash('sha512', 'interactive-secret'), 'Confirmed hidden password is stored');
+    check($code === 0 && \MajorDoMo\Core\Users\Passwords::verify('interactive-secret', $db->query('SELECT PASSWORD FROM users WHERE ID=2')->fetchColumn()), 'Confirmed hidden password is stored');
     check(!str_contains($stdout . $stderr, 'interactive-secret'), 'Successful hidden flow reveals no password');
     [$code] = executeCli($interactive, array('users:password', '2', '--password-stdin'));
     check($code === 2, 'Stdin option cannot cause visible interactive input');

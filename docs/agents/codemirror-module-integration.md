@@ -1,25 +1,35 @@
-# Code editor integration guide for MajorDoMo modules
+---
+title: Интеграция редактора кода в модули
+audience: agent
+category: ui
+tags: codemirror, редактор кода, модули, data-code-editor, lazy-chunk
+description: Канонический способ встроить общий редактор CodeMirror 6 в модуль MajorDoMo — разметка, data-атрибуты, backend-контракт, горячие клавиши и правила производительности.
+order: 70
+---
 
-Canonical way to embed the shared admin code editor in MajorDoMo modules.
+# Интеграция редактора кода в модули MajorDoMo
 
-The editor is **CodeMirror 6** and is built as a separate lazy chunk. Do not
-load CodeMirror from a template and do not add vendor files.
+## Коротко
 
-## What to use
+Общий редактор админки — CodeMirror 6, собранный отдельным lazy-chunk `public/assets/admin/codeeditor.js` + `codeeditor.css`. В шаблоне нужна только разметка `[data-code-editor]` с классами `md-code-editor__*`; загрузчик уже входит в основной бандл и сам скачивает chunk. Не подключайте CodeMirror из шаблона и не добавляйте вендорные файлы.
 
-- Wrapper / behaviour: `resources/js/codeeditor/editor.js`
-- Styles: `resources/css/codeeditor.css`
-- Lazy loader (already in the main admin bundle): `resources/js/codeeditor/loader.js`
-- Build entry: `resources/js/codeeditor/index.js`
-- Build config: `vite.codeeditor.config.js`
-- Output: `public/assets/admin/codeeditor.js` + `public/assets/admin/codeeditor.css`
-- Asset URLs: `window.MDCodeEditorConfig` in `templates/common_header_admin.html`
+Канонический способ встроить общий редактор кода админки в модуль MajorDoMo.
 
-The loader fetches the chunk only when the page contains `[data-code-editor]`
-or when the console drawer is opened. New modules must not add
-`<script src="...codeeditor...">` or `<link>` tags.
+Редактор — **CodeMirror 6**, собранный отдельным lazy-chunk. Не загружайте CodeMirror из шаблона и не добавляйте вендорные файлы.
 
-## Required editor structure
+## Что использовать
+
+- Обвязка и поведение: `resources/js/codeeditor/editor.js`
+- Стили: `resources/css/codeeditor.css`
+- Lazy-загрузчик (уже в основном бандле админки): `resources/js/codeeditor/loader.js`
+- Entry сборки: `resources/js/codeeditor/index.js`
+- Конфиг сборки: `vite.codeeditor.config.js`
+- Результат: `public/assets/admin/codeeditor.js` + `public/assets/admin/codeeditor.css`
+- URL ассетов: `window.MDCodeEditorConfig` в `templates/common_header_admin.html`
+
+Загрузчик скачивает chunk только когда на странице есть `[data-code-editor]` или открывается drawer консоли. Новые модули не должны добавлять `<script src="...codeeditor...">` или `<link>`.
+
+## Обязательная структура редактора
 
 ```html
 <div class="md-code-editor"
@@ -88,91 +98,74 @@ or when the console drawer is opened. New modules must not add
 </div>
 ```
 
-The editor generates its own footer (`Стр/стлб`, язык, `Изменено`, UTF-8).
-Do not duplicate it in the template.
+Редактор сам генерирует футер (`Стр/стлб`, язык, `Изменено`, UTF-8). Не дублируйте его в шаблоне.
 
-## Toolbar rules
+## Правила toolbar
 
-- Use `md-code-editor__action` for text actions and `md-code-editor__icon-btn`
-  for icon-only actions.
-- Always provide `title` and `aria-label`; labels are hidden below 992 px.
-- The mode switch is optional. For a single-language field use
-  `<span class="md-code-editor__lang-badge">PHP</span>` instead.
-- Do not use Bootstrap `btn` classes inside the editor toolbar.
-- Icons are Tabler (`ti ti-*`). Typical actions: `ti-device-floppy`,
-  `ti-history`, `ti-bug`, `ti-search`, `ti-maximize`, `ti-minimize`,
-  `ti-player-play`, `ti-eraser`.
+- Для текстовых действий используйте `md-code-editor__action`, для icon-only — `md-code-editor__icon-btn`.
+- Всегда задавайте `title` и `aria-label`; подписи скрываются при ширине меньше 992 px.
+- Переключатель режима необязателен. Для поля с одним языком используйте `<span class="md-code-editor__lang-badge">PHP</span>`.
+- Не используйте классы Bootstrap `btn` внутри toolbar редактора.
+- Иконки — Tabler (`ti ti-*`). Типичные действия: `ti-device-floppy`, `ti-history`, `ti-bug`, `ti-search`, `ti-maximize`, `ti-minimize`, `ti-player-play`, `ti-eraser`.
 
-## Backend contract
+## Контракт бэкенда
 
-Each editor-backed module should provide:
+Каждый модуль с редактором должен предоставить:
 
-- `CODE_EDITOR_KEY` — stable unique key per editor instance;
-- `CODE_EDITOR_MODE` — initial mode, `php` or `python`;
-- `CODE_EDITOR_VALIDATE` — `1` for PHP/Python, `0` otherwise;
-- `ERR_OLD_CODE_B64` — base64 of the previous code for restore.
+- `CODE_EDITOR_KEY` — стабильный уникальный ключ каждого экземпляра редактора;
+- `CODE_EDITOR_MODE` — начальный режим, `php` или `python`;
+- `CODE_EDITOR_VALIDATE` — `1` для PHP/Python, `0` в остальных случаях;
+- `ERR_OLD_CODE_B64` — base64 предыдущего кода для восстановления.
 
-For validation pass the selected mode:
+Для валидации передавайте выбранный режим:
 
 ```php
 $errorDetails = code_syntax_error_details($code, $code_editor_mode);
 ```
 
-## Mode handling
+## Работа с режимами
 
-MajorDoMo methods/scripts store PHP without `<?php`. The editor uses
-`php({ plain: true })`, which parses the whole document as PHP. Do not switch
-the PHP mode to an HTML-first parser: the opening tag is usually absent.
+Методы и сценарии MajorDoMo хранят PHP без `<?php`. Редактор использует `php({ plain: true })`, который разбирает весь документ как PHP. Не переключайте PHP-режим на HTML-first-парсер: открывающего тега обычно нет.
 
-The mode selector is the source of truth for highlighting, validation and the
-restore context.
+После инициализации переключатель режима — источник истины для подсветки, валидации и контекста восстановления. При инициализации сохранённый в `localStorage` режим имеет приоритет над `data-code-editor-mode`; это позволяет редактору запоминать выбор пользователя.
 
-## Keyboard shortcuts
+## Горячие клавиши
 
-Indentation is **tabs** (`indentUnit` is `\t`, display width 4), matching the
-legacy MajorDoMo code style.
+Отступы — **табы** (`indentUnit` — `\t`, ширина отображения 4), как в legacy-стиле кода MajorDoMo.
 
-| Shortcut | Action |
+| Сочетание | Действие |
 | --- | --- |
-| `Ctrl+Alt+L` / `Ctrl+Alt+I` | Re-indent selection or whole document (PhpStorm-style) |
-| `Tab` / `Shift+Tab` | Increase / decrease indent with tabs |
-| `Ctrl+/` | Toggle comment |
-| `Ctrl+D` | Duplicate line |
-| `Ctrl+Y` | Delete line |
-| `Shift+Alt+↑/↓` | Move line up/down |
-| `Ctrl+F` | Search and replace |
-| `Ctrl+G` | Go to line |
-| `Ctrl+Space` | Autocomplete |
-| `Ctrl+S` | Save autosave snapshot |
-| `Ctrl+R` | Version history |
-| `Ctrl+E` | Validate code |
-| `F11` / `Esc` | Enter / leave fullscreen |
-| `Ctrl+Enter` | Execute (console only) |
+| `Ctrl+Alt+L` / `Ctrl+Alt+I` | Переиндентировать выделение или весь документ (как в PhpStorm) |
+| `Tab` / `Shift+Tab` | Увеличить / уменьшить отступ табами |
+| `Ctrl+/` | Закомментировать / раскомментировать |
+| `Ctrl+D` | Дублировать строку |
+| `Ctrl+Y` | Удалить строку |
+| `Shift+Alt+↑/↓` | Переместить строку вверх/вниз |
+| `Ctrl+F` | Поиск и замена |
+| `Ctrl+G` | Перейти к строке |
+| `Ctrl+Space` | Автодополнение |
+| `Ctrl+S` | Сохранить снимок автосохранения |
+| `Ctrl+R` | История версий |
+| `Ctrl+E` | Проверить код |
+| `F11` / `Esc` | Войти в полный экран / выйти из него |
+| `Ctrl+Enter` | Выполнить (только консоль) |
 
-The keyboard icon in the editor toolbar opens a popover with this list. The
-source of truth is `SHORTCUT_GROUPS` in `resources/js/codeeditor/editor.js`; do not
-duplicate the list in module templates.
+Иконка клавиатуры в toolbar открывает popover с этим списком. Источник истины — `SHORTCUT_GROUPS` в `resources/js/codeeditor/editor.js`; не дублируйте список в шаблонах модулей.
 
-Shortcuts must also work on the Russian keyboard layout. CodeMirror's keymap
-matches `event.key`, which is Cyrillic there. Do not remove the
-`handleLayoutShortcut` / `event.code` fallback in `resources/js/codeeditor/editor.js`: it
-maps physical keys (`KeyL`, `KeyY`, `Slash`, …) independently of the layout.
+Сочетания должны работать и на русской раскладке. Keymap CodeMirror сопоставляет `event.key`, а там кириллица. Не удаляйте fallback `handleLayoutShortcut` / `event.code` в `resources/js/codeeditor/editor.js`: он сопоставляет физические клавиши (`KeyL`, `KeyY`, `Slash` и т. д.) независимо от раскладки.
 
-On mobile (≤767 px) the keyboard icon is hidden and the popover is not used:
-shortcuts are a desktop-only affordance. Keep the core editing buttons
-(save/history/search/fullscreen) visible there.
+На мобильных (≤767 px) иконка клавиатуры скрыта, popover не используется: горячие клавиши — возможность для desktop. Основные кнопки редактирования (сохранить/история/поиск/полный экран) должны оставаться видимыми.
 
-## Autosave and restore
+## Автосохранение и восстановление
 
 - Endpoint: `modules/blockly_code/autosave.php`.
-- Restore storage: `cms/cached/codeeditor`.
-- `key` must be stable and unique.
-- `action=save`, `action=restore`, `action=checkcode` are handled by the
-  wrapper; modules only provide the URL and the `CODE_EDITOR_KEY`.
+- Хранилище версий: `cms/cached/codeeditor`.
+- `key` должен быть стабильным и уникальным.
+- `action=save`, `action=restore`, `action=checkcode` обрабатывает обвязка; модуль предоставляет только URL и `CODE_EDITOR_KEY`.
 
-## Compatibility facade
+## Фасад совместимости
 
-`wrapper._codeEditor` is a small CM5-like facade used by legacy module code:
+`wrapper._codeEditor` — небольшой фасад в стиле CM5 для legacy-кода модулей:
 
 - `getValue()`, `setValue()`, `focus()`, `save()`;
 - `getCursor()`, `setCursor()`, `lastLine()`, `getLine()`, `lineCount()`;
@@ -181,34 +174,29 @@ shortcuts are a desktop-only affordance. Keep the core editing buttons
 - `setErrorLine(line, message)`, `clearError()`;
 - `setOption('mode'|'lineWrapping'|'readOnly'|'fullScreen'|'theme', value)`.
 
-New code should prefer these methods over DOM manipulation. Do not rely on
-`.CodeMirror` elements; they no longer exist.
+Новый код должен предпочитать эти методы прямому изменению DOM. Не полагайтесь на элементы `.CodeMirror`; их больше нет.
 
-## Error handling rules
+## Правила обработки ошибок
 
-- Server-side syntax errors should be normalized before rendering.
-- Use `code_syntax_error_details($code, $mode)`.
-- In templates use `ERR_FULL`, `ERRORS`, `ERR_LINE`, `ERR_OLD_CODE_B64`.
-- Call `editor.setErrorLine($line, $message)`; the wrapper renders the line
-  highlight, lint marker and scrolls the line into view.
+- Серверные синтаксические ошибки должны быть нормализованы до рендера.
+- Используйте `code_syntax_error_details($code, $mode)`.
+- В шаблонах используйте `ERR_FULL`, `ERRORS`, `ERR_LINE`, `ERR_OLD_CODE_B64`.
+- Вызывайте `editor.setErrorLine($line, $message)`; обвязка подсветит строку, поставит lint-маркер и прокрутит к строке.
 
-## Performance rules
+## Правила производительности
 
-- Keep `data-code-editor` only on pages that really need the editor.
-- For editors inside a closed drawer or modal, add `data-code-editor-lazy="1"`
-  and call `window.MDCodeEditor.init(container)` when the container opens.
-- The console in `templates/panel.html` uses this pattern; see
-  `resources/js/modules/admin_panel/50_console.js`.
-- Do not import CodeMirror packages in `resources/js/app.js`. The editor has its
-  own entry and build config.
+- Оставляйте `data-code-editor` только на страницах, которым редактор действительно нужен.
+- Для редакторов в закрытом drawer или modal добавьте `data-code-editor-lazy="1"` и вызывайте `window.MDCodeEditor.init(container)` при открытии контейнера.
+- Консоль в `templates/panel.html` использует именно этот паттерн; см. `resources/js/modules/admin_panel/50_console.js`.
+- Не импортируйте пакеты CodeMirror в `resources/js/app.js`. У редактора свой entry и свой конфиг сборки.
 
-## Refactoring checklist
+## Чек-лист рефакторинга
 
-1. Remove old CodeMirror/Blockly vendor embeds.
-2. Add the shared `data-code-editor` block.
-3. Provide `CODE_EDITOR_KEY`, `CODE_EDITOR_MODE`, `CODE_EDITOR_VALIDATE`.
-4. Pass `code_editor_mode` from the form to the backend.
-5. Use `code_syntax_error_details($code, $mode)` on save/validate.
-6. Keep the restore button wired through `data-code-editor-action="restore-error"`.
-7. Do not add global `<script>`/`<link>` for the editor; the loader handles it.
-8. Verify light/dark theme, 390 px width, F11/Esc, Ctrl+S, search and console.
+1. Удалите старые вендорные вставки CodeMirror/Blockly.
+2. Добавьте общий блок `data-code-editor`.
+3. Передайте `CODE_EDITOR_KEY`, `CODE_EDITOR_MODE`, `CODE_EDITOR_VALIDATE`.
+4. Передавайте `code_editor_mode` из формы на бэкенд.
+5. Используйте `code_syntax_error_details($code, $mode)` при сохранении и проверке.
+6. Оставьте кнопку восстановления привязанной через `data-code-editor-action="restore-error"`.
+7. Не добавляйте глобальные `<script>`/`<link>` для редактора; загрузчик всё сделает сам.
+8. Проверьте светлую/тёмную тему, ширину 390 px, F11/Esc, Ctrl+S, поиск и консоль.
