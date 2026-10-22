@@ -6,12 +6,12 @@ use MajorDoMo\Core\Api\{AccessPolicy, ApiException, Contract, HookRateLimiter, H
 use MajorDoMo\Core\Install\{InstallGate, InstallState};
 
 /**
- * HTTP boundary of the core API.
+ * HTTP-граница API ядра.
  * Изменения: 2026-10-22 — отдельная ветка публичных /api/hooks/<secret>.
  */
 final class ApiApplication extends Application
 {
-    /** Optional dependencies are for isolated HTTP tests/embedded deployments. */
+    /** Необязательные зависимости — для изолированных HTTP-тестов и встраивания. */
     public function __construct(
         ?string $root = null,
         private ?\Closure $tokenVerifier = null,
@@ -28,11 +28,13 @@ final class ApiApplication extends Application
         $level = ob_get_level(); ob_start();
         $finished = false; $legacy = false; $webhook = null;
         ini_set('display_errors', '0');
-        // Legacy settings/modules can exit. Never leak HTML or partial output to clients.
+        // Легаси-настройки и модули могут завершиться через exit. HTML и
+        // частичный вывод не должны попасть клиенту.
         register_shutdown_function(static function () use (&$finished, &$legacy, &$webhook, $response, $level): void {
             if ($finished) return;
-            // A verified webhook may exit inside the module handler. Its output is
-            // already the response; only refresh diagnostics and keep the buffer.
+            // Проверенный webhook может завершиться внутри обработчика. Его
+            // вывод уже является ответом: обновляем только диагностику и
+            // сохраняем буфер.
             if ($webhook instanceof WebhookRunner) {
                 $webhook->finishFromShutdown();
                 return;
@@ -49,9 +51,9 @@ final class ApiApplication extends Application
             $legacy = $probe->legacy;
             if (!InstallState::isComplete($this->root)) throw new ApiException(503, 'install_required', 'Система ещё не настроена.', array('install_url' => InstallGate::installUrl()), array('Retry-After' => '30'));
 
-            // Public webhook entries use their own narrow secret check and never
-            // the general API token, LAN rule or admin session. The branch runs
-            // before the JSON parser, AccessPolicy and the legacy runtime.
+            // Публичные webhook проверяют только собственный секрет и никогда
+            // не используют общий API-токен, правило локальной сети или сессию
+            // администратора. Ветка идёт до JSON-парсера, AccessPolicy и loader.
             if (($probe->segments[0] ?? '') === 'hooks') {
                 $legacy = false;
                 $secret = count($probe->segments) === 2 ? (string)$probe->segments[1] : '';

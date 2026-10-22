@@ -3,10 +3,10 @@
 use MajorDoMo\Core\Api\HookRegistry;
 
 /**
- * Presentation helpers for the "Входящие webhook" tab.
+ * Помощники представления для вкладки «Входящие webhook».
  *
- * Storage and execution live in Core\Api\HookStore / WebhookRunner; this class
- * only turns rows into labels and lists for the admin templates.
+ * Хранение и исполнение живут в Core\Api\HookStore / WebhookRunner; этот класс
+ * только превращает строки БД в подписи и списки для шаблонов админки.
  */
 final class ApiHooks
 {
@@ -69,7 +69,7 @@ final class ApiHooks
         return rtrim(defined('ROOTHTML') ? (string)ROOTHTML : '/', '/') . '/api/hooks/' . $secret;
     }
 
-    /** @return array<string,string> module name => human label */
+    /** @return array<string,string> имя модуля => подпись для человека */
     public static function moduleOptions(string $root): array
     {
         $options = array();
@@ -82,7 +82,7 @@ final class ApiHooks
                         $title = (string)$row['TITLE'];
                     }
                 } catch (\Throwable $error) {
-                    // A fresh/test database may not have project_modules yet.
+                    // В свежей или тестовой БД таблицы project_modules может ещё не быть.
                 }
             }
             $options[$module] = $title === $module ? $module : $title . ' (' . $module . ')';
@@ -90,7 +90,7 @@ final class ApiHooks
         return $options;
     }
 
-    /** @return array<string,string[]> module name => relative PHP files */
+    /** @return array<string,string[]> имя модуля => относительные PHP-файлы */
     public static function handlerOptions(string $root): array
     {
         $options = array();

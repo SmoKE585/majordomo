@@ -3,12 +3,12 @@
 namespace MajorDoMo\Core\Api;
 
 /**
- * Executes one verified public webhook call.
+ * Исполняет один проверенный вызов публичного webhook.
  *
- * The incoming request is handed to the stored module handler without parsing
- * it as the JSON API: method, query, form data, files, raw php://input and
- * headers remain untouched. The handler response is sent as-is; only failures
- * of the webhook boundary itself use the regular API error envelope.
+ * Запрос передаётся сохранённому обработчику модуля без разбора как JSON API:
+ * метод, query, форма, файлы, сырой php://input и заголовки остаются как есть.
+ * Ответ обработчика отправляется без обёртки; обычный JSON-конверт API
+ * используется только для ошибок самой границы webhook.
  *
  * Изменения: 2026-10-22 — добавлен исполнитель публичных webhook.
  */
@@ -27,8 +27,8 @@ final class WebhookRunner
     }
 
     /**
-     * @param callable():void $boot loads the legacy runtime and settings after
-     *        verification, so the handler sees the normal MajorDoMo context.
+     * @param callable():void $boot загружает легаси-runtime и настройки после
+     *        проверки, чтобы обработчик увидел обычный контекст MajorDoMo.
      */
     public function run(string $secret, callable $boot): void
     {
@@ -71,16 +71,16 @@ final class WebhookRunner
             $this->reject(404, 'not_found', 'Обработчик входа недоступен.');
         }
 
-        // The process-local permission exists only for this verified call. The
-        // loader and AuthGate consult it so the handler can include the normal
-        // runtime without opening the admin UI or the general API.
+        // Разрешение живёт в процессе только на время этого проверенного
+        // вызова. Загрузчик и AuthGate видят его и пускают обработчик в обычный
+        // runtime, не открывая админку и общий API.
         HookContext::activate($record);
         $level = ob_get_level();
         ob_start();
         try {
-            // Prepare the compatibility context before the loader: THIS_URL and
-            // settings see the redacted URI, while AuthGate sees the verified
-            // process-local permission.
+            // Контекст совместимости готовим до загрузчика: THIS_URL и
+            // настройки видят уже очищенный URI, а AuthGate — проверенное
+            // разрешение текущего процесса.
             $this->prepareServer();
             $boot();
             include $this->handlerPath;
@@ -105,7 +105,7 @@ final class WebhookRunner
         }
     }
 
-    /** Called from the shutdown handler when the module used exit/die. */
+    /** Вызывается из shutdown-обработчика, если модуль завершился через exit/die. */
     public function finishFromShutdown(): void
     {
         if ($this->hook === null || $this->finished) {
@@ -146,9 +146,9 @@ final class WebhookRunner
             $this->reject(400, 'invalid_request', 'Не удалось прочитать тело запроса.');
         }
         try {
-            // Reading php://input does not consume it for the handler: PHP keeps
-            // the raw stream re-readable for non-multipart requests. Multipart
-            // data is already available through $_POST/$_FILES.
+            // Чтение php://input не забирает поток у обработчика: PHP оставляет
+            // сырой поток читаемым повторно, кроме multipart. Для multipart
+            // данные уже доступны через $_POST/$_FILES.
             $raw = stream_get_contents($stream, self::MAX_BODY + 1);
         } finally {
             fclose($stream);
@@ -170,17 +170,17 @@ final class WebhookRunner
         if (empty($_SERVER['DOCUMENT_ROOT'])) {
             $_SERVER['DOCUMENT_ROOT'] = rtrim(str_replace('\\', '/', $this->root), '/') . '/public';
         }
-        // Keep the secret out of legacy audit/action logs that read REQUEST_URI.
-        // The exact engine URL is not part of the handler contract; SCRIPT_NAME
-        // and query/form/body/headers stay intact.
+        // Убираем секрет из REQUEST_URI: его читают старые журналы действий и
+        // аудита. Точный URL движка не входит в контракт обработчика, а
+        // SCRIPT_NAME, query, форма, тело и заголовки остаются без изменений.
         if (isset($_SERVER['REQUEST_URI'])) {
             $redacted = preg_replace('#(/api(?:\.php)?/hooks/)[a-f0-9]{64}#i', '$1[redacted]', (string)$_SERVER['REQUEST_URI']);
             if (is_string($redacted)) {
                 $_SERVER['REQUEST_URI'] = $redacted;
             }
         }
-        // Legacy MajorDoMo handlers resolve config.php/lib/loader.php from the
-        // application root, exactly like public entry points.
+        // Легаси-обработчики MajorDoMo ищут config.php/lib/loader.php от корня
+        // приложения — так же, как публичные точки входа.
         chdir($this->root);
     }
 
@@ -202,7 +202,7 @@ final class WebhookRunner
         try {
             $this->store->touch((int)$this->hook['ID'], $status, (string)($_SERVER['REQUEST_METHOD'] ?? ''));
         } catch (\Throwable $error) {
-            // Diagnostics must never break the handler response or leak details.
+            // Диагностика не должна ломать ответ обработчика или раскрывать детали.
             error_log('MajorDoMo webhook diagnostics unavailable: ' . get_class($error));
         }
     }

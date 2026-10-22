@@ -1,6 +1,7 @@
 <?php
 /**
- * First-run setup wizard.
+ * Мастер первичной настройки.
+ * 2026-10-22 — фирменные логотипы для обеих тем и новый favicon.
  *
  * @var \MajorDoMo\Core\Install\Installer $installer
  * @var array<string,string> $values
@@ -93,6 +94,8 @@ $displayField = static function (array $field, string $value) use ($secrets): st
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title><?= \MDJUI::e($pageTitle) ?></title>
+    <link rel="icon" href="<?= \MDJUI::e($rootHtml) ?>favicon.ico?v=2026-10-22-logo" sizes="any">
+    <link rel="apple-touch-icon" href="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/favicon.png">
     <script>
     (function () {
         document.documentElement.classList.add('md-install-js');
@@ -115,9 +118,11 @@ $displayField = static function (array $field, string $value) use ($secrets): st
 <div class="md-install<?= $isSuccess ? ' md-install--success' : '' ?>">
     <header class="md-install__topbar">
         <a class="md-install__brand" href="<?= \MDJUI::e($installUrl) ?>">
-            <span class="md-install__brand-mark"><?= \MDJUI::icon('home-cog') ?></span>
+            <span class="md-logo">
+                <img class="md-logo__light" src="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/logo-black-small.png" srcset="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/logo-black-large.png 2x" width="300" height="79" alt="MajorDoMo">
+                <img class="md-logo__dark" src="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/logo-white-small.png" srcset="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/logo-white-large.png 2x" width="300" height="79" alt="MajorDoMo">
+            </span>
             <span class="md-install__brand-text">
-                <strong>MajorDoMo</strong>
                 <small><?= $isSuccess ? 'Настройка завершена' : 'Первичная настройка' ?></small>
             </span>
         </a>

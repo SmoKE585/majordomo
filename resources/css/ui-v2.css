@@ -1,5 +1,6 @@
 /*
  * MajorDoMo admin UI 2.0
+ * 2026-10-22 — горизонтальный логотип в тёмной боковой панели.
  * Clean layer that sits on top of Bootstrap 5 and gradually replaces the
  * legacy admin_panel.css rules. Keep new component classes namespaced.
  */
@@ -471,7 +472,7 @@ body.md-admin-shell .md-admin-sidebar__brand-shell {
 }
 
 body.md-admin-shell .md-admin-sidebar__brand img {
-  width: min(84px, 100%);
+  width: min(192px, 100%);
   opacity: .96;
 }
 

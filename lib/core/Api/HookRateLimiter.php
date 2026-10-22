@@ -23,7 +23,7 @@ final class HookRateLimiter
         $this->window = max(1, $this->window);
     }
 
-    /** Returns 0 when the request is allowed, or Retry-After seconds. */
+    /** Возвращает 0, если запрос разрешён, иначе — секунды для Retry-After. */
     public function hit(int $hookId, ?int $now = null): int
     {
         $now ??= time();

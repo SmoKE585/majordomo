@@ -1,5 +1,6 @@
 /* ==========================================================================
    MajorDoMo admin — UI system
+   2026-10-22 — общие логотипы учитывают светлую и тёмную темы.
    --------------------------------------------------------------------------
    Canonical component layer for new admin pages. It sits on top of Bootstrap
    5, uses the shell tokens and is intentionally namespaced with `md-*` so it
@@ -10,6 +11,31 @@
    - no component may rely on a light-only background;
    - new shared components belong here, not in admin_panel.css.
    ========================================================================== */
+
+/* Логотипы переключаются по теме без повторной загрузки страницы. */
+.md-logo {
+  display: inline-flex;
+  width: 220px;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.md-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 300 / 79;
+  object-fit: contain;
+}
+
+.md-logo .md-logo__dark,
+[data-bs-theme="dark"] .md-logo .md-logo__light {
+  display: none;
+}
+
+[data-bs-theme="dark"] .md-logo .md-logo__dark {
+  display: block;
+}
 
 /* --------------------------------------------------------------------------
    1. Tokens

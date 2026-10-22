@@ -1,7 +1,8 @@
 <?php
 
 /**
- * Shared 404 renderer.
+ * Общий рендер страницы 404.
+ * 2026-10-22 — фирменные логотипы для обеих тем и новый favicon.
  *
  * It intentionally does not touch the database: a missing page should look
  * normal even when the database or the application bootstrap is broken.
@@ -85,7 +86,7 @@ function mdj_render_404($options = array())
         require_once($projectRoot . 'lib/ui/MDJUI.php');
     }
 
-    $cssFile = $projectRoot . 'assets/admin/admin.css';
+    $cssFile = $projectRoot . 'public/assets/admin/admin.css';
     $cssVersion = is_file($cssFile) ? (string)filemtime($cssFile) : '1';
     $theme = mdj_error_theme();
     $homeUrl = $area === 'admin' ? rtrim($root, '/') . '/panel/' : rtrim($root, '/') . '/';
@@ -118,11 +119,17 @@ function mdj_render_404($options = array())
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
     <title>404 — Страница не найдена</title>
+    <link rel="icon" href="<?= $safeRoot ?>favicon.ico?v=2026-10-22-logo" sizes="any">
+    <link rel="apple-touch-icon" href="<?= $safeRoot ?>assets/img/logos/favicon.png">
     <link rel="stylesheet" href="<?= $safeRoot ?>assets/admin/admin.css?v=<?= htmlspecialchars($cssVersion, ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <body class="md-admin-shell md-error-page">
     <main class="md-error-page__main">
         <div class="md-error-page__card">
+            <a class="md-logo" href="<?= htmlspecialchars($homeUrl, ENT_QUOTES, 'UTF-8') ?>" aria-label="MajorDoMo — на главную">
+                <img class="md-logo__light" src="<?= $safeRoot ?>assets/img/logos/logo-black-small.png" srcset="<?= $safeRoot ?>assets/img/logos/logo-black-large.png 2x" width="300" height="79" alt="MajorDoMo">
+                <img class="md-logo__dark" src="<?= $safeRoot ?>assets/img/logos/logo-white-small.png" srcset="<?= $safeRoot ?>assets/img/logos/logo-white-large.png 2x" width="300" height="79" alt="MajorDoMo">
+            </a>
             <div class="md-error-page__code" aria-hidden="true">404</div>
             <?= $content ?>
             <div class="md-error-page__path" title="<?= $safePath ?>"><?= $safePath ?></div>

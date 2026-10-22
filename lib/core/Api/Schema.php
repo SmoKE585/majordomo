@@ -5,7 +5,7 @@ namespace MajorDoMo\Core\Api;
 use MajorDoMo\Core\Database;
 
 /**
- * DDL for API tokens and public webhook entries.
+ * DDL для API-токенов и публичных webhook-входов.
  * Изменения: 2026-10-22 — добавлена схема api_hooks.
  */
 final class Schema
@@ -22,8 +22,8 @@ final class Schema
     }
 
     /**
-     * Public webhook entries. SECRET_HASH is the only stored form of the URL
-     * secret; HEADER_SECRET_HASH stores the optional extra header secret.
+     * Публичные webhook-входы. SECRET_HASH — единственная хранимая форма
+     * секрета ссылки; HEADER_SECRET_HASH хранит необязательный секрет заголовка.
      *
      * @return string[]
      */

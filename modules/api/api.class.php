@@ -4,7 +4,7 @@ use MajorDoMo\Core\{Config, Core};
 use MajorDoMo\Core\Api\{Contract, Schema};
 
 /**
- * Admin transport only. API implementation, tokens and hooks belong to Core\Api.
+ * Только транспорт админки. Реализация API, токены и входы живут в Core\Api.
  * Изменения: 2026-10-22 — вкладка входящих webhook и её AJAX-операции.
  */
 class api extends module
@@ -217,7 +217,7 @@ class api extends module
         );
     }
 
-    /** Counts shown in the hero, KPI cards and tabs, refreshed after every AJAX action. */
+    /** Счётчики для hero, KPI и вкладок; обновляются после каждого AJAX-действия. */
     private static function summaryLabels(array $stats, array $hookStats = array()): array
     {
         $operations = Contract::operations();

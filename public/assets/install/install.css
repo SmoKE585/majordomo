@@ -1,5 +1,6 @@
 /* ==========================================================================
    First-run setup wizard
+   2026-10-22 — фирменный логотип вместо иконки и названия.
    Page-only styles. Components come from the shared admin bundle (md-*).
    ========================================================================== */
 
@@ -54,8 +55,9 @@ body.md-install-shell::before {
 
 .md-install__brand {
   display: inline-flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   min-width: 0;
   color: var(--md-ui-text);
   text-decoration: none;
@@ -65,17 +67,8 @@ body.md-install-shell::before {
   color: var(--md-ui-text);
 }
 
-.md-install__brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  color: var(--md-ui-primary-contrast);
-  background: linear-gradient(145deg, var(--md-ui-primary), var(--md-ui-primary-strong));
-  border-radius: 13px;
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--md-ui-primary) 26%, transparent);
-  font-size: 21px;
+.md-install__brand .md-logo {
+  width: 200px;
 }
 
 .md-install__brand-text {
@@ -83,12 +76,6 @@ body.md-install-shell::before {
   flex-direction: column;
   min-width: 0;
   line-height: 1.15;
-}
-
-.md-install__brand-text strong {
-  font-size: var(--md-ui-fs-md);
-  font-weight: 700;
-  letter-spacing: -.01em;
 }
 
 .md-install__brand-text small {
@@ -1548,10 +1535,8 @@ body.md-install-shell::before {
 }
 
 @media (max-width: 420px) {
-  .md-install__brand-mark {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
+  .md-install__brand .md-logo {
+    width: 180px;
   }
 
   .md-install__step-link {

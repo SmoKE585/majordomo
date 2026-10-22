@@ -20,8 +20,8 @@ final class AuthGate
     public static function enforce(string $root): void
     {
         if (PHP_SAPI === 'cli') return;
-        // Only a verified /api/hooks/<secret> call sets this process-local flag.
-        // It is never derived from a query parameter, header or URI match.
+        // Этот флаг процесса выставляет только проверенный /api/hooks/<secret>.
+        // Он не выводится из query-параметра, заголовка или совпадения URI.
         if (HookContext::active()) return;
         // API has its own authentication boundary; a query parameter cannot skip it.
         $script = realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? ''));

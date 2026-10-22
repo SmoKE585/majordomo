@@ -1,4 +1,5 @@
 <?php
+// 2026-10-22 — фирменные логотипы для обеих тем и новый favicon.
 if (!isset($session, $csrf) || !class_exists('MDJUI')) { http_response_code(404); exit; }
 $theme = ($_COOKIE['theme'] ?? '') === 'dark' ? 'dark' : 'light';
 ?>
@@ -9,13 +10,19 @@ $theme = ($_COOKIE['theme'] ?? '') === 'dark' ? 'dark' : 'light';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Вход — MajorDoMo</title>
-    <link rel="icon" href="<?= MDJUI::e($rootUrl) ?>favicon.ico">
-    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/admin/admin.css?v=2026-10-22-auth">
-    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/auth/login.css?v=1">
+    <link rel="icon" href="<?= MDJUI::e($rootUrl) ?>favicon.ico?v=2026-10-22-logo" sizes="any">
+    <link rel="apple-touch-icon" href="<?= MDJUI::e($rootUrl) ?>assets/img/logos/favicon.png">
+    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/admin/admin.css?v=2026-10-22-logo">
+    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/auth/login.css?v=2026-10-22-logo">
 </head>
 <body class="md-admin-shell md-auth">
 <main class="md-auth__main">
-    <div class="md-auth__brand"><?= MDJUI::icon('smart-home') ?><span>MajorDoMo</span></div>
+    <div class="md-auth__brand">
+        <span class="md-logo">
+            <img class="md-logo__light" src="<?= MDJUI::e($rootUrl) ?>assets/img/logos/logo-black-small.png" srcset="<?= MDJUI::e($rootUrl) ?>assets/img/logos/logo-black-large.png 2x" width="300" height="79" alt="MajorDoMo">
+            <img class="md-logo__dark" src="<?= MDJUI::e($rootUrl) ?>assets/img/logos/logo-white-small.png" srcset="<?= MDJUI::e($rootUrl) ?>assets/img/logos/logo-white-large.png 2x" width="300" height="79" alt="MajorDoMo">
+        </span>
+    </div>
     <h1 class="md-auth__title">Вход в панель управления</h1>
     <p class="md-auth__subtitle">Войдите с учётной записью администратора.</p>
     <?php ob_start(); ?>
