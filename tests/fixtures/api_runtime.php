@@ -109,6 +109,7 @@ echo json_encode(array(
     'raw' => file_get_contents('php://input'),
     'header' => $_SERVER['HTTP_X_FIXTURE_SECRET'] ?? '',
     'script' => $_SERVER['SCRIPT_NAME'] ?? '',
+    'document_root' => $_SERVER['DOCUMENT_ROOT'] ?? '',
     'uri' => $_SERVER['REQUEST_URI'] ?? '',
     'path_info' => $_SERVER['PATH_INFO'] ?? '',
 ));

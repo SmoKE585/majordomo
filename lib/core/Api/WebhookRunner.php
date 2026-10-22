@@ -165,23 +165,27 @@ final class WebhookRunner
 
     private function prepareServer(string $pathInfo = ''): void
     {
+        $root = rtrim(str_replace('\\', '/', $this->root), '/');
+        $moduleRoot = $root . '/modules/' . (string)$this->hook['MODULE'];
         $relative = 'modules/' . (string)$this->hook['MODULE'] . '/' . (string)$this->hook['HANDLER'];
         $_SERVER['SCRIPT_FILENAME'] = $this->handlerPath;
-        $_SERVER['SCRIPT_NAME'] = '/' . $relative;
-        if (empty($_SERVER['DOCUMENT_ROOT'])) {
-            $_SERVER['DOCUMENT_ROOT'] = rtrim(str_replace('\\', '/', $this->root), '/') . '/public';
-        }
         $query = (string)($_SERVER['QUERY_STRING'] ?? '');
         if ($pathInfo !== '') {
-            // Хвост после секрета — это PATH_INFO обработчика. REQUEST_URI
-            // становится относительным, как у отдельного nginx-входа Yandex
-            // Smart Home; секрет в него не попадает.
+            // Хвост после секрета — это PATH_INFO обработчика. Режим повторяет
+            // отдельный nginx-вход с root внутри модуля (Yandex Smart Home):
+            // REQUEST_URI относительный, секрет в него не попадает.
+            $_SERVER['SCRIPT_NAME'] = '/' . (string)$this->hook['HANDLER'];
+            $_SERVER['DOCUMENT_ROOT'] = $moduleRoot;
             $_SERVER['PATH_INFO'] = $pathInfo;
             $_SERVER['ORIG_PATH_INFO'] = $pathInfo;
-            $_SERVER['PATH_TRANSLATED'] = $this->handlerPath . str_replace('/', DIRECTORY_SEPARATOR, $pathInfo);
+            $_SERVER['PATH_TRANSLATED'] = $moduleRoot . str_replace('/', DIRECTORY_SEPARATOR, $pathInfo);
             $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $pathInfo;
             $_SERVER['REQUEST_URI'] = $pathInfo . ($query !== '' ? '?' . $query : '');
         } else {
+            $_SERVER['SCRIPT_NAME'] = '/' . $relative;
+            if (empty($_SERVER['DOCUMENT_ROOT'])) {
+                $_SERVER['DOCUMENT_ROOT'] = $root . '/public';
+            }
             $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'];
             unset($_SERVER['PATH_INFO'], $_SERVER['ORIG_PATH_INFO'], $_SERVER['PATH_TRANSLATED']);
             // Убираем секрет из REQUEST_URI: его читают старые журналы действий
