@@ -11,7 +11,7 @@ order: 10
 
 ## Коротко
 
-Это карта каталогов и таблица «URL → файл» после перехода на `public/` как document root. Читайте перед добавлением точки входа, ассета или nginx-правила. Нельзя переносить `modules/`, `cms/`, `objects/`, `scripts/`, `3rdparty/` и `docs/` внутрь `public/`: их старые URL обязаны сохраниться.
+Это карта каталогов и таблица «URL → файл» после перехода на `public/` как document root. Читайте перед добавлением точки входа, ассета или nginx-правила. Нельзя переносить `modules/`, `cms/`, `scripts/`, `packages/`, `vendor/` и `docs/` внутрь `public/`. Системные каталоги закрыты по HTTP, `/objects/` и `3rdparty/` удалены.
 
 Раскладка каталогов после перехода на `public/` как document root (структура
 «а-ля Laravel»): веб-точки входа и статика лежат в `public/`, код приложения —
@@ -62,9 +62,9 @@ order: 10
 ├── languages/                  # переводы интерфейса
 ├── cms/                        # рантайм-данные и медиа (/cms/...)
 ├── backup/                     # резервные копии saverestore (runtime, gitignored)
-├── 3rdparty/                   # PHP-библиотеки (/3rdparty/...)
-├── objects/                    # /objects/?script=…
-├── scripts/                    # CLI-циклы и служебные скрипты (/scripts/…)
+├── packages/phpmqtt/           # исходники локального Composer-пакета MQTT
+├── vendor/                     # Composer-зависимости, без HTTP-доступа
+├── scripts/                    # CLI-циклы и служебные скрипты, без HTTP-доступа
 ├── tools/                      # dev-инструменты (скриншоты, иконки, config, install)
 ├── tests/                      # smoke/regression: routing, config, install, settings/cycles, core runtime
 ├── package.json / vite.*.js    # сборка статики
@@ -89,18 +89,18 @@ order: 10
 | `/assets/...` | `public/assets/...` |
 | `/cms/avatars/...`, `/cms/images/...` | `cms/...` (медиа) |
 | `/modules/...` | `modules/...` (включая PHP-эндпоинты) |
-| `/objects/?script=...` | `objects/index.php` |
-| `/scripts/...` | `scripts/...` |
-| `/3rdparty/...` | `3rdparty/...` (PHP-библиотеки) |
+| `/objects/...`, `/3rdparty/...` | Удалены; используйте `/api/v1/...`. |
+| `/scripts/...`, `/vendor/...`, `/packages/...` | HTTP-доступ закрыт. |
+
 | `/docs/...` | `docs/...` (UI Kit ссылается на документацию) |
 | `/css`, `/js`, `/img/...` | 301 → `/assets/...` |
-| `/3rdparty/<browser-lib>/...` | 301 → `/assets/vendor/<browser-lib>/...` |
+
 | `/templates/<module>/*.css`, `*.js` | 301 → `/assets/modules/<module>/...` |
 | `/public/...` | 301 → `/...` (старый префикс docroot) |
 | `/rc/...` | 301 → `/panel/` (функция удалена) |
 
 Вне document root и недоступны по HTTP: `.env`, `config.php`, `bootstrap.php`,
-`load_settings.php`, `lib/`, `cycle.php`, `dev_server.php`, `tools/`.
+`load_settings.php`, `lib/`, `scripts/`, `packages/`, `vendor/`, `cycle.php`, `tools/`.
 
 Приватные подкаталоги `cms/` (`cached`, `debmes`, `modules_installed`,
 `saverestore`) закрыты в nginx; `docs/**/*.sql` и скрипты тоже.
@@ -114,8 +114,8 @@ Document root — только `public/`. Всё, что должно сохра
   (`modules/<name>/autosave.php`, `update_iframe.php`, `*.js.php`), поэтому
   каталог и его URL остаются на месте;
 - `cms/` — 160+ обращений вида `ROOT . 'cms/...'` в коде и медиа-URL;
-- `objects/`, `scripts/` — веб-эндпоинты, завязанные на старые URL;
-- `3rdparty/` — PHP-библиотеки, которые подключают модули.
+- `scripts/` — только системные CLI-процессы; nginx не монтирует каталог;
+- PHP-библиотеки загружаются Composer из `vendor/`, локальные исходники — в `packages/`.
 
 Точки входа перенесены в `public/` физически. Так как они используют
 относительные include (`./config.php`, `./lib/...`), каждый начинается с
@@ -160,8 +160,8 @@ location ^~ /modules/ {
 - Редиректы старых ассетов идут до общих regex-локаций статики.
 - `$is_args$args` сохраняет `?v=...` при 301.
 - `error_page 404 /404.php` теперь указывает на `public/404.php`.
-- Список браузерных библиотек в `/3rdparty/` дублируется в `dev_server.php`
-  (`devVendorPackages()`); при добавлении библиотеки обновите оба места.
+- Системные `scripts/`, `packages/`, `vendor/` закрыты; `/objects/` и `/3rdparty/`
+  удалены. Новые внешние операции добавляются в единый контракт API v1.
 
 ## 5. Локальная разработка
 
@@ -169,11 +169,11 @@ location ^~ /modules/ {
 
 - document root — `public/`; входные файлы, `/assets/`, `favicon.ico`,
   `robots.txt` берутся оттуда;
-- `/modules/`, `/objects/`, `/scripts/`, `/3rdparty/`, `/cms/`,
+- `/modules/`, `/cms/`,
   `/docs/` отдаются из корня проекта, PHP в них выполняется;
 - CWD перед запуском скрипта = каталог скрипта (как в php-fpm), поэтому
   `bootstrap.php` и собственные `chdir()` эндпоинтов работают одинаково с продом;
-- старые пути (`/css/`, `/js/`, `/img/`, `/3rdparty/<lib>/`, `/templates/<m>/*.css|js`)
+- старые пути (`/css/`, `/js/`, `/img/`, `/templates/<m>/*.css|js`)
   отвечают 301, `/rc/` — 301 на `/panel/`.
 
 ## 6. Как добавить ассет

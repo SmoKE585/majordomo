@@ -2,7 +2,10 @@
 
 namespace MajorDoMo\Core\Api;
 
-/** The same operation catalogue drives routing, validation, UI and OpenAPI. */
+/**
+ * Общий каталог маршрутов, валидации и OpenAPI.
+ * Изменения: 2026-10-22 — внешние операции сообщений и подписок вместо /objects/.
+ */
 final class Contract
 {
     public static function operations(): array
@@ -12,6 +15,11 @@ final class Contract
             'title' => $string, 'priority' => array('type' => 'integer'), 'roomIcon' => array('type' => 'string', 'maxLength' => 255),
         ));
         $params = array('type' => 'object', 'additionalProperties' => true);
+        $speech = array('message' => array('type' => 'string', 'minLength' => 1, 'maxLength' => 10000),
+            'level' => array('type' => 'integer', 'minimum' => 0));
+        $speechBody = static fn(array $extra, array $required = array()) => array('type' => 'object',
+            'required' => array_merge(array('message'), $required), 'additionalProperties' => false,
+            'properties' => array_merge($speech, $extra));
         $definitions = array(
             array('GET', '/openapi.json', 'spec', 'Спецификация OpenAPI', 'Система', null, null, array()),
             array('GET', '/objects', 'objects', 'Все объекты', 'Объекты', null, 'objects', array()),
@@ -22,6 +30,10 @@ final class Contract
             array('GET', '/history/{property}', 'history', 'История и агрегаты свойства', 'История', null, 'result', array()),
             array('POST', '/method/{target}', 'method', 'Вызвать метод объекта', 'Выполнение', $params, 'result', new \stdClass()),
             array('POST', '/script/{script}', 'script', 'Выполнить сценарий по ID или названию', 'Выполнение', $params, 'result', new \stdClass()),
+            array('POST', '/say', 'say', 'Произнести сообщение или команду пользователя', 'Сообщения', $speechBody(array('member_id' => array('type' => 'integer', 'minimum' => 0), 'source' => $string)), 'result', array('message' => 'Проверка связи')),
+            array('POST', '/say/reply', 'sayReply', 'Ответить на голосовой запрос', 'Сообщения', $speechBody(array('replyto' => array('type' => 'string', 'maxLength' => 10000))), 'result', array('message' => 'Готово')),
+            array('POST', '/say/to', 'sayTo', 'Отправить сообщение терминалу', 'Сообщения', $speechBody(array('destination' => $string), array('destination')), 'result', array('message' => 'Готово', 'destination' => 'Кухня')),
+            array('POST', '/subscriptions/{event}', 'subscriptions', 'Обработать подписки события', 'События', array('type' => 'object', 'additionalProperties' => false, 'properties' => array('details' => $params, 'return_output' => array('type' => 'boolean'))), 'result', array('details' => new \stdClass(), 'return_output' => false)),
             array('POST', '/events/{event}', 'event', 'Зарегистрировать событие', 'События', $params, null, array('source' => 'API')),
             array('GET', '/messages', 'messages', 'Журнал сообщений и пользователь', 'Сообщения', null, null, array()),
             array('POST', '/messages', 'messages', 'Отправить сообщение', 'Сообщения', array('type' => 'object', 'required' => array('message'), 'additionalProperties' => false, 'properties' => array('message' => array('type' => 'string', 'minLength' => 1, 'maxLength' => 10000))), 'result', array('message' => 'Проверка API')),
@@ -72,10 +84,11 @@ final class Contract
     {
         $schema = (array)$schema;
         $type = $schema['type'] ?? '';
+        if ($type === 'object' && $value instanceof \stdClass) $value = (array)$value;
         $valid = match ($type) {
             'object' => is_array($value) && ($value === array() || !array_is_list($value)),
             'array' => is_array($value) && array_is_list($value),
-            'string' => is_string($value), 'integer' => is_int($value), default => true,
+            'string' => is_string($value), 'integer' => is_int($value), 'boolean' => is_bool($value), default => true,
         };
         if (!$valid) self::invalid($field, 'Некорректный тип поля.');
         if ($type === 'object') {

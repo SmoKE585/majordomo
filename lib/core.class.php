@@ -7,7 +7,7 @@ if (is_file(dirname(__DIR__) . '/vendor/autoload.php')) {
 }
 
 // Keep the local core loader for installations that have not run Composer yet.
-// Legacy libraries in 3rdparty/ continue to use their existing includes.
+// 2026-10-22 — PHPMailer и локальная версия MQTT загружаются только Composer.
 spl_autoload_register(function ($class) {
     $prefix = 'MajorDoMo\\Core\\';
     if (strncmp($class, $prefix, strlen($prefix)) !== 0) return;

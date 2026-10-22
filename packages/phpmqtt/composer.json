@@ -1,0 +1,14 @@
+{
+    "name": "majordomo/phpmqtt",
+    "description": "Локальная версия BlueRhinos phpMQTT с ограниченным приёмом пакетов",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Bluerhinos\\": "src/"
+        }
+    }
+}

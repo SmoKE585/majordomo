@@ -13,6 +13,7 @@ use \RuntimeException;
  * изменений не даёт автоматизации зациклиться.
  *
  * Изменения:
+ * 2026-10-22 — уведомления модулей ставятся напрямую в очередь ядра.
  * 2026-10-22 — сообщение об остановке цепочки объясняет причину и что делать.
  */
 final class Properties
@@ -477,12 +478,8 @@ final class Properties
                         $params['value'] = $value;
                         $params['_chain'] = $next_chain;
                         PropertyAudit::attach($params);
-                        // Сегмент пути кодируется так же, как его разбирает
-                        // Api\Request (rawurldecode); имя модуля — идентификатор,
-                        // но правило одно для всех внутренних вызовов API.
-                        $url = '/api/modulePropertySet/' . rawurlencode((string)$linked_module);
                         try {
-                            if (!Core::api()->request($url, 'GET', $params)) throw new RuntimeException('Linked operation was not queued');
+                            if (!Core::queue()->enqueueRuntime('modulepropertyset', $params, (string)$linked_module)) throw new RuntimeException('Linked operation was not queued');
                         } catch (Throwable $e) {
                             // The value is already saved. A failed notification is
                             // reported once per module/window, not per value.

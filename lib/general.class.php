@@ -5,9 +5,7 @@
  * Frequiently Used Functions
  *
  */
-include_once(ROOT . '3rdparty/php-mailer/Exception.php');
-include_once(ROOT . '3rdparty/php-mailer/PHPMailer.php');
-include_once(ROOT . '3rdparty/php-mailer/SMTP.php');
+// 2026-10-22 — PHPMailer загружается Composer при первом использовании.
 
 if (isset($_SERVER['REQUEST_METHOD'])) {
     $blocked = array('_SERVER', '_COOKIE', 'HTTP_POST_VARS', 'HTTP_GET_VARS', 'HTTP_SERVER_VARS',

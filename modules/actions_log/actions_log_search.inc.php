@@ -147,61 +147,27 @@ $sortby_actions_log = "actions_log.ID DESC";
 $out['SORTBY'] = $sortby_actions_log;
 
 // SEARCH RESULTS
-$res_total = SQLSelectOne("SELECT count(*) as TOTAL FROM actions_log WHERE $qry");
 $stats = SQLSelectOne("SELECT COUNT(*) AS TOTAL,
         SUM(CASE WHEN RESULT='ok' THEN 1 ELSE 0 END) AS OK_TOTAL,
         SUM(CASE WHEN RESULT='error' THEN 1 ELSE 0 END) AS ERROR_TOTAL,
         COUNT(DISTINCT USER) AS USER_TOTAL,
         COUNT(DISTINCT SOURCE) AS SOURCE_TOTAL
     FROM actions_log WHERE $qry");
-$out['LOG_TOTAL'] = isset($res_total['TOTAL']) ? (int)$res_total['TOTAL'] : 0;
+$out['LOG_TOTAL'] = isset($stats['TOTAL']) ? (int)$stats['TOTAL'] : 0;
 $out['LOG_OK_TOTAL'] = isset($stats['OK_TOTAL']) ? (int)$stats['OK_TOTAL'] : 0;
 $out['LOG_ERROR_TOTAL'] = isset($stats['ERROR_TOTAL']) ? (int)$stats['ERROR_TOTAL'] : 0;
 $out['LOG_USER_TOTAL'] = isset($stats['USER_TOTAL']) ? (int)$stats['USER_TOTAL'] : 0;
 $out['LOG_SOURCE_TOTAL'] = isset($stats['SOURCE_TOTAL']) ? (int)$stats['SOURCE_TOTAL'] : 0;
 
-$page = gr('page', 'int');
-if (!$page) {
-    $page = 1;
-}
-$out['PAGE'] = $page;
+// 2026-10-22 — пагинация ядра ограничивает страницу до расчёта SQL LIMIT.
 $on_page = 50;
-$limit = (($page - 1) * $on_page) . ',' . $on_page;
-
-$urlPattern = '?page=(:num)'
-    . '&period=' . urlencode($period)
-    . '&from=' . urlencode($from)
-    . '&to=' . urlencode($to)
-    . '&action_type=' . urlencode($action_type)
-    . '&source=' . urlencode($source)
-    . '&module_name=' . urlencode($module_name)
-    . '&result=' . urlencode($result)
-    . '&request_method=' . urlencode($request_method)
-    . '&user_name=' . urlencode($user_name)
-    . '&terminal=' . urlencode($terminal)
-    . '&ip=' . urlencode($ip)
-    . '&search=' . urlencode($search);
-
-require(ROOT . '3rdparty/Paginator/Paginator.php');
-$paginator = new JasonGrimes\Paginator($res_total['TOTAL'], $on_page, $page, $urlPattern);
-$paginator->setMaxPagesToShow(7);
-
-$pages = array();
-foreach ($paginator->getPages() as $paginator_page) {
-    $pages[] = array(
-        'NUM' => $paginator_page['num'],
-        'URL' => $paginator_page['url'] !== null ? htmlspecialchars($paginator_page['url'], ENT_QUOTES) : '',
-        'SELECTED' => !empty($paginator_page['isCurrent']) ? 1 : 0,
-        'IS_ELLIPSIS' => $paginator_page['url'] === null ? 1 : 0,
-    );
-}
-$out['PAGES'] = $pages;
-$out['PREV_URL'] = $paginator->getPrevUrl() !== null ? htmlspecialchars($paginator->getPrevUrl(), ENT_QUOTES) : '';
-$out['NEXT_URL'] = $paginator->getNextUrl() !== null ? htmlspecialchars($paginator->getNextUrl(), ENT_QUOTES) : '';
-$out['PAGE_FROM'] = (int)$paginator->getCurrentPageFirstItem();
-$out['PAGE_TO'] = (int)$paginator->getCurrentPageLastItem();
-$out['PAGE_CURRENT'] = (int)$paginator->getCurrentPage();
-$out['PAGE_TOTAL'] = (int)$paginator->getNumPages();
+$pagination = new \MajorDoMo\Core\Pagination($out['LOG_TOTAL'], $on_page, (int)gr('page', 'int'));
+$page = $pagination->page;
+$limit = $pagination->offset . ',' . $on_page;
+$out = array_replace($out, $pagination->template(compact(
+    'period', 'from', 'to', 'action_type', 'source', 'module_name', 'result',
+    'request_method', 'user_name', 'terminal', 'ip', 'search'
+)));
 
 $res = SQLSelect("SELECT actions_log.* FROM actions_log WHERE $qry ORDER BY " . $sortby_actions_log . " LIMIT $limit");
 

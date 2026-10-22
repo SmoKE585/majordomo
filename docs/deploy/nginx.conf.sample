@@ -15,23 +15,19 @@
 #   <project>/public/     index.php, admin.php, nf.php, api.php, 404.php,
 #                         favicon.ico, robots.txt, assets/
 #   <project>/            .env, bootstrap.php, config.php, lib/, modules/,
-#                         templates/, cms/, 3rdparty/, scripts/, objects/, docs/
+#                         templates/, cms/, packages/, scripts/, vendor/, docs/
 #
 # Вне document root и недоступны по HTTP: .env, config.php, bootstrap.php,
-# load_settings.php, lib/, cycle.php, dev_server.php, src/, tools/.
+# load_settings.php, lib/, scripts/, packages/, vendor/, cycle.php, tools/.
 #
 # Каталоги, которые обязаны сохранить свои URL, смонтированы из корня проекта
 # через `root`-override:
 #   /cms/...      медиа (аватары, картинки, звуки); cached/debmes закрыты
 #   /modules/...  PHP-эндпоинты модулей (autosave, iframe-воркеры, widgets)
-#   /objects/...  скрипты объектов
-#   /scripts/...  веб-триггеры циклов
-#   /3rdparty/... PHP-библиотеки
 #   /docs/...     документация (sql/log закрыты)
 #
 # Старые URL:
 #   /css|/js|/img/...           301 -> /assets/...
-#   /3rdparty/<browser-lib>/...  301 -> /assets/vendor/<browser-lib>/...
 #   /templates/<module>/*.css|js 301 -> /assets/modules/<module>/...
 #   /public/...                 301 -> /...            (старый префикс docroot)
 #   /rc/...                     301 -> /panel/         (функция удалена)
@@ -66,6 +62,11 @@ server {
 
     root /var/www/example/data/www/example.com/public;
     index index.php;
+
+    # Системные каталоги и удалённые HTTP-входы не публикуются.
+    location ~ ^/(scripts|objects|3rdparty|packages|vendor)(/|$) {
+        return 404;
+    }
 
     # Опционально: требует nginx со встроенным модулем disable_symlinks
     # (сборки fastpanel и т.п.). В стандартном nginx директивы нет.
@@ -194,65 +195,6 @@ server {
         }
     }
 
-    location ^~ /objects/ {
-        root /var/www/example/data/www/example.com;
-
-        location ~ [^/]\.php(/|$) {
-            include /etc/nginx/fastcgi_params;
-            fastcgi_split_path_info ^(.+\.php)(/.*)$;
-            fastcgi_pass unix:/var/run/php/php-fpm.sock;
-
-            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-            fastcgi_param DOCUMENT_ROOT /var/www/example/data/www/example.com/public;
-            fastcgi_param PATH_INFO $fastcgi_path_info;
-
-            fastcgi_read_timeout 240;
-        }
-    }
-
-    location ^~ /scripts/ {
-        root /var/www/example/data/www/example.com;
-
-        location ~ [^/]\.php(/|$) {
-            include /etc/nginx/fastcgi_params;
-            fastcgi_split_path_info ^(.+\.php)(/.*)$;
-            fastcgi_pass unix:/var/run/php/php-fpm.sock;
-
-            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-            fastcgi_param DOCUMENT_ROOT /var/www/example/data/www/example.com/public;
-            fastcgi_param PATH_INFO $fastcgi_path_info;
-
-            fastcgi_read_timeout 240;
-        }
-    }
-
-    location ^~ /3rdparty/ {
-        root /var/www/example/data/www/example.com;
-
-        # Браузерные библиотеки переехали в npm-бандл: старые ссылки ведут в
-        # /assets/vendor/. Regex вложенный намеренно — `^~` отключает проверку
-        # верхнеуровневых regex-локаций, и снаружи этот 301 никогда бы не сработал.
-        location ~ ^/3rdparty/(bootstrap|bootstrap-datetimepicker|duration-picker|fancybox|jquery|jquery\.toast|jquerymobile|long-press-event|moment)/(.*)$ {
-            return 301 /assets/vendor/$1/$2$is_args$args;
-        }
-
-        location ~ [^/]\.php(/|$) {
-            include /etc/nginx/fastcgi_params;
-            fastcgi_split_path_info ^(.+\.php)(/.*)$;
-            fastcgi_pass unix:/var/run/php/php-fpm.sock;
-
-            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-            fastcgi_param DOCUMENT_ROOT /var/www/example/data/www/example.com/public;
-            fastcgi_param PATH_INFO $fastcgi_path_info;
-
-            fastcgi_read_timeout 240;
-        }
-
-        location ~* \.(sql|log|sh|py|ini|phps|fla|htaccess|htpasswd)$ {
-            deny all;
-        }
-    }
-
     # --- Медиа и документация --------------------------------------------
     # Только медиа; runtime-данные (кэш, логи, маркеры установки, бэкапы) закрыты.
     location ^~ /cms/ {
@@ -338,6 +280,11 @@ server {
 
     root /var/www/example/data/www/example.com/public;
     index index.php;
+
+    # Системные каталоги и удалённые HTTP-входы не публикуются.
+    location ~ ^/(scripts|objects|3rdparty|packages|vendor)(/|$) {
+        return 404;
+    }
 
     location = /ws {
         auth_basic off;

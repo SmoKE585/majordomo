@@ -131,7 +131,7 @@ public/api.php     ───> ApiApplication (config → доступ/JSON → l
 `lib/loader.php` и `load_settings.php`. Причина — база может быть недоступна или
 ещё не содержать таблиц, а мастер обязан показать диагностику и форму, а не
 `Fatal error`. `InstallGate` при этом подключён в обычных `AdminApplication`,
-`SiteApplication`, `ApiApplication` (через `public/api.php`), `objects/index.php`
+`SiteApplication`, `ApiApplication` (через `public/api.php`)
 и `lib/loader.php`, поэтому до завершения настройки пользователь не попадёт в
 остальные разделы. Подробно — [`install.md`](install.md).
 
@@ -154,7 +154,7 @@ public/api.php     ───> ApiApplication (config → доступ/JSON → l
 
 - `public/nf.php` — роутер pretty URL и legacy `pd` (сам поднимает config и loader);
 - `public/404.php` — рендер 404;
-- `objects/index.php` — обработчик объектов;
+- `/objects/` удалён, его внешние операции перенесены в API v1;
 - `cycle.php` и `scripts/*` — CLI-циклы.
 
 `public/api.php` уже переведён в тонкий адаптер `ApiApplication`:

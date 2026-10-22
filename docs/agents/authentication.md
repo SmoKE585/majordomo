@@ -16,9 +16,9 @@ IS_DEFAULT, имени пользователя или параметру `prj` 
 `AuthGate` выполняется до loader и работы модулей: в AdminApplication,
 SiteApplication и непосредственно в loader для прямых PHP-входов. API имеет
 собственную границу в ApiApplication. CLI не проходит HTTP-авторизацию.
-`objects/index.php` без cookie использует существующие сетевые правила API;
-с cookie требует сессию администратора. `?module=...` больше не запускает
-фронтенд модуля; интеграции используют `/api/v1/module/{name}`.
+Старый `/objects/` удалён; интеграции используют API v1, в том числе
+`/api/v1/module/{name}`. Системный `scripts/` сохранён для CLI и не публикуется
+через nginx или сервер разработки. `vendor/` и `packages/` также закрыты.
 
 `Core::session()` возвращает `Http\Session`: get/set/has/forget/pull для
 состояния админки, user() для проверенного пользователя, csrfToken(),

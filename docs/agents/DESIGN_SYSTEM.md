@@ -42,7 +42,7 @@ order: 10
 | Локальные интерактивные состояния | Alpine.js 3 |
 | Select с поиском | Tom Select (`data-md-searchable`) |
 | Графики | ApexCharts (lazy-chunk `public/assets/admin/charts.js`) |
-| Шрифт | Rubik (локально, `3rdparty/fonts/rubik/`) |
+| Шрифт | Rubik (локально, `public/assets/fonts/rubik/`) |
 
 Laravel, Blade, Livewire и Tailwind в проекте отсутствуют. Поэтому «Blade-компоненты» реализованы эквивалентным серверным слоем:
 

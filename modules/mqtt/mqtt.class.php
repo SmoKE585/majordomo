@@ -3,6 +3,7 @@
  * MQTT
  *
  * Mqtt
+ * 2026-10-22 — клиент MQTT загружается Composer без ручного include.
  *
  * @package project
  * @author Serge J. <jey@tut.by>
@@ -408,7 +409,6 @@ class mqtt extends module
             return 1;
         }
 
-        include_once(ROOT . "3rdparty/phpmqtt/phpMQTT.php");
 
 
         if ($this->config['MQTT_CLIENT']) {//

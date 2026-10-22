@@ -1,8 +1,9 @@
 <?php
 
-require_once dirname(__DIR__, 2) . '/3rdparty/phpmqtt/phpMQTT.php';
-
-/** Optional module subscribers share the MQTT cycle, without owning a client. */
+/**
+ * Подписчики модулей используют общий MQTT-цикл.
+ * Изменения: 2026-10-22 — MQTT-клиент загружается через Composer.
+ */
 final class MqttIntegrations
 {
     private array $modules = array();

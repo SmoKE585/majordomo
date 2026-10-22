@@ -1,6 +1,7 @@
 <?php
 /**
  * Local development server launcher/router for PHP built-in web server.
+ * 2026-10-22 — системные scripts/packages/vendor и удалённый /objects закрыты.
  *
  * Run from PhpStorm as a PHP script, or from terminal:
  *   php dev_server.php --host=127.0.0.1 --port=8080
@@ -143,7 +144,7 @@ function devServerRoute($projectRoot)
 
     // Legacy application directories live outside public/ and are served from
     // the project root (mirrors the nginx `root` overrides).
-    if (preg_match('#^/(modules|objects|scripts|3rdparty|cms|docs)/(.+?\.php)(/.+)$#i', $path, $pathInfoMatch)) {
+    if (preg_match('#^/(modules|cms|docs)/(.+?\.php)(/.+)$#i', $path, $pathInfoMatch)) {
         // Mirror nginx's nested `location ~ [^/]\.php(/|$)`: execute the PHP
         // file and expose the remainder as PATH_INFO. Module webhooks rely on
         // this (for example /modules/yandexhome/smarthome.php/v1.0/...).
@@ -158,7 +159,7 @@ function devServerRoute($projectRoot)
         }
     }
 
-    if (preg_match('#^/(modules|objects|scripts|3rdparty|cms|docs)/#i', $path)) {
+    if (preg_match('#^/(modules|cms|docs)/#i', $path)) {
         $legacyFile = realpath($projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim(rawurldecode($path), '/\\')));
         if ($legacyFile !== false && strpos($legacyFile, $projectRoot) === 0) {
             if (is_file($legacyFile)) {
@@ -221,12 +222,6 @@ function devLegacyAssetRedirect($path, $projectRoot)
         return devAssetTargetExists($target, $projectRoot) ? devWithQueryString($target) : null;
     }
 
-    if (preg_match('#^/3rdparty/([^/]+)/(.+)$#', $path, $matches)
-        && in_array($matches[1], devVendorPackages(), true)) {
-        $target = '/assets/vendor/' . $matches[1] . '/' . $matches[2];
-        return devAssetTargetExists($target, $projectRoot) ? devWithQueryString($target) : null;
-    }
-
     return null;
 }
 
@@ -240,25 +235,6 @@ function devWithQueryString($target)
 {
     $query = isset($_SERVER['QUERY_STRING']) ? (string)$_SERVER['QUERY_STRING'] : '';
     return $query === '' ? $target : $target . '?' . $query;
-}
-
-/**
- * Browser libraries that moved from 3rdparty to public/assets/vendor.
- * Keep in sync with docs/deploy/nginx.conf.sample.
- */
-function devVendorPackages()
-{
-    return array(
-        'bootstrap',
-        'bootstrap-datetimepicker',
-        'duration-picker',
-        'fancybox',
-        'jquery',
-        'jquery.toast',
-        'jquerymobile',
-        'long-press-event',
-        'moment',
-    );
 }
 
 function devAssetTargetExists($target, $projectRoot)
@@ -390,6 +366,7 @@ function devRenderThrowable(Throwable $e)
 
 function devIsDeniedPath($path)
 {
+    if (preg_match('#^/(scripts|objects|3rdparty|packages|vendor)(/|$)#i', rawurldecode($path))) return true;
     $basename = basename($path);
     if (in_array($basename, array('config.php', 'debmes.txt'), true)) {
         return true;

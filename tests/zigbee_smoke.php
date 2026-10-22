@@ -13,6 +13,7 @@ namespace MajorDoMo\Core {
 namespace {
     putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('USE_REDIS=false');
     define('ROOT', dirname(__DIR__) . '/'); define('DIR_MODULES', ROOT . 'modules/'); define('ROOTHTML', '/');
+    require_once ROOT . 'vendor/autoload.php';
     require ROOT . 'lib/core/Database.php';
     #[AllowDynamicProperties]
     class module { public function checkInstalled() {} }
@@ -197,7 +198,7 @@ namespace {
     check(count(Core::$queue->items) === 2, 'Original repeated packets enter module queue before strip/dedup');
     check(Core::$queue->items[0][1] === 'moduleevent' && Core::$queue->items[0][3] === false, 'Events use non-coalescing durable queue');
 
-    require_once ROOT . '3rdparty/phpmqtt/phpMQTT.php';
+    require_once ROOT . 'vendor/autoload.php';
     $packetCalls = 0;
     $callback = function ($topic, $payload) use (&$packetCalls) { $packetCalls++; };
     $client = new Bluerhinos\phpMQTT('127.0.0.1', 1, 'isolated-no-connect');

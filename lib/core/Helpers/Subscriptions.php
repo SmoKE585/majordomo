@@ -1,6 +1,6 @@
 <?php
 
-/** System helpers. Public names and argument defaults are part of the module API. */
+/** Подписки ядра. 2026-10-22 — фоновая обработка через очередь без HTTP. */
 
 function processSubscriptionByModule($module_name, $event_name, &$details)
 {
@@ -88,19 +88,12 @@ function processSubscriptions($event_name, $details = '', $return_output = false
 
 function processSubscriptionsSafe($event_name, $details = '')
 {
-    //processSubscriptions($event_name,$details);
     if (!is_array($details)) {
         $details = array();
     }
-    $data = array(
-        'processSubscriptions' => 1,
-        'event' => $event_name,
-        'params' => json_encode($details),
-
-    );
-    $url = BASE_URL . ROOTHTML . 'objects/?';
-    postURLBackground($url, $data);
-    return 1;
+    return \MajorDoMo\Core\Core::queue()->enqueueRuntime('subscriptions', array(
+        'event' => $event_name, 'details' => $details,
+    )) ? 1 : 0;
 }
 
 /**

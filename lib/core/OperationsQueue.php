@@ -4,9 +4,22 @@ namespace MajorDoMo\Core;
 
 use \RuntimeException;
 
+/**
+ * Персистентная очередь и постановка внутренних фоновых операций.
+ * Изменения: 2026-10-22 — внутренние операции ставятся без HTTP и API.
+ */
 final class OperationsQueue
 {
     public function __construct(private Database $db, private RedisConnection $redis) {}
+
+    public function enqueueRuntime(string $operation, array $params, ?string $target = null): bool
+    {
+        PropertyAudit::attach($params);
+        if (!isset($params['_chain']) && PropertyChain::current()) $params['_chain'] = PropertyChain::current();
+        $target ??= (string)($params['event'] ?? $operation);
+        $payload = array('target' => $target, 'path' => 'core:' . $operation . '/' . $target, 'params' => $params);
+        return (bool)$this->enqueue('core_runtime', $operation, json_encode($payload, JSON_THROW_ON_ERROR), false, 3600);
+    }
 
     public function keys($topic)
     {

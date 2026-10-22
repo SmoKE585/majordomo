@@ -34,7 +34,10 @@ namespace Bluerhinos;
 	
 */
 
-/* phpMQTT */
+/**
+ * Локальная версия BlueRhinos phpMQTT с ограниченным приёмом пакетов.
+ * Изменения: 2026-10-22 — перенесена в Composer-пакет без изменения протокола.
+ */
 
 class phpMQTT
 {

@@ -148,6 +148,9 @@ function getHistoryCount($name, $period) { return 1; }
 function getHistorySum($name, $period) { return 100; }
 function getHistoryAvg($name, $period) { return 50; }
 function say($message, $level, $user, $source): void { $row = array('MEMBER_ID' => $user, 'ADDED' => date('Y-m-d H:i:s'), 'MESSAGE' => $message); $GLOBALS['db']->Insert('shouts', $row); }
+function sayReply($message, $level, $replyto) { $GLOBALS['fixture_reply'] = func_get_args(); return false; }
+function sayTo($message, $level, $destination) { $GLOBALS['fixture_destination'] = func_get_args(); return 0; }
+function processSubscriptions($event, $details = '', $returnOutput = false) { $GLOBALS['fixture_subscription'] = func_get_args(); return $returnOutput ? 'fixture-output' : 0; }
 function startMeasure($name): void {}
 function endMeasure($name, $save = 0): void {}
 function verbose_log($message): void {}

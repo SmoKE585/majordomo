@@ -4,7 +4,10 @@ namespace MajorDoMo\Core\Api;
 
 use MajorDoMo\Core\{Core, Database};
 
-/** Shared by HTTP and trusted in-process callers. No transport or token logic. */
+/**
+ * Обработчики API делегируют выполнение функциям и сервисам ядра.
+ * Изменения: 2026-10-22 — сообщения и подписки доступны внешним клиентам v1.
+ */
 final class Dispatcher
 {
     public function __construct(private Database $db) {}
@@ -12,9 +15,12 @@ final class Dispatcher
     public function dispatch(Request $request): mixed
     {
         [$operation, $route] = $request->legacy ? $this->legacyRoute($request) : Contract::match($request);
-        if (!$request->legacy && $operation['body'] !== null) Contract::validate($request->body, $operation['body']);
         $params = $request->params();
         $action = $operation['action'];
+        if (!$request->legacy && $operation['body'] !== null) {
+            $input = in_array($action, array('say', 'sayReply', 'sayTo', 'subscriptions'), true) ? $params : $request->body;
+            Contract::validate($input, $operation['body']);
+        }
         $result = match ($action) {
             'spec' => Contract::openApi(defined('ROOTHTML') ? ROOTHTML : '/'),
             'objects' => $this->objects($route['class'] ?? null),
@@ -24,6 +30,8 @@ final class Dispatcher
             'history' => $this->history($route, $params),
             'method' => $this->method($route['target'], $params),
             'script' => $this->script($route['script'], $params),
+            'say', 'sayReply', 'sayTo' => $this->speech($action, $params),
+            'subscriptions' => array('result' => processSubscriptions($route['event'], $params['details'] ?? array(), $params['return_output'] ?? false)),
             'event' => $this->event($route['event'], $params),
             'rooms' => array('rooms' => array_map(fn($row) => $this->room($row), $this->db->select('SELECT * FROM locations ORDER BY PRIORITY DESC,TITLE'))),
             'roomGet' => array('room' => $this->room($this->location($route['id']))),
@@ -174,6 +182,17 @@ final class Dispatcher
     {
         if (strlen($name) > 255) throw new ApiException(422, 'validation_failed', 'Название события слишком длинное.');
         return array('event_name' => $name, 'params' => $params, 'event_id' => registerEvent($name, $params), 'result' => true);
+    }
+
+    private function speech(string $action, array $params): array
+    {
+        $level = $params['level'] ?? 0;
+        $result = match ($action) {
+            'sayReply' => sayReply($params['message'], $level, $params['replyto'] ?? ''),
+            'sayTo' => sayTo($params['message'], $level, $params['destination']),
+            default => say($params['message'], $level, $params['member_id'] ?? 0, $params['source'] ?? 'API'),
+        };
+        return array('result' => $result);
     }
 
     private function location(string $id): array

@@ -38,7 +38,7 @@ order: 20
 
 - Bootstrap 5 CSS/JS.
 - Tabler Icons (5 247 иконок; Bootstrap Icons — только legacy `glyphicon`).
-- Rubik локально: `3rdparty/fonts/rubik/`.
+- Rubik локально: `public/assets/fonts/rubik/`.
 - Общий CSS админки: `resources/css/admin_panel.css` (legacy, постепенно заменяется).
 - Канонический слой компонентов: `resources/css/ui-system.css` + `MDJUI` + `templates/ui/components/`.
 - Новый слой shell/dashboard: `resources/css/ui-v2.css`.

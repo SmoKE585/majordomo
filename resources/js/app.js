@@ -46,7 +46,7 @@ import '@tabler/icons-webfont/dist/tabler-icons.min.css';
 import 'tom-select/dist/css/tom-select.bootstrap5.min.css';
 import 'jquery-toast-plugin/dist/jquery.toast.min.css';
 import '@fancyapps/fancybox/dist/jquery.fancybox.min.css';
-import '../../3rdparty/fonts/rubik/rubik.css';
+import '../../public/assets/fonts/rubik/rubik.css';
 import '../css/admin_panel.css';
 import '../css/ui-v2.css';
 import '../css/ui-system.css';

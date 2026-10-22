@@ -15,7 +15,7 @@ include_once(DIR_MODULES . "control_modules/control_modules.class.php");
 
 set_time_limit(0);
 
-include_once(ROOT . "3rdparty/phpmqtt/phpMQTT.php");
+// 2026-10-22 — MQTT-клиент загружается Composer; цикл остаётся системным.
 include_once(DIR_MODULES . "mqtt/mqtt.class.php");
 require_once DIR_MODULES . 'mqtt/MqttIntegrations.php';
 

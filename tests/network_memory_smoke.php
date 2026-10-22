@@ -6,7 +6,7 @@ putenv('DB_CONNECTION=sqlite');
 putenv('DB_DATABASE=:memory:');
 putenv('USE_REDIS=false');
 $sourceRoot = dirname(__DIR__);
-require_once $sourceRoot . '/3rdparty/phpmqtt/phpMQTT.php';
+require_once $sourceRoot . '/vendor/autoload.php';
 
 function packet(string $body, int $header = 0x30): string
 {

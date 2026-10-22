@@ -5,8 +5,22 @@
     "license": "MIT",
     "require": {
         "php": ">=8.1",
+        "majordomo/phpmqtt": "^1.0",
+        "phpmailer/phpmailer": "^7.0",
         "workerman/workerman": "^5.1"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "packages/phpmqtt",
+            "options": {
+                "symlink": true,
+                "versions": {
+                    "majordomo/phpmqtt": "1.0.0"
+                }
+            }
+        }
+    ],
     "autoload": {
         "psr-4": {
             "MajorDoMo\\Core\\": "lib/core/"

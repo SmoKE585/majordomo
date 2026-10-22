@@ -122,7 +122,7 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
 3. `docs/agents/admin-assets.md` — сборка, бандл, как добавлять пакеты.
 4. `docs/agents/admin-module-ui-guidelines.md` — UI-правила для модулей.
 5. `docs/agents/admin-routing.md` — контракт чистых URL, legacy `pd` и 404.
-6. `docs/agents/third-party.md` — Composer, установка пакетов и параллельная работа с `3rdparty/`.
+6. `docs/agents/third-party.md` — Composer, локальный пакет MQTT и ассеты; `3rdparty/` удалён.
 7. `docs/agents/configuration.md` — `.env`, `Config`, типы, легаси-константы и правила для модулей.
 8. `docs/agents/entrypoints.md` — точки входа, `Application`, `AdminApplication`, `SiteApplication` и контракт глобалов.
 9. `docs/agents/install.md` — мастер первичной настройки, маркер установки и gate.
@@ -147,8 +147,10 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
   библиотеки, `modules/<name>/` — CSS/JS страниц модулей);
 - `resources/` — исходники Vite (`js/` — энтри и модули, `css/` — стили), в бандл, не отдаются напрямую;
 - `bootstrap.php` — `chdir` в корень приложения; его подключает каждый public-вход;
-- `modules/`, `cms/`, `objects/`, `scripts/`, `3rdparty/`, `docs/` — вне
-  document root, отдаются nginx через `root`-override (URL не меняются).
+- `modules/`, `cms/`, `docs/` — вне document root, публикуются через `root`-override.
+- `scripts/`, `packages/`, `vendor/` — системные каталоги без HTTP-доступа;
+  `objects/` и `3rdparty/` удалены. Внешние вызовы идут через API v1,
+  внутренние фоновые операции — прямо через очередь и сервисы ядра.
 
 | Путь | Назначение |
 | --- | --- |
@@ -244,7 +246,7 @@ php dev_server.php --host=127.0.0.1 --port=8080
 
 Нужен MySQL/MariaDB. Настройки лежат в `.env` (не коммитится): `copy .env.example .env` и заполните доступы. `config.php` — только шим для старых include-точек. Для чистой локальной базы можно импортировать `docs/dev/db_terminal.sql` (в нём схема + демо-данные; часть данных историческая).
 
-Локально `dev_server.php` отдаёт `public/` как document root, а `modules/`, `cms/`, `objects/`, `scripts/`, `3rdparty/`, `docs/` — из корня проекта (как nginx). CWD перед запуском скрипта = каталог скрипта, как в php-fpm.
+Локально `dev_server.php` отдаёт `public/` как document root, а `modules/`, `cms/`, `docs/` — из корня проекта (как nginx). Системные `scripts/`, `packages/`, `vendor/` закрыты; `/objects/` и `/3rdparty/` удалены. CWD перед запуском PHP = каталог файла, как в php-fpm.
 
 ### Деплой
 
@@ -376,11 +378,12 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `npm run build` после изменений в `resources/`.
 - `php tests/routing_smoke.php` — контракт friendly URL, round-trip и nginx-конфига.
 - `php tests/config_smoke.php` — парсер `.env`, типы, кеш и легаси-мост.
-- `composer validate --strict`, `composer dump-autoload --optimize --strict-psr`, `php tests/composer_smoke.php` — при изменениях PHP-зависимостей или автозагрузки; старые библиотеки остаются в `3rdparty/`.
+- `composer validate --strict`, `composer dump-autoload --optimize --strict-psr`, `php tests/composer_smoke.php` — при изменениях PHP-зависимостей или автозагрузки. PHPMailer и локальный MQTT загружаются только Composer.
 - `php tests/install_smoke.php` — `.env`-писатель, маркер установки, схема, gate и рендер мастера.
 - `php tests/settings_cycles_smoke.php` — схема «Общих настроек», персистентные состояния и reconcile циклов.
 - `php tests/property_audit_smoke.php` — журнал изменений свойств: trace id, шаги, параметры входа/выхода, старое/новое значение и продолжение запуска.
-- `php tests/script_safe_path_smoke.php` — путь фонового вызова сценария кодируется `rawurlencode`, поэтому названия с пробелом не теряются.
+- `php tests/script_safe_path_smoke.php` — сообщения, сценарии и подписки ставятся прямо в очередь ядра без HTTP/API; исходные имена сохраняются.
+- `php tests/pagination_smoke.php`, `php tests/private_paths_smoke.php` — границы SQL-пагинации и закрытие системных путей.
 - `php tests/error_catalog_smoke.php` — каталог ошибок: у каждого кода есть название и блоки «что это / что произошло / почему / чем грозит / что делать».
 - `php tests/docs_quality_smoke.php` — документация: front matter, известные категории, рабочие относительные ссылки и русский язык.
 - `php tests/folder_picker_smoke.php` — границы folder picker: обход `..`, абсолютные пути вне проекта, скрытые каталоги, fallback на корень.

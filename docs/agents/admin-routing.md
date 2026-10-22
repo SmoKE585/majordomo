@@ -22,7 +22,7 @@ order: 40
 /admin.php?pd=Y2xhc3Nlczp7aWQ9MTAsdmlld19tb2RlPWVkaXRfY2xhc3Nlc30%3Dpz_&md=objects&inst=&view_mode=edit_objects&id=7&tab=properties
 ```
 
-`pd` — это `base64` от цепочки состояний модулей (`classes:{...}`, `panel:{...}`).
+`pd` — это `base64` от цепочки состояний модулей ``classes:{...}`, `panel:{...}`).
 Формат непрозрачный, длинный, плохо живёт в закладках и ломается при ручном
 редактировании. При этом старые модули строят ссылки именно так, и их нельзя
 просто отключить.
@@ -30,15 +30,15 @@ order: 40
 ## 2. Схема URL
 
 Все страницы админки живут под `/panel/`. Ниже — основные маршруты; полный и
-актуальный список всегда задаёт `mdj_admin_route_table()`.
+актуальный список всегда задаёт `mdj_admin_route_table`)`.
 
 | URL | Что открывает |
 | --- | --- |
-| `/panel/` | главная (dashboard) |
+| `/panel/` | главная `dashboard) |
 | `/panel/classes.html` | список классов |
 | `/panel/class/10.html` | карточка класса |
 | `/panel/class/10/objects.html` | вкладка «Объекты» класса |
-| `/panel/class/10/objects/list.html` | список объектов класса (активный модуль `objects`) |
+| `/panel/class/10/objects/list.html` | список объектов класса `активный модуль `objects`) |
 | `/panel/class/10/properties.html` | вкладка «Свойства» класса |
 | `/panel/class/10/properties/18.html` | редактирование свойства класса |
 | `/panel/class/10/properties/add.html` | новое свойство класса |
@@ -49,7 +49,7 @@ order: 40
 | `/panel/class/10/object/7/history.html` | история объекта |
 | `/panel/class/10/object/7/methods/45.html` | метод объекта |
 | `/panel/class/10/object/add.html` | новый объект класса |
-| `/panel/class/10/object/7/delete.html` | удаление объекта (GET-действие) |
+| `/panel/class/10/object/7/delete.html` | удаление объекта `GET-действие) |
 | `/panel/class/10/object/7/clone.html` | клонирование объекта |
 | `/panel/class/10/export.html` | экспорт класса |
 | `/panel/scripts.html`, `/panel/script/10.html` | список сценариев и сценарий |
@@ -57,18 +57,18 @@ order: 40
 | `/panel/users.html` | список пользователей |
 | `/panel/users/add.html` | новый пользователь |
 | `/panel/users/10.html` | карточка пользователя |
-| `/panel/users/10/delete.html` | удаление пользователя (GET-действие) |
+| `/panel/users/10/delete.html` | удаление пользователя `GET-действие) |
 | `/panel/pinghosts.html` | список хостов мониторинга |
 | `/panel/pinghosts/add.html` | новый хост |
 | `/panel/pinghosts/10.html` | карточка хоста |
-| `/panel/pinghosts/10/delete.html` | удаление хоста (GET-действие) |
+| `/panel/pinghosts/10/delete.html` | удаление хоста `GET-действие) |
 | `/panel/locations.html` | список помещений |
 | `/panel/locations/add.html` | новое помещение |
 | `/panel/locations/10.html` | карточка помещения |
-| `/panel/locations/10/logic.html` | логика помещения (метод room-объекта) |
+| `/panel/locations/10/logic.html` | логика помещения `метод room-объекта) |
 | `/panel/locations/10/up.html` | перемещение помещения выше |
 | `/panel/locations/10/down.html` | перемещение помещения ниже |
-| `/panel/locations/10/delete.html` | удаление помещения (GET-действие) |
+| `/panel/locations/10/delete.html` | удаление помещения `GET-действие) |
 | `/panel/system_errors.html` | журнал ошибок системы |
 | `/panel/system_errors/10.html` | карточка группы ошибок |
 | `/panel/system_errors/10/history.html` | история срабатываний ошибки |
@@ -93,13 +93,13 @@ order: 40
 | `/panel/modes.html` | режимы дома |
 | `/panel/modes/add.html` | новый режим |
 | `/panel/modes/10.html` | карточка режима |
-| `/panel/knowledge_base.html` | база знаний (список материалов) |
-| `/panel/knowledge_base/<path>.html` | материал базы знаний (путь без `.md`) |
+| `/panel/knowledge_base.html` | база знаний `список материалов) |
+| `/panel/knowledge_base/<path>.html` | материал базы знаний `путь без `.md`) |
 | `/panel/xray.html` | X-Ray |
 | `/panel/settings.html?filter_name=codeeditor` | настройки с фильтром |
 | `/panel/<module>.html` | список любого модуля |
-| `/panel/<module>/<id>.html` | карточка любого модуля (generic) |
-| `/panel/<module>/<id>/<tab>.html` | вкладка любого модуля (generic) |
+| `/panel/<module>/<id>.html` | карточка любого модуля `generic) |
+| `/panel/<module>/<id>/<tab>.html` | вкладка любого модуля `generic) |
 
 Дополнительные параметры, которые не выражаются сегментом пути, остаются в
 query-строке: фильтры, страницы, `view_mode` для нестандартных действий.
@@ -108,11 +108,11 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 
 Единый источник правды — `lib/admin_router.php`:
 
-- `mdj_admin_route_table()` — таблица inbound-маршрутов (pretty path → legacy query).
+- `mdj_admin_route_table`)` — таблица inbound-маршрутов `pretty path → legacy query).
   Её использует `public/nf.php`.
-- `mdj_admin_pretty_url()` — outbound-преобразователь (legacy query → pretty path).
-  Его используют `parseLinks()`, `module::redirect()` и AJAX-поиск в шапке.
-- `mdj_admin_resolve_path()` / `mdj_admin_state_from_query()` — разбор и нормализация
+- `mdj_admin_pretty_url`)` — outbound-преобразователь `legacy query → pretty path).
+  Его используют `parseLinks`)`, `module::redirect`)` и AJAX-поиск в шапке.
+- `mdj_admin_resolve_path`)` / `mdj_admin_state_from_query`)` — разбор и нормализация
   состояния.
 
 Преобразование **проверяется round-trip**: кандидат pretty URL снова разбирается
@@ -144,8 +144,8 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 
 - Неизвестный `*.html` → `public/nf.php` не находит маршрут и отдаёт
   `lib/error_page.php` со статусом `404`.
-- Неизвестный модуль в админке (`/panel/foo.html`) → `panel.class.php` проверяет
-  наличие класса модуля через `mdj_admin_module_exists()` и показывает 404 внутри
+- Неизвестный модуль в админке ``/panel/foo.html`) → `panel.class.php` проверяет
+  наличие класса модуля через `mdj_admin_module_exists`)` и показывает 404 внутри
   shell, тоже со статусом `404`.
 - `public/404.php` — публичная точка входа для nginx `error_page 404`.
 - `ajax`/`part_load`/`Accept: application/json` получают JSON, а не HTML.
@@ -153,8 +153,8 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 
 ## 6. Как добавить маршрут
 
-1. Добавьте правило в `mdj_admin_route_table()` **до** generic-правил.
-2. Добавьте построение пути в `mdj_admin_build_pretty()` (если это не generic).
+1. Добавьте правило в `mdj_admin_route_table`)` **до** generic-правил.
+2. Добавьте построение пути в `mdj_admin_build_pretty`)` `если это не generic).
 3. Добавьте кейс в `tests/routing_smoke.php`: inbound, outbound и fallback.
 4. Проверьте `php tests/routing_smoke.php`.
 5. Проверьте старую ссылку: она должна либо редиректить на новый URL, либо
@@ -162,38 +162,38 @@ query-строке: фильтры, страницы, `view_mode` для нес�
 
 ## 7. Правила для кода
 
-- В PHP-шаблонах используйте обычные `href="?..."`: `parseLinks()` сам сделает
+- В PHP-шаблонах используйте обычные `href="?..."`: `parseLinks`)` сам сделает
   красивую ссылку.
 - В JS не собирайте `?action=...` вручную от текущего пути: используйте
   `window.ROOTHTML + 'admin.php?...'` или готовый pretty path. Текущий путь может
   быть `/panel/class/...`, и относительный query уйдёт не туда.
 - Не добавляйте `pd` в новые ссылки вручную.
-- Не возвращайте catch-all `([\w-]+).html` → docs: он превращал любую опечатку в
+- Не возвращайте catch-all ``[\w-]+).html` → docs: он превращал любую опечатку в
   страницу с кодом 200.
-- Не меняйте формат `pd` и правила `parseLinks()` без проверки старых модулей.
+- Не меняйте формат `pd` и правила `parseLinks`)` без проверки старых модулей.
 
 ## 8. nginx
 
-Канонический шаблон — `docs/deploy/nginx.conf.sample` (универсальный, без конкретного
+Канонический шаблон — `docs/deploy/nginx.conf.sample` `универсальный, без конкретного
 домена): `root` указывает на `<project>/public`, а каталоги вне document root
-(`/modules/`, `/cms/`, `/objects/`, `/scripts/`, `/3rdparty/`, `/docs/`) смонтированы
+``/modules/`, `/cms/`, `/objects/`, `/scripts/`, `/3rdparty/`, `/docs/`) смонтированы
 через `root`-override с вложенной PHP-локацией.
 
 Для pretty URL и API в конфиге обязательны:
 
 - `location = /panel { return 301 /panel/; }`;
 - `location ^~ /panel/ { try_files $uri $uri/ /nf.php?$query_string; }`;
-- `location ~ ^/api(?:\.php)?(?:/|$) { ... }` — отдельный FastCGI-обработчик без
+- `location ~ ^/api`?:\.php)?`?:/|$) { ... }` — отдельный FastCGI-обработчик без
   `rewrite`: он передаёт исходный `REQUEST_URI`, `Authorization`, `X-API-Key` и
   `X-Forwarded-For`, отключает `fastcgi_intercept_errors` и ограничивает тело 1 МиБ;
 - `error_page 413` отдаёт JSON с `request_id`, `error_page 404 /404.php` — общую
   страницу 404;
-- запрет dotfiles и служебных расширений (`sql`, `log`, `sh`, `ini`, ...).
+- запрет dotfiles и служебных расширений ``sql`, `log`, `sh`, `ini`, ...).
   `config.php`, `.env` и `lib/` находятся вне document root, поэтому отдельный
   `deny` для них не нужен — важно не поднимать `root` выше `public/`.
 
 ## 9. История
 
 Как были устроены `index.php` и `nf.php` до перехода на `Application`-адаптеры —
-[исторический разбор](../archive/routing-index-nf.md). Его не нужно использовать
+[исторический разбор]`../archive/routing-index-nf.md). Его не нужно использовать
 как инструкцию по текущему коду.

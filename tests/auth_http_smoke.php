@@ -36,9 +36,8 @@ try {
     $statement = $pdo->prepare('INSERT INTO users (ID,USERNAME,NAME,PASSWORD,IS_ADMIN) VALUES (2,?,?,?,1)');
     $statement->execute(array('admin', 'Admin', hash('sha512', 'admin-secret')));
     check($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' && getenv('APP_ENV') === 'testing' && getenv('DB_HOST') === '', 'Confirmed isolated SQLite');
-    foreach (array('public', 'templates/auth', 'lib/ui', 'objects') as $directory) mkdir($root . '/' . $directory, 0700, true);
+    foreach (array('public', 'templates/auth', 'lib/ui') as $directory) mkdir($root . '/' . $directory, 0700, true);
     foreach (array('admin', 'api', 'nf', 'index') as $entry) file_put_contents($root . '/public/' . $entry . '.php', '<?php');
-    file_put_contents($root . '/objects/index.php', '<?php');
     file_put_contents($root . '/lib/ui/MDJUI.php', '<?php require ' . var_export($project . '/lib/ui/MDJUI.php', true) . ';');
     file_put_contents($root . '/templates/auth/login.php', '<?php require ' . var_export($project . '/templates/auth/login.php', true) . ';');
     $socket = stream_socket_server('tcp://127.0.0.1:0', $errno, $message); $address = stream_socket_get_name($socket, false); fclose($socket); $base = 'http://' . $address;
@@ -54,8 +53,8 @@ try {
     check($status === 302, 'Direct module cannot use login parameter to skip auth');
     [$status] = request('GET', '/index.php?action=ajaxsetglobal&var=Lamp.level&value=2', '', array(), false);
     check($status === 302, 'Index AJAX mutations require admin');
-    [$status] = request('GET', '/objects/', '', array(), false); check($status === 401, 'External direct object endpoint requires API credentials');
-    [$status] = request('GET', '/objects/', '', array('X-Fixture-Peer' => '192.168.55.3'), false); check($status === 200, 'Direct object endpoint retains LAN policy');
+    [$status] = request('GET', '/objects/', '', array(), false); check($status === 404, 'Old object HTTP endpoint is removed');
+    [$status] = request('GET', '/scripts/core_worker.php', '', array('X-Fixture-Peer' => '192.168.55.3'), false); check($status === 404, 'System scripts are not public even on LAN');
     [$status, , , $data] = request('GET', '/panel/?part_load=1');
     check($status === 401 && $data['NEED_RELOAD'] === 1 && $data['login_url'] === '/admin.php?auth=login', 'Expired partLoad returns structured 401');
     [$status, $html, $headers] = request('GET', '/admin.php?auth=login&prj=attacker&no_session=1', '', array(), false);

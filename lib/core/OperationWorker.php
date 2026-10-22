@@ -7,9 +7,10 @@ use \RuntimeException;
 use \InvalidArgumentException;
 
 /**
- * Выполнение фоновых операций из очереди (методы, модули, API).
+ * Выполнение фоновых операций из очереди (методы, модули, сообщения, подписки).
  *
  * Изменения:
+ * 2026-10-22 — сценарии, сообщения и подписки вызывают функции ядра напрямую.
  * 2026-10-22 — ошибка внутреннего API показывает путь и причину отказа,
  *              а не только тип операции.
  */
@@ -50,8 +51,13 @@ final class OperationWorker
                 if ($traceId !== '') {
                     $this->audit->enter($traceId, 'resume', 'Продолжение');
                 } else {
-                    $trigger = $item['DATANAME'] === 'moduleevent' ? 'event'
-                        : ($item['DATANAME'] === 'modulepropertyset' ? 'module' : 'method');
+                    $trigger = match ($item['DATANAME']) {
+                        'moduleevent', 'subscriptions' => 'event',
+                        'modulepropertyset' => 'module',
+                        'script' => 'script',
+                        'say', 'sayreply', 'sayto' => 'message',
+                        default => 'method',
+                    };
                     $title = (string)($data['target'] ?? 'Операция');
                     $this->audit->begin($trigger, $title, $params);
                 }
@@ -59,6 +65,20 @@ final class OperationWorker
 
             if ($item['DATANAME'] === 'method') {
                 $result = Core::objects()->call($data['target'], $params);
+            } elseif ($item['DATANAME'] === 'script') {
+                $target = (string)$data['target'];
+                $script = $this->db->one('SELECT ID FROM scripts WHERE ' . (ctype_digit($target)
+                    ? 'ID=' . (int)$target : "TITLE='" . $this->db->escape($target) . "'"));
+                if (!$script) throw new RuntimeException('Сценарий не найден: ' . $target);
+                $result = runScript((int)$script['ID'], $params);
+            } elseif ($item['DATANAME'] === 'say') {
+                $result = say($params['message'], $params['level'], $params['member_id'], $params['source']);
+            } elseif ($item['DATANAME'] === 'sayreply') {
+                $result = sayReply($params['message'], $params['level'], $params['replyto']);
+            } elseif ($item['DATANAME'] === 'sayto') {
+                $result = sayTo($params['message'], $params['level'], $params['destination']);
+            } elseif ($item['DATANAME'] === 'subscriptions') {
+                $result = processSubscriptions($params['event'], $params['details']);
             } elseif (in_array($item['DATANAME'], array('modulepropertyset', 'moduleevent'), true)) {
                 $name = $data['target'];
                 if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/D', $name)) throw new InvalidArgumentException('Invalid module name');

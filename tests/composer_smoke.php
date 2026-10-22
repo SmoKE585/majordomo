@@ -88,14 +88,20 @@ try {
         'Composer maps nested core namespaces'
     );
 
-    foreach (array(
-        'PHPMailer\\PHPMailer\\PHPMailer' => array('php-mailer/Exception.php', 'php-mailer/PHPMailer.php', 'php-mailer/SMTP.php'),
-        'Bluerhinos\\phpMQTT' => array('phpmqtt/phpMQTT.php'),
-        'JasonGrimes\\Paginator' => array('Paginator/Paginator.php'),
-    ) as $class => $files) {
-        foreach ($files as $file) require_once $root . '/3rdparty/' . $file;
-        check(class_exists($class, false), $class . ' still loads from 3rdparty alongside Composer');
+    foreach (array('PHPMailer\\PHPMailer\\PHPMailer', 'PHPMailer\\PHPMailer\\SMTP', 'Bluerhinos\\phpMQTT') as $class) {
+        check(class_exists($class), $class . ' loads through Composer');
+        check(realpath($loader->findFile($class)) === realpath((new ReflectionClass($class))->getFileName()), $class . ' resolves through Composer');
     }
+    check(method_exists('Bluerhinos\\phpMQTT', 'setReadLimits'), 'Local MQTT receive limits are preserved');
+    check(!is_dir($root . '/3rdparty'), 'Legacy third-party directory is removed');
+    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+    $mail->CharSet = 'UTF-8';
+    $mail->setFrom('sender@example.test', 'MajorDoMo');
+    $mail->addAddress('recipient@example.test');
+    $mail->isHTML(true);
+    $mail->Subject = 'Проверка письма';
+    $mail->Body = '<p>Проверка UTF-8</p>';
+    check($mail->preSend() && str_contains($mail->getSentMIMEMessage(), 'Content-Type: text/html; charset=UTF-8'), 'PHPMailer prepares MIME without sending mail');
 
     foreach (array(false, true) as $withVendor) {
         if ($withVendor) {

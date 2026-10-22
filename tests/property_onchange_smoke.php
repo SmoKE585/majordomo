@@ -14,11 +14,11 @@ namespace MajorDoMo\Core {
     class WebSocketQueue { public function post($property, $value) {} }
     class CodeExecutor {}
     class Core {
-        public static function api() { return new class {
-            public function request($url, $method, $params) {
-                $GLOBALS['queued'][] = $url;
-                if ($GLOBALS['throwQueue'] && str_ends_with($url, '/broken')) throw new \RuntimeException('simulated queue failure');
-                return !($GLOBALS['failQueue'] && str_ends_with($url, '/broken'));
+        public static function queue() { return new class {
+            public function enqueueRuntime($operation, $params, $target) {
+                $GLOBALS['queued'][] = array($operation, $target);
+                if ($GLOBALS['throwQueue'] && $target === 'broken') throw new \RuntimeException('simulated queue failure');
+                return !($GLOBALS['failQueue'] && $target === 'broken');
             }
         }; }
     }
@@ -68,7 +68,7 @@ namespace {
         check($caught === null, 'Notification failure does not break the property writer');
         check(count($object->calls) === $before + 1 && end($object->calls)[2] === '0', 'Notification failure does not suppress ONCHANGE');
         check($locks->released, 'Property lock released after failure');
-        check($queued === array('/api/modulePropertySet/broken', '/api/modulePropertySet/healthy'), 'Other subscribers still notified');
+        check($queued === array(array('modulepropertyset', 'broken'), array('modulepropertyset', 'healthy')), 'Other subscribers still notified directly through the queue');
     }
     unset($_SERVER['REQUEST_URI']); $failQueue = false; $throwQueue = false;
     $properties->set($object, 'motion', 1, array('zigbee' => 0));

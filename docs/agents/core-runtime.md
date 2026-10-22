@@ -20,7 +20,8 @@ category_order: 20
 `lib/core.class.php` подключает Composer (`vendor/autoload.php`, если установлен)
 и сохраняет локальный autoloader для работы до первого `composer install`.
 Composer загружает `MajorDoMo\Core\` через PSR-4 из `lib/core/`.
-Старые библиотеки в `3rdparty/` подключаются прежним способом и не перенесены.
+PHP-библиотеки загружаются Composer из `vendor/`; локальная версия MQTT
+хранится в `packages/phpmqtt/`. Каталог `3rdparty/` удалён.
 Службы получают зависимости через конструкторы; `Core` собирает их для старого загрузчика.
 
 ```php

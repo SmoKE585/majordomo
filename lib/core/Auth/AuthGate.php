@@ -4,9 +4,12 @@ namespace MajorDoMo\Core\Auth;
 use MajorDoMo\Core\{Config, Core};
 use MajorDoMo\Core\Http\Session;
 use MajorDoMo\Core\Users\UserAccounts;
-use MajorDoMo\Core\Api\{AccessPolicy, ApiException, TokenStore};
+use MajorDoMo\Core\Api\ApiException;
 
-/** Runs before the legacy loader can execute modules or open its database. */
+/**
+ * Проверка входа до загрузки модулей и БД.
+ * Изменения: 2026-10-22 — удалено исключение для упразднённого /objects/.
+ */
 final class AuthGate
 {
     public function __construct(private string $root, private ?\Closure $usersFactory = null) {}
@@ -25,11 +28,6 @@ final class AuthGate
     {
         try {
             $script = realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
-            if ($script !== false && $script === realpath($this->root . '/objects/index.php') && !isset($_COOKIE['prj'])) {
-                $policy = new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), Config::string('TRUSTED_PROXIES'));
-                $policy->authorize($_SERVER, static fn($token) => TokenStore::connect()->verify($token));
-                return;
-            }
             $session = Core::session($this->root);
             $loginEndpoint = $script !== false && $script === realpath($this->root . '/public/admin.php');
             $operation = $loginEndpoint && is_string($_GET['auth'] ?? null) ? $_GET['auth'] : '';

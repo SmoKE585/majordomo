@@ -419,13 +419,10 @@ $nginxChecks = [
     'location ^~ /assets/' => 'static assets location',
     'location ~ ^/public/(.*)$' => 'old docroot prefix redirect',
     'return 301 /assets/$1/$2$is_args$args;' => 'legacy css/js/img redirect',
-    '/assets/vendor/$1/$2$is_args$args;' => '3rdparty browser libs redirect',
     '/assets/modules/$1/$2$is_args$args;' => 'module page css/js redirect',
     'location = /rc {' => 'removed rc redirect',
     'location ^~ /modules/ {' => 'module endpoints location',
-    'location ^~ /objects/ {' => 'objects entry location',
-    'location ^~ /scripts/ {' => 'scripts entry location',
-    'location ^~ /3rdparty/ {' => '3rdparty location',
+    'location ~ ^/(scripts|objects|3rdparty|packages|vendor)(/|$) {' => 'private system paths',
     'location ^~ /cms/ {' => 'cms media location',
     'location ^~ /docs/ {' => 'documentation location',
     'location ~ ^/cms/(cached|debmes|modules_installed|saverestore)/ {' => 'cms runtime data is private',
@@ -450,10 +447,13 @@ routingCheck(
     !is_dir($rootDir . '/3rdparty/bootstrap'),
     '[LAYOUT] 3rdparty/bootstrap must be moved to public/assets/vendor/bootstrap'
 );
-routingCheck(
-    is_dir($rootDir . '/3rdparty/php-mailer'),
-    '[LAYOUT] PHP libraries must stay in 3rdparty'
-);
+routingCheck(!is_dir($rootDir . '/3rdparty'), '[LAYOUT] PHP libraries are managed by Composer');
+routingCheck(!is_dir($rootDir . '/objects'), '[LAYOUT] old object HTTP entry is removed');
+routingCheck(is_file($rootDir . '/scripts/core_worker.php'), '[LAYOUT] internal worker is preserved');
+routingCheck(is_file($rootDir . '/public/assets/fonts/rubik/rubik.css'), '[LAYOUT] fonts live in assets');
+foreach (array('objects', 'scripts', '3rdparty') as $directory) {
+    routingCheck(!str_contains($nginxConfig, 'location ^~ /' . $directory . '/'), '[NGINX] no root mount for ' . $directory);
+}
 
 // --- public docroot contract ---------------------------------------------
 

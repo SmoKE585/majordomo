@@ -24,8 +24,8 @@ php dev_server.php --port=8080 # локальный сервер (нужен MyS
 перезапускает циклы — см. [docs/agents/settings.md](docs/agents/settings.md) и
 [docs/agents/cycles.md](docs/agents/cycles.md).
 
-PHP-пакеты устанавливаются через Composer из корня проекта. Старые библиотеки
-в `3rdparty/` работают параллельно. Команды установки пакетов и деплоя —
+PHP-пакеты устанавливаются через Composer из корня проекта. Каталог
+`3rdparty/` удалён, локальная версия MQTT находится в `packages/phpmqtt/`. Установка и деплой —
 [docs/agents/third-party.md](docs/agents/third-party.md).
 
 ## Документация

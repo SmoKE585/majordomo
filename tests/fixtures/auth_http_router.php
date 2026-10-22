@@ -12,6 +12,7 @@ use MajorDoMo\Core\Auth\{AuthGate, Authentication};
 use MajorDoMo\Core\Users\UserAccounts;
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+if (preg_match('#^/(objects|scripts|3rdparty|packages|vendor)(/|$)#', $path)) { http_response_code(404); exit; }
 if (str_starts_with($path, '/assets/')) {
     $file = realpath($project . '/public' . $path);
     if (!$file || !str_starts_with($file, realpath($project . '/public/assets') . DIRECTORY_SEPARATOR) || !is_file($file)) { http_response_code(404); exit; }
@@ -27,9 +28,8 @@ if (str_starts_with($path, '/api/')) {
     (new ApiApplication($root, static fn($token) => false, static fn() => $users))->run(); exit;
 }
 $_SERVER['SCRIPT_FILENAME'] = $path === '/admin.php' ? $root . '/public/admin.php'
-    : ($path === '/objects/' ? $root . '/objects/index.php'
     : ($path === '/index.php' ? $root . '/public/index.php'
-    : (str_starts_with($path, '/modules/') ? $root . $path : $root . '/public/nf.php')));
+    : (str_starts_with($path, '/modules/') ? $root . $path : $root . '/public/nf.php'));
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_GET['auth'] ?? '') === 'login') {
     $probe = Core::session($root);
     header('X-Fixture-Guard: ' . (int)\MajorDoMo\Core\Auth\RequestGuard::allowed($probe, $_SERVER, $_POST));

@@ -71,7 +71,6 @@ public/install.php
 - `lib/core/SiteApplication.php` — сайт;
 - `lib/core/ApiApplication.php` (через `public/api.php`) — API (JSON 503 с
   `install_url`);
-- `objects/index.php` — прямые object-эндпоинты;
 - `lib/loader.php` — дополнительные прямые веб-эндпоинты `modules/*.js.php`,
   `scripts/*` и подобные, которые подключают загрузчик без `Application`.
 

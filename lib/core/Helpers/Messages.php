@@ -1,6 +1,6 @@
 <?php
 
-/** System helpers. Public names and argument defaults are part of the module API. */
+/** Сообщения ядра. 2026-10-22 — фоновые вызовы через очередь, без HTTP. */
 
 function ask($prompt, $target = '')
 {
@@ -139,39 +139,16 @@ function sayReply($ph, $level = 0, $replyto = '')
 
 function sayReplySafe($ph, $level = 0, $replyto = '')
 {
-    $data = array(
-        'sayReply' => 1,
-        'ph' => $ph,
-        'level' => $level,
-        'replyto' => $replyto,
-    );
-    $url = BASE_URL . '/objects/?' . http_build_query($data);
-    if (is_array($params)) {
-        foreach ($params as $k => $v) {
-            $url .= '&' . $k . '=' . urlencode($v);
-        }
-    }
-    $result = getURLBackground($url, 0);
-    return $result;
+    return \MajorDoMo\Core\Core::queue()->enqueueRuntime('sayreply', array(
+        'message' => $ph, 'level' => $level, 'replyto' => $replyto,
+    ));
 }
 
 function saySafe($ph, $level = 0, $member_id = 0, $source = '')
 {
-    $data = array(
-        'say' => 1,
-        'ph' => $ph,
-        'level' => $level,
-        'member_id' => $member_id,
-        'source' => $source,
-    );
-    $url = BASE_URL . '/objects/?' . http_build_query($data);
-    if (is_array($params)) {
-        foreach ($params as $k => $v) {
-            $url .= '&' . $k . '=' . urlencode($v);
-        }
-    }
-    $result = getURLBackground($url, 0);
-    return $result;
+    return \MajorDoMo\Core\Core::queue()->enqueueRuntime('say', array(
+        'message' => $ph, 'level' => $level, 'member_id' => $member_id, 'source' => $source,
+    ));
 }
 
 /**
@@ -201,18 +178,7 @@ function sayTo($ph, $level = 0, $destination = '')
 
 function sayToSafe($ph, $level = 0, $destination = '')
 {
-    $data = array(
-        'sayTo' => 1,
-        'ph' => $ph,
-        'level' => $level,
-        'destination' => $destination,
-    );
-    $url = BASE_URL . '/objects/?' . http_build_query($data);
-    if (is_array($params)) {
-        foreach ($params as $k => $v) {
-            $url .= '&' . $k . '=' . urlencode($v);
-        }
-    }
-    $result = getURLBackground($url, 0);
-    return $result;
+    return \MajorDoMo\Core\Core::queue()->enqueueRuntime('sayto', array(
+        'message' => $ph, 'level' => $level, 'destination' => $destination,
+    ));
 }

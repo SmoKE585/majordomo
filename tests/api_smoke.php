@@ -110,6 +110,33 @@ try {
     check($dispatch('POST', '/api/room', array('title' => 'Legacy singular'))['result'] === true, 'Legacy singular room');
     $dispatch('POST', '/api/v1/messages', array('message' => 'Привет'));
     check(count($dispatch('GET', '/api/v1/messages')['messages']) === 1, 'Messages read/write');
+    check($dispatch('POST', '/api/v1/say', array('message' => 'Голос', 'level' => 2, 'member_id' => 1)) === null, 'Say delegates to core and retains null');
+    check($dispatch('POST', '/api/v1/say/reply', array('message' => 'Ответ', 'replyto' => 'Вопрос')) === false, 'Reply retains false');
+    check($GLOBALS['fixture_reply'] === array('Ответ', 0, 'Вопрос'), 'Reply parameters forwarded');
+    check($dispatch('POST', '/api/v1/say/to', array('message' => 'Терминал', 'destination' => 'Кухня')) === 0, 'Terminal result retains zero');
+    check($GLOBALS['fixture_destination'] === array('Терминал', 0, 'Кухня'), 'Terminal parameters forwarded');
+    check($dispatch('POST', '/api/v1/subscriptions/COMMAND', array('details' => array('message' => 'Свет'), 'return_output' => true)) === 'fixture-output', 'Subscription output returned');
+    rejects(fn() => $dispatch('POST', '/api/v1/subscriptions/COMMAND', array('return_output' => 'true')), 422, 'validation_failed');
+    rejects(fn() => $dispatch('POST', '/api/v1/say/to', array('message' => 'Нет терминала')), 422, 'validation_failed');
+    rejects(fn() => $dispatch('GET', '/api/v1/say'), 405, 'method_not_allowed');
+    foreach (array(
+        array('say', array('message' => 'Фон', 'level' => 0, 'member_id' => 1, 'source' => 'queue'), 'say'),
+        array('sayreply', array('message' => 'Фоновый ответ', 'level' => 1, 'replyto' => 'Вопрос'), 'sayreply'),
+        array('sayto', array('message' => 'Фоновый терминал', 'level' => 0, 'destination' => 'Кухня'), 'sayto'),
+        array('subscriptions', array('event' => 'CUSTOM', 'details' => array('value' => false)), 'CUSTOM'),
+        array('script', array('input' => 5), 'Test script'),
+    ) as [$operation, $params, $target]) {
+        check(Core::queue()->enqueueRuntime($operation, $params, $target), 'Direct core operation queued: ' . $operation);
+        $item = $pdo->query('SELECT * FROM operations_queue ORDER BY ID DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+        check($item['DATANAME'] === $operation && str_starts_with(json_decode($item['DATAVALUE'], true)['path'], 'core:'), 'Core operation has no API path');
+        $pdo->exec("UPDATE operations_queue SET CLAIM_TOKEN='direct',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $item['ID']);
+        check(Core::worker()->execute($item['ID'], 'direct')['success'] === true, 'Worker executes core function: ' . $operation);
+    }
+    Core::queue()->enqueueRuntime('script', array(), 'Отсутствующий сценарий');
+    $missing = $pdo->query('SELECT ID FROM operations_queue ORDER BY ID DESC LIMIT 1')->fetchColumn();
+    $pdo->exec("UPDATE operations_queue SET CLAIM_TOKEN='direct',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $missing);
+    $failure = Core::worker()->execute($missing, 'direct');
+    check($failure['success'] === false && str_contains($failure['error'], 'Отсутствующий сценарий'), 'Missing direct script reports its original name');
     $_GET = array('outer' => 1); $_POST = array('outer' => 2); $_REQUEST = array('outer' => 3); $_SERVER['REQUEST_URI'] = '/outer';
     $globals = array($_GET, $_POST, $_REQUEST, $_SERVER);
     $module = $dispatch('POST', '/api/v1/module/FIXTUREAPI/path', array('message' => 'JSON'));
