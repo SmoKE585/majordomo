@@ -7,7 +7,7 @@
 
 | Каталог | Размер | Что это | Где используется | Composer-пакет |
 | --- | --- | --- | --- | --- |
-| `smarty3/` | 1.1 МБ | Smarty 3, шаблонизатор | `lib/parser.class.php` (`SMARTY_DIR`), `lib/jTemplate.class.php` | `smarty/smarty` |
+| `smarty3/` | 1.1 МБ | Smarty 3, шаблонизатор | `lib/core/Template/Parser.php` (`SMARTY_DIR`), `lib/core/Template/JTemplate.php` (инклюды `[#inc *.tpl#]`) | `smarty/smarty` |
 | `php-mailer/` | 204 КБ | PHPMailer 6 | `lib/general.class.php` (`sendMail`) | `phpmailer/phpmailer` |
 | `phpmqtt/` | 24 КБ | Минимальный MQTT-клиент | `modules/mqtt/mqtt.class.php`, `scripts/cycle_mqtt.php` | `php-mqtt/client` |
 | `Paginator/` | 9 КБ | Постраничная навигация | `modules/actions_log/actions_log_search.inc.php` | `jasongrimes/paginator` |
@@ -67,7 +67,7 @@ git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard 3rdparty/el
    к брокеру и чтение топика.
 
 5. **Smarty** — `composer require smarty/smarty`. Здесь больше всего кода:
-   `lib/parser.class.php` (`SMARTY_DIR`), `lib/jTemplate.class.php`,
+   `lib/core/Template/Parser.php` (`SMARTY_DIR`), `lib/core/Template/JTemplate.php`,
    `cms/cached/templates_c`. Нужен отдельный этап с проверкой всех legacy-страниц,
    которые рендерятся через Smarty.
 

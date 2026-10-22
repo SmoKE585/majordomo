@@ -76,6 +76,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - добавлены компоненты `MDJUI::activityFeed()` (лента действий), `MDJUI::hint()` (контекстная подсказка с пунктами, шагами и закрытием) и `MDJUI::codeSample()` (read-only код с подсветкой PHP/Python, вкладками языков, номерами строк и копированием); подсветка — lazy-chunk `public/assets/admin/codehighlight.js` + `codehighlight.css` (highlight.js), демо — `?action=ui_kit#blocks`, документация — `docs/agents/DESIGN_SYSTEM.md`;
 - исправлен горизонтальный скролл страницы на мобильных: scroll-контейнеры таблиц (`md-table__scroll`) получили `position: relative`, чтобы абсолютные visually-hidden элементы не растягивали документ; футер карточки и длинные бейджи переносятся; сетка saverestore и мобильные `md-tabs` больше не выходят за экран; подсказка на странице общих настроек переведена на `MDJUI::hint()`.
 - модуль Shoutbox (`/panel/shoutbox.html`) переведён на общую систему: hero и KPI, журнал сообщений на `MDJUI::activityFeed()` с удалением отдельных записей и очисткой всего журнала, подсказка о `say()` и пример вызова на `MDJUI::hint()`/`MDJUI::codeSample()`; page-CSS — `public/assets/modules/shoutbox/shoutbox.css`.
+- шаблонный слой вынесен в ядро: `lib/core/Template/JTemplate.php` (движок `[#...#]`) и `lib/core/Template/Parser.php`, namespace `MajorDoMo\Core\Template`; легаси-имена `jTemplate`/`parser` сохранены через `class_alias` в `lib/jTemplate.class.php` и `lib/parser.class.php`, поэтому 29 модулей и сторонние модули работают без изменений; из `Parser` удалена мёртвая XSLT-ветка (Sablotron отсутствует в PHP с 5.3), `.xslt` теперь отдаёт явный маркер; поведение подтверждено побайтовым сравнением 14 страниц в обоих режимах `DEBUG_MODE`; добавлены `tests/template_surface_smoke.php` и `tests/template_render_smoke.php`.
 
 Следующий этап — **полировка мобильных деталей объектов** (длинные значения в редакторах, компактные формы), затем остальные модули.
 
@@ -126,6 +127,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `lib/core/Settings/` | `SettingsSchema`, `SettingsManager`, `SettingsPresenter` — общие настройки поверх мастера |
 | `lib/core/Cycles/` | `CycleStateStore`, `CycleSupervisor`, `CycleManager` — персистентное управление циклами |
 | `lib/core/Filesystem/` | `FolderBrowser` — read-only обзор каталогов в границах проекта для выбора путей |
+| `lib/core/Template/` | Шаблонный слой: `JTemplate` (движок `[#VAR#]`/`[#if#]`/`[#inc#]`/`[#module#]`) и `Parser` (выбор jTemplate/Smarty по расширению); `lib/jTemplate.class.php` и `lib/parser.class.php` — только `class_alias` для легаси-кода |
 | `templates/install/install.php` | Разметка мастера (MDJUI, шаги, обзор) |
 | `public/assets/install/` | Page-only CSS/JS мастера |
 | `tools/install.php` | CLI: `status`, `check`, `test-db`, `reset`, `complete` |
