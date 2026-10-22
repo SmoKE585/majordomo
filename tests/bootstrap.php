@@ -24,7 +24,7 @@ function endMeasure($name, $save = 0) {}
 function IsWindowsOS() { return DIRECTORY_SEPARATOR === '\\'; }
 require (defined('MJD_TEST_SOURCE_ROOT') ? MJD_TEST_SOURCE_ROOT : ROOT) . 'lib/core.class.php';
 // Boot Config against an empty fixture root: tests must not inherit the
-// developer's .env (for example DISABLE_WEBSOCKETS=1 would silence the queue).
+// developer's .env or any working service connections.
 \MajorDoMo\Core\Config::boot(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'mjd-test-config-' . bin2hex(random_bytes(4)));
 require (defined('MJD_TEST_SOURCE_ROOT') ? MJD_TEST_SOURCE_ROOT : ROOT) . 'lib/mysqli.class.php';
 require (defined('MJD_TEST_SOURCE_ROOT') ? MJD_TEST_SOURCE_ROOT : ROOT) . 'lib/sqlFunctions.class.php';

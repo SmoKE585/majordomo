@@ -7,7 +7,6 @@ putenv('DB_DATABASE=:memory:');
 putenv('DB_HOST=');
 putenv('DB_NAME=');
 putenv('USE_REDIS=false');
-putenv('DISABLE_WEBSOCKETS=1');
 putenv('LOG_DIRECTORY=');
 require_once dirname(__DIR__) . '/lib/core.class.php';
 
@@ -123,7 +122,7 @@ try {
     check($code === 0 && $store->generation('cycle_mqtt') === $before + 1, 'Restart all restarts running cycles');
     check($store->desired('cycle_ping') === 'stopped' && $store->desired('cycle_main') === 'disabled', 'Restart all preserves stopped and disabled states');
     [$code] = runCli($application, array('cycles:start', 'websockets'));
-    check($code === 1, 'CLI cannot bypass configuration-disabled WebSockets');
+    check($code === 0 && $store->desired('cycle_websockets') === 'running', 'WebSocket starts without an optional feature configuration');
     foreach (array('../mqtt', 'mqtt.php', 'unknown', 'mqtt;whoami') as $name) {
         $before = file_get_contents($root . '/cms/cycles/state.json');
         [$code] = runCli($application, array('cycles:stop', $name));

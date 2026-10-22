@@ -172,14 +172,14 @@ try {
     check(end($sent)['action'] === 'ready' && !end($sent)['decoded']['SNAPSHOT'], 'snapshot can be disabled');
     $app->receive('two', message('GetProperties', array('PROPERTIES' => array('Room.temp'), 'REQUEST_ID' => 'read')));
     check(end($sent)['decoded']['REQUEST_ID'] === 'read' && end($sent)['decoded']['DATA'][0]['VALUE'] === 'fresh', 'read request and correlation');
-    $limited = new Protocol($pages, $named, 8, 1, 2048, 1024, 1);
+    $limited = new Protocol($pages, $named, 8, 1, 2048, 1024);
     $limited->connect('limited', $send, $close);
     $limited->publish(array(array('PROPERTY' => 'x.a', 'VALUE' => 1), array('PROPERTY' => 'x.b', 'VALUE' => 2)));
     check(end($closed)[1] === 'resync_required', 'snapshot buffer bounded');
-    $limited->receive('limited', message('Ping'));
-    $limited->receive('limited', message('Ping'));
-    check(end($closed)[1] === 'rate_limit', 'inbound rate bounded');
     $limited->disconnect('limited');
+    $closed = array();
+    for ($index = 0; $index < 100; $index++) $app->receive('two', message('Ping'));
+    check(!$closed && end($sent)['action'] === 'pong', 'request frequency has no artificial limit');
     $sent = array();
     printf("WebSocket smoke: %d passed (SQLite, authentication, snapshot, read-only, subscriptions, limits).\n", $checks);
 } finally { $remove($fixture); }

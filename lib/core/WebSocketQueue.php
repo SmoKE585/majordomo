@@ -33,9 +33,6 @@ final class WebSocketQueue
 
     public function post($property, $value, $post_action = 'PostProperty')
     {
-        if (Config::bool('DISABLE_WEBSOCKETS')) {
-            return false;
-        }
         if (Config::get('USE_REDIS')) {
             return $this->queue->enqueue('websocket', $post_action . ':' . $property,
                 json_encode(array('PROPERTY' => $property, 'DATAVALUE' => is_array($value) ? $value : (string)$value, 'POST_ACTION' => $post_action), JSON_THROW_ON_ERROR), true, 3600);

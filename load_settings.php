@@ -27,9 +27,6 @@ if (isset($_GET['theme']) && !defined('SETTINGS_THEME')) {
     Define('SETTINGS_THEME', $_GET['theme']);
 }
 
-if (isset($_GET['disable_websockets']) && !defined('DISABLE_WEBSOCKETS')) {
-    Define('DISABLE_WEBSOCKETS', 1);
-}
 
 if (isset($_GET['lang'])) {
     Define("SETTINGS_SITE_LANGUAGE", $_GET['lang']);
@@ -154,21 +151,6 @@ if (isset($_SERVER['SERVER_ADDR']) && isset($_SERVER['SERVER_PORT'])) {
     Define('SERVER_ADDR', $_SERVER['SERVER_ADDR']);
 } else {
     Define('SERVER_URL', 'http://localhost:80');
-}
-
-if (!defined('WEBSOCKETS_PORT'))
-    Define('WEBSOCKETS_PORT', 8001);
-
-$websocketsAuthToken = '';
-if (defined('SETTINGS_SYSTEM_WEBSOCKETS_TOKEN') && SETTINGS_SYSTEM_WEBSOCKETS_TOKEN != '') {
-    $websocketsAuthToken = SETTINGS_SYSTEM_WEBSOCKETS_TOKEN;
-} elseif (defined('WEBSOCKETS_AUTH_TOKEN') && WEBSOCKETS_AUTH_TOKEN != '') {
-    $websocketsAuthToken = WEBSOCKETS_AUTH_TOKEN;
-} elseif (defined('WEBSOCKETS_TOKEN') && WEBSOCKETS_TOKEN != '') {
-    $websocketsAuthToken = WEBSOCKETS_TOKEN;
-}
-if (!defined('WEBSOCKETS_AUTH_TOKEN_JSON')) {
-    Define('WEBSOCKETS_AUTH_TOKEN_JSON', json_encode((string)$websocketsAuthToken));
 }
 
 // Access control is delegated to the reverse proxy (nginx basic auth).

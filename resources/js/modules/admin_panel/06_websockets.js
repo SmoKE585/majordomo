@@ -24,13 +24,13 @@
     }
     function retry() {
         window.clearTimeout(timer);
-        if (stopped || !window.MDJWebSocketConfig?.enabled) return;
+        if (stopped || !window.MDJWebSocketConfig) return;
         timer = window.setTimeout(start, Math.min(30000, 1000 * (2 ** Math.min(attempt++, 5))) + Math.random() * 500);
     }
     async function start() {
         window.clearTimeout(timer);
         const config = window.MDJWebSocketConfig;
-        if (stopped || !config?.enabled || connecting || (window.wsSocket && window.wsSocket.readyState < 2)) return;
+        if (stopped || !config || connecting || (window.wsSocket && window.wsSocket.readyState < 2)) return;
         connecting = true;
         status('connecting');
         try {

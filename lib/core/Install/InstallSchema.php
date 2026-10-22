@@ -14,7 +14,7 @@ namespace MajorDoMo\Core\Install;
  * Targets:
  *  - env  — written to `.env` (the only place runtime configuration lives);
  *  - db    — written to the `settings` table (`SETTINGS_*` constants);
- *  - meta  — UI-only switch that maps to one or more env keys (Redis/WS modes).
+ *  - meta  — UI-only switch that maps to one or more env keys (Redis mode).
  */
 final class InstallSchema
 {
@@ -63,7 +63,7 @@ final class InstallSchema
                 'number' => '04',
                 'title' => 'Дополнительно',
                 'short' => 'Дополнительно',
-                'description' => 'Redis, WebSockets, журналы, доступ',
+                'description' => 'Redis, журналы, доступ',
                 'icon' => 'adjustments',
             ),
             self::STEP_REVIEW => array(
@@ -124,12 +124,6 @@ final class InstallSchema
                 'title' => 'Redis',
                 'description' => 'Быстрый кэш и очередь. Необязательно: без Redis система работает на SQL-кэше.',
                 'icon' => 'stack-2',
-            ),
-            'websockets' => array(
-                'step' => self::STEP_ADVANCED,
-                'title' => 'WebSockets',
-                'description' => 'Живые обновления интерфейса без перезагрузки страниц.',
-                'icon' => 'broadcast',
             ),
             'security' => array(
                 'step' => self::STEP_ADVANCED,
@@ -845,173 +839,6 @@ final class InstallSchema
             ),
 
             // ----------------------------------------------------------------
-            // WebSockets
-            // ----------------------------------------------------------------
-            'websockets_enabled' => array(
-                'target' => self::TARGET_META,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'switch',
-                'label' => 'Включить WebSockets',
-                'description' => 'Живые обновления датчиков и статусов. Требует свободный порт; при проблемах можно выключить.',
-                'default' => '1',
-                'width' => 'half',
-            ),
-            'WEBSOCKETS_HOST' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'text',
-                'label' => 'Адрес прослушивания',
-                'description' => '0.0.0.0 — все интерфейсы. 127.0.0.1 — только локально (тогда нужен reverse proxy).',
-                'placeholder' => '0.0.0.0',
-                'default' => '0.0.0.0',
-                'width' => 'half',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_PORT' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'number',
-                'label' => 'Порт',
-                'description' => 'По умолчанию 8001. При подключении через nginx внешний доступ к этому порту не требуется.',
-                'placeholder' => '8001',
-                'default' => '8001',
-                'min' => 1,
-                'max' => 65535,
-                'width' => 'half',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_PUBLIC_URL' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'text',
-                'label' => 'Публичный адрес WebSocket',
-                'description' => 'Пусто — /ws на адресе панели через nginx. Для отдельного порта: wss://home.example.com:8002/majordomo. В локальной сети доступ без токена, извне — API-токен или сессия администратора. WebSocket только для чтения.',
-                'default' => '',
-                'width' => 'full',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_MAX_CLIENTS' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'number',
-                'label' => 'Максимум клиентов',
-                'description' => 'Одновременных подключений. 100 хватает большинству домов.',
-                'placeholder' => '100',
-                'default' => '',
-                'min' => 1,
-                'width' => 'half',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_MAX_CONNECTIONS_PER_IP' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'number',
-                'label' => 'Максимум подключений с одного IP',
-                'description' => 'Защита от одного клиента, открывшего слишком много вкладок.',
-                'placeholder' => '100',
-                'default' => '',
-                'min' => 1,
-                'width' => 'half',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_MAX_REQUESTS_PER_MINUTE' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'number',
-                'label' => 'Лимит сообщений в минуту',
-                'description' => 'Сколько сообщений сервер принимает от клиентов за минуту.',
-                'placeholder' => '20000',
-                'default' => '',
-                'min' => 1,
-                'width' => 'half',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_CLIENT_TIMEOUT' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'number',
-                'label' => 'Таймаут простоя клиента, сек',
-                'description' => '0 — не отключать неактивных клиентов.',
-                'placeholder' => '0',
-                'default' => '',
-                'min' => 0,
-                'width' => 'half',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_MAX_FRAME_BYTES' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'number',
-                'label' => 'Максимальный размер кадра, байт',
-                'description' => 'Лимит входящих и исходящих сообщений. 1048576 — 1 МБ.',
-                'placeholder' => '1048576',
-                'default' => '',
-                'min' => 1024,
-                'width' => 'half',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_TLS' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'switch',
-                'label' => 'TLS (wss://)',
-                'description' => 'Шифрование WebSocket. Нужен сертификат; для домашней сети обычно не требуется.',
-                'default' => '0',
-                'width' => 'half',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-            'WEBSOCKETS_TLS_PEM_FILE' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'path',
-                'label' => 'Файл сертификата',
-                'description' => 'PEM-файл с сертификатом и ключом. Путь к файлу укажите вручную.',
-                'placeholder' => './server.pem',
-                'default' => '',
-                'width' => 'half',
-                'picker' => 'none',
-                'depends' => array('field' => 'WEBSOCKETS_TLS', 'value' => '1'),
-            ),
-            'WEBSOCKETS_TLS_PEM_PASSPHRASE' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'password',
-                'label' => 'Пароль сертификата',
-                'description' => 'Если ключ зашифрован.',
-                'placeholder' => '',
-                'default' => '',
-                'secret' => true,
-                'width' => 'half',
-                'autocomplete' => 'new-password',
-                'password_toggle' => true,
-                'depends' => array('field' => 'WEBSOCKETS_TLS', 'value' => '1'),
-            ),
-            'WEBSOCKETS_ALLOWED_ORIGINS' => array(
-                'target' => self::TARGET_ENV,
-                'step' => self::STEP_ADVANCED,
-                'section' => 'websockets',
-                'type' => 'list',
-                'label' => 'Разрешённые Origin',
-                'description' => 'Проверка включена всегда. Пусто — тот же хост, что у WebSocket. Для другого сайта укажите точные Origin через запятую: https://home.example.com, http://192.168.0.10.',
-                'placeholder' => 'https://home.example.com',
-                'default' => '',
-                'width' => 'full',
-                'depends' => array('field' => 'websockets_enabled', 'value' => '1'),
-            ),
-
-            // ----------------------------------------------------------------
             // Security / remote access
             // ----------------------------------------------------------------
             'HOME_NETWORK' => array(
@@ -1271,7 +1098,7 @@ final class InstallSchema
      */
     public static function managedEnvKeys(): array
     {
-        $keys = array('USE_REDIS', 'DISABLE_WEBSOCKETS');
+        $keys = array('USE_REDIS');
         foreach (self::fields() as $field) {
             if ($field['target'] === self::TARGET_ENV) {
                 $keys[] = $field['id'];

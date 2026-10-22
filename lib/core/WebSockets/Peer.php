@@ -10,14 +10,9 @@ final class Peer
     public ?\Generator $snapshot = null;
     public array $pending = array();
     public int $pendingBytes = 0;
-    public int $requests = 0;
-    public int $window;
-    public int $lastActivity;
 
     public function __construct(public readonly \Closure $send, public readonly \Closure $close)
-    {
-        $this->window = $this->lastActivity = time();
-    }
+    {}
 
     public function watches(array $row): bool
     {

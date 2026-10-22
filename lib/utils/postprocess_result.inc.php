@@ -41,8 +41,6 @@ if (preg_match_all('/%(\w{2,}?)\.(\w{2,}?)%/isu', $result, $m))
 
 if (preg_match_all('/%(\w{2,}?)\.(\w{2,}?)\|(\d+)%/isu', $result, $m))
 {
-  if (!defined('DISABLE_WEBSOCKETS') || DISABLE_WEBSOCKETS==0)
-  {
    $tracked_properties=array();
    $total = count($m[0]);
    $seen=array();
@@ -86,31 +84,6 @@ if (preg_match_all('/%(\w{2,}?)\.(\w{2,}?)\|(\d+)%/isu', $result, $m))
 
   $result=str_replace('<body', $js.'<body', $result);
 
-  } else {
-
-   $total = count($m[0]);
-   $seen  = array();
-   
-   for ($i = 0; $i < $total; $i++)
-   {
-      $var      = $m[1][$i] . '.' . $m[2][$i];
-      $interval = (int)$m[2][$i] * 1000;
-
-      if (!$interval)
-         $interval = 10000;
-      
-      $id = 'var_' . preg_replace('/\W/', '_', $var) . $seen[$var];
-      $seen[$var]++;
-
-      $scriptReplace  = '<span id="' . $id . '">...</span>';
-      $scriptReplace .= '<script type="text/javascript">';
-      $scriptReplace .= 'ajaxGetGlobal("' . $var . '", "' . $id . '", ' . $interval . ');';
-      $scriptReplace .= '</script>';
-
-      $result = str_replace($m[0][$i], $scriptReplace, $result);
-   }
-
-  }
 
 }
 // END GLOBALS

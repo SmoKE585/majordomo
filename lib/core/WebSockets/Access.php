@@ -7,7 +7,7 @@ use MajorDoMo\Core\Api\{AccessPolicy, ApiException};
 final class Access
 {
     public function __construct(private AccessPolicy $network, private Tickets $tickets, private \Closure $verifyToken,
-        private \Closure $adminState, private string $allowedOrigins = '') {}
+        private \Closure $adminState) {}
 
     public function authorize(array $server, array $query): array
     {
@@ -47,10 +47,9 @@ final class Access
         $raw = (string)$server['HTTP_ORIGIN'];
         $origin = parse_url($raw);
         $host = parse_url('http://' . (string)($server['HTTP_HOST'] ?? ''), PHP_URL_HOST);
-        $allowed = array_filter(array_map('trim', explode(',', $this->allowedOrigins)));
         if (!is_array($origin) || !in_array($origin['scheme'] ?? '', array('http', 'https'), true) || isset($origin['user']) || isset($origin['pass'])
             || isset($origin['query']) || isset($origin['fragment']) || !empty($origin['path'])
-            || ($allowed ? !in_array($raw, $allowed, true) : strcasecmp((string)($origin['host'] ?? ''), (string)$host) !== 0)) {
+            || strcasecmp((string)($origin['host'] ?? ''), (string)$host) !== 0) {
             throw new ApiException(403, 'cross_origin_denied', 'Origin подключения не разрешён.');
         }
     }

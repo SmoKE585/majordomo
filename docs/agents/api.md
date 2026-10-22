@@ -38,6 +38,9 @@ Core::apiDispatcher → Response. Ошибки и завершение legacy-к
 обрабатывает локально, асинхронные операции кладёт в существующий core_runtime.
 Новый тип задания `api` обрабатывает тот же OperationWorker. Исходные типы
 `method` и `modulepropertyset` сохранены вместе с trace/chain.
+Сегменты пути собирайте через `rawurlencode()`: `Api\Request` разбирает их через
+`rawurldecode()`, а `urlencode()` кодирует пробел как `+` — путь не совпадёт с
+названием сценария или метода.
 
 `AccessPolicy` использует `NetworkAccess`, HOME_NETWORK, TRUSTED_PROXIES.
 Если HOME_NETWORK пуст, допускаются частные сети IPv4/IPv6 и loopback. Если

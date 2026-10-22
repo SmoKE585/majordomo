@@ -166,8 +166,8 @@ final class InstallApplication extends Application
                 'completed_at' => (string)($state['completed_at'] ?? ''),
                 'admin_created' => false,
                 'redis' => is_string($useRedis) && $useRedis !== '',
-                'websockets' => !Config::bool('DISABLE_WEBSOCKETS'),
-                'websockets_port' => Config::string('WEBSOCKETS_PORT'),
+                'websockets' => true,
+                'websockets_port' => (string)WebSockets\Runtime::PORT,
             );
         }
 

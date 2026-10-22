@@ -1,4 +1,6 @@
 <?php
+// 2026-10-22 — для карточки кода родителя добавлен исходный текст метода:
+// её рендерит MDJUI::codeSample(), который экранирует код сам.
 /*
 * @version 0.2 (auto-set)
 */
@@ -364,6 +366,9 @@ if ($this->tab == 'methods') {
         $out['PARENT_METHOD_SCRIPT_TITLE'] = htmlspecialchars($parentScriptTitle);
         $out['PARENT_METHOD_HAS_IMPLEMENTATION'] = (trim((string)$method['CODE']) !== '' || (int)$method['SCRIPT_ID'] > 0) ? 1 : 0;
         $out['PARENT_METHOD_CODE'] = htmlspecialchars((string)$method['CODE']);
+        // Компонент показа кода экранирует сам: ему нужен исходный текст,
+        // иначе кавычки и теги превратятся в &amp;lt; и подсветка поедет.
+        $out['PARENT_METHOD_CODE_RAW'] = (string)$method['CODE'];
         $out['PARENT_METHOD_DESCRIPTION'] = htmlspecialchars(isset($method['DESCRIPTION']) ? (string)$method['DESCRIPTION'] : '');
 
         if ($this->mode == 'update') {

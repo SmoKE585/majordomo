@@ -8,12 +8,22 @@ try:
 except ImportError:
     import urllib2
     from urllib import urlencode
+    from urllib import quote
 import re
 import MySQLdb as mdb
 import sys
 import six
 
 
+def _api_path_segment(value):
+    """Кодирует сегмент пути API так же, как PHP rawurlencode().
+
+    Раньше имена подставлялись в путь как есть: сценарий «Мой сценарий»
+    давал URL с пробелом, а метод с пробелом/плюсом не находился.
+    """
+    if not isinstance(value, bytes):
+        value = six.text_type(value).encode('utf-8')
+    return quote(value, safe='')
 
 
 def getURL(url):
@@ -64,7 +74,7 @@ def runScript(script_name, params):
 
     runScript (Имя скрипта строка STR "", Тип значения Словарь все значения внутри словаря заполняются как строки STR ""{Праметр1:Значение 1, праметр2:значение2, и т.д)
     '''
-    callAPI("/api/script/" + script_name, "GET", params)
+    callAPI("/api/script/" + _api_path_segment(script_name), "GET", params)
     return 1
 
 
@@ -77,7 +87,7 @@ def callMethod(method_name, params):
 
     callMethod (Имя метода строка STR "", Тип параметра Словарь все значения внутри словаря заполняются как строки STR ""{Праметр1:Значение 1, праметр2:значение2, и т.д)
     '''
-    callAPI("/api/method/" + method_name, "GET", params)
+    callAPI("/api/method/" + _api_path_segment(method_name), "GET", params)
     return 1
 
 
@@ -86,7 +96,7 @@ def setGlobal(property, value):
     Принимает значения в следующем виде mjdm.setGlobal('Zokalo2.TEST', '1')
     Все принимаемые значения строка STR "".
     '''
-    callAPI("/api/data/" + property, "POST", {"data": value})
+    callAPI("/api/data/" + _api_path_segment(property), "POST", {"data": value})
     return 1
 
 

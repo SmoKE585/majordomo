@@ -2,7 +2,6 @@
 
 namespace MajorDoMo\Core\Console;
 
-use MajorDoMo\Core\Cycles\CycleSupervisor;
 
 /** Shared validation and rendering; actual lifecycle belongs to CycleManager. */
 abstract class CycleActionCommand extends Command
@@ -15,9 +14,6 @@ abstract class CycleActionCommand extends Command
         $manager = $context->cycles();
         $name = $context->cycleName((string)$input->argument('name'), $manager);
         $action = $this->action();
-        if (in_array($action, array('start', 'restart', 'enable'), true) && CycleSupervisor::configurationDisabled($name)) {
-            throw new \RuntimeException('Цикл отключён конфигурацией. Сначала включите WebSockets в общих настройках.');
-        }
         $result = $manager->$action($name);
         if (!$result['ok']) throw new \RuntimeException('Команда не принята');
         $alive = $manager->isSupervisorRunning();

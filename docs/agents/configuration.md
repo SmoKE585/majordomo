@@ -59,9 +59,9 @@ use MajorDoMo\Core\Config;
 
 Config::get('DB_HOST');              // mixed, null если ключа нет
 Config::string('DB_HOST');           // string
-Config::int('WEBSOCKETS_PORT');      // int
+Config::int('LOG_MAX_SIZE');      // int
 Config::float('REDIS_TIMEOUT');      // float
-Config::bool('DISABLE_WEBSOCKETS');  // bool
+Config::bool('DEBUG_MODE');  // bool
 Config::arrayValue('RESTART_THREADS'); // array
 Config::has('USE_REDIS');            // bool: ключ реально задан
 Config::source('DB_HOST');           // env|process|constant|default|computed|derived
@@ -85,7 +85,7 @@ Config::safeAll();                   // массив без secret-ключей
 | Тип | Пример | Правило |
 | --- | --- | --- |
 | `string` | `DB_HOST=localhost` | как есть; кавычки для пробелов и `#` |
-| `integer` | `WEBSOCKETS_PORT=8001` | приводится к int |
+| `integer` | `LOG_MAX_SIZE=10485760` | приводится к int |
 | `decimal` | `REDIS_TIMEOUT=2.5` | приводится к float |
 | `boolean` | `DEBUG_MODE=0` | `1/true/yes/on` → true; `0/false/no/off` → false |
 | `host_or_false` | `USE_REDIS=false` | `false/0/off/no/''` → `false`, иначе строка-хост |
@@ -183,8 +183,7 @@ Config::safeAll();                   // массив без secret-ключей
    потом меняйте `.env.example`.
 5. Для `null`/пустой строки сохраняйте прежнюю семантику. Не превращайте
    «не задано» в `0` или `''` без проверки всех веток.
-6. Секреты (`DB_PASSWORD`, `REDIS_PASSWORD`, `WEBSOCKETS_AUTH_TOKEN`,
-   `WEBSOCKETS_TLS_PEM_PASSPHRASE`) не логируйте, не выводите в UI и не
+6. Секреты (`DB_PASSWORD`, `REDIS_PASSWORD`) не логируйте, не выводите в UI и не
    добавляйте в audit-отчёт.
 7. Прогоните `php tools/config-audit.php` повторно: число обращений к этому
    ключу должно уменьшиться.

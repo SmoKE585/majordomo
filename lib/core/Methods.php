@@ -12,6 +12,8 @@ use \Throwable;
  * вызывающему коду.
  *
  * Изменения:
+ * 2026-10-22 — фоновый вызов метода кодирует путь через rawurlencode: пробелы
+ *              и "+" в названии больше не теряются при разборе API.
  * 2026-10-22 — текст исключения метода больше не ломает формат сообщения.
  */
 final class Methods
@@ -294,7 +296,10 @@ final class Methods
                 $result = $this->call($object, $name, $params);
             } else {
                 $params['r_s_m'] = 1;
-                $result = callAPI('/api/method/' . urlencode($object->object_title . '.' . $name), 'GET', $params);
+                // Сегмент пути обязан кодироваться так же, как его разбирает
+                // Api\Request (rawurldecode): иначе "+" из urlencode остаётся
+                // в названии метода.
+                $result = callAPI('/api/method/' . rawurlencode($object->object_title . '.' . $name), 'GET', $params);
             }
         } catch (Throwable $e) {
             if ($auditOwned) {

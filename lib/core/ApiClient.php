@@ -2,12 +2,29 @@
 
 namespace MajorDoMo\Core;
 
+/**
+ * Внутренний клиент API: ставит операции в очередь или выполняет их в процессе.
+ *
+ * Изменения:
+ * 2026-10-22 — причина неуспешного внутреннего вызова сохраняется в lastError(),
+ *              чтобы журнал фоновых операций показывал путь и код ошибки.
+ */
 final class ApiClient
 {
+    /** Причина последнего неуспешного вызова — для журнала фоновых операций. */
+    private ?string $lastError = null;
+
     public function __construct(private OperationsQueue $queue, private float $timeout = 45.0) {}
+
+    /** Человекочитаемая причина последнего false (очередь и журнал операций). */
+    public function lastError(): ?string
+    {
+        return $this->lastError;
+    }
 
     public function request($path, $method = 'GET', $params = 0, $wait = false): mixed
     {
+        $this->lastError = null;
         if (is_array($method)) { $params = $method; $method = 'GET'; }
         $params = is_array($params) ? $params : array();
         // Relative API paths are trusted in-process calls; absolute URLs retain
@@ -36,7 +53,10 @@ final class ApiClient
             curl_setopt($client, CURLOPT_URL, $url);
             $body = curl_exec($client);
             $status = (int)curl_getinfo($client, CURLINFO_RESPONSE_CODE);
-            if ($body === false || curl_errno($client) || $status < 200 || $status >= 400) return false;
+            if ($body === false || curl_errno($client) || $status < 200 || $status >= 400) {
+                $this->lastError = 'HTTP ' . $status . ($body === false ? ': ' . curl_error($client) : '');
+                return false;
+            }
             if ($body === '') return true;
             $data = json_decode($body, true);
             if (is_array($data)) return array_key_exists('apiHandleResult', $data) ? $data['apiHandleResult'] : $data;
@@ -72,7 +92,8 @@ final class ApiClient
             $response = (new Api\Response(bin2hex(random_bytes(16)), microtime(true)))->success($value, $request->legacy, $request);
             return $request->legacy && array_key_exists('apiHandleResult', $response) ? $response['apiHandleResult'] : $response;
         } catch (Api\ApiException $error) {
-            if (function_exists('DebMes')) DebMes('Internal API failed: ' . $error->errorCode, 'api', 'warning');
+            $this->lastError = $error->errorCode . ': ' . $error->getMessage();
+            if (function_exists('DebMes')) DebMes('Internal API failed: ' . $path . ' — ' . $this->lastError, 'api', 'warning');
             return false;
         } finally {
             if ($adopted) Core::audit()->leave();

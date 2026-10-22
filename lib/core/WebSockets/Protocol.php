@@ -11,7 +11,7 @@ final class Protocol
 
     public function __construct(private \Closure $pages, private \Closure $values, private int $maxSubscriptions = 4096,
         private int $maxPending = 4096, private int $maxPendingBytes = 8388608, private int $maxFrame = 1048576,
-        private int $maxRequests = 20000, private ?\Closure $renderObject = null)
+        private ?\Closure $renderObject = null)
     {
         $this->epoch = bin2hex(random_bytes(8));
     }
@@ -59,9 +59,6 @@ final class Protocol
     {
         $peer = $this->peers[$id] ?? null;
         if ($peer === null) return;
-        if (time() >= $peer->window + 60) { $peer->window = time(); $peer->requests = 0; }
-        if (++$peer->requests > $this->maxRequests) { ($peer->close)(1008, 'rate_limit'); return; }
-        $peer->lastActivity = time();
         $request = array();
         try {
             if (strlen($message) > $this->maxFrame) throw new \InvalidArgumentException('Сообщение слишком большое.');

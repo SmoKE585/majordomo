@@ -6,6 +6,13 @@ use \Throwable;
 use \RuntimeException;
 use \InvalidArgumentException;
 
+/**
+ * Выполнение фоновых операций из очереди (методы, модули, API).
+ *
+ * Изменения:
+ * 2026-10-22 — ошибка внутреннего API показывает путь и причину отказа,
+ *              а не только тип операции.
+ */
 final class OperationWorker
 {
     public function __construct(
@@ -92,7 +99,14 @@ final class OperationWorker
                 }
             } elseif ($item['DATANAME'] === 'api') {
                 $result = Core::api()->request($data['path'], $data['method'], $params, true);
-                if ($result === false) throw new RuntimeException('Internal API operation failed');
+                if ($result === false) {
+                    // Без пути и причины такая ошибка не диагностируется: в журнале
+                    // оставалось только «target: script», без имени сценария.
+                    $path = (string)($data['path'] ?? '');
+                    $reason = (string)(Core::api()->lastError() ?? '');
+                    throw new RuntimeException('Internal API operation failed: ' . rawurldecode($path)
+                        . ($reason !== '' ? ' (' . $reason . ')' : ''));
+                }
             } else throw new InvalidArgumentException('Unknown core operation');
             if ($item['DATANAME'] === 'modulepropertyset' && $result === false) throw new RuntimeException('Module handler returned false');
             if (!is_array($result) || !array_key_exists('success', $result)) $result = array('success' => true);
@@ -102,6 +116,9 @@ final class OperationWorker
             $context = array('target' => $data['target'] ?? null);
             foreach (array('object', 'property') as $key) {
                 if (isset($params[$key]) && is_string($params[$key])) $context[$key] = $params[$key];
+            }
+            if ($item['DATANAME'] === 'api' && !empty($data['path'])) {
+                $context['path'] = rawurldecode((string)$data['path']);
             }
             $result = array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage()
                 . ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));

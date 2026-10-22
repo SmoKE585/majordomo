@@ -173,12 +173,12 @@ foreach (array('actions_log', 'classes', 'objects', 'project_modules', 'properti
         'clean schema contains table: ' . $requiredTable
     );
 }
-check(isset($sectionSteps['database'], $sectionSteps['identity'], $sectionSteps['behavior'], $sectionSteps['performance'], $sectionSteps['redis'], $sectionSteps['websockets'], $sectionSteps['security']), 'all main sections are represented');
+check(isset($sectionSteps['database'], $sectionSteps['identity'], $sectionSteps['behavior'], $sectionSteps['performance'], $sectionSteps['redis'], $sectionSteps['security']), 'all main sections are represented');
 foreach (array(InstallSchema::STEP_CHECK, InstallSchema::STEP_DATABASE, InstallSchema::STEP_SYSTEM, InstallSchema::STEP_ADVANCED, InstallSchema::STEP_REVIEW) as $step) {
     check(isset(InstallSchema::steps()[$step]), 'step exists: ' . $step);
 }
 check(in_array('USE_REDIS', InstallSchema::managedEnvKeys(), true), 'managed env keys include USE_REDIS');
-check(in_array('DISABLE_WEBSOCKETS', InstallSchema::managedEnvKeys(), true), 'managed env keys include DISABLE_WEBSOCKETS');
+check(!array_filter(InstallSchema::managedEnvKeys(), static fn($key) => str_contains(strtolower($key), 'websocket')), 'installer writes no WebSocket configuration');
 
 // Dependency references must point at real fields.
 foreach ($schema as $id => $field) {
@@ -248,7 +248,7 @@ Config::boot($fixture);
 $installer = new Installer($fixture);
 $values = $installer->formValues();
 check(($values['PROJECT_TITLE'] ?? '') === 'Fixture Home', 'installer loads values from .env');
-check(($values['websockets_enabled'] ?? '') === '1', 'websockets default to enabled');
+check(!isset($values['websockets_enabled']) && \MajorDoMo\Core\WebSockets\Runtime::PORT === 8001, 'WebSocket is built in with a fixed internal port');
 check(($values['redis_enabled'] ?? '') === '0', 'redis defaults to disabled');
 $validation = $installer->validate(array());
 check(empty($validation['ok']), 'empty form does not pass validation');

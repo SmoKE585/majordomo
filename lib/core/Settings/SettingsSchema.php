@@ -20,7 +20,6 @@ final class SettingsSchema
     public const SECTION_PERFORMANCE = 'performance';
     public const SECTION_LOGGING = 'logging';
     public const SECTION_REDIS = 'redis';
-    public const SECTION_WEBSOCKETS = 'websockets';
     public const SECTION_SECURITY = 'security';
     public const SECTION_INTEGRATIONS = 'integrations';
 
@@ -55,11 +54,6 @@ final class SettingsSchema
                 'description' => 'Быстрый кэш и очередь операций. Без Redis система работает на SQL-кэше.',
                 'icon' => 'stack-2',
             ),
-            self::SECTION_WEBSOCKETS => array(
-                'title' => 'WebSockets',
-                'description' => 'Живые обновления интерфейса, порт, лимиты и TLS.',
-                'icon' => 'broadcast',
-            ),
             self::SECTION_SECURITY => array(
                 'title' => 'Доступ',
                 'description' => 'Домашняя сеть, локальный IP и доверенные прокси. Авторизация — на стороне reverse proxy.',
@@ -90,7 +84,6 @@ final class SettingsSchema
             'performance' => self::SECTION_PERFORMANCE,
             'logging' => self::SECTION_LOGGING,
             'redis' => self::SECTION_REDIS,
-            'websockets' => self::SECTION_WEBSOCKETS,
             'security' => self::SECTION_SECURITY,
             'integrations' => self::SECTION_INTEGRATIONS,
         );

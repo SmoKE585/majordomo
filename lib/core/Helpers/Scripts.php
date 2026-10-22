@@ -1,6 +1,8 @@
 <?php
 
 /** System helpers. Public names and argument defaults are part of the module API. */
+// 2026-10-22 — runScriptSafe кодирует имя сценария через rawurlencode:
+// urlencode() превращал пробел в "+", и API не находил сценарий.
 
 /**
  * Summary of callScript
@@ -78,7 +80,9 @@ function runScriptSafe($id, $params = 0)
             $result = runScript($id, $params);
         } else {
             $params['r_s_s'] = 1;
-            $result = callAPI('/api/script/' . urlencode($id), 'GET', $params);
+            // Путь API разбирается через rawurldecode: urlencode() кодирует
+            // пробел как "+", и сценарий с пробелом в названии не находился.
+            $result = callAPI('/api/script/' . rawurlencode((string)$id), 'GET', $params);
         }
     } catch (Throwable $e) {
         if ($auditOwned) {

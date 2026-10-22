@@ -71,9 +71,8 @@ server {
     # (сборки fastpanel и т.п.). В стандартном nginx директивы нет.
     # disable_symlinks if_not_owner from=/var/www/example/data/www/example.com;
 
-    # WebSocket только для чтения. Укажите IP nginx в TRUSTED_PROXIES,
-    # иначе исходный адрес не считается доверенным и локальный доступ требует токен.
-    # При WEBSOCKETS_TLS=1 используйте https upstream с проверкой сертификата.
+    # Обязательный WebSocket ядра: тот же публичный порт, путь /ws.
+    # Внутренний сервер слушает только loopback; TLS завершается здесь.
     location = /ws {
         auth_basic off;
         proxy_pass http://127.0.0.1:8001/majordomo;

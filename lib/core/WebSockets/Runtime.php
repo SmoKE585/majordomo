@@ -9,20 +9,19 @@ use Workerman\Worker;
 
 final class Runtime
 {
+    public const PORT = 8001;
+
     public static function run(string $root): void
     {
         if (PHP_SAPI !== 'cli') throw new \RuntimeException('WebSocket-сервер запускается только из CLI.');
         chdir($root);
         require_once $root . '/config.php';
-        if (Config::bool('DISABLE_WEBSOCKETS')) return;
         if (!class_exists(Worker::class)) throw new \RuntimeException('Установите зависимости: composer install --no-dev.');
         require_once $root . '/lib/loader.php';
         require_once $root . '/load_settings.php';
         $source = new PropertyValues(Core::database());
         $protocol = new Protocol(fn() => $source->pages(), fn($names) => $source->named($names),
-            max(1, Config::int('WEBSOCKETS_MAX_SUBSCRIPTIONS')), max(1, Config::int('WEBSOCKETS_CACHE_MAX_ENTRIES')),
-            max(1024, Config::int('WEBSOCKETS_CACHE_MAX_BYTES')), max(1024, Config::int('WEBSOCKETS_MAX_FRAME_BYTES')),
-            max(1, Config::int('WEBSOCKETS_MAX_REQUESTS_PER_MINUTE')), static function (int $id): string {
+            renderObject: static function (int $id): string {
                 require_once DIR_MODULES . 'objects/objects.class.php';
                 static $objects;
                 $objects ??= new \objects();
@@ -35,12 +34,14 @@ final class Runtime
             if (Core::database()->one('SELECT 1 AS READY') === null) throw new \RuntimeException('Хранилище авторизации недоступно.');
             return $GLOBALS['db']->dbh;
         };
-        $access = new Access(new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), Config::string('TRUSTED_PROXIES')),
+        // Only the local reverse proxy reaches this loopback listener.
+        $trustedProxies = '127.0.0.1/32,::1/128,' . Config::string('TRUSTED_PROXIES');
+        $access = new Access(new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), $trustedProxies),
             new Tickets($root), fn($token) => (new TokenStore($connection()))->verify($token),
-            fn($id) => (new UserAccounts($connection()))->adminState($id), Config::string('WEBSOCKETS_ALLOWED_ORIGINS'));
+            fn($id) => (new UserAccounts($connection()))->adminState($id));
         $queue = Core::websockets();
         $drain = static function (Protocol $protocol) use ($queue): void {
-            $items = $queue->claim(max(1, min(500, Config::int('WEBSOCKETS_QUEUE_LIMIT', 500))));
+            $items = $queue->claim(500);
             try {
                 $rows = array();
                 foreach ($items as $item) {
@@ -59,20 +60,13 @@ final class Runtime
                 throw $error;
             }
         };
-        $context = array();
-        if (Config::bool('WEBSOCKETS_TLS')) $context['ssl'] = array('local_cert' => Config::string('WEBSOCKETS_TLS_PEM_FILE'), 'passphrase' => Config::string('WEBSOCKETS_TLS_PEM_PASSPHRASE'));
-        $host = Config::string('WEBSOCKETS_HOST', '0.0.0.0');
-        if (str_contains($host, ':') && !str_starts_with($host, '[')) $host = '[' . $host . ']';
-        $worker = new Worker('websocket://' . $host . ':' . Config::int('WEBSOCKETS_PORT', 8001), $context);
-        if (Config::bool('WEBSOCKETS_TLS')) $worker->transport = 'ssl';
+        $worker = new Worker('websocket://127.0.0.1:' . self::PORT);
         $worker->name = 'MajorDoMo WebSocket';
         $worker->count = 1;
-        $server = new Server($protocol, $access, array('clients' => max(1, Config::int('WEBSOCKETS_MAX_CLIENTS')),
-            'per_ip' => max(1, Config::int('WEBSOCKETS_MAX_CONNECTIONS_PER_IP')), 'frame' => max(1024, Config::int('WEBSOCKETS_MAX_FRAME_BYTES')),
-            'timeout' => Config::int('WEBSOCKETS_CLIENT_TIMEOUT')), $drain, static function (int $clients): void {
-                setGlobal('cycle_websocketsRun', time(), 1);
-                if ((int)gg('WSClientsTotal') !== $clients) setGlobal('WSClientsTotal', $clients, 1);
-            });
+        $server = new Server($protocol, $access, array(), $drain, static function (int $clients): void {
+            setGlobal('cycle_websocketsRun', time(), 1);
+            if ((int)gg('WSClientsTotal') !== $clients) setGlobal('WSClientsTotal', $clients, 1);
+        });
         $server->attach($worker);
         $directory = $root . '/cms/cycles';
         if (!is_dir($directory) && !mkdir($directory, 0770, true) && !is_dir($directory)) throw new \RuntimeException('Не удалось создать каталог состояния WebSocket.');

@@ -139,10 +139,6 @@ final class Installer
             $errors['ROOTHTML'] = 'Путь не должен содержать «..».';
         }
 
-        if (($values['WEBSOCKETS_CHECK_ORIGIN'] ?? '0') === '1'
-            && trim((string)($values['WEBSOCKETS_ALLOWED_ORIGINS'] ?? '')) === '') {
-            $errors['WEBSOCKETS_ALLOWED_ORIGINS'] = 'При проверке Origin укажите хотя бы один разрешённый адрес.';
-        }
         if (($values['TRACK_DATA_CHANGES'] ?? '0') === '1' && trim((string)($values['TRACK_DATA_CHANGES_IGNORE'] ?? '')) === '') {
             $warnings[] = 'Журнал изменений объектов включён без списка исключений — история будет расти быстрее.';
         }
@@ -153,13 +149,6 @@ final class Installer
         $host = parse_url($baseUrl, PHP_URL_HOST);
         if (is_string($host) && in_array($host, array('127.0.0.1', 'localhost', '::1'), true)) {
             $warnings[] = 'BASE_URL указывает на локальный адрес. С других устройств в домашней сети система по нему не откроется.';
-        }
-        if (($values['websockets_enabled'] ?? '0') === '1') {
-            $wsPort = (int)($values['WEBSOCKETS_PORT'] ?? 0);
-            $urlPort = (int)(parse_url($baseUrl, PHP_URL_PORT) ?: 80);
-            if ($wsPort > 0 && $wsPort === $urlPort) {
-                $warnings[] = 'Порт WebSockets совпадает с портом сайта. Обычно для WebSockets нужен отдельный порт (например, 8001).';
-            }
         }
 
         $overrides = $this->environment->overrides(InstallSchema::managedEnvKeys());
@@ -320,8 +309,8 @@ final class Installer
             'admin_login' => $adminCreated ? (string)$values['admin_login'] : '',
             'admin_created' => $adminCreated,
             'redis' => ($values['redis_enabled'] ?? '0') === '1',
-            'websockets' => ($values['websockets_enabled'] ?? '0') === '1',
-            'websockets_port' => (string)($values['WEBSOCKETS_PORT'] ?? ''),
+            'websockets' => true,
+            'websockets_port' => (string)\MajorDoMo\Core\WebSockets\Runtime::PORT,
             'backup' => $backup !== null ? $backup : '',
             'env_updated' => (int)$envResult['updated'],
             'env_appended' => (int)$envResult['appended'],
@@ -446,7 +435,6 @@ final class Installer
         $redisHost = is_string($useRedis) && $useRedis !== '' ? $useRedis : '127.0.0.1';
         $values['redis_enabled'] = is_string($useRedis) && $useRedis !== '' ? '1' : '0';
         $values['REDIS_HOST'] = $redisHost;
-        $values['websockets_enabled'] = Config::has('DISABLE_WEBSOCKETS') && Config::bool('DISABLE_WEBSOCKETS') ? '0' : '1';
 
         if (($values['GENERAL_ALICE_NAME'] ?? '') === '') {
             $values['GENERAL_ALICE_NAME'] = Config::string('PROJECT_TITLE', 'Мой дом');
@@ -578,12 +566,6 @@ final class Installer
             return '';
         }
 
-        if ($id === 'WEBSOCKETS_PUBLIC_URL') {
-            $url = parse_url($value);
-            if (!is_array($url) || !in_array($url['scheme'] ?? '', array('ws', 'wss'), true) || empty($url['host']) || isset($url['user']) || isset($url['pass']) || isset($url['fragment']) || isset($url['query'])) {
-                return 'Укажите ws:// или wss:// адрес без пароля, токена и параметров запроса.';
-            }
-        }
 
         if ($type === 'number') {
             if (!is_numeric($value)) {
@@ -643,7 +625,7 @@ final class Installer
             }
         }
 
-        if (in_array($id, array('DB_HOST', 'DB_NAME', 'WEBSOCKETS_HOST', 'REDIS_HOST'), true) && preg_match('/\s/', $value)) {
+        if (in_array($id, array('DB_HOST', 'DB_NAME', 'REDIS_HOST'), true) && preg_match('/\s/', $value)) {
             return 'Значение не должно содержать пробелы.';
         }
 
@@ -723,21 +705,10 @@ final class Installer
         $map['USE_REDIS'] = ($values['redis_enabled'] ?? '0') === '1'
             ? (trim((string)($values['REDIS_HOST'] ?? '')) !== '' ? (string)$values['REDIS_HOST'] : '127.0.0.1')
             : 'false';
-        $map['DISABLE_WEBSOCKETS'] = ($values['websockets_enabled'] ?? '0') === '1' ? '0' : '1';
 
         // Redis/TLS/Windows-only keys must not be written when their feature is off.
         if (($values['redis_enabled'] ?? '0') !== '1') {
             foreach (array('REDIS_PORT', 'REDIS_DB', 'REDIS_USERNAME', 'REDIS_PASSWORD', 'REDIS_TIMEOUT', 'REDIS_PREFIX') as $key) {
-                unset($map[$key]);
-            }
-        }
-        if (($values['websockets_enabled'] ?? '0') !== '1') {
-            foreach (array('WEBSOCKETS_HOST', 'WEBSOCKETS_PORT') as $key) {
-                unset($map[$key]);
-            }
-        }
-        if (($values['WEBSOCKETS_TLS'] ?? '0') !== '1') {
-            foreach (array('WEBSOCKETS_TLS_PEM_FILE', 'WEBSOCKETS_TLS_PEM_PASSPHRASE', 'WEBSOCKETS_TLS_ALLOW_SELF_SIGNED', 'WEBSOCKETS_TLS_VERIFY_PEER', 'WEBSOCKETS_TLS_VERIFY_PEER_NAME') as $key) {
                 unset($map[$key]);
             }
         }

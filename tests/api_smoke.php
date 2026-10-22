@@ -127,6 +127,18 @@ try {
     check($queued['DATANAME'] === 'api', 'Generic calls use existing queue');
     $pdo->exec("UPDATE operations_queue SET CLAIM_TOKEN='fixture',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $queued['ID']);
     check(Core::worker()->execute($queued['ID'], 'fixture')['success'] === true, 'Worker executes queued API through dispatcher');
+    // Api\Request разбирает сегмент пути через rawurldecode, поэтому кодировать
+    // его нужно rawurlencode: urlencode() превращает пробел в "+" и сценарий
+    // с пробелом в названии не находится.
+    check(Core::api()->request('/api/script/' . rawurlencode('Test script'), 'GET', array('input' => 5), true) !== false, 'Script title with a space is reachable through an encoded path');
+    check(Core::api()->request('/api/script/Missing%20script', 'GET', array(), true) === false, 'Missing internal script is reported as a failure');
+    check(str_contains((string)Core::api()->lastError(), 'not_found'), 'Internal API failure keeps its reason for the log');
+    Core::api()->request('/api/script/Missing%20script', 'GET', array());
+    $queued = $pdo->query('SELECT * FROM operations_queue ORDER BY ID DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+    $pdo->exec("UPDATE operations_queue SET CLAIM_TOKEN='fixture',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $queued['ID']);
+    $failed = Core::worker()->execute($queued['ID'], 'fixture');
+    check($failed['success'] === false && str_contains($failed['error'], '/api/script/Missing script') && str_contains($failed['error'], 'not_found'),
+        'Failed background API names the path and the reason');
 
     $response = new Response('fixture-id', microtime(true));
     check($response->success(false)['data'] === false && $response->failure(new ApiException(422, 'validation_failed', 'Bad'))['error']['details'] instanceof stdClass, 'Response types');

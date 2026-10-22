@@ -116,12 +116,9 @@
                 </div>
             </div>
             [#endif#]
-            [#if PARENT_METHOD_CODE!=""#]
-            <details open>
-                <summary class="md-parent-method-card__summary">Показать код родителя</summary>
-                <pre class="md-admin-code-sample md-parent-method-code">[#PARENT_METHOD_CODE#]</pre>
-            </details>
-            [#endif#]
+            [#if PARENT_METHOD_CODE_RAW!=""#]
+            [#inc objects_parent_method_code.php#]
+            [#endif PARENT_METHOD_CODE_RAW#]
         </div>
     </section>
     [#else#]

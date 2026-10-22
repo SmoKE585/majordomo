@@ -25,7 +25,7 @@ class FixtureSocket {
 }
 Object.assign(window, {
     location: {href: 'https://home.test/panel/'},
-    MDJWebSocketConfig: {enabled: true, url: '/ws', ticketUrl: '/admin.php?ajax_panel=1&op=websocket'},
+    MDJWebSocketConfig: {url: '/ws', ticketUrl: '/admin.php?ajax_panel=1&op=websocket'},
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
     clearTimeout(id) { timers.delete(id); },
     queueMicrotask,

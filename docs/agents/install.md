@@ -88,11 +88,11 @@ CLI-запуски (CLI-скрипты и циклы) gate не трогает: 
 
 | Источник | Примеры |
 | --- | --- |
-| `.env` | `DB_*`, `PROJECT_TITLE`, `BASE_URL`, `ROOTHTML`, `TIMEZONE`, `APP_ENV`, `DEBUG_MODE`, `GIT_URL`, `REDIS_*`, `WEBSOCKETS_*`, `LOG_*`, `HOME_NETWORK`, `PATH_TO_*` |
+| `.env` | `DB_*`, `PROJECT_TITLE`, `BASE_URL`, `ROOTHTML`, `TIMEZONE`, `APP_ENV`, `DEBUG_MODE`, `GIT_URL`, `REDIS_*`, `LOG_*`, `HOME_NETWORK`, `PATH_TO_*` |
 | `settings` | `GENERAL_ALICE_NAME`, `SITE_LANGUAGE`, `SITE_TIMEZONE`, `THEME`, `VOICE_LANGUAGE`, `SPEAK_SIGNAL`, `SYSTEM_DB_*`, `ERRORS_KEEP_HISTORY`, `SYSTEM_DISABLE_DEBMES`, `BACKUP_PATH` |
-| только UI | `redis_enabled`, `websockets_enabled` — переключатели, которые превращаются в `USE_REDIS` / `DISABLE_WEBSOCKETS` |
+| только UI | `redis_enabled` — переключатели, которые превращаются в `USE_REDIS` |
 
-Секреты (`DB_PASSWORD`, `REDIS_PASSWORD`, `WEBSOCKETS_AUTH_TOKEN` и т. п.) не
+Секреты (`DB_PASSWORD`, `REDIS_PASSWORD` и т. п.) не
 выводятся в HTML. Если значение уже есть,
 поле показывается пустым с подсказкой «сохранён»; пустое значение означает
 «оставить как есть», а для очистки есть отдельная галочка.

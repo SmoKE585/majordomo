@@ -52,9 +52,8 @@ file_put_contents($fixture . '/.env', implode("\n", array(
     'DB_USER=fixture_user',
     'DB_PASSWORD="p#ss word"',
     'DEBUG_MODE=0',
-    'DISABLE_WEBSOCKETS=1',
     'USE_REDIS=false',
-    'WEBSOCKETS_PORT=9000',
+    'LOG_MAX_SIZE=9000',
     'TIMEZONE=Europe/Moscow',
     'RESTART_THREADS=cycle_main.php, cycle_states.php',
     'ADITIONAL_GIT_URLS={"https://example.com/alpha.tar.gz":"alpha"}',
@@ -68,8 +67,7 @@ Config::boot($fixture);
 check(Config::string('DB_HOST') === 'db.local', 'reads values from .env');
 check(Config::string('DB_PASSWORD') === 'p#ss word', 'keeps quoted password intact');
 check(Config::bool('DEBUG_MODE') === false, 'casts DEBUG_MODE=0 to false');
-check(Config::bool('DISABLE_WEBSOCKETS') === true, 'casts DISABLE_WEBSOCKETS=1 to true');
-check(Config::int('WEBSOCKETS_PORT') === 9000, 'casts integer values');
+check(Config::int('LOG_MAX_SIZE') === 9000, 'casts integer values');
 check(Config::has('UPDATES_REPOSITORY_NAME') === true, 'keeps a value from a legacy constant');
 check(Config::string('UPDATES_REPOSITORY_NAME') === 'from_legacy_constant', 'legacy constant wins over the schema default');
 check(Config::has('USE_REDIS'), 'optional key is present when set');
@@ -81,7 +79,7 @@ check($redis->get() === null, 'RedisConnection does not try to connect to host "
 check(defined('DEBUG_MODE') && DEBUG_MODE === false, 'defines a legacy constant with the typed value');
 check(DOC_ROOT === $fixture, 'computes DOC_ROOT from the project path');
 check(ROOT === $fixture . '/', 'computes ROOT with a trailing slash');
-check(WEBSOCKETS_PORT === 9000, 'defines a typed legacy constant');
+check(LOG_MAX_SIZE === 9000, 'defines a typed legacy constant');
 check(Config::arrayValue('RESTART_THREADS') === array('cycle_main.php', 'cycle_states.php'), 'parses comma-separated lists');
 check(Config::arrayValue('ADITIONAL_GIT_URLS') === array('https://example.com/alpha.tar.gz' => 'alpha'), 'parses JSON objects');
 

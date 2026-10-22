@@ -116,31 +116,6 @@ final class ConfigSchema
             'MQTT_MAX_PACKET_BYTES' => array('type' => 'integer', 'default' => 1048576, 'constant' => false),
             'MQTT_PACKET_TIMEOUT' => array('type' => 'decimal', 'default' => 5.0, 'constant' => false),
 
-            // WebSockets -----------------------------------------------------
-            'DISABLE_WEBSOCKETS' => array('type' => 'boolean', 'optional' => true),
-            'WEBSOCKETS_HOST' => array('type' => 'string', 'default' => '0.0.0.0'),
-            'WEBSOCKETS_PORT' => array('type' => 'integer', 'default' => 8001),
-            'WEBSOCKETS_PUBLIC_URL' => array('type' => 'string', 'default' => '', 'constant' => false),
-            'WEBSOCKETS_TLS' => array('type' => 'boolean', 'default' => false),
-            'WEBSOCKETS_MAX_CLIENTS' => array('type' => 'integer', 'default' => 100),
-            'WEBSOCKETS_MAX_CONNECTIONS_PER_IP' => array('type' => 'integer', 'default' => 100),
-            'WEBSOCKETS_MAX_REQUESTS_PER_MINUTE' => array('type' => 'integer', 'default' => 20000),
-            'WEBSOCKETS_CLIENT_TIMEOUT' => array('type' => 'integer', 'default' => 0),
-            'WEBSOCKETS_WRITE_TIMEOUT' => array('type' => 'decimal', 'default' => 0.25),
-            'WEBSOCKETS_CLIENT_WRITE_TIMEOUT' => array('type' => 'decimal', 'default' => 0.5),
-            'WEBSOCKETS_MAX_FRAME_BYTES' => array('type' => 'integer', 'default' => 1048576),
-            'WEBSOCKETS_CACHE_MAX_ENTRIES' => array('type' => 'integer', 'default' => 4096, 'constant' => false),
-            'WEBSOCKETS_CACHE_MAX_BYTES' => array('type' => 'integer', 'default' => 8388608, 'constant' => false),
-            'WEBSOCKETS_CACHE_TTL' => array('type' => 'integer', 'default' => 300, 'constant' => false),
-            'WEBSOCKETS_MAX_SUBSCRIPTIONS' => array('type' => 'integer', 'default' => 4096, 'constant' => false),
-            'WEBSOCKETS_CHECK_ORIGIN' => array('type' => 'boolean', 'default' => false),
-            'WEBSOCKETS_ALLOWED_ORIGINS' => array('type' => 'string', 'default' => ''),
-            'WEBSOCKETS_AUTH_TOKEN' => array('type' => 'string', 'default' => '', 'secret' => true),
-            'WEBSOCKETS_TLS_PEM_FILE' => array('type' => 'string', 'default' => './server.pem'),
-            'WEBSOCKETS_TLS_PEM_PASSPHRASE' => array('type' => 'string', 'default' => 'shinywss', 'secret' => true),
-            'WEBSOCKETS_TLS_ALLOW_SELF_SIGNED' => array('type' => 'boolean', 'default' => true),
-            'WEBSOCKETS_TLS_VERIFY_PEER' => array('type' => 'boolean', 'default' => false),
-            'WEBSOCKETS_TLS_VERIFY_PEER_NAME' => array('type' => 'boolean', 'default' => false),
         );
     }
 

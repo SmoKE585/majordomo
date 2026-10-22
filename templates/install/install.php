@@ -479,7 +479,7 @@ $displayField = static function (array $field, string $value) use ($secrets): st
                 <?php
                 $advancedFields = $fieldsByStep[InstallSchema::STEP_ADVANCED] ?? array();
                 $advancedSections = $fieldsBySection($advancedFields);
-                $advancedOrder = array('performance', 'logging', 'redis', 'websockets', 'security', 'integrations');
+                $advancedOrder = array('performance', 'logging', 'redis', 'security', 'integrations');
                 $sectionsMeta = InstallSchema::sections();
                 ?>
                 <section class="md-install-step<?= (int)$startStep === 3 ? ' is-active' : '' ?>" data-install-step="3" data-install-title="Дополнительно">
@@ -489,7 +489,7 @@ $displayField = static function (array $field, string $value) use ($secrets): st
                         <p>Этот шаг можно пропустить: значения по умолчанию безопасны. Откройте только те разделы, которые собираетесь использовать.</p>
                     </header>
 
-                    <?= \MDJUI::alert('info', 'Необязательный шаг', 'Redis и WebSockets можно включить позже. Журналы и внешний доступ тоже настраиваются потом — мастер не требует заполнять всё сразу.') ?>
+                    <?= \MDJUI::alert('info', 'Необязательный шаг', 'Redis можно включить позже. Журналы и внешний доступ тоже настраиваются потом — мастер не требует заполнять всё сразу.') ?>
 
                     <div class="md-install-accordions">
                         <?php foreach ($advancedOrder as $sectionKey): ?>
@@ -592,7 +592,7 @@ $displayField = static function (array $field, string $value) use ($secrets): st
                             </div>
                             <div class="md-install-review__row">
                                 <dt>WebSockets</dt>
-                                <dd><?= ($values['websockets_enabled'] ?? '0') === '1' ? 'включены · порт ' . \MDJUI::e((string)($values['WEBSOCKETS_PORT'] ?? '')) : 'выключены' ?></dd>
+                                <dd>встроены в ядро · /ws на порте сайта</dd>
                             </div>
                             <?php if ($needsAdmin): ?>
                             <div class="md-install-review__row">

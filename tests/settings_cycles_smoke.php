@@ -7,7 +7,6 @@
 
 putenv('APP_ENV=testing');
 putenv('USE_REDIS=false');
-putenv('DISABLE_WEBSOCKETS=' . (($argv[1] ?? '') === 'websockets-disabled' ? '1' : '0'));
 // SettingsManager checks the database on construction; keep the fixture from
 // ever reaching a real server even if the shell exports DB_* variables.
 putenv('DB_HOST=localhost');
@@ -37,13 +36,15 @@ function check(bool $condition, string $message): void
 // --- Settings schema -------------------------------------------------------
 $sections = SettingsSchema::sections();
 $fields = SettingsSchema::fields();
-check(count($sections) >= 8, 'settings schema exposes the main sections');
-check(count($fields) > 70, 'settings schema reuses the wizard field set');
+check(count($sections) >= 7, 'settings schema exposes the main sections');
+$expectedFields = array_diff(array_keys(\MajorDoMo\Core\Install\InstallSchema::fields()), array('create_schema', 'admin_login', 'admin_name', 'admin_password', 'admin_password_confirm'));
+check(array_diff($expectedFields, array_keys($fields)) === array(), 'settings schema reuses every non-installation wizard field');
 check(!isset($fields['admin_password']), 'admin creation fields are not shown in general settings');
 check(!isset($fields['create_schema']), 'automatic schema creation is wizard-only');
 check(isset($fields['DB_HOST']) && isset($fields['PROJECT_TITLE']) && isset($fields['THEME']), 'core wizard fields are present');
 check(isset($fields['SYSTEM_DEBMES_PATH']), 'legacy logging setting is preserved');
-check(!isset($fields['SYSTEM_WEBSOCKETS_TOKEN'], $fields['WEBSOCKETS_AUTH_TOKEN']) && isset($fields['WEBSOCKETS_PUBLIC_URL']), 'WebSocket uses API credentials and a public endpoint instead of shared secrets');
+check(!isset($sections['websockets']) && !array_filter(array_keys($fields), static fn($id) => str_contains(strtolower($id), 'websocket')), 'WebSocket has no editable settings or section');
+check(!array_filter(array_keys(ConfigSchema::all()), static fn($id) => str_contains(strtolower($id), 'websocket')), 'WebSocket has no environment configuration keys');
 
 $config = ConfigSchema::all();
 $missingConfig = array();
@@ -92,10 +93,6 @@ $otherSection = $manager->validate(array('value_PROJECT_TITLE' => 'Дом тес
 check(($otherSection['values']['DEBUG_MODE'] ?? '') === '1', 'switches from other sections are preserved');
 $plainPost = $manager->validate(array('PROJECT_TITLE' => 'Значение из мастера'));
 check(($plainPost['values']['PROJECT_TITLE'] ?? '') === 'Значение из мастера', 'plain field ids still work for the wizard and reset');
-$socketPost = $manager->validate(array('WEBSOCKETS_PUBLIC_URL' => 'wss://home.test:8002/majordomo'));
-check(!isset($socketPost['errors']['WEBSOCKETS_PUBLIC_URL']), 'public WebSocket URL accepts WSS with a custom port');
-$socketPost = $manager->validate(array('WEBSOCKETS_PUBLIC_URL' => 'wss://home.test/ws?token=secret'));
-check(isset($socketPost['errors']['WEBSOCKETS_PUBLIC_URL']), 'public WebSocket URL rejects embedded permanent credentials');
 
 file_put_contents($root . '/scripts/cycle_test.php', "<?php\n");
 file_put_contents($root . '/scripts/cycle_other.php', "<?php\n");
@@ -150,16 +147,15 @@ try {
     $supervisor->reconcile(array('cycle_test'), array('cycle_test' => 1), $toStart, $toStop);
     check(isset($toStop['cycle_test']) && isset($toStart['cycle_test']), 'supervisor restarts a running cycle on a new generation');
 
-    $websocketsDisabled = Config::bool('DISABLE_WEBSOCKETS');
-    foreach (array('cycle_wscache', 'cycle_websockets') as $name) {
-        check($supervisor->shouldStartAtBoot($name) === !$websocketsDisabled, $name . ' boot respects WebSocket configuration');
+    foreach (array('cycle_websockets') as $name) {
+        check($supervisor->shouldStartAtBoot($name), $name . ' starts without a feature toggle');
         $state = $manager->state($name);
-        check(($state['status'] === 'disabled') === $websocketsDisabled && !$state['online'], $name . ' status respects WebSocket configuration');
+        check($state['status'] === 'stopped' && !$state['online'], $name . ' reports actual process state');
         check($state['desired'] === 'running', $name . ' configuration does not overwrite persistent preferences');
         $toStart = array($name => time() + 2);
         $toStop = array();
         $supervisor->reconcile(array($name), array($name => 1), $toStart, $toStop);
-        check(isset($toStop[$name]) === $websocketsDisabled && isset($toStart[$name]) === !$websocketsDisabled, $name . ' recovery respects WebSocket configuration');
+        check(!isset($toStop[$name]) && isset($toStart[$name]), $name . ' follows normal supervisor recovery');
     }
 } finally {
     foreach (glob($root . '/scripts/*.php') ?: array() as $file) {

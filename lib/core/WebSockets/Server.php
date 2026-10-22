@@ -24,7 +24,7 @@ final class Server
             $ip = $connection->getRemoteIp();
             $sameIp = count(array_filter($this->connections, static fn($entry) => !isset($entry['identity']) && $entry['peer'] === $ip));
             if (count($this->connections) >= ($this->limits['clients'] ?? 100) || $sameIp >= ($this->limits['per_ip'] ?? 100)) { $connection->destroy(); return; }
-            $this->connections[$connection->id] = array('connection' => $connection, 'peer' => $ip, 'created' => time(), 'last' => time());
+            $this->connections[$connection->id] = array('connection' => $connection, 'peer' => $ip, 'created' => time());
         };
         $worker->onWebSocketConnect = function (TcpConnection $connection, Request $request): void {
             if (!isset($this->connections[$connection->id])) return;
@@ -60,12 +60,8 @@ final class Server
             try {
                 if (!$this->access->valid($this->connections[$connection->id]['identity'])) { $this->close($connection, 1008, 'authorization_expired'); return; }
                 if (!is_string($message)) { $this->close($connection, 1003, 'text_only'); return; }
-                $this->connections[$connection->id]['last'] = time();
                 $this->protocol->receive((string)$connection->id, $message);
             } catch (\Throwable $error) { $this->log($error); $this->close($connection, 1011, 'service_unavailable'); }
-        };
-        $worker->onWebSocketPong = function (TcpConnection $connection): void {
-            if (isset($this->connections[$connection->id])) $this->connections[$connection->id]['last'] = time();
         };
         $worker->onBufferFull = function (TcpConnection $connection): void { $connection->destroy(); };
         $worker->onClose = function (TcpConnection $connection): void {
@@ -91,8 +87,7 @@ final class Server
                     }
                     try { $valid = $this->access->valid($entry['identity']); }
                     catch (\Throwable $error) { $this->log($error); $valid = false; }
-                    $timeout = $this->limits['timeout'] ?? 0;
-                    if (!$valid || ($timeout > 0 && $entry['last'] <= time() - $timeout)) { $this->close($connection, 1008, 'authorization_expired'); continue; }
+                    if (!$valid) { $this->close($connection, 1008, 'authorization_expired'); continue; }
                     $type = $connection->websocketType;
                     $connection->websocketType = "\x89";
                     $connection->send('');

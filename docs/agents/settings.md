@@ -21,9 +21,9 @@ order: 40
 
 | Источник | Примеры | Куда пишется |
 | --- | --- | --- |
-| `.env` | `DB_*`, `PROJECT_TITLE`, `BASE_URL`, `APP_ENV`, `TIMEZONE`, `REDIS_*`, `WEBSOCKETS_*`, `LOG_*`, `HOME_NETWORK`, `PATH_TO_*` | `EnvFile` (с резервной копией `.env.bak.*`) |
-| `settings` | `GENERAL_ALICE_NAME`, `SITE_LANGUAGE`, `SITE_TIMEZONE`, `THEME`, `VOICE_LANGUAGE`, `SPEAK_SIGNAL`, `SYSTEM_DB_*`, `ERRORS_KEEP_HISTORY`, `BACKUP_PATH`, `SYSTEM_DEBMES_PATH`, `SYSTEM_WEBSOCKETS_TOKEN` | `InstallDatabase::upsertSettings()` |
-| только UI | `redis_enabled`, `websockets_enabled` | превращаются в `USE_REDIS` / `DISABLE_WEBSOCKETS` |
+| `.env` | `DB_*`, `PROJECT_TITLE`, `BASE_URL`, `APP_ENV`, `TIMEZONE`, `REDIS_*`, `LOG_*`, `HOME_NETWORK`, `PATH_TO_*` | `EnvFile` (с резервной копией `.env.bak.*`) |
+| `settings` | `GENERAL_ALICE_NAME`, `SITE_LANGUAGE`, `SITE_TIMEZONE`, `THEME`, `VOICE_LANGUAGE`, `SPEAK_SIGNAL`, `SYSTEM_DB_*`, `ERRORS_KEEP_HISTORY`, `BACKUP_PATH`, `SYSTEM_DEBMES_PATH` | `InstallDatabase::upsertSettings()` |
+| только UI | `redis_enabled` | превращаются в `USE_REDIS` |
 
 Схема полей — `lib/core/Settings/SettingsSchema.php`. Она **не дублирует**
 мастер: берёт `InstallSchema::fields()` и добавляет только те старые
@@ -84,8 +84,7 @@ DB-настройки, которых в мастере нет. Поэтому �
 
 ## 4. Секреты
 
-- `DB_PASSWORD`, `REDIS_PASSWORD`, `WEBSOCKETS_AUTH_TOKEN`,
-  `WEBSOCKETS_TLS_PEM_PASSPHRASE` и старый `SYSTEM_WEBSOCKETS_TOKEN` не
+- `DB_PASSWORD`, `REDIS_PASSWORD` не
   выводятся в HTML.
 - Поле показывается пустым с подсказкой «сохранён».
 - Пустое поле = «оставить как есть».
@@ -93,15 +92,14 @@ DB-настройки, которых в мастере нет. Поэтому �
 
 ## 5. Зависимости полей
 
-`depends` из `InstallSchema` сохраняется. Поля Redis/WebSockets/TLS скрыты,
+`depends` из `InstallSchema` сохраняется. Поля Redis скрыты,
 пока не включён их родительский переключатель. Это делает страницу короче и
 не даёт сохранить бессмысленную комбинацию.
 
 ## 6. Выбор папок
 
 Поля типа `path` (`BACKUP_PATH`, `LOG_DIRECTORY`, `SYSTEM_DEBMES_PATH`) используют
-собственный `MDFolderPicker`, а не elFinder. Для `WEBSOCKETS_TLS_PEM_FILE` кнопка
-не показывается: это файл, а не каталог, путь вводится вручную.
+собственный `MDFolderPicker`, а не elFinder.
 
 Общее поведение:
 

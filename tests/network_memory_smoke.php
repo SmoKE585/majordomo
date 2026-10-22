@@ -74,8 +74,6 @@ if (($argv[1] ?? '') === 'broker-fixture') {
 $pdo = new PDO('sqlite::memory:');
 if (getenv('APP_ENV') !== 'testing' || $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') throw new RuntimeException('Test isolation failed');
 $fixture = sys_get_temp_dir() . '/mjd-network-memory-' . bin2hex(random_bytes(6));
-foreach (array('WEBSOCKETS_CACHE_MAX_ENTRIES' => 8, 'WEBSOCKETS_CACHE_MAX_BYTES' => 2048,
-    'WEBSOCKETS_CACHE_TTL' => 300, 'WEBSOCKETS_MAX_SUBSCRIPTIONS' => 8) as $name => $value) putenv($name . '=' . $value);
 require_once $sourceRoot . '/lib/core.class.php';
 \MajorDoMo\Core\Config::boot($fixture);
 $originalDirectory = getcwd();
@@ -267,7 +265,7 @@ try {
     check(max($latencies) < 0.25, 'socket waiting wakes promptly on new sensor data');
 
     $pages = static function (): Generator { if (false) yield array(); };
-    $app = new \MajorDoMo\Core\WebSockets\Protocol($pages, static fn($names) => array(), 8, 8, 2048, 1048576, 20000,
+    $app = new \MajorDoMo\Core\WebSockets\Protocol($pages, static fn($names) => array(), 8, 8, 2048, 1048576,
         static fn($id) => 'object-' . $id);
     $client = new MemoryTestWsClient();
     $app->connect('fixture-client', static fn($message) => $client->send($message), static function ($code, $reason): void {}, false);
