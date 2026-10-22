@@ -51,7 +51,7 @@ try {
     };
     const waitFor = async expression => {
         for (let i = 0; i < 100; i++) { if (await evaluate(expression)) return; await pause(75); }
-        const diagnostics = await evaluate('({feedback:document.querySelector("[data-api-feedback]")?.textContent, ready:document.readyState, url:location.pathname})');
+        const diagnostics = await evaluate('({feedback:document.querySelector("[data-api-feedback]")?.textContent, hookFeedback:document.querySelector("[data-api-hook-feedback]")?.textContent, ready:document.readyState, url:location.pathname})');
         throw new Error('UI condition did not become true: ' + expression + '; ' + JSON.stringify(diagnostics) + '; exceptions: ' + errors.join('; '));
     };
     await send('Page.enable'); await send('Runtime.enable');
@@ -110,6 +110,36 @@ try {
     await send('Page.navigate', {url: base + '/preview?tab=tokens'});
     await waitFor('document.querySelector("[data-md-api]")?.dataset.apiBound === "1" && document.querySelector("#md-api-tokens").classList.contains("active")');
     check(await evaluate('document.querySelector("#md-api-tab-tokens").getAttribute("aria-selected") === "true"'), 'Tab deep link opens tokens pane');
+    await send('Page.navigate', {url: base + '/preview?tab=hooks'});
+    await waitFor('document.querySelector("[data-md-api]")?.dataset.apiBound === "1" && document.querySelector("#md-api-hooks").classList.contains("active")');
+    check(await evaluate('document.querySelector("[data-api-tab-count=\\"hooks\\"]") !== null'), 'Hooks tab has its own counter');
+    check(await evaluate(`(() => {
+        const form = document.querySelector('#md-api-hooks form[data-api-action]');
+        form.elements.name.value = 'UI fixture hook';
+        form.elements.module.value = 'fixturehook';
+        form.elements.module.dispatchEvent(new Event('change', {bubbles: true}));
+        form.elements.handler.value = 'webhook.php';
+        form.requestSubmit();
+        return true;
+    })()`), 'Hook creation form submits');
+    await waitFor('!document.querySelector("[data-api-hook-secret]").hidden');
+    check(await evaluate('/\\/api\\/hooks\\/[a-f0-9]{64}/.test(document.querySelector("[data-api-hook-secret]").textContent)'), 'Full hook link shown once');
+    check(await evaluate('document.activeElement === document.querySelector("[data-api-hook-secret]")'), 'Hook secret receives focus');
+    check(await evaluate('document.querySelector("[data-api-hook-list]").textContent.includes("UI fixture hook")'), 'Hook list updates after create');
+    await pause(300);
+    await evaluate('document.querySelector("[data-hook-edit]").click()');
+    await waitFor('document.querySelector("#md-api-hook-edit").classList.contains("show")');
+    check(await evaluate('document.querySelector("#md-api-hook-edit-name").value === "UI fixture hook" && document.querySelector("#md-api-hook-edit-handler").value === "webhook.php"'), 'Edit modal is prefilled');
+    await pause(500);
+    await evaluate(`(() => {
+        const form = document.querySelector('#md-api-hook-edit-form');
+        form.elements.name.value = 'UI fixture renamed';
+        form.requestSubmit();
+        return true;
+    })()`);
+    await waitFor('!document.querySelector("#md-api-hook-edit").classList.contains("show") && document.querySelector("[data-api-hook-list]").textContent.includes("UI fixture renamed")');
+    check(await evaluate('document.querySelector("[data-api-hook-secret]").hidden'), 'Secret is cleared after a later action');
+    check(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1'), 'Hooks tab has no horizontal overflow at 390 px');
     await send('Page.navigate', {url: base + '/preview'});
     await waitFor('document.querySelector("[data-md-api]")?.dataset.apiBound === "1"');
     check(await evaluate('document.querySelector("[data-api-secret]").hidden && !/mdm_[a-f0-9]{64}/.test(document.body.textContent)'), 'Reload never redisplays plaintext token');

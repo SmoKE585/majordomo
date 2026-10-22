@@ -4,6 +4,11 @@
 */
 
 /**
+ * Оболочка админки: навигация, уведомления и содержимое модулей.
+ *
+ * Изменения:
+ * 2026-10-22 — удалена иконка неиспользуемого модуля DurationInput.
+ *
  * @author Serge Dzheigalo <jey@unit.local>
  * @package project
  */
@@ -211,7 +216,6 @@ class panel extends module
             'pinghosts' => 'ti-server',
             'yadevices' => 'ti-device-speaker',
             'yandexhome' => 'ti-home-bolt',
-            'duration_input' => 'ti-hourglass',
             'blockly_code' => 'ti-puzzle',
             'shoutbox' => 'ti-messages',
             'ui_kit' => 'ti-palette',

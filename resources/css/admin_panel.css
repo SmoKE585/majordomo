@@ -1,4 +1,6 @@
 /*
+ * 2026-10-22 — удалены стили неиспользуемого выбора длительности.
+ *
  * MajorDoMo admin panel styles.
  * This file is the single entry point for admin shell CSS during the Bootstrap 5 migration.
  */
@@ -233,10 +235,6 @@ div.resize-handler {
 textarea.ow-display-text {
         font-family: 'Courier New', Monospace;
         height: 75px;
-}
-
-.html-duration-picker {
-    text-align: left !important;
 }
 
 /*

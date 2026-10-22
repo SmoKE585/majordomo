@@ -1,6 +1,7 @@
 <?php
 /**
- * Russian language file
+ * Русский перевод интерфейса MajorDoMo.
+ * 2026-10-22 — модуль Shoutbox называется «Оповещения».
  *
  * @package MajorDoMo
  * @author Serge Dzheigalo <sergejey@gmail.com> https://majordomohome.com/
@@ -128,6 +129,7 @@ $dictionary = array(
     'APP_CHATBOX' => 'Сообщения',
 
     'MODULE_OBJECTS_HISTORY' => 'История объектов',
+    'MODULE_SHOUTBOX' => 'Оповещения',
     'MODULE_KNOWLEDGE_BASE' => 'База знаний',
     'MODULE_BT_DEVICES' => 'Bluetooth-устройства',
     'MODULE_CONTROL_MENU' => 'Меню управления',

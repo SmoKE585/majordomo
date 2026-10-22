@@ -295,7 +295,6 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `$.cookie`;
 - `$.publish` / `$.subscribe` (tiny-pubsub);
 - `window.TomSelect`;
-- `window.HtmlDurationPicker`;
 - `window.MDJAdminUI`;
 - `window.MDFolderPicker` (read-only выбор папки; legacy `openFileBrowser` делегирует ему);
 - глобальные функции из `public/assets/js/scripts.js` и `public/assets/js/admin/panel.js`.
@@ -420,6 +419,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 
 Не возвращайте их без причины:
 
+- `modules/duration_input/`, `templates/duration_input/` и маркер установки — неиспользуемый модуль DurationInput; библиотека `html-duration-picker`, её локальная копия в `public/assets/vendor/duration-picker/` и глобал `window.HtmlDurationPicker` также удалены: других вызовов в проекте нет.
 - `3rdparty/smarty3/` — 1,1 МБ, второй шаблонизатор ради одного файла `templates/classes/view_tree.tpl`; дерево классов переписано в `templates/classes/view_tree.php`, `.tpl`/`.xslt` теперь отдают маркер «не поддерживается» и в проекте не используются;
 - `templates/panel_nav_top.tpl` — Smarty-дубль верхней навигации, не подключался ни из одного шаблона;
 - `templates/classes/view_tree.html` — мёртвый HTML-дубль `view_tree.tpl` (0 вхождений в коде и шаблонах), содержал `[#if RESULT AND …#]`, что в PHP 8 даёт `Undefined constant` и фатал; удалён вместе с переносом шаблонного слоя;

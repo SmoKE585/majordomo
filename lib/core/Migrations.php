@@ -188,6 +188,7 @@ final class Migrations
                 $table = $this->db->one("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='locations'");
                 if ($table && strcasecmp($table['ENGINE'], 'InnoDB') !== 0) $this->db->requireExec('ALTER TABLE locations ENGINE=InnoDB');
             });
+            $this->apply('20261025_api_hooks_v1', fn() => Api\Schema::installHooks($this->db));
         } finally {
             $this->db->one("SELECT RELEASE_LOCK('mjd:core-migrations')");
         }

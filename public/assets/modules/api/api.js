@@ -102,18 +102,46 @@
             var busy = false;
             var feedback = page.querySelector('[data-api-feedback]');
             var feedbackText = page.querySelector('[data-api-feedback-text]');
+            var hookFeedback = page.querySelector('[data-api-hook-feedback]');
+            var hookFeedbackText = page.querySelector('[data-api-hook-feedback-text]');
             var status = page.querySelector('[data-api-status]');
             var secret = page.querySelector('[data-api-secret]');
             var list = page.querySelector('[data-api-token-list]');
+            var hookList = page.querySelector('[data-api-hook-list]');
+            var hookSecret = page.querySelector('[data-api-hook-secret]');
+            var hookStatus = page.querySelector('[data-api-hook-status]');
+            var hookModalElement = page.querySelector('#md-api-hook-edit');
+            var hookModal = hookModalElement && window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(hookModalElement) : null;
+            var hookEditForm = page.querySelector('#md-api-hook-edit-form');
             var confirmSubmit = modalElement ? modalElement.querySelector('[data-api-confirm-submit]') : null;
             var confirmText = modalElement ? modalElement.querySelector('[data-api-confirm-text]') : null;
             var modalTitle = modalElement ? modalElement.querySelector('.modal-title') : null;
 
             function announce(message) {
                 if (status) status.textContent = message;
+                if (hookStatus) hookStatus.textContent = message;
             }
 
-            function updateCounts(stats, labels) {
+            function filterHandlers(moduleSelect, handlerSelect, selected) {
+                if (!moduleSelect || !handlerSelect) return;
+                var module = moduleSelect.value;
+                var chosen = selected || '';
+                Array.prototype.forEach.call(handlerSelect.options, function (option, index) {
+                    if (index === 0) {
+                        option.hidden = false;
+                        option.disabled = false;
+                        return;
+                    }
+                    var match = module !== '' && option.getAttribute('data-hook-module') === module;
+                    option.hidden = !match;
+                    option.disabled = !match;
+                });
+                if (chosen) handlerSelect.value = chosen;
+                var current = handlerSelect.options[handlerSelect.selectedIndex];
+                if (!current || current.disabled) handlerSelect.value = '';
+            }
+
+            function updateCounts(stats, hookStats, labels) {
                 if (stats) {
                     page.querySelectorAll('[data-api-stat]').forEach(function (card) {
                         var value = card.querySelector('.md-kpi__value');
@@ -123,13 +151,27 @@
                     var activeMeta = page.querySelector('[data-api-stat="active"] .md-kpi__meta');
                     if (activeMeta && labels && labels.active_meta) activeMeta.textContent = labels.active_meta;
                 }
+                if (hookStats) {
+                    page.querySelectorAll('[data-api-hook-stat]').forEach(function (card) {
+                        var value = card.querySelector('.md-kpi__value');
+                        var key = card.getAttribute('data-api-hook-stat');
+                        if (value && Object.prototype.hasOwnProperty.call(hookStats, key)) value.textContent = String(hookStats[key]);
+                    });
+                    var hookActiveMeta = page.querySelector('[data-api-hook-stat="active"] .md-kpi__meta');
+                    if (hookActiveMeta && labels && labels.hooks_active_meta) hookActiveMeta.textContent = labels.hooks_active_meta;
+                }
                 if (labels) {
                     var hero = page.querySelector('.md-api-hero .md-section-head__description');
                     if (hero) hero.textContent = labels.hero || '';
-                    var tabCount = page.querySelector('[data-api-tab-count]');
-                    if (tabCount) {
-                        tabCount.textContent = labels.tab_total;
-                        tabCount.hidden = String(labels.tab_total) === '0';
+                    var tokenTab = page.querySelector('[data-api-tab-count="tokens"]') || page.querySelector('[data-api-tab-count]');
+                    if (tokenTab) {
+                        tokenTab.textContent = labels.tab_total;
+                        tokenTab.hidden = String(labels.tab_total) === '0';
+                    }
+                    var hookTab = page.querySelector('[data-api-tab-count="hooks"]');
+                    if (hookTab) {
+                        hookTab.textContent = labels.hooks_tab_total || '0';
+                        hookTab.hidden = String(labels.hooks_tab_total || '0') === '0';
                     }
                 }
             }
@@ -155,11 +197,16 @@
             async function perform(form) {
                 if (busy) return;
                 busy = true;
-                if (feedback) feedback.hidden = true;
                 var button = form.querySelector('[type="submit"]');
                 var operation = form.elements.operation ? form.elements.operation.value : '';
+                var isHook = operation.indexOf('hook_') === 0;
+                var activeFeedback = isHook ? hookFeedback : feedback;
+                var activeFeedbackText = isHook ? hookFeedbackText : feedbackText;
+                if (feedback) feedback.hidden = true;
+                if (hookFeedback) hookFeedback.hidden = true;
                 setBusy(button, true);
                 if (list) list.setAttribute('aria-busy', 'true');
+                if (hookList) hookList.setAttribute('aria-busy', 'true');
                 try {
                     var response = await fetch(form.action, {
                         method: 'POST',
@@ -175,8 +222,10 @@
                         throw new Error('Сервер вернул неожиданный ответ. Обновите страницу и повторите.');
                     }
                     if (!response.ok || !payload.ok) throw new Error(payload.message || 'Операция не выполнена.');
-                    if (list) list.innerHTML = payload.list_html;
-                    updateCounts(payload.stats, payload.labels);
+                    if (list && payload.list_html !== undefined) list.innerHTML = payload.list_html;
+                    if (hookList && payload.hook_list_html !== undefined) hookList.innerHTML = payload.hook_list_html;
+                    updateCounts(payload.stats, payload.hook_stats, payload.labels);
+                    var secretShown = false;
                     if (secret) {
                         secret.innerHTML = payload.secret_html || '';
                         secret.hidden = !payload.secret_html;
@@ -186,36 +235,98 @@
                                 block: 'center',
                                 behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
                             });
+                            secretShown = true;
                         }
                     }
-                    if (!payload.secret_html && list) list.focus({preventScroll: true});
-                    if (operation === 'issue') form.reset();
+                    if (hookSecret) {
+                        hookSecret.innerHTML = payload.hook_secret_html || '';
+                        hookSecret.hidden = !payload.hook_secret_html;
+                        if (payload.hook_secret_html) {
+                            hookSecret.focus();
+                            hookSecret.scrollIntoView({
+                                block: 'center',
+                                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+                            });
+                            secretShown = true;
+                        }
+                    }
+                    if (!secretShown) {
+                        if (operation.indexOf('hook_') === 0 && hookList) hookList.focus({preventScroll: true});
+                        else if (list) list.focus({preventScroll: true});
+                    }
+                    if (operation === 'issue' || operation === 'hook_create') {
+                        form.reset();
+                        if (operation === 'hook_create') {
+                            filterHandlers(page.querySelector('#md-api-hook-module'), page.querySelector('#md-api-hook-handler'), '');
+                        }
+                    }
+                    if (operation === 'hook_update' && hookModal) hookModal.hide();
                     var messages = {
                         issue: 'Токен выпущен.',
                         rotate: 'Токен перевыпущен.',
-                        revoke: 'Токен отозван.'
+                        revoke: 'Токен отозван.',
+                        hook_create: 'Вход создан.',
+                        hook_update: 'Настройки входа сохранены.',
+                        hook_rotate: 'Ссылка перевыпущена.',
+                        hook_rotate_header: 'Секрет заголовка перевыпущен.',
+                        hook_toggle: 'Состояние входа изменено.',
+                        hook_delete: 'Вход удалён.'
                     };
-                    var message = messages[operation] || 'Список токенов обновлён.';
+                    var message = messages[operation] || 'Список обновлён.';
                     announce(message);
                     if (window.MDJAdminUI) window.MDJAdminUI.boot(page);
                     if (window.MDJUIToast) window.MDJUIToast.show({type: 'success', title: 'Готово', text: message});
                 } catch (error) {
-                    if (feedback && feedbackText) {
+                    if (activeFeedback && activeFeedbackText) {
                         var errorMessage = error && error.message ? error.message : '';
                         if (!errorMessage || /Failed to fetch|NetworkError|Load failed/i.test(errorMessage)) {
                             errorMessage = 'Не удалось связаться с сервером. Проверьте подключение и повторите.';
                         }
-                        feedbackText.textContent = errorMessage;
-                        feedback.hidden = false;
-                        feedback.focus();
+                        activeFeedbackText.textContent = errorMessage;
+                        activeFeedback.hidden = false;
+                        activeFeedback.focus();
                     }
                     announce('Не удалось выполнить операцию.');
                 } finally {
                     busy = false;
                     if (list) list.removeAttribute('aria-busy');
+                    if (hookList) hookList.removeAttribute('aria-busy');
                     setBusy(button, false);
                 }
             }
+
+            function openHookEditor(button) {
+                if (!hookEditForm || !hookModal) return;
+                hookEditForm.elements.id.value = button.getAttribute('data-hook-id') || '';
+                hookEditForm.elements.name.value = button.getAttribute('data-hook-name') || '';
+                hookEditForm.elements.module.value = button.getAttribute('data-hook-module') || '';
+                hookEditForm.elements.header_name.value = button.getAttribute('data-hook-header') || '';
+                filterHandlers(
+                    hookEditForm.querySelector('[data-hook-module-select]'),
+                    hookEditForm.querySelector('[data-hook-handler-select]'),
+                    button.getAttribute('data-hook-handler') || ''
+                );
+                var methods = (button.getAttribute('data-hook-methods') || '').split(',');
+                hookEditForm.querySelectorAll('input[name="methods[]"]').forEach(function (checkbox) {
+                    checkbox.checked = methods.indexOf(checkbox.value) !== -1;
+                });
+                hookModal.show();
+            }
+
+            page.addEventListener('click', function (event) {
+                var edit = event.target.closest('[data-hook-edit]');
+                if (edit) openHookEditor(edit);
+            });
+
+            page.addEventListener('change', function (event) {
+                var select = event.target.closest('[data-hook-module-select]');
+                if (!select) return;
+                var form = select.closest('form');
+                filterHandlers(select, form ? form.querySelector('[data-hook-handler-select]') : null, '');
+            });
+
+            filterHandlers(page.querySelector('#md-api-hook-module'), page.querySelector('#md-api-hook-handler'), '');
+            filterHandlers(page.querySelector('#md-api-hook-edit-module'), page.querySelector('#md-api-hook-edit-handler'), '');
 
             page.addEventListener('submit', function (event) {
                 var form = event.target.closest('[data-api-action]');
@@ -229,9 +340,11 @@
                     var operation = form.elements.operation ? form.elements.operation.value : '';
                     if (confirmSubmit) {
                         var label = confirmSubmit.querySelector('.md-btn__label');
-                        if (label) label.textContent = operation === 'rotate' ? 'Перевыпустить' : (operation === 'revoke' ? 'Отозвать' : 'Подтвердить');
-                        confirmSubmit.classList.toggle('md-btn--danger', operation !== 'rotate');
-                        confirmSubmit.classList.toggle('md-btn--primary', operation === 'rotate');
+                        var isRotate = operation === 'rotate' || operation === 'hook_rotate' || operation === 'hook_rotate_header';
+                        var isDelete = operation === 'revoke' || operation === 'hook_delete';
+                        if (label) label.textContent = isRotate ? 'Перевыпустить' : (isDelete ? (operation === 'hook_delete' ? 'Удалить' : 'Отозвать') : 'Подтвердить');
+                        confirmSubmit.classList.toggle('md-btn--danger', isDelete);
+                        confirmSubmit.classList.toggle('md-btn--primary', isRotate);
                     }
                     modal.show();
                 } else {
@@ -249,9 +362,15 @@
                 modalElement.addEventListener('hide.bs.modal', function () { pending = null; });
             }
 
-            if (secret) window.addEventListener('pagehide', function () {
-                secret.replaceChildren();
-                secret.hidden = true;
+            if (secret || hookSecret) window.addEventListener('pagehide', function () {
+                if (secret) {
+                    secret.replaceChildren();
+                    secret.hidden = true;
+                }
+                if (hookSecret) {
+                    hookSecret.replaceChildren();
+                    hookSecret.hidden = true;
+                }
             }, {once: true});
         });
     }

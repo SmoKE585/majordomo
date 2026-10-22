@@ -2,23 +2,41 @@
 
 namespace MajorDoMo\Core;
 
-use MajorDoMo\Core\Api\{AccessPolicy, ApiException, Contract, Request, Response, TokenStore};
+use MajorDoMo\Core\Api\{AccessPolicy, ApiException, Contract, HookRateLimiter, HookStore, Request, Response, TokenStore, WebhookRunner};
 use MajorDoMo\Core\Install\{InstallGate, InstallState};
 
+/**
+ * HTTP boundary of the core API.
+ * Изменения: 2026-10-22 — отдельная ветка публичных /api/hooks/<secret>.
+ */
 final class ApiApplication extends Application
 {
-    /** Optional verifier is for isolated HTTP tests/embedded deployments. */
-    public function __construct(?string $root = null, private ?\Closure $tokenVerifier = null, private ?\Closure $usersFactory = null) { parent::__construct($root); }
+    /** Optional dependencies are for isolated HTTP tests/embedded deployments. */
+    public function __construct(
+        ?string $root = null,
+        private ?\Closure $tokenVerifier = null,
+        private ?\Closure $usersFactory = null,
+        private ?HookStore $hookStore = null,
+        private ?HookRateLimiter $hookLimiter = null
+    ) {
+        parent::__construct($root);
+    }
 
     public function run(): void
     {
         $response = new Response(bin2hex(random_bytes(16)), microtime(true));
         $level = ob_get_level(); ob_start();
-        $finished = false; $legacy = false;
+        $finished = false; $legacy = false; $webhook = null;
         ini_set('display_errors', '0');
         // Legacy settings/modules can exit. Never leak HTML or partial output to clients.
-        register_shutdown_function(static function () use (&$finished, &$legacy, $response, $level): void {
+        register_shutdown_function(static function () use (&$finished, &$legacy, &$webhook, $response, $level): void {
             if ($finished) return;
+            // A verified webhook may exit inside the module handler. Its output is
+            // already the response; only refresh diagnostics and keep the buffer.
+            if ($webhook instanceof WebhookRunner) {
+                $webhook->finishFromShutdown();
+                return;
+            }
             while (ob_get_level() > $level) ob_end_clean();
             error_log('MajorDoMo API interrupted; request_id=' . $response->requestId);
             $response->emit($response->failure(new ApiException(503, 'unavailable', 'Выполнение API прервано. Проверьте журнал системы.'), $legacy), 503, array('Retry-After' => '30'));
@@ -30,6 +48,29 @@ final class ApiApplication extends Application
             $probe = new Request($method, $uri, array(), array(), Config::string('ROOTHTML'));
             $legacy = $probe->legacy;
             if (!InstallState::isComplete($this->root)) throw new ApiException(503, 'install_required', 'Система ещё не настроена.', array('install_url' => InstallGate::installUrl()), array('Retry-After' => '30'));
+
+            // Public webhook entries use their own narrow secret check and never
+            // the general API token, LAN rule or admin session. The branch runs
+            // before the JSON parser, AccessPolicy and the legacy runtime.
+            if (($probe->segments[0] ?? '') === 'hooks') {
+                $legacy = false;
+                $secret = count($probe->segments) === 2 ? (string)$probe->segments[1] : '';
+                if (!preg_match(HookStore::SECRET_PATTERN, $secret)) throw new ApiException(404, 'not_found', 'Вход не найден.');
+                try {
+                    $store = $this->hookStore ?? HookStore::connect();
+                } catch (\Throwable $error) {
+                    error_log('MajorDoMo webhook store unavailable: ' . get_class($error));
+                    throw new ApiException(503, 'unavailable', 'Webhook временно недоступен.');
+                }
+                $webhook = new WebhookRunner($this->root, $store, $this->hookLimiter);
+                $webhook->run($secret, function (): void {
+                    $this->bootLibraries();
+                    $this->bootSettings();
+                });
+                $finished = true;
+                return;
+            }
+
             $policy = new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), Config::string('TRUSTED_PROXIES'));
             $gate = new Auth\AuthGate($this->root, $this->usersFactory);
             $policy->authorize($_SERVER, $this->tokenVerifier ?? static fn($token) => preg_match('/^mdm_[a-f0-9]{64}$/D', $token) === 1 && TokenStore::connect()->verify($token), fn() => $gate->authorizeApi());

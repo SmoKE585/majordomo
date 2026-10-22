@@ -1,8 +1,23 @@
-# MajorDoMo — пример nginx. 2026-10-22: /ws, API v1 и закрытые системные пути.
+# MajorDoMo — пример nginx. 2026-10-22: входящие webhook в общей ветке /api/.
 # Подставьте домен, сертификат, каталог проекта и сокет PHP-FPM.
 # Авторизацию админки проверяет PHP; API и WS используют собственную проверку.
 # WebSocket слушает только 127.0.0.1:8001, публичный адрес — /ws.
 # 3rdparty/ и objects/ удалены; scripts/, packages/, vendor/ не публикуются.
+#
+# Публичные webhook — это /api/hooks/<секрет>. Отдельное правило для каждого
+# входа не нужно: они входят в общий location /api/. Секрет находится в URI,
+# поэтому он может попасть в access_log этого сервера и внешнего proxy.
+# Однократно настройте маскирование, например (map кладётся в http{}):
+#   map $request_uri $md_loggable_uri {
+#       ~^/api/hooks/[a-f0-9]{64} /api/hooks/[redacted];
+#       default                    $request_uri;
+#   }
+#   log_format md_redacted '$remote_addr - $remote_user [$time_local] '
+#                          '"$request_method $md_loggable_uri $server_protocol" '
+#                          '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
+#   access_log /var/log/nginx/example.access.log md_redacted;
+# Приложение не может убрать секрет из журналов внешнего reverse proxy.
+# Если внешний proxy закрывает все запросы до PHP, для /api/ нужно исключение.
 
 server {
     listen 443 ssl;
@@ -44,6 +59,7 @@ server {
     }
 
     # Сохраняются метод, JSON и исходный URI, включая legacy /api.php/.
+    # /api/hooks/<секрет> идёт сюда же: отдельные location для webhook не нужны.
     location ~ ^/api(?:\.php)?(?:/|$) {
         include /etc/nginx/fastcgi_params;
         fastcgi_pass unix:/var/run/php/php-fpm.sock;
@@ -55,6 +71,8 @@ server {
         fastcgi_param HTTP_AUTHORIZATION $http_authorization;
         fastcgi_param HTTP_X_API_KEY $http_x_api_key;
         fastcgi_param HTTP_X_FORWARDED_FOR $http_x_forwarded_for;
+        # Нужно для настраиваемого заголовка дополнительного секрета webhook.
+        fastcgi_pass_request_headers on;
         fastcgi_intercept_errors off;
         fastcgi_next_upstream off;
         fastcgi_cache off;

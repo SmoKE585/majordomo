@@ -33,5 +33,9 @@ if ($path === '/panel/api.html' || $path === '/preview') {
 }
 $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FIXTURE_PEER'] ?? '127.0.0.1';
 if (isset($_SERVER['HTTP_X_FIXTURE_UNSETUP'])) unlink($root . '/cms/modules_installed/control_modules.installed');
-$store = new MajorDoMo\Core\Api\TokenStore(ApiFixture::pdo($root));
-(new MajorDoMo\Core\ApiApplication($root, static fn($token) => $store->verify($token)))->run();
+$pdo = ApiFixture::pdo($root);
+$store = new MajorDoMo\Core\Api\TokenStore($pdo);
+$hooks = new MajorDoMo\Core\Api\HookStore($pdo, $root);
+$limit = (int)getenv('MJD_API_HOOK_LIMIT');
+$limiter = $limit > 0 ? new MajorDoMo\Core\Api\HookRateLimiter($root, $limit, 60) : null;
+(new MajorDoMo\Core\ApiApplication($root, static fn($token) => $store->verify($token), null, $hooks, $limiter))->run();

@@ -212,6 +212,70 @@ body.md-admin-shell .md-api-tokens__actions {
     text-align: right;
 }
 
+body.md-admin-shell .md-api-hooks td {
+    vertical-align: top;
+}
+
+body.md-admin-shell .md-api-hooks th:first-child {
+    min-width: 170px;
+}
+
+body.md-admin-shell .md-api-hooks th:nth-child(2) {
+    min-width: 180px;
+}
+
+body.md-admin-shell .md-api-hooks code {
+    overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-api-hooks__actions {
+    text-align: right;
+}
+
+body.md-admin-shell .md-api-hook-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+body.md-admin-shell .md-api-hook-actions form {
+    margin: 0;
+}
+
+body.md-admin-shell .md-api-hook-name {
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-api-methods,
+body.md-admin-shell .md-api-method-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+}
+
+body.md-admin-shell .md-api-hook-list[aria-busy="true"] {
+    opacity: .55;
+}
+
+body.md-admin-shell [data-api-hook-secret],
+body.md-admin-shell .md-api-hook-list {
+    scroll-margin-top: 92px;
+}
+
+body.md-admin-shell [data-api-hook-secret]:focus,
+body.md-admin-shell .md-api-hook-list:focus {
+    outline: none;
+}
+
+body.md-admin-shell [data-api-hook-secret]:focus-visible,
+body.md-admin-shell .md-api-hook-list:focus-visible {
+    outline: 2px solid var(--md-ui-primary);
+    outline-offset: 3px;
+    border-radius: var(--md-ui-radius-md);
+}
+
 body.md-admin-shell .md-api-muted {
     color: var(--md-ui-muted);
 }

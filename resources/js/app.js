@@ -1,4 +1,6 @@
 /*
+ * 2026-10-22 — удалён неиспользуемый выбор длительности из общего бандла.
+ *
  * MajorDoMo admin bundle.
  *
  * This file is the single entry point for the admin shell. It loads the
@@ -20,22 +22,17 @@ import 'jquery-migrate';
 import * as bootstrap from 'bootstrap';
 import Alpine from 'alpinejs';
 import '@fancyapps/fancybox';
-import HtmlDurationPickerModule from 'html-duration-picker';
 import TomSelectModule from 'tom-select';
 
 import '../../public/assets/js/jquery.cookie.js';
 import '../../public/assets/js/jquery.tiny-pubsub.js';
 
-const HtmlDurationPicker = HtmlDurationPickerModule && HtmlDurationPickerModule.default
-    ? HtmlDurationPickerModule.default
-    : HtmlDurationPickerModule;
 const TomSelect = TomSelectModule && TomSelectModule.default
     ? TomSelectModule.default
     : TomSelectModule;
 
 window.bootstrap = bootstrap;
 window.Alpine = Alpine;
-window.HtmlDurationPicker = HtmlDurationPicker;
 window.TomSelect = TomSelect;
 
 /* Styles: order matters — Bootstrap first, project and legacy layers after it. */

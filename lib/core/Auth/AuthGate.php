@@ -5,10 +5,12 @@ use MajorDoMo\Core\{Config, Core};
 use MajorDoMo\Core\Http\Session;
 use MajorDoMo\Core\Users\UserAccounts;
 use MajorDoMo\Core\Api\ApiException;
+use MajorDoMo\Core\Api\HookContext;
 
 /**
  * Проверка входа до загрузки модулей и БД.
  * Изменения: 2026-10-22 — удалено исключение для упразднённого /objects/.
+ * Изменения: 2026-10-22 — проверенный webhook пропускает только собственный вызов.
  */
 final class AuthGate
 {
@@ -18,6 +20,9 @@ final class AuthGate
     public static function enforce(string $root): void
     {
         if (PHP_SAPI === 'cli') return;
+        // Only a verified /api/hooks/<secret> call sets this process-local flag.
+        // It is never derived from a query parameter, header or URI match.
+        if (HookContext::active()) return;
         // API has its own authentication boundary; a query parameter cannot skip it.
         $script = realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? ''));
         if ($script !== false && $script === realpath($root . '/public/api.php')) return;

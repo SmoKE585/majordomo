@@ -46,11 +46,20 @@ final class ApiFixture
 {
     public static function initialize(string $root, string $project): void
     {
-        foreach (array('lib', 'cms/modules_installed', 'modules/objects', 'modules/fixtureapi') as $directory) if (!is_dir($root . '/' . $directory)) mkdir($root . '/' . $directory, 0777, true);
+        foreach (array('lib', 'cms/modules_installed', 'modules/objects', 'modules/fixtureapi', 'modules/fixturehook') as $directory) if (!is_dir($root . '/' . $directory)) mkdir($root . '/' . $directory, 0777, true);
         file_put_contents($root . '/.env', "APP_ENV=testing\nDB_HOST=\nDB_NAME=\nUSE_REDIS=false\nROOTHTML=/\nHOME_NETWORK=192.168.55.0/24\nTRUSTED_PROXIES=127.0.0.2/32\n");
         file_put_contents($root . '/config.php', '<?php \\MajorDoMo\\Core\\Config::boot(__DIR__);');
         file_put_contents($root . '/lib/perfmonitor.class.php', '<?php');
-        file_put_contents($root . '/lib/loader.php', '<?php \\ApiFixture::boot(dirname(__DIR__));');
+        // Mirrors the production loader's AuthGate call for module scripts. The
+        // verified webhook must pass it; ordinary API requests keep their own
+        // boundary and do not run this branch.
+        file_put_contents($root . '/lib/loader.php', <<<'PHP'
+<?php
+if (isset($_SERVER['SCRIPT_NAME']) && str_starts_with((string)$_SERVER['SCRIPT_NAME'], '/modules/')) {
+    \MajorDoMo\Core\Auth\AuthGate::enforce(dirname(__DIR__));
+}
+\ApiFixture::boot(dirname(__DIR__));
+PHP);
         file_put_contents($root . '/load_settings.php', '<?php');
         file_put_contents($root . '/modules/objects/objects.class.php', '<?php // objects stub is defined by test runtime');
         file_put_contents($root . '/modules/fixtureapi/fixtureapi.class.php', <<<'PHP'
@@ -66,9 +75,50 @@ class fixtureapi {
     public function propertySetHandle($object, $property, $value) { return array($object, $property, $value); }
 }
 PHP);
+        // A stock handler: it is included unchanged, reads php://input and can
+        // exit, include the normal loader or set its own status/headers.
+        file_put_contents($root . '/modules/fixturehook/webhook.php', <<<'PHP'
+<?php
+$mode = isset($_GET['mode']) ? (string)$_GET['mode'] : 'echo';
+if ($mode === 'loader') {
+    include_once './lib/loader.php';
+    header('Content-Type: text/plain');
+    echo 'loader-ok';
+    return;
+}
+if ($mode === 'exit') {
+    header('Content-Type: application/json');
+    http_response_code(201);
+    echo json_encode(array('exit' => true, 'raw' => file_get_contents('php://input')));
+    exit;
+}
+if ($mode === 'status') {
+    http_response_code(204);
+    header('X-Fixture-Handler: status');
+    return;
+}
+if ($mode === 'throw') {
+    throw new RuntimeException('private handler detail');
+}
+header('Content-Type: application/json');
+echo json_encode(array(
+    'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+    'query' => $_GET,
+    'post' => $_POST,
+    'files' => array_keys($_FILES),
+    'raw' => file_get_contents('php://input'),
+    'header' => $_SERVER['HTTP_X_FIXTURE_SECRET'] ?? '',
+    'script' => $_SERVER['SCRIPT_NAME'] ?? '',
+    'uri' => $_SERVER['REQUEST_URI'] ?? '',
+));
+PHP);
         file_put_contents($root . '/cms/modules_installed/control_modules.installed', 'fixture');
+        file_put_contents($root . '/cms/modules_installed/fixturehook.installed', 'fixture');
         $pdo = self::pdo($root);
         $pdo->exec(Schema::sql(true));
+        foreach (Schema::hooksStatements(true) as $statement) {
+            $pdo->exec($statement);
+        }
         $pdo->exec("CREATE TABLE IF NOT EXISTS locations (ID INTEGER PRIMARY KEY AUTOINCREMENT,TITLE TEXT NOT NULL,PRIORITY INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS objects (ID INTEGER PRIMARY KEY,TITLE TEXT,CLASS_ID INTEGER,LOCATION_ID INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS classes (ID INTEGER PRIMARY KEY,TITLE TEXT,PARENT_ID INTEGER DEFAULT 0);

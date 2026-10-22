@@ -49,6 +49,8 @@ try {
     check($ready, 'Loopback fixture started');
     [$status, , $headers] = request('GET', '/panel/');
     check($status === 302 && $headers['location'] === '/admin.php?auth=login', 'Panel requires login');
+    [$status] = request('GET', '/panel/api.html');
+    check($status === 302, 'API admin page requires login');
     [$status] = request('GET', '/modules/blockly_code/autosave.php?auth=login', '', array(), false);
     check($status === 302, 'Direct module cannot use login parameter to skip auth');
     [$status] = request('GET', '/index.php?action=ajaxsetglobal&var=Lamp.level&value=2', '', array(), false);

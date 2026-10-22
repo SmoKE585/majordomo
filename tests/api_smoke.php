@@ -179,8 +179,13 @@ try {
         check($code === 0 && $output['ok'], 'CLI ' . $arguments[0]); fclose($out); fclose($err);
     }
     require_once ROOT . 'lib/ui/MDJUI.php';
+    require_once ROOT . 'modules/api/lib/ApiHooks.php';
     $tokensList = $tokens->all(); $operations = Contract::operations(); $spec = Contract::openApi(); $csrf = 'fixture';
     $tokens = $tokensList;
+    $hooks = ApiHooks::decorate(Core::apiHooks()->all(), $root);
+    $hookStats = ApiHooks::stats($hooks);
+    $modules = ApiHooks::moduleOptions($root);
+    $handlerOptions = ApiHooks::handlerOptions($root);
     ob_start(); require ROOT . 'templates/api/api.php'; $html = ob_get_clean();
     check(substr_count($html, 'data-api-operation=') === count($operations) && str_contains($html, 'data-api-token-list'), 'Full admin template renders all operations');
     check(!str_contains($html, $secret) && !str_contains($html, $rotated['token']), 'Admin initial HTML contains no stored plaintext secret');
