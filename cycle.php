@@ -604,6 +604,7 @@ $last_cache_failure = 0;
 
 $pauseStartedAt = 0;
 $pauseReportedAt = 0;
+$missingSince = array();
 
 $thisComputerObject = getObject('Computer.ThisComputer');
 $supervisorFailures = 0;
@@ -819,12 +820,25 @@ while (true) {
         $cycleSupervisor->touch();
         $cycleSupervisor->reconcile($cycleTitles, $is_running, $to_start, $to_stop);
         // Recover even if a controller exception interrupted handling a close notification.
+        // Only report after a second tick: a process that just exited still has its
+        // close notification in flight, and an update pause may have stopped it on purpose.
         if (!$cycleReloadStarted && $cycleUpdate === null && !isRebootRequired() && strpos((string)$result, 'THREAD CLOSED:') === false) {
             foreach ($cycleTitles as $missingTitle) {
-                if ($cycleSupervisor->isDesiredRunning($missingTitle) && !isset($is_running[$missingTitle])
-                    && !isset($to_start[$missingTitle]) && !isset($to_stop[$missingTitle])) {
-                    $to_start[$missingTitle] = time() + reportCycleRuntimeFailure($missingTitle, 'Process is missing from the supervisor registry');
+                $missing = $cycleSupervisor->isDesiredRunning($missingTitle) && !isset($is_running[$missingTitle])
+                    && !isset($to_start[$missingTitle]) && !isset($to_stop[$missingTitle]);
+                if (!$missing) {
+                    unset($missingSince[$missingTitle]);
+                    continue;
                 }
+                if (!isset($missingSince[$missingTitle])) {
+                    $missingSince[$missingTitle] = time();
+                    continue;
+                }
+                if ((time() - $missingSince[$missingTitle]) < 6) {
+                    continue;
+                }
+                unset($missingSince[$missingTitle]);
+                $to_start[$missingTitle] = time() + reportCycleRuntimeFailure($missingTitle, 'Process is missing from the supervisor registry');
             }
         }
 
