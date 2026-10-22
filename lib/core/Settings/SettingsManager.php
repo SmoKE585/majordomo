@@ -418,14 +418,26 @@ final class SettingsManager
     {
         $values = $this->values;
         foreach (SettingsSchema::fields() as $id => $field) {
+            // The "Общие настройки" page is rendered by the shared settings
+            // template, which names every control `value_<ID>` (that template
+            // also serves DB-backed rows). The install wizard and resetSection()
+            // post plain field IDs. Accept both, preferring the explicit form
+            // value, otherwise the page would silently save the old values.
+            $key = array_key_exists('value_' . $id, $post) ? 'value_' . $id : $id;
             $type = (string)($field['type'] ?? 'text');
             if ($type === 'switch') {
-                $values[$id] = !empty($post[$id]) && (string)$post[$id] !== '0' ? '1' : '0';
+                // Only the switches actually rendered in the submitted form may
+                // change. The admin page saves one section at a time, so an
+                // absent switch means "another section", not "off"; treating it
+                // as off would silently disable options across the whole .env.
+                if (array_key_exists($key, $post)) {
+                    $values[$id] = !empty($post[$key]) && (string)$post[$key] !== '0' ? '1' : '0';
+                }
                 continue;
             }
             if (!empty($field['secret'])) {
-                $clear = !empty($post['clear_' . $id]);
-                $raw = array_key_exists($id, $post) && is_scalar($post[$id]) ? trim((string)$post[$id]) : '';
+                $clear = !empty($post['clear_' . $id]) || !empty($post[$id . '__clear']);
+                $raw = array_key_exists($key, $post) && is_scalar($post[$key]) ? trim((string)$post[$key]) : '';
                 if ($clear) {
                     $this->secretActions[$id] = 'clear';
                     $values[$id] = '';
@@ -441,8 +453,8 @@ final class SettingsManager
                 }
                 continue;
             }
-            $raw = array_key_exists($id, $post) && is_scalar($post[$id])
-                ? (string)$post[$id]
+            $raw = array_key_exists($key, $post) && is_scalar($post[$key])
+                ? (string)$post[$key]
                 : (string)($this->values[$id] ?? '');
             $raw = str_replace(array("\r", "\n", "\0"), ' ', $raw);
             $values[$id] = trim($raw);

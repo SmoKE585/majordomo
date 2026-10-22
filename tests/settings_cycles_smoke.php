@@ -8,6 +8,10 @@
 putenv('APP_ENV=testing');
 putenv('USE_REDIS=false');
 putenv('DISABLE_WEBSOCKETS=' . (($argv[1] ?? '') === 'websockets-disabled' ? '1' : '0'));
+// SettingsManager checks the database on construction; keep the fixture from
+// ever reaching a real server even if the shell exports DB_* variables.
+putenv('DB_HOST=localhost');
+putenv('DB_NAME=');
 require_once dirname(__DIR__) . '/lib/core.class.php';
 
 use MajorDoMo\Core\ConfigSchema;
@@ -15,6 +19,7 @@ use MajorDoMo\Core\Config;
 use MajorDoMo\Core\Cycles\CycleManager;
 use MajorDoMo\Core\Cycles\CycleStateStore;
 use MajorDoMo\Core\Cycles\CycleSupervisor;
+use MajorDoMo\Core\Settings\SettingsManager;
 use MajorDoMo\Core\Settings\SettingsSchema;
 
 $failures = 0;
@@ -68,6 +73,25 @@ check($duplicates === array(), 'field ids are unique and reference an existing s
 $root = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'mjd-settings-cycles-' . bin2hex(random_bytes(6));
 mkdir($root . '/scripts', 0777, true);
 Config::boot($root);
+
+// The admin page posts controls as `value_<ID>` because it shares the template
+// with legacy DB-backed rows. A manager that only reads plain IDs saves nothing
+// while still reporting success — the exact regression this test covers.
+$manager = new SettingsManager($root);
+$adminPost = $manager->validate(array(
+    'value_PROJECT_TITLE' => 'Дом теста',
+    'value_THEME' => 'light',
+    'value_DEBUG_MODE' => '1',
+));
+check(($adminPost['values']['PROJECT_TITLE'] ?? '') === 'Дом теста', 'admin form text values (value_<ID>) are applied');
+check(($adminPost['values']['THEME'] ?? '') === 'light', 'admin form select values (value_<ID>) are applied');
+check(($adminPost['values']['DEBUG_MODE'] ?? '') === '1', 'admin form switch values (value_<ID>) are applied');
+// Saving one section must not reset switches rendered in another section.
+$otherSection = $manager->validate(array('value_PROJECT_TITLE' => 'Дом теста'));
+check(($otherSection['values']['DEBUG_MODE'] ?? '') === '1', 'switches from other sections are preserved');
+$plainPost = $manager->validate(array('PROJECT_TITLE' => 'Значение из мастера'));
+check(($plainPost['values']['PROJECT_TITLE'] ?? '') === 'Значение из мастера', 'plain field ids still work for the wizard and reset');
+
 file_put_contents($root . '/scripts/cycle_test.php', "<?php\n");
 file_put_contents($root . '/scripts/cycle_other.php', "<?php\n");
 try {
