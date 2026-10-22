@@ -281,7 +281,7 @@ final class CycleStateStore
     {
         $lock = $this->openLock(LOCK_EX);
         if ($lock === null) {
-            return $this->blankState();
+            throw new \RuntimeException('Cannot lock cycle state: ' . $this->lockPath);
         }
         try {
             $state = $this->readUnlocked();
@@ -291,7 +291,9 @@ final class CycleStateStore
             }
             $state['version'] = self::STATE_VERSION;
             $state['updated'] = time();
-            $this->writeUnlocked($state);
+            if (!$this->writeUnlocked($state)) {
+                throw new \RuntimeException('Cannot persist cycle state: ' . $this->statePath);
+            }
             return $state;
         } finally {
             $this->closeLock($lock);

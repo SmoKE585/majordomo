@@ -1,6 +1,6 @@
 # MajorDoMo
 
-Self-hosted система умного дома на PHP. Идёт поэтапная модернизация: PHP 8.4+,
+Self-hosted система умного дома на PHP. Идёт поэтапная модернизация: PHP 8.1+,
 новая админка на Bootstrap 5, чистые URL `/panel/...`, отдельная сборка статики.
 
 ## Быстрый старт
@@ -9,7 +9,7 @@ Document root — `public/` (структура «а-ля Laravel»): точки
 
 ```bash
 cp .env.example .env           # Windows: copy .env.example .env; заполните DB_*
-composer install               # PHP-зависимости и автозагрузка (PHP 8.4+)
+composer install               # PHP-зависимости и автозагрузка (PHP 8.1+)
 npm install
 npm run build                  # админ-бандл + редактор + графики в public/assets/admin
 php dev_server.php --port=8080 # локальный сервер (нужен MySQL/MariaDB)
@@ -29,6 +29,12 @@ PHP-пакеты устанавливаются через Composer из кор�
 [docs/agents/third-party.md](docs/agents/third-party.md).
 
 ## Документация
+
+Единая консоль: `php majordomo` (список команд),
+`php majordomo help cycles:restart` (справка), `php majordomo about` (информация).
+Управление циклами, диагностика, журналы, конфигурация и установка —
+[инструкция](docs/user/commands.md); создание новых команд —
+[правила для агентов](docs/agents/console.md).
 
 - [docs/README.md](docs/README.md) — карта всей документации.
 - [docs/user/README.md](docs/user/README.md) — описание проекта, установка, деплой.

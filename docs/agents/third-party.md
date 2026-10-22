@@ -44,7 +44,10 @@ git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard 3rdparty/el
 
 ## 3. Использование Composer
 
-Нужны PHP 8.4+ и Composer 2. Все команды выполняются из корня проекта.
+Нужны PHP 8.1+ и Composer 2. Все команды выполняются из корня проекта.
+В `config.platform.php` зафиксирован PHP 8.1.0: даже при локальном PHP 8.4
+Composer подбирает зависимости для PHP 8.1. Проверяйте реальный сервер командой
+`composer check-platform-reqs --no-dev`.
 
 ```bash
 composer install

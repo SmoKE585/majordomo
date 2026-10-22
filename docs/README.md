@@ -38,6 +38,7 @@ description: Карта документации MajorDoMo: материалы �
 - Меняете интерфейс: [`agents/DESIGN_SYSTEM.md`](agents/DESIGN_SYSTEM.md) → [`agents/admin-module-ui-guidelines.md`](agents/admin-module-ui-guidelines.md).
 - Читаете или добавляете настройки: [`agents/configuration.md`](agents/configuration.md) → [`agents/settings.md`](agents/settings.md).
 - Меняете управление циклами: [`agents/cycles.md`](agents/cycles.md).
+- Добавляете CLI-команду: [`agents/console.md`](agents/console.md); список команд для пользователя — [`user/commands.md`](user/commands.md).
 - Добавляете системное событие или подписку: [`agents/events.md`](agents/events.md).
 - Меняете точку входа или boot: [`agents/entrypoints.md`](agents/entrypoints.md).
 - Трогаете сборку: [`agents/admin-assets.md`](agents/admin-assets.md).

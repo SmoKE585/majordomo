@@ -17,11 +17,13 @@ final class CycleManager
 {
     private CycleStateStore $store;
     private string $root;
+    private ?\Closure $runtimeReader;
 
-    public function __construct(string $root, ?CycleStateStore $store = null)
+    public function __construct(string $root, ?CycleStateStore $store = null, ?\Closure $runtimeReader = null)
     {
         $this->root = rtrim($root, '/\\');
         $this->store = $store ?? new CycleStateStore($this->root);
+        $this->runtimeReader = $runtimeReader;
     }
 
     public function store(): CycleStateStore
@@ -282,6 +284,9 @@ final class CycleManager
      */
     private function cycleValue(string $key)
     {
+        if ($this->runtimeReader !== null) {
+            return ($this->runtimeReader)($key);
+        }
         if (!isset($GLOBALS['db'])) {
             return false;
         }

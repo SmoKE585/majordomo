@@ -1,5 +1,9 @@
 # Точки входа и `Application`
 
+Консольная точка входа — `majordomo` в корне: `php majordomo <команда>`.
+Она использует отдельный `MajorDoMo\Core\Console\Application`, без HTTP boot,
+legacy loader и `load_settings.php`. Правила добавления команд: [console.md](console.md).
+
 Документ для агентов, которые добавляют или меняют HTTP-точки входа.
 Цель — не возвращать бизнес-логику в `public/*.php`.
 
