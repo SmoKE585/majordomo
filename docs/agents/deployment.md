@@ -65,6 +65,19 @@ COMPOSER_IPRESOLVE=4 composer install \
 
 Переменная действует только на Composer; системный IPv4/IPv6 не меняется.
 
+## npm и devDependencies
+
+`npm ci` запускается с `NODE_ENV=development`, `NPM_CONFIG_PRODUCTION=false` и
+`--include=dev`: иначе на FastPanel с `NODE_ENV=production` не устанавливается
+`vite`, и `npm run build` падает с `sh: 1: vite: not found` (код 127).
+
+Для ручной сборки:
+
+```bash
+NODE_ENV=development npm ci --include=dev --no-audit --no-fund
+NODE_ENV=development npm run build
+```
+
 ## Ошибки
 
 - До замены файлов: циклы не трогали, режим обслуживания выключается.
