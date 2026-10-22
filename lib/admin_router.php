@@ -54,6 +54,10 @@ function mdj_admin_route_table($rootHtml = null)
 
     return array(
         // --- Specific admin pages -----------------------------------------
+        '/^' . $root . 'panel\/modes\/add\.html/is'
+            => '?(panel:{action=modes})&md=modes&view_mode=edit_modes',
+        '/^' . $root . 'panel\/modes\/(\d+)\.html/is'
+            => '?(panel:{action=modes})&md=modes&view_mode=edit_modes&id=\1',
         '/^' . $root . 'panel\/event\/(\d+)\/delete\.html/is'
             => '?(panel:{action=events})&md=events&view_mode=delete_events&id=\1',
         '/^' . $root . 'panel\/event\/(\d+)\.html/is'
@@ -1045,6 +1049,15 @@ function mdj_admin_build_pretty($state)
             'path' => '/panel/knowledge_base.html',
             'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
         );
+    }
+
+    if ($module === 'modes') {
+        if ($parents || $tab !== '') return null;
+        $path = null;
+        if ($view === 'edit_modes') $path = $id > 0 ? '/panel/modes/' . $id . '.html' : '/panel/modes/add.html';
+        if ($view === '' && $id <= 0) $path = '/panel/modes.html';
+        if ($path === null) return null;
+        return array('path' => $path, 'query' => mdj_admin_finish_extra($extra, $view, $module, true, $dropDataSource));
     }
 
     if ($module === 'zigbee') {

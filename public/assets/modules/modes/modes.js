@@ -73,9 +73,6 @@
                     rule.querySelector('[data-add-condition]')?.focus();
                 }
             });
-            page.querySelectorAll('[data-mode-delete]').forEach(form => form.addEventListener('submit', event => {
-                if (!window.confirm('Удалить этот режим? История переключений сохранится.')) event.preventDefault();
-            }));
             refresh();
         });
     };

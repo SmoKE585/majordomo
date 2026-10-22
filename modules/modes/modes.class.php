@@ -54,6 +54,7 @@ class modes extends module
                     $manager->set($manager->get($id)['NAME'], $target === '1', 'admin');
                     $success = 'Состояние установлено. Автоматика продолжает работать.';
                 } elseif ($operation === 'delete') {
+                    if (self::posted('confirm_delete') !== '1') throw new InvalidArgumentException('Подтвердите удаление режима.');
                     $manager->delete($id); $this->id = $id = 0; $this->view_mode = $view = ''; $success = 'Режим удалён.';
                 } else throw new InvalidArgumentException('Неизвестное действие.');
             } catch (Throwable $failure) { $error = $failure->getMessage(); }
@@ -73,7 +74,8 @@ class modes extends module
         $modeOptions = array('' => 'Выберите режим');
         foreach ($all as $mode) if (!$editing || (int)$mode['ID'] !== $id) $modeOptions[$mode['NAME']] = $mode['TITLE'];
         $scripts = Core::database()->select('SELECT ID,TITLE FROM scripts ORDER BY TITLE');
-        $cycleEnabled = !(new MajorDoMo\Core\Cycles\CycleManager(ROOT))->isDisabled('cycle_states');
+        $cycle = (new MajorDoMo\Core\Cycles\CycleManager(ROOT))->state('cycle_states');
+        $cycleEnabled = $cycle['desired'] === 'running' && $cycle['online'];
         ob_start();
         require ROOT . 'templates/modes/modes.php';
         $this->result = $this->parseLinks(ob_get_clean());

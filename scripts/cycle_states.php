@@ -15,7 +15,7 @@ $ctl = new control_modules();
 
 $checked_time = 0;
 
-setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
+$last_run = getGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run');
 $cycleVarName = 'ThisComputer.' . str_replace('.php', '', basename(__FILE__)) . 'Run';
 
 $objects = getObjectsByClass('systemStates');
@@ -25,18 +25,24 @@ if (is_array($objects) || $objects instanceof Countable) {
 } else {
     $total = 0;
     echo "No systemStates objects found...." . "\n";
-    exit;
 }
+
+$modesTick = static function (): void {
+    if (!isModuleInstalled('modes')) return;
+    try { \MajorDoMo\Core\Modes\ModeManager::shared()->tick(); }
+    catch (Throwable $error) { DebMes($error->getMessage(), 'modes', 'error'); }
+};
 
 if (isset($_GET['once'])) {
 
     echo "Runing once.......";
-    $last_run = getGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run');
+    $modesTick();
 
     if ((time() - $last_run) > 5 * 60) {
         setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
         for ($i = 0; $i < $total; $i++) {
-            callMethod($objects[$i]['TITLE'] . '.checkState');
+            try { callMethod($objects[$i]['TITLE'] . '.checkState'); }
+            catch (Throwable $error) { DebMes('Error in checkState for ' . $objects[$i]['TITLE'] . ': ' . $error->getMessage(), 'cycle_states', 'error'); }
         }
     }
 
@@ -45,7 +51,15 @@ if (isset($_GET['once'])) {
 } else {
     echo date("H:i:s") . " running " . basename(__FILE__) . PHP_EOL;
 
+    $objects_refreshed = time();
     while (1) {
+        $modesTick();
+        if (time() - $objects_refreshed >= 60) {
+            $objects = getObjectsByClass('systemStates');
+            if (!is_array($objects)) $objects = array();
+            $total = count($objects);
+            $objects_refreshed = time();
+        }
         if (time() - $checked_time > 10) {
             setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
             $checked_time = time();
@@ -54,7 +68,7 @@ if (isset($_GET['once'])) {
             for ($i = 0; $i < $total; $i++) {
                 try {
                     callMethod($objects[$i]['TITLE'] . '.checkState');
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     DebMes('Error in checkState for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_states', 'error');
                 }
             }

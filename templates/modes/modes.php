@@ -129,7 +129,7 @@ $ruleView = static function (string $index, array $rule) use ($conditionView, $e
         <template data-condition-template><?php $conditionView('__R__', '__C__', array()); ?></template>
         <?php if ($record): ?>
             <?= MDJUI::codeSample(array('language' => 'php', 'title' => 'Использовать в других модулях', 'code' => "if (isModeActive('" . $record['NAME'] . "')) {\n    // Режим включён\n}\nenableMode('" . $record['NAME'] . "');\ndisableMode('" . $record['NAME'] . "');", 'caption' => 'Вызовы сразу меняют состояние. Расписание и события продолжают работать.')) ?>
-            <details class="md-modes-delete"><summary>Удаление режима</summary><p class="md-field__hint">Выключите режим и удалите ссылки на него из условий других режимов.</p><form method="post" action="<?= $e($url('/' . $id)) ?>" data-mode-delete><?php $hidden(array('operation' => 'delete')); ?><?= MDJUI::button('Удалить режим', array('type' => 'submit', 'variant' => 'danger', 'icon' => 'trash')) ?></form></details>
+            <details class="md-modes-delete"><summary>Удаление режима</summary><p class="md-field__hint">Выключите режим и удалите ссылки на него из условий других режимов. История переключений сохранится.</p><form method="post" action="<?= $e($url('/' . $id)) ?>"><?php $hidden(array('operation' => 'delete')); ?><?= MDJUI::checkbox(array('name' => 'confirm_delete', 'label' => 'Подтверждаю удаление режима', 'required' => true)) ?><?= MDJUI::button('Удалить режим', array('type' => 'submit', 'variant' => 'danger', 'icon' => 'trash')) ?></form></details>
         <?php endif; ?>
     <?php else: ?>
         <div class="md-ui-widget-grid">
