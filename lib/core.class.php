@@ -1,5 +1,13 @@
 <?php
 
+// Shared by public/bootstrap, config.php and the legacy loader (including CLI
+// cycles). Package classes and autoload.files must be available before config.
+if (is_file(dirname(__DIR__) . '/vendor/autoload.php')) {
+    require_once dirname(__DIR__) . '/vendor/autoload.php';
+}
+
+// Keep the local core loader for installations that have not run Composer yet.
+// Legacy libraries in 3rdparty/ continue to use their existing includes.
 spl_autoload_register(function ($class) {
     $prefix = 'MajorDoMo\\Core\\';
     if (strncmp($class, $prefix, strlen($prefix)) !== 0) return;

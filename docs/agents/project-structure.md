@@ -26,6 +26,8 @@
 │       ├── vendor/             # браузерные библиотеки (bootstrap, jquery, fancybox)
 │       └── modules/<name>/     # CSS/JS страниц конкретного модуля
 ├── bootstrap.php               # chdir в корень приложения для public-входов
+├── composer.json / composer.lock # PHP-зависимости и зафиксированные версии
+├── vendor/                     # Composer; не коммитится, вне document root
 ├── .env / .env.example         # конфигурация (.env не коммитится)
 ├── config.php                  # шим: Config::boot + легаси-глобалы
 ├── load_settings.php           # include, не точка входа
@@ -106,8 +108,9 @@ Document root — только `public/`. Всё, что должно сохра
 Точки входа перенесены в `public/` физически. Так как они используют
 относительные include (`./config.php`, `./lib/...`), каждый начинается с
 `require dirname(__DIR__) . '/bootstrap.php'`: тот определяет `MD_APP_ROOT`,
-делает `chdir()` в корень приложения и регистрирует autoloader
-`MajorDoMo\Core\*`.
+делает `chdir()` в корень приложения и подключает `lib/core.class.php`.
+Этот общий загрузчик подключает Composer и локальную автозагрузку
+`MajorDoMo\Core\*`; `config.php` использует его и для CLI-входов.
 
 С октября 2026 `public/admin.php` и `public/index.php` — тонкие адаптеры:
 boot и обработка запроса живут в `lib/core/Application.php`,

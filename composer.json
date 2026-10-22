@@ -1,0 +1,18 @@
+{
+    "name": "majordomo/majordomo",
+    "description": "MajorDoMo smart home automation platform",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "MajorDoMo\\Core\\": "lib/core/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

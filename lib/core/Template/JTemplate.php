@@ -345,19 +345,18 @@ class JTemplate
      */
     public function parseGlobals(&$res, &$hash)
     {
-        // <#VARIABLE#> - global variables
-        if (preg_match_all('/[<#]#(\w+?)#[>#]/', $res, $matches, PREG_PATTERN_ORDER)) {
-            $count_matches_1 = count($matches[1]);
-
-            for ($i = 0; $i < $count_matches_1; $i++) {
-                if (defined($matches[1][$i])) {
-                    $res = str_replace($matches[0][$i], constant($matches[1][$i]), $res);
-                } else {
-                    if (!isset($hash[$matches[1][$i]])) $hash[$matches[1][$i]] = '';
-                    $res = str_replace($matches[0][$i], $hash[$matches[1][$i]], $res);
-                }
+        // <#VARIABLE#> - global variables: a defined constant wins, otherwise data.
+        $res = preg_replace_callback('/[<#]#(\w+?)#[>#]/', function (array $match) use (&$hash) {
+            $name = $match[1];
+            if (defined($name)) {
+                return (string)constant($name);
             }
-        }
+            if (!isset($hash[$name])) {
+                $hash[$name] = '';
+            }
+
+            return $this->templateSafe($hash[$name]);
+        }, $res);
     }
 
     /**
@@ -474,13 +473,15 @@ class JTemplate
     public function parseHashes(&$res, &$hash)
     {
         // <#VARIABLE.VALUE#> - hash variables (pre-conditions)
-        if (preg_match_all('/<#(\w+?)\.(\w+?)#>/', $res, $matches, PREG_PATTERN_ORDER)) {
-            $count_matches_1 = count($matches[1]);
-            for ($i = 0; $i < $count_matches_1; $i++) {
-                if (!isset($hash[$matches[1][$i]][$matches[2][$i]])) $hash[$matches[1][$i]][$matches[2][$i]] = null;
-                $res = str_replace($matches[0][$i], $this->templateSafe($hash[$matches[1][$i]][$matches[2][$i]]), $res);
+        $res = preg_replace_callback('/<#(\w+?)\.(\w+?)#>/', function (array $match) use (&$hash) {
+            $name = $match[1];
+            $field = $match[2];
+            if (!isset($hash[$name][$field])) {
+                $hash[$name][$field] = null;
             }
-        }
+
+            return $this->templateSafe($hash[$name][$field]);
+        }, $res);
     }
 
     /**
@@ -528,23 +529,19 @@ class JTemplate
                     $true_part = $temp[0];
                     $false_part = isset($temp[1]) ? $temp[1] : "";
 
-                    $str = "// " . str_replace("\n", " ", $condition);
+                    $matched = false;
+                    try {
+                        $matched = Condition::evaluate($condition, is_array($hash) ? $hash : array());
+                    } catch (\Throwable $e) {
+                        // A broken condition must not take the whole page down and
+                        // must not execute template text as PHP.
+                        if (function_exists('DebMes')) {
+                            DebMes('Template condition failed: ' . $condition . ' — ' . $e->getMessage(), 'templates');
+                        }
+                        $matched = false;
+                    }
 
-                    $condition = preg_replace('/^!(\w+)$/', '!(isset($hash[\'\\1\'])?$hash[\'\\1\']:null)', $condition);
-                    $condition = preg_replace('/^(\w+)$/', '(isset($hash[\'\\1\'])?$hash[\'\\1\']:null)', $condition);
-                    $condition = preg_replace('/(\w+)(?=[=!<>])/', '(isset($hash[\'\\1\'])?$hash[\'\\1\']:null)', $condition);
-                    $condition = preg_replace('/(\w+)[[:space:]](?=[=!<>])/', '(isset($hash[\'\\1\'])?$hash[\'\\1\']:null)', $condition);
-                    $condition = preg_replace('/\((\w+)\)/', '(isset($hash[\'\\1\'])?$hash[\'\\1\']:null)', $condition);
-                    $condition = preg_replace('/\]=(?=[^\w=])/', ']==', $condition);
-                    $condition = preg_replace('/:null\)=(?=[^\w=])/', ':null)==', $condition);
-
-                    $str .= "\nif ($condition) {\$res1=\$true_part;} else {\$res1=\$false_part;}";
-
-                    setEvalCode($str);
-                    eval($str);
-                    setEvalCode();
-
-                    $bdy = $res1;
+                    $bdy = $matched ? $true_part : $false_part;
                     $res = str_replace($bdy_old, $bdy, $res);
                     $replaced = 1;
                 } elseif ((is_integer($begin)) && (is_integer($end)) && ($end > $begin) && ((!is_integer($middle)) || ($middle < $end))) {
@@ -728,13 +725,15 @@ class JTemplate
                     $old_template = $this->template;
                     $this->template = $file_name;
 
-                    // .tpl includes are rendered by Smarty regardless of DEBUG_MODE.
-                    // Previously the non-debug branch called dprint($new_hash), so on
-                    // production (DEBUG_MODE=0) any page including a Smarty template —
-                    // e.g. the classes tree via view_tree.tpl — dumped the whole data
-                    // array and exited instead of rendering the page.
-                    if (preg_match('/\.tpl$/', $file_name)) {
-                        $include_result = $this->renderSmartyInclude($file_name, $new_hash);
+                    // PHP partials ([#inc view.php#]) are included directly: they get
+                    // the template data as $data and print their own markup. This is
+                    // the preferred way to render complex admin UI blocks, because it
+                    // needs no template language at all.
+                    if (preg_match('/\.php$/', $file_name)) {
+                        $include_result = $this->renderPhpInclude($file_name, $new_hash);
+                    } elseif (preg_match('/\.(tpl|xslt)$/', $file_name)) {
+                        $include_result = '<!-- Template format is not supported: '
+                            . htmlspecialchars($file_name, ENT_QUOTES) . ' -->';
                     } else {
                         $include_result = $this->parse($this->loadfile($file_name), $new_hash, $new_root);
                     }
@@ -747,31 +746,29 @@ class JTemplate
     }
 
     /**
-     * Render a Smarty template included with the [#inc file.tpl#] tag.
+     * Render a PHP partial included with the [#inc file.php#] tag.
      *
-     * Admin pages that use Smarty show live data (a class or object added a
-     * second ago has to appear immediately), so output caching stays disabled.
+     * The partial receives the template data as `$data` and prints its markup;
+     * the engine captures the output. This is the supported way to write new
+     * admin UI blocks without extending the template syntax.
      *
      * @access private
-     * @param string $file_name .tpl file name, relative to the project root
-     * @param array $hash data for the template
+     * @param string $file_name .php partial, resolved relative to the including template
+     * @param array $hash data for the partial
      * @return string
      */
-    private function renderSmartyInclude($file_name, &$hash)
+    private function renderPhpInclude($file_name, &$hash)
     {
-        require_once ROOT . '3rdparty/smarty3/Smarty.class.php';
-
-        $smarty = new \Smarty;
-        $smarty->setTemplateDir(ROOT . './templates')
-            ->setCompileDir(ROOT . './cms/cached/templates_c')
-            ->setCacheDir(ROOT . './cms/cached');
-        $smarty->debugging = false;
-        $smarty->caching = false;
-        foreach ($hash as $k => $v) {
-            $smarty->assign($k, $v);
+        $data = $hash;
+        ob_start();
+        try {
+            include $file_name;
+        } catch (\Throwable $e) {
+            ob_end_clean();
+            throw $e;
         }
 
-        return (string)$smarty->fetch($file_name);
+        return (string)ob_get_clean();
     }
 
     /**
@@ -785,23 +782,45 @@ class JTemplate
     public
     function parseVariables(&$res, &$hash)
     {
-        // [#VARIABLE#] - general variables
-        if (preg_match_all('/\[#(\w+?)#\]/', $res, $matches, PREG_PATTERN_ORDER)) {
-            $count_matches_1 = count($matches[1]);
-            for ($i = 0; $i < $count_matches_1; $i++) {
-                if (!isset($hash[$matches[1][$i]])) $hash[$matches[1][$i]] = '';
-                $res = str_replace($matches[0][$i], $this->templateSafe($hash[$matches[1][$i]]), $res);
-            }
-        }
+        // [#VAR#], [#ARRAY.FIELD#] and their escaped forms [#VAR|html#].
+        $res = preg_replace_callback(
+            '/\[#(\w+?)(?:\.(\w+?))?(?:\|(html))?#\]/',
+            function (array $match) use (&$hash) {
+                $name = $match[1];
+                $field = $match[2] ?? '';
 
-        // [#VARIABLE.VALUE#] - hash variables
-        if (preg_match_all('/\[#(\w+?)\.(\w+?)#\]/', $res, $matches, PREG_PATTERN_ORDER)) {
-            $count_matches_1 = count($matches[1]);
-            for ($i = 0; $i < $count_matches_1; $i++) {
-                if (!isset($hash[$matches[1][$i]][$matches[2][$i]])) $hash[$matches[1][$i]][$matches[2][$i]] = '';
-                $res = str_replace($matches[0][$i], $this->templateSafe($hash[$matches[1][$i]][$matches[2][$i]]), $res);
-            }
-        }
+                if ($field !== '') {
+                    if (!isset($hash[$name][$field])) {
+                        $hash[$name][$field] = '';
+                    }
+                    $value = $hash[$name][$field];
+                } else {
+                    if (!isset($hash[$name])) {
+                        $hash[$name] = '';
+                    }
+                    $value = $hash[$name];
+                }
+
+                if (($match[3] ?? '') === 'html') {
+                    return $this->escapeHtml($value);
+                }
+
+                return $this->templateSafe($value);
+            },
+            $res
+        );
+    }
+
+    /**
+     * HTML-escape a value for [#VAR|html#] and keep template delimiters inert.
+     *
+     * @param mixed $value
+     */
+    private function escapeHtml($value): string
+    {
+        $value = is_scalar($value) ? (string)$value : '';
+
+        return $this->templateSafe(htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
     }
 
     /**

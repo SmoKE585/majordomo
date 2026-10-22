@@ -5,8 +5,8 @@ namespace MajorDoMo\Core;
 /**
  * Minimal dotenv reader.
  *
- * Deliberately small and dependency-free: the project does not use Composer and
- * the environment files are maintained by humans on Windows and Linux.
+ * Deliberately small and dependency-free so configuration can boot before the
+ * first Composer install. Files are maintained by humans on Windows and Linux.
  *
  * Supported:
  *   KEY=value

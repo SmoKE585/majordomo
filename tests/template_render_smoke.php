@@ -124,13 +124,11 @@ $needsModules = array();
 foreach ($files as $path => $content) {
     preg_match_all('/\[#inc\s+(\S+?)#\]/', $content, $matches);
     $includes[$path] = $matches[1];
-    // Smarty templates need language constants and structured data; their render
-    // path is covered by tests/template_include_smoke.php and the HTTP checks.
-    $needsModules[$path] = (bool)preg_match('/\[#module\s/', $content) || str_ends_with($path, '.tpl');
+    $needsModules[$path] = (bool)preg_match('/\[#module\s/', $content);
 }
 
 /**
- * @return array{0: bool, 1: bool} [uses modules or Smarty, has unresolved includes]
+ * @return array{0: bool, 1: bool} [uses modules, has unresolved includes]
  */
 function inspectTemplate(string $path, array $files, array $includes, array $needsModules, array &$seen): array
 {
@@ -155,8 +153,7 @@ function inspectTemplate(string $path, array $files, array $includes, array $nee
     return array($module, $missing);
 }
 
-// Warnings from the engine are regressions too, but Smarty is noisy on 8.4 and
-// is excluded via ~E_DEPRECATED above.
+// Warnings from the engine are regressions too.
 set_error_handler(static function (int $severity, string $message, string $file, int $line) {
     if ((error_reporting() & $severity) === 0) {
         return false; // respect legacy @-suppression
@@ -171,7 +168,7 @@ $problems = array();
 foreach ($files as $path => $content) {
     $seen = array();
     list($module, $missing) = inspectTemplate($path, $files, $includes, $needsModules, $seen);
-    if ($module || $missing || str_ends_with($path, '.tpl')) {
+    if ($module || $missing) {
         $skipped++;
         continue;
     }
@@ -217,7 +214,7 @@ restore_error_handler();
 check($rendered > 60, 'rendered a meaningful number of templates (' . $rendered . ')');
 check($problems === array(), 'templates render cleanly: ' . implode('; ', array_slice($problems, 0, 10)));
 
-echo 'Rendered ' . $rendered . ' templates, skipped ' . $skipped . ' (modules/Smarty/missing includes)' . PHP_EOL;
+echo 'Rendered ' . $rendered . ' templates, skipped ' . $skipped . ' (modules/missing includes)' . PHP_EOL;
 
 if ($failures) {
     echo 'Template render smoke tests failed: ' . $failures . PHP_EOL;

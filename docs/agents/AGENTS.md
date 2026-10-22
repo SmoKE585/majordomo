@@ -76,7 +76,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - добавлены компоненты `MDJUI::activityFeed()` (лента действий), `MDJUI::hint()` (контекстная подсказка с пунктами, шагами и закрытием) и `MDJUI::codeSample()` (read-only код с подсветкой PHP/Python, вкладками языков, номерами строк и копированием); подсветка — lazy-chunk `public/assets/admin/codehighlight.js` + `codehighlight.css` (highlight.js), демо — `?action=ui_kit#blocks`, документация — `docs/agents/DESIGN_SYSTEM.md`;
 - исправлен горизонтальный скролл страницы на мобильных: scroll-контейнеры таблиц (`md-table__scroll`) получили `position: relative`, чтобы абсолютные visually-hidden элементы не растягивали документ; футер карточки и длинные бейджи переносятся; сетка saverestore и мобильные `md-tabs` больше не выходят за экран; подсказка на странице общих настроек переведена на `MDJUI::hint()`.
 - модуль Shoutbox (`/panel/shoutbox.html`) переведён на общую систему: hero и KPI, журнал сообщений на `MDJUI::activityFeed()` с удалением отдельных записей и очисткой всего журнала, подсказка о `say()` и пример вызова на `MDJUI::hint()`/`MDJUI::codeSample()`; page-CSS — `public/assets/modules/shoutbox/shoutbox.css`.
-- шаблонный слой вынесен в ядро: `lib/core/Template/JTemplate.php` (движок `[#...#]`) и `lib/core/Template/Parser.php`, namespace `MajorDoMo\Core\Template`; легаси-имена `jTemplate`/`parser` сохранены через `class_alias` в `lib/jTemplate.class.php` и `lib/parser.class.php`, поэтому 29 модулей и сторонние модули работают без изменений; из `Parser` удалена мёртвая XSLT-ветка (Sablotron отсутствует в PHP с 5.3), `.xslt` теперь отдаёт явный маркер; поведение подтверждено побайтовым сравнением 14 страниц в обоих режимах `DEBUG_MODE`; добавлены `tests/template_surface_smoke.php` и `tests/template_render_smoke.php`.
+- шаблонный слой сведён к одному движку: `lib/core/Template/JTemplate.php` (движок `[#...#]` + PHP-партиалы через `[#inc file.php#]`) и `lib/core/Template/Parser.php`, namespace `MajorDoMo\Core\Template`; легаси-имена `jTemplate`/`parser` сохранены через `class_alias`, поэтому 29 модулей и сторонние модули работают без изменений. Smarty удалён целиком (`.tpl`, `3rdparty/smarty3`): единственное дерево классов переписано в `templates/classes/view_tree.php` и рендерится за 0,1 мс вместо 2,6 мс. `[#if#]` больше не выполняется через `eval()` — новый `Condition` разбирает 623 существующих условия с теми же результатами (17 444 проверки), добавлен экранирующий фильтр `[#VAR|html#]`. Подстановки переведены с `str_replace` на `preg_replace_callback` (рендер оболочки 1,58× быстрее). Поведение подтверждено сравнением 14 страниц в обоих режимах `DEBUG_MODE`; тесты — `template_include/surface/render/condition_smoke`.
 
 Следующий этап — **полировка мобильных деталей объектов** (длинные значения в редакторах, компактные формы), затем остальные модули.
 
@@ -87,7 +87,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 3. `docs/agents/admin-assets.md` — сборка, бандл, как добавлять пакеты.
 4. `docs/agents/admin-module-ui-guidelines.md` — UI-правила для модулей.
 5. `docs/agents/admin-routing.md` — контракт чистых URL, legacy `pd` и 404.
-6. `docs/agents/third-party.md` — что лежит в `3rdparty/`, зачем, план перехода на Composer.
+6. `docs/agents/third-party.md` — Composer, установка пакетов и параллельная работа с `3rdparty/`.
 7. `docs/agents/configuration.md` — `.env`, `Config`, типы, легаси-константы и правила для модулей.
 8. `docs/agents/entrypoints.md` — точки входа, `Application`, `AdminApplication`, `SiteApplication` и контракт глобалов.
 9. `docs/agents/install.md` — мастер первичной настройки, маркер установки и gate.
@@ -118,7 +118,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `public/index.php` | Тонкий адаптер: создаёт `SiteApplication` |
 | `public/api.php` | REST API (`/api/...`) |
 | `public/install.php` | Мастер первичной настройки (тонкий адаптер `InstallApplication`) |
-| `bootstrap.php` | `chdir` в корень и autoloader `MajorDoMo\Core\*` |
+| `bootstrap.php` | `chdir` в корень и общий загрузчик `lib/core.class.php` (Composer + локальный core autoloader) |
 | `lib/core/Application.php` | Общий boot: config → loader → settings, таймеры, сессия |
 | `lib/core/AdminApplication.php` | Админка: canonicalize, part_load, `panel`, вывод |
 | `lib/core/SiteApplication.php` | Сайт: `application`, 404, postprocess, вывод |
@@ -127,7 +127,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `lib/core/Settings/` | `SettingsSchema`, `SettingsManager`, `SettingsPresenter` — общие настройки поверх мастера |
 | `lib/core/Cycles/` | `CycleStateStore`, `CycleSupervisor`, `CycleManager` — персистентное управление циклами |
 | `lib/core/Filesystem/` | `FolderBrowser` — read-only обзор каталогов в границах проекта для выбора путей |
-| `lib/core/Template/` | Шаблонный слой: `JTemplate` (движок `[#VAR#]`/`[#if#]`/`[#inc#]`/`[#module#]`) и `Parser` (выбор jTemplate/Smarty по расширению); `lib/jTemplate.class.php` и `lib/parser.class.php` — только `class_alias` для легаси-кода |
+| `lib/core/Template/` | Шаблонный слой: `JTemplate` (движок `[#VAR#]`/`[#if#]`/`[#inc#]`/`[#module#]`, PHP-партиалы) и `Parser` (точка входа, `.tpl`/`.xslt` — маркер «не поддерживается»); `Condition` — безопасный вычислитель условий без `eval()`; `lib/jTemplate.class.php` и `lib/parser.class.php` — только `class_alias` для легаси-кода |
 | `templates/install/install.php` | Разметка мастера (MDJUI, шаги, обзор) |
 | `public/assets/install/` | Page-only CSS/JS мастера |
 | `tools/install.php` | CLI: `status`, `check`, `test-db`, `reset`, `complete` |
@@ -322,11 +322,15 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `npm run build` после изменений в `resources/`.
 - `php tests/routing_smoke.php` — контракт friendly URL, round-trip и nginx-конфига.
 - `php tests/config_smoke.php` — парсер `.env`, типы, кеш и легаси-мост.
+- `composer validate --strict`, `composer dump-autoload --optimize --strict-psr`, `php tests/composer_smoke.php` — при изменениях PHP-зависимостей или автозагрузки; старые библиотеки остаются в `3rdparty/`.
 - `php tests/install_smoke.php` — `.env`-писатель, маркер установки, схема, gate и рендер мастера.
 - `php tests/settings_cycles_smoke.php` — схема «Общих настроек», персистентные состояния и reconcile циклов.
 - `php tests/folder_picker_smoke.php` — границы folder picker: обход `..`, абсолютные пути вне проекта, скрытые каталоги, fallback на корень.
 - `php tests/knowledge_base_smoke.php` — сканирование `docs/`, front matter, безопасный Markdown, ссылки и категории базы знаний.
-- `php tests/template_include_smoke.php` — `[#inc *.tpl#]` рендерится через Smarty и при `DEBUG_MODE=0` (раньше прод отдавал `print_r` вместо страницы классов).
+- `php tests/template_include_smoke.php` — `[#inc *.php#]` рендерит PHP-партиал с `$data` при `DEBUG_MODE=0`, `.tpl`/`.xslt` отдают маркер «не поддерживается», легаси-алиасы ведут на ядро.
+- `php tests/template_surface_smoke.php` — целостность шаблонов: существование `[#inc#]`/`[#module#]`, баланс `[#begin#]`/`[#end#]`, отсутствие дампов и `.tpl`/`.xslt`, отсутствие Smarty, алиасы `jTemplate`/`parser`.
+- `php tests/template_render_smoke.php` — рендер всех шаблонов без БД при `DEBUG_MODE=0`: нет неотрендеренных тегов, потерянных инклюдов и предупреждений движка.
+- `php tests/template_condition_smoke.php` — все `[#if#]`-условия дают тот же результат, что старая eval-реализация (623 условия × 28 наборов данных), и проверка `[#VAR|html#]`.
 - `php tools/config-audit.php` — не выросло ли число обращений к легаси-константам.
 - Открыть `/panel/` и затронутые страницы: console/exceptions, 390 px, светлая и тёмная темы.
 - После чистой установки проверить, что `/panel/` открывается без формы входа (доступ закрывает reverse proxy), а созданный пользователь есть в `users`.
@@ -345,11 +349,17 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - Тёмная тема не проверена на отдельных legacy-страницах вне текущего этапа (старые вкладки и служебные модули).
 - ApexCharts грузится отдельным чанком `public/assets/admin/charts.js` через общий `100_chart_runtime.js`; на страницах без графиков чарт-рантайм не скачивается.
 - `public/assets/js/window.js`, `public/assets/js/jquery-ui-1.9.1.custom.min.js` и т.п. — legacy фронтенда; не трогать без проверки входящих ссылок.
+- Шаблоны подставляют значения без HTML-экранирования: `templateSafe()` гасит только шаблонные разделители. Для новых шаблонов есть явный фильтр `[#VAR|html#]`; глобальный автоэскейп не включаем, потому что легаси-шаблоны передают намеренный HTML (`[#module#]`, готовые фрагменты).
+- Компилирующий кэш шаблонов **не нужен**: замер профайлера показал, что на рендер уходит 4–6 мс из 50–117 мс страницы (`Parse template panel.html` минус вложенный `module_*`), остальное — запросы модулей, `getKeyData` (14,7 мс на странице классов), `loader` и подключение к БД. После перевода подстановок на `preg_replace_callback` рендер оболочки ускорен в 1,58×; дальнейшая компиляция окупит ~0,3 мс при высоком риске.
+- `getKeyData()` в `lib/objects.class.php` — N+1: на каждый объект отдельный `SQLSelectOne` + `getGlobal()` по каждому data-key свойству. Это главный оставшийся тормоз страницы классов (14,7 мс при 21 объекте) — кандидат на пакетную загрузку.
 
 ## 13. Удалённые/неактуальные файлы
 
 Не возвращайте их без причины:
 
+- `3rdparty/smarty3/` — 1,1 МБ, второй шаблонизатор ради одного файла `templates/classes/view_tree.tpl`; дерево классов переписано в `templates/classes/view_tree.php`, `.tpl`/`.xslt` теперь отдают маркер «не поддерживается» и в проекте не используются;
+- `templates/panel_nav_top.tpl` — Smarty-дубль верхней навигации, не подключался ни из одного шаблона;
+- `templates/classes/view_tree.html` — мёртвый HTML-дубль `view_tree.tpl` (0 вхождений в коде и шаблонах), содержал `[#if RESULT AND …#]`, что в PHP 8 даёт `Undefined constant` и фатал; удалён вместе с переносом шаблонного слоя;
 - `3rdparty/amcharts/` — графики главной заменены на CSS/данные, библиотека не использовалась;
 - `3rdparty/bootstrap5/` — Bootstrap теперь в npm-бандле;
 - `3rdparty/bootstrap-icons/` — иконки в бандле;

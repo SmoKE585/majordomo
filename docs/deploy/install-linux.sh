@@ -1,5 +1,10 @@
 #!/bin/bash
 
+app_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
+cd -- "$app_root" || exit 1
+
+composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader || exit 1
+
 folders=( cached cms debmes modules templates objects saverestore)
 
 for i in "${folders[@]}"

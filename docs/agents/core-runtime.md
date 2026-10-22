@@ -1,7 +1,10 @@
 # Новое ядро: свойства, кеш и очереди
 
 Переписанные службы находятся в `lib/core/`, namespace — `MajorDoMo\Core`.
-`lib/core.class.php` регистрирует локальный autoloader. Composer-зависимости не добавлены.
+`lib/core.class.php` подключает Composer (`vendor/autoload.php`, если установлен)
+и сохраняет локальный autoloader для работы до первого `composer install`.
+Composer загружает `MajorDoMo\Core\` через PSR-4 из `lib/core/`.
+Старые библиотеки в `3rdparty/` подключаются прежним способом и не перенесены.
 Службы получают зависимости через конструкторы; `Core` собирает их для старого загрузчика.
 
 ```php

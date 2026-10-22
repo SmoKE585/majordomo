@@ -9,6 +9,7 @@ Document root — `public/` (структура «а-ля Laravel»): точки
 
 ```bash
 cp .env.example .env           # Windows: copy .env.example .env; заполните DB_*
+composer install               # PHP-зависимости и автозагрузка (PHP 8.4+)
 npm install
 npm run build                  # админ-бандл + редактор + графики в public/assets/admin
 php dev_server.php --port=8080 # локальный сервер (нужен MySQL/MariaDB)
@@ -22,6 +23,10 @@ php dev_server.php --port=8080 # локальный сервер (нужен MyS
 параметры и смена базы доступны в «Общих настройках» панели; сохранение
 перезапускает циклы — см. [docs/agents/settings.md](docs/agents/settings.md) и
 [docs/agents/cycles.md](docs/agents/cycles.md).
+
+PHP-пакеты устанавливаются через Composer из корня проекта. Старые библиотеки
+в `3rdparty/` работают параллельно. Команды установки пакетов и деплоя —
+[docs/agents/third-party.md](docs/agents/third-party.md).
 
 ## Документация
 

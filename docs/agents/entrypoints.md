@@ -16,7 +16,9 @@ public/install.php ───> InstallApplication (config only, без loader/set
 ```
 
 - `bootstrap.php` только выставляет `MD_APP_ROOT`, делает `chdir` в корень и
-  регистрирует autoloader `MajorDoMo\Core\*`.
+  подключает `lib/core.class.php`: Composer и локальный autoloader `MajorDoMo\Core\*`.
+  `config.php` и legacy loader используют тот же файл, поэтому пакеты доступны
+  и в CLI-циклах. Конфигурация и БД для подключения автозагрузки не нужны.
 - `public/admin.php` и `public/index.php` — тонкие адаптеры по 5–10 строк.
   Логики в них быть не должно.
 - [lib/core/Application.php](../../lib/core/Application.php) — общий boot:

@@ -52,13 +52,13 @@ class Parser
             $this->owner = &$owner;
         }
 
+        // Only one engine is supported: jTemplates. .tpl (Smarty) and .xslt
+        // (Sablotron) were removed from the project — the single template that
+        // used Smarty (the classes tree) is now a PHP partial.
         if (str_ends_with($template, '.xslt')) {
-            // Sablotron XSLT was removed from PHP in 5.3 and no template in the
-            // project or in the module catalogue uses this format: show a marker
-            // instead of calling a function that does not exist anymore.
             $this->result = '<!-- XSLT templates are not supported: ' . htmlspecialchars($template, ENT_QUOTES) . ' -->';
         } elseif (str_ends_with($template, '.tpl')) {
-            $this->result = $this->smarty_parse($template, $this->data);
+            $this->result = '<!-- Smarty templates are not supported: ' . htmlspecialchars($template, ENT_QUOTES) . ' -->';
         } else {
             // j-Templates
             $this->result = $this->jtemplate_parse($template, $this->data);
@@ -86,40 +86,6 @@ class Parser
         $result = $jTempl->result;
 
         endMeasure('Parse template ' . $template);
-
-        return $result;
-    }
-
-    /**
-     * SMARTY-parser
-     * Used to parse SMARTY templates
-     * @access private
-     * @param mixed $template_file Template filename
-     * @param mixed $data Data
-     * @return mixed
-     */
-    public function smarty_parse($template_file, &$data)
-    {
-        if (!defined('SMARTY_DIR')) {
-            define('SMARTY_DIR', ROOT . '3rdparty/smarty3/');
-        }
-
-        require_once(SMARTY_DIR . 'Smarty.class.php');
-        $smarty = new \Smarty;
-        $smarty->compile_dir = ROOT . 'cms/cached/templates_c/';
-
-        if (isset($this->owner)) {
-            $smarty->template_dir = DIR_TEMPLATES . $this->owner->name . "/";
-        }
-        $data["ROOTHTML"] = ROOTHTML;
-        foreach ($data as $k => $v) {
-            $smarty->assign($k, $data[$k]);
-        }
-        if (is_object($this->owner)) {
-            $smarty->owner = $this->owner;
-        }
-
-        $result = $smarty->fetch($template_file);
 
         return $result;
     }

@@ -1,20 +1,21 @@
-# Сторонние библиотеки (3rdparty) и план перехода на Composer
+# Сторонние библиотеки: Composer и 3rdparty
 
 Документ отвечает на три вопроса: что лежит в `3rdparty/`, зачем это нужно, где
-используется. В конце — план перехода на `vendor/` + Composer.
+используется и как добавлять PHP-пакеты через Composer. Composer и `3rdparty/`
+работают параллельно: существующие библиотеки не перенесены.
 
 ## 1. Что сейчас в `3rdparty/`
 
 | Каталог | Размер | Что это | Где используется | Composer-пакет |
 | --- | --- | --- | --- | --- |
-| `smarty3/` | 1.1 МБ | Smarty 3, шаблонизатор | `lib/core/Template/Parser.php` (`SMARTY_DIR`), `lib/core/Template/JTemplate.php` (инклюды `[#inc *.tpl#]`) | `smarty/smarty` |
 | `php-mailer/` | 204 КБ | PHPMailer 6 | `lib/general.class.php` (`sendMail`) | `phpmailer/phpmailer` |
 | `phpmqtt/` | 24 КБ | Минимальный MQTT-клиент | `modules/mqtt/mqtt.class.php`, `scripts/cycle_mqtt.php` | `php-mqtt/client` |
 | `Paginator/` | 9 КБ | Постраничная навигация | `modules/actions_log/actions_log_search.inc.php` | `jasongrimes/paginator` |
 | `fonts/` | 1.2 МБ | Шрифт Rubik (woff2) | импорт Vite: `resources/js/app.js` → `../../3rdparty/fonts/rubik/rubik.css` | `@fontsource/rubik` (npm) |
 
-Итого ~2,5 МБ. Только `smarty3`, `php-mailer`, `phpmqtt` и `Paginator`
-подключаются из PHP; `fonts` — веб-ресурс.
+Итого ~1,4 МБ. Только `php-mailer`, `phpmqtt` и `Paginator`
+подключаются из PHP; `fonts` — веб-ресурс. Smarty удалён: шаблонный слой
+(`lib/core/Template/`) использует один движок jTemplates и PHP-партиалы.
 
 Локальная версия `phpmqtt/phpMQTT.php` содержит ограниченный приёмник пакетов:
 `setReadLimits()`, таймаут незавершённого пакета, ожидание сокета, потоковый
@@ -41,42 +42,76 @@ git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard 3rdparty/el
 Если графики свойств снова понадобятся — современный путь: ApexCharts в админке
 (`100_chart_runtime.js`) или отдельный лёгкий endpoint, а не pChart 2.x.
 
-## 3. План перехода на Composer
+## 3. Использование Composer
 
-Цель — `composer.json` + `vendor/` (в `.gitignore`), без рукописных копий
-библиотек в `3rdparty/`. Порядок безопасный, по одной библиотеке:
+Нужны PHP 8.4+ и Composer 2. Все команды выполняются из корня проекта.
 
-1. **Инфраструктура**
-   - `composer init` → `composer.json` с `"require": {}` и `"config": {"optimize-autoloader": true}`;
-   - `vendor/` в `.gitignore`, `vendor/autoload.php` подключается в `bootstrap.php`
-     (рядом с `chdir`), чтобы автозагрузка была доступна всем входам;
-   - на проде — `composer install --no-dev --optimize-autoloader` при деплое
-     (в `docs/deploy/install-linux.sh` добавить шаг, если composer доступен).
+```bash
+composer install
+```
 
-2. **Paginator** (9 КБ, один класс) — первым: `composer require jasongrimes/paginator`,
-   заменить `require ROOT . '3rdparty/Paginator/Paginator.php'` на автозагрузку
-   (`JasonGrimes\Paginator`). Простейшая проверка — история действий, `actions_log`.
+Команда создаёт `vendor/` и автозагрузку из `composer.lock`. В репозитории
+хранятся `composer.json` и `composer.lock`; `vendor/` и локальный `auth.json`
+исключены из Git. Пока сторонних Composer-зависимостей нет.
 
-3. **PHPMailer** — `composer require phpmailer/phpmailer`, в `lib/general.class.php`
-   убрать три `include_once`, классы `PHPMailer\PHPMailer\*` придут из `vendor/`.
-   Проверка: отправка письма из настроек (или CLI-скрипт).
+Добавить новый пакет:
 
-4. **php-mqtt** — `composer require php-mqtt/client`. Текущий `phpmqtt/phpMQTT.php`
-   имеет другой API (`phpMQTT`), поэтому нужен адаптер в `modules/mqtt` и
-   `scripts/cycle_mqtt.php`, либо временно оставить как есть. Проверка: подключение
-   к брокеру и чтение топика.
+```bash
+composer require vendor/package
+```
 
-5. **Smarty** — `composer require smarty/smarty`. Здесь больше всего кода:
-   `lib/core/Template/Parser.php` (`SMARTY_DIR`), `lib/core/Template/JTemplate.php`,
-   `cms/cached/templates_c`. Нужен отдельный этап с проверкой всех legacy-страниц,
-   которые рендерятся через Smarty.
+`vendor/package` замените именем выбранного пакета. После команды сохраняйте
+оба файла Composer вместе с использующим пакет кодом. Классы пакета доступны
+по его namespace в модулях, сценариях, методах объектов и CLI-циклах;
+дополнительный `require` в каждом файле не нужен. Отдельный внешний CLI-скрипт
+может подключить `bootstrap.php` по пути относительно своего `__DIR__`.
 
-6. **Rubik** — `npm install @fontsource/rubik` и импорт в `resources/js/app.js`;
-   `3rdparty/fonts` после этого удаляется (шрифт попадает в бандл `public/assets/admin/fonts`).
+Общая точка подключения — `lib/core.class.php`, которую используют
+`bootstrap.php`, `config.php` и `lib/loader.php`. Она однократно подключает
+`vendor/autoload.php`, включая объявленные пакетами `autoload.files`.
+Namespace `MajorDoMo\Core\` сопоставлен с `lib/core/` через PSR-4.
+Локальный загрузчик ядра сохранён: текущая система может загрузиться без
+`vendor/`, но код с новыми пакетами требует предварительного `composer install`.
+Неполный или повреждённый `vendor/` не маскируется fallback-логикой.
 
-После каждого шага: `php -l`, `npm run build` (если затронут фронтенд),
-`php tests/routing_smoke.php`, ручная проверка затронутого модуля. Коммит — на
-каждую библиотеку, чтобы откат был точечным.
+Старые PHPMailer, MQTT и Paginator продолжают подключаться из `3rdparty/`.
+Их миграция — отдельная задача. Не устанавливайте вторую копию той же библиотеки
+с теми же классами: возможны конфликты версий и повторное объявление классов.
+
+### Сервер и обновления
+
+Обычный `composer install` поддерживается. Для рабочего сервера:
+
+```bash
+composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+composer check-platform-reqs --no-dev
+```
+
+Команды не запускают приложение и не подключаются к его БД. Скрипт
+`docs/deploy/install-linux.sh` также устанавливает зависимости из корня проекта
+и прекращает выполнение при ошибке Composer.
+
+После доставки изменённых файлов Composer на сервер выполните `composer install`.
+Встроенный updater `saverestore` Composer автоматически не запускает.
+Обновлять версии пакетов следует локально с проверками и переносом lock-файла;
+на сервере используется `install`, а не `update`. Для работающих CLI-циклов
+новый набор зависимостей вступает в силу после их перезапуска.
+`vendor/` расположен вне `public/` и не должен публиковаться через nginx.
+
+### Проверки
+
+```bash
+composer validate --strict
+composer dump-autoload --optimize --strict-psr
+php tests/composer_smoke.php
+php tests/routing_smoke.php
+php tests/config_smoke.php
+```
+
+`composer_smoke.php` проверяет реальные Composer PSR-4 mappings, загрузку через
+bootstrap и CLI, классы/функции пакета, однократное подключение и работу без
+`vendor/`. Тест использует только временные файлы, не загружает рабочий `.env`
+и не обращается к БД или внешним сервисам.
 
 ## 4. Что важно не сломать
 
@@ -93,8 +128,8 @@ git checkout <commit>^ -- pChart 3rdparty/jpgraph 3rdparty/freeboard 3rdparty/el
 
 ## 5. Критерий готовности
 
-- `3rdparty/` содержит только то, что нельзя поставить пакетным менеджером
-  (или ещё не перенесено и явно перечислено в этом документе).
+- `3rdparty/` сохраняет существующие библиотеки; новые PHP-пакеты ставятся через Composer.
 - `composer.json` + `composer.lock` в репозитории, `vendor/` в `.gitignore`.
-- `bootstrap.php` подключает `vendor/autoload.php`, если файл существует.
-- `php tests/routing_smoke.php` и `php -l` проходят, затронутые модули проверены.
+- `lib/core.class.php` подключает `vendor/autoload.php`, если файл существует;
+  HTTP и CLI используют одну точку подключения.
+- Composer validation, `php tests/composer_smoke.php`, routing/config smoke и `php -l` проходят.

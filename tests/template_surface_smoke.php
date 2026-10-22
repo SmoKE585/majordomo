@@ -2,15 +2,16 @@
 /**
  * Template layer surface smoke test (no database required).
  *
- * Guards the invariants that the jTemplate/Smarty layer relies on, so a broken
- * include or a stray debug dump is caught before a page does it in production:
+ * Guards the invariants of the single jTemplate engine (plus PHP partials), so
+ * a broken include or a stray debug dump is caught before a page does it in
+ * production:
  *
  *   - every [#inc file#] resolves (known legacy dead links are allow-listed);
  *   - every [#module name="x"#] has modules/x/x.class.php;
  *   - [#begin X#] has a matching [#end X#];
  *   - no print_r()/var_dump()/dprint() left in templates;
- *   - no .xslt templates (the parser reports them as unsupported);
- *   - the engine reports .xslt gracefully instead of calling xslt_create();
+ *   - no .tpl/.xslt templates (both formats are reported as unsupported);
+ *   - the parser reports removed formats gracefully instead of crashing;
  *   - legacy class names still resolve to the namespaced core classes.
  *
  * Run: php tests/template_surface_smoke.php
@@ -111,11 +112,11 @@ $missing = array();
 $badModules = array();
 $unbalanced = array();
 $dumps = array();
-$xslt = array();
+$unsupportedFormats = array();
 
 foreach ($templates as $name => $path) {
-    if (str_ends_with($name, '.xslt')) {
-        $xslt[] = $name;
+    if (preg_match('/\.(tpl|xslt)$/', $name)) {
+        $unsupportedFormats[] = $name;
         continue;
     }
 
@@ -168,7 +169,10 @@ foreach ($templates as $name => $path) {
 }
 
 check($templates !== array(), 'templates directory is readable');
-check($xslt === array(), 'no .xslt templates (unsupported format): ' . implode(', ', $xslt));
+check(
+    $unsupportedFormats === array(),
+    'no .tpl/.xslt templates (unsupported formats): ' . implode(', ', $unsupportedFormats)
+);
 check($badModules === array(), '[#module#] targets exist: ' . implode(', ', $badModules));
 check($unbalanced === array(), '[#begin#]/[#end#] tags are balanced: ' . implode(', ', $unbalanced));
 check($dumps === array(), 'no debug dumps in templates: ' . implode(', ', $dumps));
@@ -186,6 +190,10 @@ $xsltParser = new \MajorDoMo\Core\Template\Parser('layout.xslt', $data);
 check(
     str_contains((string)$xsltParser->result, 'XSLT templates are not supported'),
     '.xslt renders an explicit "not supported" marker'
+);
+check(
+    !is_dir(ROOT . '3rdparty/smarty3'),
+    'Smarty library is gone: the project has a single template engine'
 );
 
 check(class_exists('jTemplate', false), 'legacy class jTemplate resolves');

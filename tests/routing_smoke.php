@@ -366,7 +366,7 @@ routingCheck(
     '[LAYOUT] 3rdparty/bootstrap must be moved to public/assets/vendor/bootstrap'
 );
 routingCheck(
-    is_dir($rootDir . '/3rdparty/smarty3') && is_dir($rootDir . '/3rdparty/php-mailer'),
+    is_dir($rootDir . '/3rdparty/php-mailer'),
     '[LAYOUT] PHP libraries must stay in 3rdparty'
 );
 
