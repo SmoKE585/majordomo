@@ -1974,9 +1974,16 @@ button.md-admin-section-card__header {
     bottom: 0;
     left: 0;
     z-index: 1060;
+    display: flex;
+    flex-direction: column;
     width: min(86vw, 300px) !important;
     max-width: min(86vw, 300px) !important;
-    min-height: 100vh;
+    /* Высоту задают top/bottom. 100vh на телефоне равен «большому» вьюпорту,
+       то есть больше видимой области: с ним низ меню уезжал под адресную
+       строку, и последние пункты было не доскроллить (в эмуляции не видно). */
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
     transform: translateX(-105%);
     transition: transform .24s ease;
     box-shadow: 24px 0 60px rgba(15, 23, 42, .32);
@@ -1985,8 +1992,11 @@ button.md-admin-section-card__header {
   .md-admin-sidebar__inner {
     position: relative;
     top: auto;
-    max-height: 100vh;
-    min-height: 100vh;
+    flex: 1 1 auto;
+    height: auto;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   body.md-admin-sidebar-open .md-admin-sidebar {
@@ -2182,15 +2192,18 @@ button.md-admin-section-card__header {
     z-index: 1040;
     width: var(--md-shell-sidebar-width) !important;
     max-width: var(--md-shell-sidebar-width) !important;
-    min-height: 100vh;
+    /* Высоту задаёт inset. 100vh на планшете — «большой» вьюпорт, и подвал
+       меню с профилем уезжал ниже видимой области. */
+    min-height: 0;
     overflow: hidden;
   }
 
   .md-admin-sidebar__inner {
     position: relative;
     top: auto;
-    max-height: 100vh;
-    min-height: 100vh;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
     overflow: hidden;
   }
 

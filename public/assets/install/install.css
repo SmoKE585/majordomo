@@ -68,7 +68,7 @@ body.md-install-shell::before {
 }
 
 .md-install__brand .md-logo {
-  width: 200px;
+  --md-logo-width: 200px;
 }
 
 .md-install__brand-text {
@@ -1536,7 +1536,7 @@ body.md-install-shell::before {
 
 @media (max-width: 420px) {
   .md-install__brand .md-logo {
-    width: 180px;
+    --md-logo-width: 180px;
   }
 
   .md-install__step-link {

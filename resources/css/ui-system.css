@@ -1,5 +1,7 @@
 /* ==========================================================================
    MajorDoMo admin — UI system
+   2026-10-22 — у логотипа появился размер-токен `--md-logo-width` и чистая
+   версия вордмарка без мелкой подписи, которая в интерфейсе была нечитаема.
    2026-10-22 — общие логотипы учитывают светлую и тёмную темы.
    --------------------------------------------------------------------------
    Canonical component layer for new admin pages. It sits on top of Bootstrap
@@ -12,10 +14,12 @@
    - new shared components belong here, not in admin_panel.css.
    ========================================================================== */
 
-/* Логотипы переключаются по теме без повторной загрузки страницы. */
+/* Логотипы переключаются по теме без повторной загрузки страницы.
+   Ширину задаёт контекст: `--md-logo-width` на обёртке или на странице.
+   В разметке всегда оба варианта — CSS оставляет ровно один. */
 .md-logo {
   display: inline-flex;
-  width: 220px;
+  width: var(--md-logo-width, 220px);
   max-width: 100%;
   vertical-align: middle;
 }
@@ -24,10 +28,11 @@
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 300 / 79;
+  aspect-ratio: 800 / 211;
   object-fit: contain;
 }
 
+/* Оба варианта лежат в разметке, виден ровно один — по data-bs-theme. */
 .md-logo .md-logo__dark,
 [data-bs-theme="dark"] .md-logo .md-logo__light {
   display: none;

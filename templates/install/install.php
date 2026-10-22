@@ -118,10 +118,7 @@ $displayField = static function (array $field, string $value) use ($secrets): st
 <div class="md-install<?= $isSuccess ? ' md-install--success' : '' ?>">
     <header class="md-install__topbar">
         <a class="md-install__brand" href="<?= \MDJUI::e($installUrl) ?>">
-            <span class="md-logo">
-                <img class="md-logo__light" src="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/logo-black-small.png" srcset="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/logo-black-large.png 2x" width="300" height="79" alt="MajorDoMo">
-                <img class="md-logo__dark" src="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/logo-white-small.png" srcset="<?= \MDJUI::e($rootHtml) ?>assets/img/logos/logo-white-large.png 2x" width="300" height="79" alt="MajorDoMo">
-            </span>
+            <?= \MDJUI::logo(array('root' => $rootHtml)) ?>
             <span class="md-install__brand-text">
                 <small><?= $isSuccess ? 'Настройка завершена' : 'Первичная настройка' ?></small>
             </span>

@@ -5,7 +5,7 @@
                 <i class="ti ti-x" aria-hidden="true"></i>
             </button>
             <a class="md-admin-sidebar__brand" href="<#ROOTHTML#>panel/" aria-label="MajorDoMo">
-                <img src="<#ROOTHTML#>assets/img/logos/logo-white-small.png" srcset="<#ROOTHTML#>assets/img/logos/logo-white-large.png 2x" width="300" height="79" alt="MajorDoMo">
+                <img src="<#ROOTHTML#>assets/img/logos/logo-white-clean-small.png" srcset="<#ROOTHTML#>assets/img/logos/logo-white-clean-large.png 2x" width="300" height="79" alt="MajorDoMo" decoding="async">
             </a>
         </div>
 
@@ -56,6 +56,29 @@
                 [#end SUB_MODULES#]
             </nav>
         </div>
+
+        [#if AUTH_USERNAME!=""#]
+        <!-- Профиль закреплён внизу меню: сверху он отнимал место у поиска и действий. -->
+        <div class="md-admin-sidebar__profile">
+            <a class="md-admin-sidebar__account"
+               href="[#AUTH_USER_PROFILE_URL#]"
+               data-md-admin-sidebar-close
+               title="[#AUTH_USERNAME|html#] — профиль">
+                <span class="md-admin-sidebar__avatar" aria-hidden="true">[#AUTH_USER_INITIALS|html#]</span>
+                <span class="md-admin-sidebar__account-text">
+                    <span class="md-admin-sidebar__account-name">[#AUTH_USER_NAME|html#]</span>
+                    [#if AUTH_USER_ROLE!=""#]<span class="md-admin-sidebar__account-role">[#AUTH_USER_ROLE#]</span>[#endif#]
+                </span>
+                <i class="ti ti-settings md-admin-sidebar__account-icon" aria-hidden="true"></i>
+            </a>
+            <form class="md-admin-sidebar__account-logout" method="post" action="<#ROOTHTML#>admin.php?auth=logout">
+                <input type="hidden" name="_md_csrf" value="[#AUTH_CSRF|html#]">
+                <button type="submit" class="md-admin-sidebar__logout" title="Выйти из системы" aria-label="Выйти из системы">
+                    <i class="ti ti-logout" aria-hidden="true"></i>
+                </button>
+            </form>
+        </div>
+        [#endif#]
     </div>
 
 </aside>

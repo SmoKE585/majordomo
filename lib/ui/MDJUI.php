@@ -14,6 +14,9 @@
  * Components are server-rendered on purpose: the admin is PHP-first and most
  * pages already render their markup on the server. Alpine.js is used only for
  * local interactive state.
+ *
+ * Изменения:
+ * 2026-10-22 — добавлен `logo()`: логотип с переключением по теме в одном месте.
  */
 
 class MDJUI
@@ -285,6 +288,17 @@ class MDJUI
         }
         $class = trim('ti ti-' . $name . ' ' . (isset($props['class']) ? $props['class'] : ''));
         return '<i class="' . self::e($class) . '" aria-hidden="true"' . self::attrs(isset($props['attrs']) ? $props['attrs'] : array()) . '></i>';
+    }
+
+    /**
+     * Фирменный логотип: нужный вариант подхватывается по теме.
+     *
+     * Разметку с двумя <img> нельзя копировать по страницам — иначе один из
+     * вариантов забывают спрятать и на экране оказываются два логотипа сразу.
+     */
+    public static function logo(array $props = array())
+    {
+        return self::render('logo', $props);
     }
 
     // ---------------------------------------------------------------------

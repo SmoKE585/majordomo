@@ -7,6 +7,7 @@
  * Оболочка админки: навигация, уведомления и содержимое модулей.
  *
  * Изменения:
+ * 2026-10-22 — данные профиля (имя, инициалы, ссылка) для блока внизу меню.
  * 2026-10-22 — удалена иконка неиспользуемого модуля DurationInput.
  *
  * @author Serge Dzheigalo <jey@unit.local>
@@ -98,7 +99,20 @@ class panel extends module
         $out['SETTINGS_SITE_LANGUAGE'] = SETTINGS_SITE_LANGUAGE;
 
         $out['AUTH_CSRF'] = $session->csrfToken();
-        $out['AUTH_USERNAME'] = $session->user()['username'] ?? '';
+        $authUser = $session->user() ?: array();
+        $out['AUTH_USERNAME'] = $authUser['username'] ?? '';
+        // Профиль внизу меню: имя, инициалы и ссылка на свою карточку. Роль —
+        // «Администратор» намеренно без запроса к БД: AuthGate пускает в панель
+        // только администраторов, поэтому других ролей здесь быть не может.
+        $out['AUTH_USER_ID'] = (int)($authUser['id'] ?? 0);
+        $out['AUTH_USER_NAME'] = trim((string)($authUser['name'] ?? '')) !== ''
+            ? (string)$authUser['name']
+            : (string)$out['AUTH_USERNAME'];
+        $out['AUTH_USER_ROLE'] = $out['AUTH_USERNAME'] !== '' ? 'Администратор' : '';
+        $out['AUTH_USER_INITIALS'] = $this->userInitials((string)$out['AUTH_USER_NAME']);
+        $out['AUTH_USER_PROFILE_URL'] = $out['AUTH_USER_ID'] > 0
+            ? '?action=users&view_mode=edit_users&id=' . $out['AUTH_USER_ID']
+            : '?action=users';
 
         global $ajax_panel;
         if ($ajax_panel) {
@@ -429,6 +443,30 @@ class panel extends module
             );
             logAction('control_panel_submit', $module_name, $record_context);
         }
+    }
+
+// --------------------------------------------------------------------
+    /**
+     * Инициалы для аватара в профиле меню: первые буквы двух слов имени.
+     *
+     * Та же логика, что в компоненте `MDJUI::avatar()`, но шаблон меню — не PHP,
+     * поэтому строка готовится заранее. Без имени показываем «?».
+     */
+    private function userInitials($name)
+    {
+        $name = trim((string)$name);
+        $initials = '';
+        if ($name !== '') {
+            $parts = preg_split('/\s+/u', $name);
+            if (is_array($parts)) {
+                foreach (array_slice($parts, 0, 2) as $part) {
+                    if ($part !== '') {
+                        $initials .= mb_strtoupper(mb_substr($part, 0, 1, 'UTF-8'), 'UTF-8');
+                    }
+                }
+            }
+        }
+        return $initials !== '' ? $initials : '?';
     }
 
 // --------------------------------------------------------------------

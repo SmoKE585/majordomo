@@ -12,16 +12,13 @@ $theme = ($_COOKIE['theme'] ?? '') === 'dark' ? 'dark' : 'light';
     <title>Вход — MajorDoMo</title>
     <link rel="icon" href="<?= MDJUI::e($rootUrl) ?>favicon.ico?v=2026-10-22-logo" sizes="any">
     <link rel="apple-touch-icon" href="<?= MDJUI::e($rootUrl) ?>assets/img/logos/favicon.png">
-    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/admin/admin.css?v=2026-10-22-logo">
-    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/auth/login.css?v=2026-10-22-logo">
+    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/admin/admin.css?v=2026-10-22-nav-profile">
+    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/auth/login.css?v=2026-10-22-nav-profile">
 </head>
 <body class="md-admin-shell md-auth">
 <main class="md-auth__main">
     <div class="md-auth__brand">
-        <span class="md-logo">
-            <img class="md-logo__light" src="<?= MDJUI::e($rootUrl) ?>assets/img/logos/logo-black-small.png" srcset="<?= MDJUI::e($rootUrl) ?>assets/img/logos/logo-black-large.png 2x" width="300" height="79" alt="MajorDoMo">
-            <img class="md-logo__dark" src="<?= MDJUI::e($rootUrl) ?>assets/img/logos/logo-white-small.png" srcset="<?= MDJUI::e($rootUrl) ?>assets/img/logos/logo-white-large.png 2x" width="300" height="79" alt="MajorDoMo">
-        </span>
+        <?= MDJUI::logo(array('root' => $rootUrl)) ?>
     </div>
     <h1 class="md-auth__title">Вход в панель управления</h1>
     <p class="md-auth__subtitle">Войдите с учётной записью администратора.</p>

@@ -2,6 +2,7 @@
 
 /**
  * Общий рендер страницы 404.
+ * 2026-10-22 — логотип без мелкой подписи: в шапке она была нечитаема.
  * 2026-10-22 — фирменные логотипы для обеих тем и новый favicon.
  *
  * It intentionally does not touch the database: a missing page should look
@@ -127,8 +128,8 @@ function mdj_render_404($options = array())
     <main class="md-error-page__main">
         <div class="md-error-page__card">
             <a class="md-logo" href="<?= htmlspecialchars($homeUrl, ENT_QUOTES, 'UTF-8') ?>" aria-label="MajorDoMo — на главную">
-                <img class="md-logo__light" src="<?= $safeRoot ?>assets/img/logos/logo-black-small.png" srcset="<?= $safeRoot ?>assets/img/logos/logo-black-large.png 2x" width="300" height="79" alt="MajorDoMo">
-                <img class="md-logo__dark" src="<?= $safeRoot ?>assets/img/logos/logo-white-small.png" srcset="<?= $safeRoot ?>assets/img/logos/logo-white-large.png 2x" width="300" height="79" alt="MajorDoMo">
+                <img class="md-logo__light" src="<?= $safeRoot ?>assets/img/logos/logo-black-clean-small.png" srcset="<?= $safeRoot ?>assets/img/logos/logo-black-clean-large.png 2x" width="300" height="79" alt="MajorDoMo">
+                <img class="md-logo__dark" src="<?= $safeRoot ?>assets/img/logos/logo-white-clean-small.png" srcset="<?= $safeRoot ?>assets/img/logos/logo-white-clean-large.png 2x" width="300" height="79" alt="MajorDoMo">
             </a>
             <div class="md-error-page__code" aria-hidden="true">404</div>
             <?= $content ?>
