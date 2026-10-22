@@ -49,6 +49,8 @@ try {
     Config::boot($root);
 
     $runner = new CommandRunner($root);
+    $cli = \MajorDoMo\Core\Deploy\PhpBinary::cli();
+    check(\MajorDoMo\Core\Deploy\PhpBinary::usable($cli) && !str_contains(basename($cli), 'fpm'), 'CLI PHP не php-fpm');
     $direct = $runner->run(array(PHP_BINARY, '-r', 'echo "ok";'), 10);
     check($direct['ok'] && trim($direct['out']) === 'ok', 'CommandRunner выполняет команду без shell');
     $version = $runner->version(PHP_BINARY, '--version');

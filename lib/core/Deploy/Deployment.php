@@ -331,9 +331,7 @@ final class Deployment
 
     private function phpBinary(): string
     {
-        $configured = trim(Config::string('PATH_TO_PHP', ''));
-        if ($configured !== '' && (is_file($configured) || str_contains($configured, '/'))) return $configured;
-        return PHP_BINARY;
+        return PhpBinary::cli();
     }
 
     private function assetsMode(): string

@@ -44,7 +44,7 @@ final class ConfigSchema
             'BASE_URL' => array('type' => 'string', 'computed' => true),
 
             // Executables ----------------------------------------------------
-            'PATH_TO_PHP' => array('type' => 'string', 'computed' => true),
+            'PATH_TO_PHP' => array('type' => 'string', 'optional' => true),
             'PATH_TO_MYSQLDUMP' => array('type' => 'string', 'default' => 'mysqldump'),
             'PATH_TO_FFMPEG' => array('type' => 'string', 'optional' => true),
             'PYTHON_PATH' => array('type' => 'string', 'optional' => true),

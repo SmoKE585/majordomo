@@ -221,8 +221,6 @@ final class ServiceManager
 
     private function detectPhp(): string
     {
-        $configured = Config::string('PATH_TO_PHP', '');
-        if ($configured !== '' && (is_file($configured) || str_contains($configured, '/'))) return $configured;
-        return PHP_BINARY;
+        return PhpBinary::cli();
     }
 }
