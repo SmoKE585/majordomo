@@ -16,7 +16,7 @@ order: 20
 
 - проект: `/var/www/mjdm_smart15_usr/data/www/mjdm.smart155.ru`;
 - пользователь сайта: `mjdm_smart15_usr`;
-- PHP: `/usr/bin/php8.4`;
+- PHP: `/usr/bin/php` (симлинк на актуальную версию PHP, например 8.4);
 - служба: `majordomo-mjdm_smart15_usr.service`;
 - старый юнит `majordomo.service` работает без `User=`, то есть от root.
   Новый юнит запускает `cycle.php` от пользователя сайта.
@@ -29,11 +29,16 @@ cd /var/www/mjdm_smart15_usr/data/www/mjdm.smart155.ru
 sudo php majordomo systemd:set \
   --service=majordomo-mjdm_smart15_usr \
   --user=mjdm_smart15_usr \
-  --php=/usr/bin/php8.4 \
+  --php=/usr/bin/php \
   --apply \
   --disable-old \
   --fix-owner
 ```
+
+Если ты уже в root-сессии (`su -`, SSH root, консоль FastPanel), `sudo` не
+нужен: выполни то же самое как `/usr/bin/php majordomo systemd:set ...`.
+Пользователь сайта не обязан иметь `sudo`; эти две команды запускаются один
+раз от root, а сайту выдаётся только wrapper через `systemd:give-permissions`.
 
 Что произойдёт:
 
