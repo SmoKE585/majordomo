@@ -86,6 +86,12 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 
 ## 3. Что читать перед изменениями
 
+API ядра: `public/api.php` → `ApiApplication` → `lib/core/Api/`.
+Панель — `/panel/api.html`, строгие маршруты — `/api/v1/`, legacy URL сохранены.
+Локальные сети проходят без токена, внешние запросы — Bearer/X-API-Key.
+Документация разработки: `docs/agents/api.md`; инструкция агенту-клиенту:
+`docs/agents/api-client.md`; пример сервера — `docs/deploy/nginx.conf.sample`.
+
 **CLI:** единая точка входа — `php majordomo`. Перед добавлением команды прочитайте
 `docs/agents/console.md`: отдельный класс в `lib/core/Console/Commands/`, явная
 регистрация в `Console\Application`, справка, JSON, коды завершения и изолированные

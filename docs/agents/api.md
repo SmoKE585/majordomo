@@ -8,6 +8,11 @@ description: Общий диспетчер API, токены, проверка �
 
 # API ядра
 
+Для агента-клиента: [инструкция по использованию HTTP API](api-client.md).
+Пример nginx — `docs/deploy/nginx.conf.sample`: выделенный FastCGI location
+сохраняет исходный URI, передаёт Authorization/X-API-Key/X-Forwarded-For,
+не перехватывает JSON-ошибки PHP и возвращает JSON при лимите тела nginx.
+
 `public/api.php` — только адаптер к `ApiApplication`. Последовательность:
 config → InstallState → AccessPolicy → Request/JSON → loader/settings →
 Core::apiDispatcher → Response. Ошибки и завершение legacy-кода перехватываются

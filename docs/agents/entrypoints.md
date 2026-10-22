@@ -17,6 +17,7 @@ public/nf.php      ─┘                         │
                                               └─ SiteApplication   (сайт)
 
 public/install.php ───> InstallApplication (config only, без loader/settings)
+public/api.php     ───> ApiApplication (config → доступ/JSON → loader/settings → Dispatcher)
 ```
 
 - `bootstrap.php` только выставляет `MD_APP_ROOT`, делает `chdir` в корень и
@@ -132,7 +133,8 @@ public/install.php ───> InstallApplication (config only, без loader/set
 Пока не переведены:
 
 - `public/nf.php` — роутер pretty URL и legacy `pd`;
-- `public/api.php` — REST API;
+- `public/api.php` уже переведён в тонкий адаптер `ApiApplication`:
+  маршруты, JSON, сети и токены находятся в `lib/core/Api/`, см. [api.md](api.md);
 - `public/404.php` — рендер 404;
 - `objects/index.php` — обработчик объектов;
 - `cycle.php` и `scripts/*` — CLI-циклы.

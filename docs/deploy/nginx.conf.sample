@@ -90,8 +90,42 @@ server {
         try_files $uri $uri/ /nf.php?$query_string;
     }
 
-    location ^~ /api/ {
-        rewrite ^ /api.php last;
+    # API ядра: /api/v1/* и совместимые /api/*, /api.php/*.
+    # Один обработчик без redirect/rewrite: метод, JSON и исходный URI сохраняются.
+    # Должен стоять ПЕРЕД общим regex-location для PHP.
+    location ~ ^/api(?:\.php)?(?:/|$) {
+        # API проверяет токен самостоятельно. Basic Auth панели сюда не наследуем.
+        # Если Basic Auth включён на вышестоящем прокси, используйте X-API-Key.
+        auth_basic off;
+
+        include /etc/nginx/fastcgi_params;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root/api.php;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_param SCRIPT_NAME /api.php;
+        fastcgi_param REQUEST_URI $request_uri;
+        fastcgi_param HTTPS $https if_not_empty;
+        fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+        fastcgi_param HTTP_X_API_KEY $http_x_api_key;
+        fastcgi_param HTTP_X_FORWARDED_FOR $http_x_forwarded_for;
+
+        # PHP определяет LAN по HOME_NETWORK и клиенту за TRUSTED_PROXIES.
+        # Не подменяйте REMOTE_ADDR адресом прокси и не разрешайте API по Host.
+        # X-Forwarded-For здесь передаётся, а доверие к нему проверяет ядро.
+        fastcgi_intercept_errors off;
+        fastcgi_next_upstream off;
+        fastcgi_read_timeout 600s;
+        fastcgi_send_timeout 600s;
+        client_max_body_size 1m;
+        error_page 413 = @majordomo_api_body_too_large;
+    }
+
+    # Превышение лимита nginx тоже возвращает JSON, без HTML страницы ошибки.
+    location @majordomo_api_body_too_large {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        add_header X-Request-ID $request_id always;
+        return 413 '{"ok":false,"error":{"code":"payload_too_large","message":"Request body exceeds 1 MiB","details":{}},"meta":{"request_id":"$request_id","generated_by":"nginx"}}';
     }
 
     error_page 404 /404.php;
@@ -306,8 +340,32 @@ server {
         try_files $uri $uri/ /nf.php?$query_string;
     }
 
-    location ^~ /api/ {
-        rewrite ^ /api.php last;
+    # Тот же API-контракт для loopback: локальный адрес проверяет PHP.
+    location ~ ^/api(?:\.php)?(?:/|$) {
+        auth_basic off;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root/api.php;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_param SCRIPT_NAME /api.php;
+        fastcgi_param REQUEST_URI $request_uri;
+        fastcgi_param HTTPS $https if_not_empty;
+        fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+        fastcgi_param HTTP_X_API_KEY $http_x_api_key;
+        fastcgi_param HTTP_X_FORWARDED_FOR $http_x_forwarded_for;
+        fastcgi_intercept_errors off;
+        fastcgi_next_upstream off;
+        fastcgi_read_timeout 600s;
+        fastcgi_send_timeout 600s;
+        client_max_body_size 1m;
+        error_page 413 = @majordomo_api_body_too_large;
+    }
+
+    location @majordomo_api_body_too_large {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        add_header X-Request-ID $request_id always;
+        return 413 '{"ok":false,"error":{"code":"payload_too_large","message":"Request body exceeds 1 MiB","details":{}},"meta":{"request_id":"$request_id","generated_by":"nginx"}}';
     }
 
     error_page 404 /404.php;

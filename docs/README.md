@@ -30,6 +30,7 @@ description: Карта документации MajorDoMo: материалы �
 
 - Как добавить метки и категорию: [`agents/knowledge-base.md`](agents/knowledge-base.md).
 - Пользовательская инструкция по командам: [`user/commands.md`](user/commands.md).
+- API и токены: [`user/api.md`](user/api.md); инструкция ИИ-клиенту — [`agents/api-client.md`](agents/api-client.md).
 - Системные PHP-функции для сценариев, модулей и агентов: [`user/system-functions.md`](user/system-functions.md).
 
 ## С чего начать
