@@ -336,7 +336,19 @@ final class Deployment
             if (is_file($phar)) return array($this->phpBinary(), $phar);
         }
         $found = $this->runner->find($configured);
-        return $found !== '' ? array($found) : array();
+        if ($found === '') return array();
+        // composer часто установлен как PHP-скрипт с shebang `#!/usr/bin/env php`.
+        // Прямой запуск возьмёт php из PATH (на FastPanel это может быть 8.0),
+        // поэтому запускаем его выбранным CLI PHP той же версии, что и FPM.
+        if ($this->isPhpScript($found)) return array($this->phpBinary(), $found);
+        return array($found);
+    }
+
+    private function isPhpScript(string $path): bool
+    {
+        $head = @file_get_contents($path, false, null, 0, 512);
+        if (!is_string($head) || $head === '') return false;
+        return str_starts_with($head, '#!/usr/bin/env php') || str_contains($head, '<?php');
     }
 
     /** @return string[] */

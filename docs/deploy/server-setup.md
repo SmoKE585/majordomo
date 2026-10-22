@@ -28,11 +28,27 @@ order: 10
 ```bash
 php -v
 /usr/bin/php -v
+# тот же путь, что указан в PATH_TO_PHP:
+# PHP_CLI=/usr/bin/php
+"$PHP_CLI" -v
 composer --version
 node --version
 npm --version
 systemctl --version
 ```
+
+Важно: на FastPanel в PATH пользователя часто стоит старый `php` (например,
+8.0), а сайт работает на PHP-FPM 8.3. Тогда `majordomo` падает с
+`Composer detected issues ... You are running 8.0`. Для всех команд используй
+тот же CLI, что указан в `PATH_TO_PHP`:
+
+```bash
+export PHP_CLI=/usr/bin/php
+"$PHP_CLI" majordomo maintenance:status
+```
+
+`PHP_CLI` — это ровно то значение, которое стоит в `PATH_TO_PHP`. Не
+подставляй версию вручную: на разных серверах путь и имя файла разные.
 
 Если `node --version` меньше 24 — обнови Node.js, иначе `npm run build` может
 не работать.
@@ -76,17 +92,18 @@ chown -R mjdm_smart15_usr:mjdm_smart15_usr \
 ```bash
 cd /var/www/mjdm_smart15_usr/data/www/mjdm.smart155.ru
 
-/usr/bin/php majordomo systemd:set \
+"$PHP_CLI" majordomo systemd:set \
   --service=majordomo-mjdm_smart15_usr \
   --user=mjdm_smart15_usr \
-  --php=/usr/bin/php \
+  --php="$PHP_CLI" \
   --apply --disable-old
 ```
 
 Важно:
 
-- `--php=/usr/bin/php` — это CLI PHP, а не `php-fpm`. Если указать
-  `php8.4`, а такого файла нет, служба упадёт с `status=203/EXEC`;
+- `--php` — путь к CLI PHP, который уже проверен на этом сервере. Если его не
+  указать, берётся `PATH_TO_PHP`. Не подставляй имя версии вручную: на разных
+  серверах оно разное. Если файла нет, служба упадёт с `status=203/EXEC`;
 - `--apply` сразу включает новый unit;
 - `--disable-old` останавливает старый `majordomo.service`;
 - `--fix-owner` нужен только если `cms`, `vendor` или `public/assets` уже
@@ -146,7 +163,7 @@ journalctl -u majordomo-mjdm_smart15_usr.service -f
 От root:
 
 ```bash
-/usr/bin/php majordomo systemd:give-permissions \
+"$PHP_CLI" majordomo systemd:give-permissions \
   --service=majordomo-mjdm_smart15_usr \
   --user=mjdm_smart15_usr
 ```
@@ -203,15 +220,15 @@ Node на сервере нет, поставь `DEPLOY_ASSETS=never`, но то
 ```bash
 cd /var/www/mjdm_smart15_usr/data/www/mjdm.smart155.ru
 
-/usr/bin/php majordomo migrations:run
-php majordomo cycles:status
-php majordomo maintenance:status
+"$PHP_CLI" majordomo migrations:run
+"$PHP_CLI" majordomo cycles:status
+"$PHP_CLI" majordomo maintenance:status
 ```
 
 Если maintenance включён после неудачной попытки:
 
 ```bash
-php majordomo maintenance:off
+"$PHP_CLI" majordomo maintenance:off
 ```
 
 Проверка сайта:
@@ -247,7 +264,7 @@ curl -I https://ваш-домен/
 
 ```bash
 tail -n 100 cms/debmes/restore.log
-php majordomo maintenance:status
+"$PHP_CLI" majordomo maintenance:status
 systemctl status majordomo-mjdm_smart15_usr.service --no-pager -l
 ```
 
@@ -291,7 +308,8 @@ test -x node_modules/.bin/vite && echo "vite OK"
 
 ```bash
 systemctl cat majordomo-mjdm_smart15_usr.service
-ls -l /usr/bin/php /usr/bin/php8.4
+ls -l "$PHP_CLI"
+"$PHP_CLI" -v
 ```
 
 В `ExecStart=` должен быть `/usr/bin/php`, а не `php-fpm` и не отсутствующий
@@ -307,14 +325,14 @@ systemctl restart majordomo-mjdm_smart15_usr.service
 Проверь, что обновление действительно закончилось:
 
 ```bash
-php majordomo maintenance:status
-php majordomo cycles:status
+"$PHP_CLI" majordomo maintenance:status
+"$PHP_CLI" majordomo cycles:status
 ```
 
 Если всё в порядке:
 
 ```bash
-php majordomo maintenance:off
+"$PHP_CLI" majordomo maintenance:off
 ```
 
 Не выключай maintenance, пока не выполнились миграции и сборка.
@@ -325,27 +343,27 @@ php majordomo maintenance:off
 journalctl -u majordomo-mjdm_smart15_usr.service -n 100 --no-pager
 tail -n 100 cms/debmes/restore.log
 tail -n 100 cms/debmes/errors.log
-php majordomo logs:tail errors --lines=100
+"$PHP_CLI" majordomo logs:tail errors --lines=100
 ```
 
 ## 13. Короткая шпаргалка
 
 ```bash
 # root: один раз
-/usr/bin/php majordomo systemd:set ... --apply --disable-old
-/usr/bin/php majordomo systemd:give-permissions ...
+"$PHP_CLI" majordomo systemd:set ... --apply --disable-old
+"$PHP_CLI" majordomo systemd:give-permissions ...
 
 # сайт: проверки
-php majordomo migrations:status
-php majordomo maintenance:status
-php majordomo cycles:status
+"$PHP_CLI" majordomo migrations:status
+"$PHP_CLI" majordomo maintenance:status
+"$PHP_CLI" majordomo cycles:status
 
 # сайт: обновление вручную, если панель не может
 COMPOSER_IPRESOLVE=4 composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 NODE_ENV=development npm ci --include=dev --no-audit --no-fund
 NODE_ENV=development npm run build
-/usr/bin/php majordomo migrations:run
-php majordomo maintenance:off
+"$PHP_CLI" majordomo migrations:run
+"$PHP_CLI" majordomo maintenance:off
 ```
 
 Подробнее про systemd и sudo — [systemd-sudo.md](systemd-sudo.md).

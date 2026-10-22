@@ -11,7 +11,7 @@ use MajorDoMo\Core\Config;
  * `php-fpm -r` нельзя: он печатает usage и ломает health-check/миграции.
  * Поэтому берём явный PATH_TO_PHP, иначе ищем обычный php в PHP_BINDIR.
  *
- * 2026-10-23 — добавлено после ошибки `php-fpm8.3 -r`.
+ * 2026-10-23 — добавлено после ошибки с php-fpm вместо CLI.
  */
 final class PhpBinary
 {
@@ -27,7 +27,12 @@ final class PhpBinary
             $candidates[] = PHP_BINARY;
             if (defined('PHP_BINDIR')) $candidates[] = PHP_BINDIR . DIRECTORY_SEPARATOR . 'php.exe';
         } else {
-            $candidates[] = (defined('PHP_BINDIR') ? PHP_BINDIR : '/usr/bin') . '/php';
+            $bindir = defined('PHP_BINDIR') ? PHP_BINDIR : '/usr/bin';
+            // Сначала CLI той же версии, что и текущий PHP-FPM, иначе
+            // /usr/bin/php может указывать на другую версию из FastPanel.
+            $candidates[] = $bindir . '/php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
+            $candidates[] = $bindir . '/php';
+            $candidates[] = '/usr/bin/php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
             $candidates[] = '/usr/bin/php';
             $candidates[] = '/usr/local/bin/php';
         }
