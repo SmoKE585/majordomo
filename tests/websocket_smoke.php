@@ -39,7 +39,7 @@ try {
     $ticketStore = new Tickets($fixture);
     $user = array('id' => 7, 'stamp' => 'stamp');
     $state = static function ($id) use (&$user) { return $id === 7 ? $user : null; };
-    $access = new Access(new AccessPolicy(new NetworkAccess()), $ticketStore, fn($token) => $tokens->verify($token), $state);
+    $access = new Access(new AccessPolicy(new NetworkAccess()), $ticketStore, fn($token) => $tokens->verify($token), $state, 'home.test');
     $remote = array('REMOTE_ADDR' => '203.0.113.10', 'HTTP_HOST' => 'home.test:8001');
     $local = array('REMOTE_ADDR' => '192.168.1.2', 'HTTP_HOST' => 'home.test:8001');
     check($access->authorize($local, array())['type'] === 'local', 'LAN requires no token');
@@ -50,6 +50,13 @@ try {
     denies(fn() => $access->authorize($local + array('HTTP_ORIGIN' => 'null'), array()), 403);
     denies(fn() => $access->authorize($local + array('HTTP_SEC_FETCH_SITE' => 'cross-site'), array()), 403);
     check($access->authorize($local + array('HTTP_ORIGIN' => 'https://home.test'), array())['type'] === 'local', 'same host direct port');
+    // nginx по умолчанию оставляет в Host адрес апстрима: исходный хост берём
+    // из X-Forwarded-Host доверенного прокси или из публичного адреса проекта.
+    $behindProxy = array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => '127.0.0.1:8001', 'HTTP_ORIGIN' => 'https://home.test', 'HTTP_X_FORWARDED_HOST' => 'home.test');
+    check($access->authorize($behindProxy, array())['type'] === 'local', 'forwarded host restores the origin');
+    check($access->authorize(array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => '127.0.0.1:8001', 'HTTP_ORIGIN' => 'https://home.test'), array())['type'] === 'local', 'public address accepts origin without forwarded host');
+    denies(fn() => $access->authorize(array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => '127.0.0.1:8001', 'HTTP_ORIGIN' => 'https://other.test'), array()), 403);
+    denies(fn() => $access->authorize(array('REMOTE_ADDR' => '203.0.113.10', 'HTTP_HOST' => '127.0.0.1:8001', 'HTTP_ORIGIN' => 'https://evil.test', 'HTTP_X_FORWARDED_HOST' => 'evil.test'), array('token' => $issued['token'])), 403);
     check($access->authorize($remote + array('HTTP_AUTHORIZATION' => 'Bearer ' . $issued['token']), array())['type'] === 'token', 'Bearer access');
     check($access->authorize($remote + array('HTTP_X_API_KEY' => $issued['token']), array())['type'] === 'token', 'X-API-Key access');
     $identity = $access->authorize($remote, array('token' => $issued['token']));

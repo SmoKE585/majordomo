@@ -44,6 +44,18 @@ final class AccessPolicy
         return $this->network->inNetworks($this->clientIp($server), $networks);
     }
 
+    /**
+     * Запрос пришёл от доверенного прокси (обычно loopback nginx), а не от
+     * клиента напрямую. Только такому запросу доверяем X-Forwarded-*.
+     * 2026-10-23 — нужно проверке Origin у WebSocket: nginx может не
+     * передавать исходный Host и оставлять адрес апстрима.
+     */
+    public function viaTrustedProxy(array $server): bool
+    {
+        $peer = self::normalize((string)($server['REMOTE_ADDR'] ?? ''));
+        return $peer !== '' && $this->network->inNetworks($peer, $this->trustedProxies);
+    }
+
     public function authorize(array $server, callable $verify, ?callable $sessionVerifier = null): string
     {
         // Browser navigation from another site must not invoke a legacy GET action.

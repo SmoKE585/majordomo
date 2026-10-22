@@ -7,7 +7,12 @@ use Workerman\{Worker, Timer};
 use Workerman\Connection\TcpConnection;
 use Workerman\Protocols\Http\Request;
 
-/** Transport adapter. No application operation is dispatched from a client name. */
+/**
+ * Transport adapter. No application operation is dispatched from a client name.
+ *
+ * 2026-10-23 — отказ рукопожатия пишется в журнал с причиной (status, код,
+ * origin, host, forwarded-host): иначе в браузере только «403», а в журнале пусто.
+ */
 final class Server
 {
     private array $connections = array();
@@ -28,10 +33,11 @@ final class Server
         };
         $worker->onWebSocketConnect = function (TcpConnection $connection, Request $request): void {
             if (!isset($this->connections[$connection->id])) return;
+            $server = array();
             try {
                 if ($request->method() !== 'GET' || !in_array($request->path(), array('/majordomo', '/ws'), true)) throw new ApiException(404, 'not_found', 'Неизвестный WebSocket endpoint.');
                 $server = array('REMOTE_ADDR' => $connection->getRemoteIp(), 'HTTP_HOST' => $request->header('host', ''));
-                foreach (array('origin', 'authorization', 'x-api-key', 'x-forwarded-for', 'sec-fetch-site') as $header) {
+                foreach (array('origin', 'authorization', 'x-api-key', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'sec-fetch-site') as $header) {
                     if ($request->header($header) !== null) $server['HTTP_' . strtoupper(str_replace('-', '_', $header))] = $request->header($header);
                 }
                 $identity = $this->access->authorize($server, $request->get());
@@ -41,6 +47,7 @@ final class Server
                 $this->connections[$connection->id]['identity'] = $identity;
                 $this->connections[$connection->id]['ip'] = $ip;
             } catch (ApiException $error) {
+                $this->reject($error, $server);
                 $body = json_encode(array('error' => $error->errorCode));
                 $connection->close('HTTP/1.1 ' . $error->status . " Rejected\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: " . strlen($body) . "\r\n\r\n" . $body, true);
             } catch (\Throwable $error) {
@@ -107,6 +114,30 @@ final class Server
         unset($this->connections[$connection->id]['identity']);
         $connection->websocketType = "\x88";
         $connection->close(pack('n', $code) . $reason);
+    }
+
+    /**
+     * Отказ рукопожатия с причиной. Без этого в браузере видно только «403»,
+     * а в журнале пусто — именно так выглядел Origin, не совпавший из-за
+     * Host от nginx.
+     * 2026-10-23 — добавлено вместе с расширенной проверкой Origin.
+     */
+    private function reject(ApiException $error, array $server): void
+    {
+        $parts = array('WebSocket handshake rejected: ' . $error->status . ' ' . $error->errorCode);
+        foreach (array('REMOTE_ADDR' => 'peer', 'HTTP_HOST' => 'host', 'HTTP_X_FORWARDED_HOST' => 'forwarded-host', 'HTTP_ORIGIN' => 'origin') as $key => $label) {
+            $value = (string)($server[$key] ?? '');
+            if ($value !== '') $parts[] = $label . '=' . self::clean($value);
+        }
+        $message = implode('; ', $parts);
+        if (function_exists('DebMes')) DebMes($message, 'websockets', 'error');
+        else error_log($message);
+    }
+
+    /** Значения заголовков не содержат секретов, но не должны ломать строку лога. */
+    private static function clean(string $value): string
+    {
+        return mb_substr(trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value)), 0, 200);
     }
 
     private function log(\Throwable $error): void

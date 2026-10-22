@@ -48,11 +48,11 @@ if (($argv[1] ?? '') === '--fixture') {
 
 $checks = 0;
 function check(bool $ok, string $why): void { if (!$ok) throw new RuntimeException($why); $GLOBALS['checks']++; }
-function handshake(string $address, string $query, array $headers = array()): array {
+function handshake(string $address, string $query, array $headers = array(), string $host = 'home.test'): array {
     $stream = stream_socket_client('tcp://' . $address, $errno, $error, 2);
     if (!$stream) throw new RuntimeException($error);
     stream_set_timeout($stream, 8);
-    $request = 'GET /majordomo' . $query . " HTTP/1.1\r\nHost: home.test\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: " . base64_encode(random_bytes(16)) . "\r\n";
+    $request = 'GET /majordomo' . $query . " HTTP/1.1\r\nHost: " . $host . "\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: " . base64_encode(random_bytes(16)) . "\r\n";
     foreach ($headers as $name => $value) $request .= $name . ': ' . $value . "\r\n";
     fwrite($stream, $request . "\r\n");
     $response = '';
@@ -116,6 +116,14 @@ try {
     check(str_contains($response, '403'), 'LAN cross-site handshake denied'); fclose($stream);
     [$local, $response] = handshake($address, '', array('X-Forwarded-For' => '192.168.1.3', 'Origin' => 'https://home.test'));
     check(str_contains($response, '101'), 'LAN upgrades without key');
+    // nginx может оставить в Host адрес апстрима: исходный хост приходит в
+    // X-Forwarded-Host, а без него рукопожатие обязано получить 403.
+    [$stream, $response] = handshake($address, '', array('X-Forwarded-For' => '192.168.1.4', 'Origin' => 'https://home.test', 'X-Forwarded-Host' => 'home.test'), '127.0.0.1:8001');
+    check(str_contains($response, '101'), 'forwarded host restores the origin behind a proxy');
+    fclose($stream);
+    [$stream, $response] = handshake($address, '', array('X-Forwarded-For' => '192.168.1.5', 'Origin' => 'https://home.test'), '127.0.0.1:8001');
+    check(str_contains($response, '403'), 'handshake without the original host is rejected');
+    fclose($stream);
     $rows = snapshot($local);
     check(count($rows) === 2 && $rows[0]['VALUE'] === '21' && $rows[1]['VALUE'] === null, 'actual default snapshot, including null');
     sendRequest($local, 'SetGlobal');

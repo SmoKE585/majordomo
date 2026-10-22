@@ -38,7 +38,10 @@ final class Runtime
         $trustedProxies = '127.0.0.1/32,::1/128,' . Config::string('TRUSTED_PROXIES');
         $access = new Access(new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), $trustedProxies),
             new Tickets($root), fn($token) => (new TokenStore($connection()))->verify($token),
-            fn($id) => (new UserAccounts($connection()))->adminState($id));
+            fn($id) => (new UserAccounts($connection()))->adminState($id),
+            // Публичный адрес проекта: Origin проверяется и по нему, если прокси
+            // не передал исходный Host.
+            (string)parse_url(Config::string('BASE_URL'), PHP_URL_HOST));
         $queue = Core::websockets();
         $drain = static function (Protocol $protocol) use ($queue): void {
             $items = $queue->claim(500);
