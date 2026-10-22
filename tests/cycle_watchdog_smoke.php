@@ -102,7 +102,8 @@ namespace {
                 $GLOBALS['fixtureOwnerAlive'] = count($GLOBALS['threads']->commandLines) === 1;
             }
             if ($GLOBALS['fixtureIteration'] === 12) {
-                if ($GLOBALS['scenario'] !== 'updatecrash') $GLOBALS['fixtureUpdater']->finish();
+                if ($GLOBALS['scenario'] === 'updateabort') $GLOBALS['fixtureUpdater']->abort('fixture abort');
+                elseif ($GLOBALS['scenario'] !== 'updatecrash') $GLOBALS['fixtureUpdater']->finish();
                 unset($GLOBALS['fixtureUpdater']);
             }
         }
@@ -149,7 +150,7 @@ namespace {
 PHP;
 
 try {
-    foreach (array('crash','cleanexit','silent','hung','disabled','stopped','restart','storage','missing','spawnfail','filelog','controller','wsdisabled','wsstop','wsenable','update','updatecrash','updatestop','updatedisable','updateowner') as $scenario) {
+    foreach (array('crash','cleanexit','silent','hung','disabled','stopped','restart','storage','missing','spawnfail','filelog','controller','wsdisabled','wsstop','wsenable','update','updateabort','updatecrash','updatestop','updatedisable','updateowner') as $scenario) {
         if (isset($argv[1]) && $argv[1] !== $scenario) continue;
         $directory = $fixture . '/' . $scenario;
         mkdir($directory . '/scripts', 0777, true);

@@ -186,6 +186,11 @@ function saverestoreFrameBuildUpdateChecks($sv)
             'ok' => $sv->canWritePath(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/modules_installed')
         ),
         array(
+            'title' => 'Каталог cms/cycles',
+            'details' => 'Хранит состояние циклов и запрос паузы на время обновления',
+            'ok' => $sv->canWritePath(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/cycles')
+        ),
+        array(
             'title' => 'Резервная копия базы',
             'details' => 'database_backup должен быть доступен для записи',
             'ok' => $sv->canWritePath(DOC_ROOT . DIRECTORY_SEPARATOR . 'database_backup')

@@ -19,6 +19,16 @@ function expectFailure(callable $action, string $message): void
     try { $action(); } catch (RuntimeException $error) { check(true, $message); return; }
     throw new RuntimeException($message);
 }
+function writeSupervisorHeartbeat(string $root, int $age = 0): void
+{
+    @mkdir($root . '/cms/cycles', 0775, true);
+    file_put_contents($root . '/cms/cycles/state.json', json_encode(array(
+        'version' => 1,
+        'supervisor_pid' => getmypid(),
+        'supervisor_heartbeat' => time() - $age,
+        'cycles' => array(),
+    ), JSON_PRETTY_PRINT));
+}
 
 $root = sys_get_temp_dir() . '/mjd-maintenance-' . bin2hex(random_bytes(6));
 mkdir($root);
@@ -31,8 +41,21 @@ try {
     $request = $supervisor->active();
     check($request !== null && $request['pid'] === getmypid(), 'Active updater must be detected');
     expectFailure(fn() => $competitor->begin(), 'Concurrent system updates must be rejected');
+    check(!$updater->supervisorRunning(), 'A supervisor without a heartbeat must not be considered alive');
+    check($updater->waitUntilReady(0) === false, 'Without a live supervisor the update must not wait for an acknowledgement');
+    writeSupervisorHeartbeat($root);
+    check($updater->supervisorRunning(), 'A fresh supervisor heartbeat must count as a live supervisor');
     expectFailure(fn() => $updater->waitUntilReady(0), 'A stale or missing acknowledgement must block file replacement');
+    $supervisor->publishBlocked($request, array('cycle_market', 'cycle_market', 'not a cycle'));
+    check($updater->blockedCycles() === array('cycle_market'), 'Only valid blocked cycle names are reported');
+    try {
+        $updater->waitUntilReady(1);
+        check(false, 'A blocked cycle must not allow file replacement');
+    } catch (RuntimeException $error) {
+        check(str_contains($error->getMessage(), 'cycle_market'), 'The timeout must name the cycles that did not stop');
+    }
     $supervisor->acknowledge($request);
+    check($updater->blockedCycles() === array(), 'Acknowledgement clears the blocked cycles list');
     $updater->waitUntilReady(0);
     check(true, 'Matching supervisor acknowledgement allows replacement');
     $updater->finish();
@@ -43,6 +66,16 @@ try {
     check($supervisor->active()['owner_cycle'] === 'cycle_core', 'An automatic updater identifies its owning cycle');
     expectFailure(fn() => $updater->waitUntilReady(0), 'Previous update acknowledgement must not acknowledge a new update');
     $updater->finish();
+
+    $updater->begin();
+    $supervisor->active();
+    $updater->abort('fixture failure');
+    check($supervisor->active() === null, 'Aborted update releases the pause');
+    check(!is_file($root . '/cms/cycles/update.json'), 'Aborted update removes its request');
+    check(trim(file_get_contents($root . '/reboot')) === 'system_update_aborted', 'Aborted update restarts only the stopped cycles');
+
+    writeSupervisorHeartbeat($root, 120);
+    check(!$updater->supervisorRunning(), 'A stale supervisor heartbeat must be treated as a missing supervisor');
 
     $supervisor->beginStartup();
     expectFailure(fn() => $competitor->begin(), 'File replacement must not overlap supervisor startup');
@@ -68,6 +101,7 @@ try {
     check(trim(file_get_contents($root . '/reboot')) === 'system_update_recovery', 'An abandoned update must schedule cycle recovery');
 
     // A supervisor starting during an update confirms quiescence before loading config.
+    writeSupervisorHeartbeat($root);
     $updater->begin();
     file_put_contents($child, '<?php require ' . var_export(dirname(__DIR__) . '/lib/core/Cycles/CycleMaintenance.php', true)
         . '; $supervisor = new \\MajorDoMo\\Core\\Cycles\\CycleMaintenance(' . var_export($root, true)
@@ -85,6 +119,7 @@ try {
 
     // Exercise the actual saverestore pause helper without booting the application.
     class module {}
+    function DebMes($message, $channel = '', $level = '') {}
     require_once dirname(__DIR__) . '/modules/saverestore/saverestore.class.php';
     define('DOC_ROOT', $root);
     $_SERVER['SCRIPT_FILENAME'] = $root . '/scripts/core_worker.php';
@@ -98,16 +133,30 @@ try {
         1 => array('file', $root . '/stdout', 'w'), 2 => array('file', $root . '/stderr', 'w')), $pipes, $root);
     if (!is_resource($process)) throw new RuntimeException('Cannot start isolated pause responder');
     fclose($pipes[0]);
+    writeSupervisorHeartbeat($root);
     $pause = $module->stopCyclesBeforeSystemUpdate();
     try {
         check($pause instanceof CycleMaintenance && $supervisor->active()['owner_cycle'] === 'cycle_core',
             'Saverestore must wait for confirmation and protect its actual worker owner');
-        check(!is_file($root . '/cms/cycles/state.json'), 'Update pause must not write persistent stop commands');
+        $state = json_decode((string)file_get_contents($root . '/cms/cycles/state.json'), true);
+        check(is_array($state) && empty($state['cycles']), 'Update pause must not write persistent stop commands');
     } finally {
         $pause->finish();
     }
     check(proc_close($process) === 0 && $supervisor->active() === null, 'Saverestore pause must release for recovery');
     $process = null;
+
+    // An installation without a supervisor has nothing to quiesce: the update
+    // must not sit on a 120-second wait for an acknowledgement that cannot come.
+    @unlink($root . '/cms/cycles/state.json');
+    $startedAt = microtime(true);
+    $pause = $module->stopCyclesBeforeSystemUpdate();
+    try {
+        check(microtime(true) - $startedAt < 5, 'An update without a supervisor must not wait for an acknowledgement');
+        check($supervisor->active() !== null, 'A supervisor started later must still see the update pause');
+    } finally {
+        $pause->finish();
+    }
 } finally {
     if (is_resource($process)) { proc_terminate($process, 9); proc_close($process); }
     unset($updater, $competitor, $supervisor);
