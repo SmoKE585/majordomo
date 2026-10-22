@@ -1,0 +1,152 @@
+<!--#
+ @version 0.1 (system event journal)
+#-->
+<div class="md-ui-page md-ui-page--stack">
+
+    <header class="md-ui-hero">
+        <div>
+            <div class="md-ui-hero__eyebrow"><i class="ti ti-activity" aria-hidden="true"></i>События</div>
+            <h1 class="md-ui-hero__title">Журнал системы</h1>
+            <p class="md-ui-hero__lede">Установка и удаление модулей, обновления системы, изменения настроек и циклов. На эти события можно подписываться в модулях и сценариях.</p>
+            <div class="md-ui-hero__meta">
+                <span class="md-ui-hero__meta-item"><i class="ti ti-list" aria-hidden="true"></i>Всего: <strong>[#SYSTEM_LOG_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>За сутки: <strong>[#SYSTEM_LOG_DAY#]</strong></span>
+                [#if SYSTEM_LOG_LAST!=""#]
+                <span class="md-ui-hero__meta-item"><i class="ti ti-history" aria-hidden="true"></i>Последнее: <strong>[#SYSTEM_LOG_LAST#]</strong></span>
+                [#endif#]
+            </div>
+        </div>
+        <div class="md-ui-hero__actions">
+            <a href="?view_mode=system_events" class="md-btn md-btn--secondary">
+                <i class="ti ti-refresh" aria-hidden="true"></i><span class="md-btn__label">Обновить</span>
+            </a>
+            <div class="dropdown">
+                <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Дополнительные действия">
+                    <i class="ti ti-dots" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end md-menu">
+                    <li>
+                        <a class="dropdown-item" href="?view_mode=system_events&clear=30" data-md-confirm="Удалить события старше 30 дней?">
+                            <i class="ti ti-eraser" aria-hidden="true"></i>Очистить старше 30 дней
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="?view_mode=system_events&clear=all" data-md-confirm="Удалить весь журнал системных событий?">
+                            <i class="ti ti-trash" aria-hidden="true"></i>Очистить всё
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <nav class="md-tabs" aria-label="События">
+        <a class="nav-link" href="?view_mode=search_events">
+            <i class="ti ti-list-details" aria-hidden="true"></i><span>События</span>
+        </a>
+        <a class="nav-link active" href="?view_mode=system_events" aria-current="page">
+            <i class="ti ti-activity" aria-hidden="true"></i><span>Журнал системы</span>
+            [#if SYSTEM_LOG_TOTAL!=""#]<span class="md-badge">[#SYSTEM_LOG_TOTAL#]</span>[#endif#]
+        </a>
+    </nav>
+
+    <div class="md-ui-kpi-grid">
+        <div class="md-kpi md-kpi--primary">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-activity" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Всего событий</span>
+            </div>
+            <div class="md-kpi__value">[#SYSTEM_LOG_TOTAL#]</div>
+            <div class="md-kpi__meta">С учётом фильтра</div>
+        </div>
+        <div class="md-kpi md-kpi--info">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-clock" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">За сутки</span>
+            </div>
+            <div class="md-kpi__value">[#SYSTEM_LOG_DAY#]</div>
+            <div class="md-kpi__meta">Последние 24 часа</div>
+        </div>
+        <div class="md-kpi md-kpi--[#if SYSTEM_LOG_HAS_PROBLEMS="1"#]danger[#else#]success[#endif#]">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-alert-triangle" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Проблемные</span>
+            </div>
+            <div class="md-kpi__value">[#SYSTEM_LOG_PROBLEMS#]</div>
+            <div class="md-kpi__meta">Неудачные обновления</div>
+        </div>
+        <div class="md-kpi md-kpi--neutral">
+            <div class="md-kpi__top">
+                <span class="md-kpi__icon"><i class="ti ti-history" aria-hidden="true"></i></span>
+                <span class="md-kpi__label">Последнее событие</span>
+            </div>
+            <div class="md-kpi__value">[#if SYSTEM_LOG_LAST!=""#][#SYSTEM_LOG_LAST#][#else#]—[#endif#]</div>
+            <div class="md-kpi__meta">Время записи</div>
+        </div>
+    </div>
+
+    <form class="md-card" method="get" action="">
+        <div class="md-card__body">
+            <input type="hidden" name="view_mode" value="system_events">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdSystemEventFilter">Событие</label>
+                        <div class="md-field__control">
+                            <select class="md-select" id="mdSystemEventFilter" name="event">
+                                [#EVENT_FILTER_SELECT#]
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <div class="md-field">
+                        <label class="md-field__label" for="mdSystemEventLimit">Показывать</label>
+                        <div class="md-field__control">
+                            <select class="md-select" id="mdSystemEventLimit" name="limit">
+                                <option value="50" [#if LIMIT="50"#]selected[#endif#]>50</option>
+                                <option value="100" [#if LIMIT="100"#]selected[#endif#]>100</option>
+                                <option value="200" [#if LIMIT="200"#]selected[#endif#]>200</option>
+                                <option value="500" [#if LIMIT="500"#]selected[#endif#]>500</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-auto">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="problems" value="1" id="mdSystemEventProblems" [#if ONLY_PROBLEMS="1"#]checked[#endif#]>
+                        <label class="form-check-label" for="mdSystemEventProblems">Только проблемные</label>
+                    </div>
+                </div>
+                <div class="col-12 col-md-auto">
+                    <div class="d-flex gap-2 mb-1">
+                        <button type="submit" class="md-btn md-btn--primary">
+                            <i class="ti ti-filter" aria-hidden="true"></i><span class="md-btn__label">Применить</span>
+                        </button>
+                        <a href="?view_mode=system_events" class="md-btn md-btn--ghost">
+                            <i class="ti ti-x" aria-hidden="true"></i><span class="md-btn__label">Сбросить</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    [#SYSTEM_EVENTS_FEED#]
+
+    [#if HAS_PREV="1" || HAS_NEXT="1"#]
+    <nav class="md-pagination" aria-label="Страницы журнала">
+        [#if HAS_PREV="1"#]
+        <a class="md-btn md-btn--secondary" href="?view_mode=system_events&event=[#EVENT_FILTER#]&problems=[#ONLY_PROBLEMS#]&limit=[#LIMIT#]&offset=[#PREV_OFFSET#]">
+            <i class="ti ti-chevron-left" aria-hidden="true"></i><span class="md-btn__label">Новее</span>
+        </a>
+        [#endif#]
+        [#if HAS_NEXT="1"#]
+        <a class="md-btn md-btn--secondary" href="?view_mode=system_events&event=[#EVENT_FILTER#]&problems=[#ONLY_PROBLEMS#]&limit=[#LIMIT#]&offset=[#NEXT_OFFSET#]">
+            <span class="md-btn__label">Старее</span><i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </a>
+        [#endif#]
+    </nav>
+    [#endif#]
+
+</div>

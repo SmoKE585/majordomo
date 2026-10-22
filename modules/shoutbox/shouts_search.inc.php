@@ -173,6 +173,154 @@ if ($res[0]['ID']) {
     $txtdata .= 'No data';
 }
 
+// Admin UI: build the design-system activity feed from the same rows.
+if ($this->action == 'admin') {
+    require_once ROOT . 'lib/ui/MDJUI.php';
+
+    $adminRows = isset($out['RESULT']) && is_array($out['RESULT']) ? $out['RESULT'] : array();
+    $shownCount = count($adminRows);
+
+    $totalRow = SQLSelectOne("SELECT COUNT(*) AS CNT FROM shouts");
+    $systemRow = SQLSelectOne("SELECT COUNT(*) AS CNT FROM shouts WHERE MEMBER_ID=0");
+    $totalCount = $totalRow ? (int)$totalRow['CNT'] : 0;
+    $systemCount = $systemRow ? (int)$systemRow['CNT'] : 0;
+
+    $out['TOTAL_SHOUTS'] = $totalCount;
+    $out['SHOWN_SHOUTS'] = $shownCount;
+    $out['SYSTEM_SHOUTS'] = $systemCount;
+    $lastRow = $shownCount ? $adminRows[0] : null;
+    $out['LAST_SHOUT_TIME'] = $lastRow && $lastRow['DAT'] !== '' ? $lastRow['DAT'] : '—';
+
+    $activityItems = array();
+    $lastDateLabel = '';
+    foreach ($adminRows as $row) {
+        $rowId = (int)$row['ID'];
+        $isSystem = (int)$row['MEMBER_ID'] === 0;
+        $name = trim((string)$row['NAME']);
+        if ($name === '') {
+            $name = $isSystem ? $comp_name : 'Пользователь #' . (int)$row['MEMBER_ID'];
+        }
+
+        $added = (string)$row['ADDED'];
+        $parsed = DateTime::createFromFormat('m/d/Y H:i:s', $added);
+        if (!$parsed) {
+            $parsed = DateTime::createFromFormat('d.m.Y H:i:s', $added);
+        }
+        $dateLabel = $parsed ? $parsed->format('d.m.Y') : substr($added, 0, 10);
+        if ($lastDateLabel === '') {
+            $lastDateLabel = $dateLabel;
+        }
+        $timeLabel = trim((string)$row['DAT']);
+        if ($timeLabel === '' && strlen($added) >= 16) {
+            $timeLabel = substr($added, 11, 5);
+        }
+        $datetime = $parsed ? $parsed->format('c') : '';
+
+        $meta = array();
+        $meta[] = $isSystem ? 'say()' : 'Чат';
+        $source = trim((string)$row['SOURCE']);
+        if ($source !== '' && $source !== 'terminal0') {
+            $meta[] = 'Источник: ' . $source;
+        }
+
+        $deleteButton = MDJUI::iconButton('trash', array(
+            'label' => 'Удалить сообщение #' . $rowId,
+            'variant' => 'danger',
+            'size' => 'sm',
+            'href' => '?view_mode=delete_shouts&id=' . $rowId,
+            'attrs' => array('data-md-confirm' => 'Удалить это сообщение?'),
+        ));
+
+        $activityItems[] = array(
+            'date' => $dateLabel,
+            'title' => $name,
+            'text' => (string)$row['MESSAGE'],
+            'time' => $timeLabel,
+            'datetime' => $datetime,
+            'icon' => $isSystem ? 'terminal-2' : 'message',
+            'tone' => $isSystem ? 'info' : 'primary',
+            'badge' => '#' . $rowId,
+            'badge_tone' => 'outline',
+            'meta' => $meta,
+            'actions' => $deleteButton,
+        );
+    }
+
+    $out['LAST_SHOUT_DATE'] = $lastDateLabel !== '' ? $lastDateLabel : 'Нет сообщений';
+
+    $feedActions = MDJUI::button('Обновить', array(
+        'variant' => 'secondary',
+        'size' => 'sm',
+        'href' => '?',
+        'icon' => 'refresh',
+    ));
+    if ($totalCount > 0) {
+        $feedActions .= MDJUI::button('Удалить всё', array(
+            'variant' => 'danger',
+            'size' => 'sm',
+            'href' => '?clear=1',
+            'icon' => 'trash',
+            'attrs' => array('data-md-confirm' => 'Удалить все сообщения? Это действие нельзя отменить.'),
+        ));
+    }
+
+    $feedFooter = '';
+    if ($totalCount > 0) {
+        $feedFooter = '<span>Показано ' . $shownCount . ' из ' . $totalCount . '</span>';
+        if ($totalCount > $shownCount) {
+            $nextLimit = min($totalCount, max(100, $shownCount * 2));
+            $feedFooter .= MDJUI::button('Показать ещё', array(
+                'variant' => 'ghost',
+                'size' => 'sm',
+                'href' => '?limit=' . $nextLimit,
+                'icon_after' => 'arrow-down',
+            ));
+        }
+    }
+
+    $out['SHOUT_FEED'] = MDJUI::activityFeed(array(
+        'eyebrow' => 'say()',
+        'title' => 'Последние сообщения',
+        'subtitle' => 'Сначала новые. Системные сообщения отмечены значком терминала.',
+        'icon' => 'message',
+        'actions' => $feedActions,
+        'items' => $activityItems,
+        'footer' => $feedFooter,
+        'empty_title' => 'Сообщений пока нет',
+        'empty_text' => 'Как только сценарий, метод объекта или чат вызовет say(), запись появится здесь.',
+    ));
+
+    $out['SHOUT_HINT'] = MDJUI::hint(array(
+        'tone' => 'tip',
+        'title' => 'Что попадает в журнал',
+        'text' => 'Здесь собираются все вызовы say(): системные события, сообщения сценариев, методов объектов и чата.',
+        'points' => array(
+            'Системные записи помечены значком терминала и меткой «say()».',
+            'Сообщение можно удалить отдельно или очистить весь журнал.',
+        ),
+    ));
+
+    $out['SHOUT_CODE'] = MDJUI::codeSample(array(
+        'eyebrow' => 'say()',
+        'title' => 'Отправить сообщение',
+        'tabs' => array(
+            array(
+                'language' => 'php',
+                'label' => 'PHP',
+                'code' => "say('Все системы работают в штатном режиме');",
+            ),
+            array(
+                'language' => 'python',
+                'label' => 'Python',
+                'code' => "say('Все системы работают в штатном режиме')",
+            ),
+        ),
+        'line_numbers' => false,
+        'max_height' => '180px',
+        'caption' => 'Сообщение появится в журнале и в чате.',
+    ));
+}
+
 if (!isset($session->data['SHOUT_ROOM_ID'])) {
     $session->data['SHOUT_ROOM_ID'] = 0;
 }

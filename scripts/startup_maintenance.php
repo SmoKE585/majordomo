@@ -29,6 +29,16 @@ if (defined('LANG_MODULE_SAVERESTORE')) {
 // Core migrations run once after an update; unrelated user properties are never matched by module-name substrings.
 \MajorDoMo\Core\Core::migrations()->run();
 
+// Keep the system event journal bounded; the newest records always stay.
+try {
+    $pruned_events = \MajorDoMo\Core\Events\EventBus::prune(90, 1000);
+    if ($pruned_events > 0) {
+        DebMes('Pruned ' . $pruned_events . ' old system events', 'maintenance');
+    }
+} catch (Throwable $error) {
+    DebMes('Cannot prune system events: ' . $error->getMessage(), 'maintenance', 'warning');
+}
+
 // Remove legacy hook subscribers for deleted user systems.
 DebMes("Removing legacy hook subscribers for deleted user systems.", 'maintenance');
 $legacy_hook_subscribers = array('patterns', 'terminals');

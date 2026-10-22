@@ -199,6 +199,17 @@ $out['SECTION_COUNT'] = count($sections);
 $out['SETTINGS_TOTAL'] = $settingsTotal;
 $out['CHANGED_IN_SECTION'] = 0;
 $out['SYSTEM_SECTION'] = $isSystemSection ? 1 : 0;
+$out['SYSTEM_HINT'] = $isSystemSection ? MDJUI::hint(array(
+    'tone' => 'info',
+    'title' => 'Что произойдёт после сохранения',
+    'text' => 'Фоновые циклы будут перезапущены. Если изменяется подключение к базе, основной цикл перезапустится целиком.',
+    'points' => array(
+        'Текущие значения сохраняются в .env и в таблицу settings.',
+        'При смене базы данных выполняется полный reload супервизора.',
+    ),
+    'link' => '?action=knowledge_base',
+    'link_label' => 'Как устроены настройки',
+)) : '';
 $out['CAN_RESET'] = $activeSection === \MajorDoMo\Core\Settings\SettingsSchema::SECTION_DATABASE ? 0 : 1;
 $out['FOLDER_PICKER'] = MDJUI::folderPicker(array(
     'id' => 'mdSettingsFolderPicker',

@@ -17,12 +17,20 @@ require_once './lib/loader.php';
 require_once './load_settings.php';
 set_time_limit(0);
 $heartbeat = 0;
+$eventsDrainedAt = 0;
 while (true) {
     try {
         if (time() - $heartbeat >= 5) {
             setGlobal('cycle_coreRun', time(), 1);
             if (!$heartbeat) echo date('Y-m-d H:i:s') . ' cycle_core running' . PHP_EOL;
             $heartbeat = time();
+        }
+        // Deliver queued system events to module subscribers (subscribeToEvent()).
+        // The queue lives in the database, so a web request that emitted the event
+        // never blocks on a slow module.
+        if (time() - $eventsDrainedAt >= 2) {
+            $eventsDrainedAt = time();
+            \MajorDoMo\Core\Events\EventBus::drain(20);
         }
         if (!\MajorDoMo\Core\Core::worker()->process()) usleep(100000);
     } catch (Throwable $e) {

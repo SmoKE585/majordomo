@@ -7,6 +7,8 @@ const required = [
   'public/assets/admin/codeeditor.css',
   'public/assets/admin/charts.js',
   'public/assets/admin/charts.css',
+  'public/assets/admin/codehighlight.js',
+  'public/assets/admin/codehighlight.css',
 ];
 
 const missing = required.filter((file) => !existsSync(file) || statSync(file).size === 0);
@@ -16,7 +18,7 @@ if (missing.length) {
   for (const file of missing) {
     console.error('  - ' + file);
   }
-  console.error('Run `npm run build` (admin bundle + code editor chunk + charts chunk) or the matching build:* script.');
+  console.error('Run `npm run build` (admin bundle + code editor chunk + charts chunk + code sample highlighter) or the matching build:* script.');
   process.exit(1);
 }
 

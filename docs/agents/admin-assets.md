@@ -6,10 +6,11 @@
 
 ```bash
 npm install
-npm run build         # production-сборка: admin bundle + editor chunk + charts chunk
+npm run build         # production-сборка: admin bundle + editor chunk + charts chunk + code highlight chunk
 npm run watch         # пересборка admin bundle
 npm run watch:editor  # пересборка редактора кода (второй терминал)
 npm run watch:charts  # пересборка чанка графиков (второй терминал)
+npm run watch:highlight # пересборка подсветки примеров кода (второй терминал)
 ```
 
 Результат:
@@ -18,6 +19,7 @@ npm run watch:charts  # пересборка чанка графиков (вто
 - `public/assets/admin/admin.css` — Bootstrap, Bootstrap Icons, Tabler Icons, Rubik, legacy admin CSS, `ui-v2.css` и `ui-system.css`;
 - `public/assets/admin/codeeditor.js` + `public/assets/admin/codeeditor.css` — отдельный lazy-chunk редактора кода (CodeMirror 6);
 - `public/assets/admin/charts.js` + `public/assets/admin/charts.css` — отдельный lazy-chunk графиков (ApexCharts);
+- `public/assets/admin/codehighlight.js` + `public/assets/admin/codehighlight.css` — отдельный lazy-chunk подсветки read-only примеров (highlight.js);
 - `public/assets/admin/fonts/*` — шрифты Bootstrap Icons, Tabler Icons и Rubik.
 
 Шаблон `templates/common_header_admin.html` подключает только `admin.css` и `admin.js`. Отдельные подключения Bootstrap, jQuery, Bootstrap Icons, Tom Select, fancybox, toast, duration-picker, codeeditor и модулей `resources/js/modules/admin_panel/*` из шаблонов убраны.
@@ -25,6 +27,8 @@ npm run watch:charts  # пересборка чанка графиков (вто
 `codeeditor.js` не входит в основной бандл. `resources/js/codeeditor/loader.js` загружает его только когда на странице есть `[data-code-editor]` (или когда открывается консоль). Поэтому dashboard и другие страницы без редактора не скачивают CodeMirror и языковые парсеры.
 
 `charts.js` не входит в основной бандл. `resources/js/modules/admin_panel/101_dashboard_charts.js` загружает его при первом построении графика, поэтому остальные страницы не скачивают ApexCharts.
+
+`codehighlight.js` не входит в основной бандл. `resources/js/modules/admin_panel/123_code_sample.js` загружает его только при наличии `[data-md-code-sample]`; вкладки и копирование при этом работают сразу из основного бандла.
 
 ## Что уже в бандле
 
@@ -40,7 +44,8 @@ npm run watch:charts  # пересборка чанка графиков (вто
 - `jquery.cookie`, `jquery.tiny-pubsub` (локальные плагины);
 - загрузчик редактора `resources/js/codeeditor/loader.js` (сам редактор — отдельный lazy-chunk);
 - `apexcharts` — отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css` для дашборда и будущих страниц с графиками;
-- admin shell modules из `resources/js/modules/admin_panel/`, включая `101_dashboard_charts.js` (графики дашборда) и `120_linkedobject.js` (компонент связей объектов);
+- `highlight.js` — отдельный lazy-chunk `public/assets/admin/codehighlight.js` + `codehighlight.css` для `MDJUI::codeSample()`;
+- admin shell modules из `resources/js/modules/admin_panel/`, включая `101_dashboard_charts.js` (графики дашборда), `120_linkedobject.js` (компонент связей объектов) и `123_code_sample.js` (вкладки/копирование примеров кода);
 - `resources/css/admin_panel.css` (legacy), `resources/css/ui-v2.css` (shell/dashboard) и `resources/css/ui-system.css` (дизайн-система, включая LinkedObject).
 
 ## Что пока не в бандле

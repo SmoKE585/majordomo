@@ -158,6 +158,11 @@ class events extends module
             $this->redirect("?ok_msg=" . urlencode(LANG_DATA_SAVED));
         }
 
+        if ($this->data_source == 'system_events' || $this->view_mode == 'system_events') {
+            $this->systemEvents($out);
+            return;
+        }
+
         if ($this->data_source == 'events' || $this->data_source == '') {
             if ($this->view_mode == '' || $this->view_mode == 'search_events') {
                 $this->search_events($out);
@@ -382,8 +387,10 @@ class events extends module
                  ORDER BY ID DESC
                  LIMIT 1";
 
-        $rec = array();
         $rec = SQLSelectOne($sqlQuery);
+        if (!is_array($rec)) {
+            $rec = array();
+        }
 
         $rec['EVENT_NAME'] = $eventName;
         $rec['EVENT_TYPE'] = 'system';
@@ -400,7 +407,7 @@ class events extends module
         }
         $rec['PROCESSED'] = 1;
 
-        if ($rec['ID']) {
+        if (!empty($rec['ID'])) {
             SQLUpdate('events', $rec);
         } else {
             $rec['ID'] = SQLInsert('events', $rec);
@@ -415,22 +422,25 @@ class events extends module
 
         foreach ($params as $k => $v) {
             $param_rec = SQLSelectOne("SELECT * FROM events_params WHERE EVENT_ID=" . $rec['ID'] . " AND TITLE LIKE '" . DBSafe($k) . "'");
+            if (!is_array($param_rec)) {
+                $param_rec = array();
+            }
             $param_rec['TITLE'] = $k;
             $param_rec['VALUE'] = $v;
             $param_rec['UPDATED'] = date('Y-m-d H:i:s');
             $param_rec['EVENT_ID'] = $rec['ID'];
-            if ($param_rec['ID']) {
+            if (!empty($param_rec['ID'])) {
                 SQLUpdate('events_params', $param_rec);
             } else {
                 $param_rec['ID'] = SQLInsert('events_params', $param_rec);
             }
-            if ($param_rec['LINKED_OBJECT'] && $param_rec['LINKED_PROPERTY']) {
+            if (!empty($param_rec['LINKED_OBJECT']) && !empty($param_rec['LINKED_PROPERTY'])) {
                 setGlobal($param_rec['LINKED_OBJECT'] . '.' . $param_rec['LINKED_PROPERTY'], $v);
             }
-            if ($param_rec['LINKED_OBJECT'] && $param_rec['LINKED_METHOD']) {
+            if (!empty($param_rec['LINKED_OBJECT']) && !empty($param_rec['LINKED_METHOD'])) {
                 $method_params = array();
                 $method_params['VALUE'] = $v;
-                $method_params['EVENT'] = $rec['TITLE'];
+                $method_params['EVENT'] = $rec['TITLE'] ?? '';
                 callMethodSafe($param_rec['LINKED_OBJECT'] . '.' . $param_rec['LINKED_METHOD'], $method_params);
             }
         }
@@ -482,6 +492,191 @@ class events extends module
      *
      * @access public
      */
+    /**
+     * System event journal (`system_events`) rendered with the shared activity feed.
+     */
+    function systemEvents(&$out)
+    {
+        require_once(ROOT . 'lib/ui/MDJUI.php');
+        $names = \MajorDoMo\Core\Events\SystemEvents::names();
+
+        if (gr('clear') !== '') {
+            $mode = (string)gr('clear');
+            if ($mode === 'all') {
+                SQLExec('DELETE FROM system_events');
+            } else {
+                $days = max(1, (int)$mode);
+                SQLExec("DELETE FROM system_events WHERE CREATED<'" . date('Y-m-d H:i:s', time() - $days * 86400) . "'");
+            }
+            $this->redirect('?view_mode=system_events&ok_msg=' . urlencode('Журнал очищен'));
+        }
+
+        $eventFilter = strtoupper(trim((string)gr('event')));
+        if (!in_array($eventFilter, $names, true)) {
+            $eventFilter = '';
+        }
+        $onlyProblems = (int)gr('problems') === 1;
+        $limit = (int)gr('limit');
+        if ($limit < 20 || $limit > 500) {
+            $limit = 100;
+        }
+        $offset = max(0, (int)gr('offset'));
+
+        $where = array('1');
+        if ($eventFilter !== '') {
+            $where[] = "NAME='" . DBSafe($eventFilter) . "'";
+        }
+        if ($onlyProblems) {
+            $where[] = "NAME IN ('" . \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_FAILED . "','" . \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_ABORTED . "')";
+        }
+        $whereSql = implode(' AND ', $where);
+
+        $total = (int)(SQLSelectOne("SELECT COUNT(*) AS C FROM system_events WHERE $whereSql")['C'] ?? 0);
+        $dayAgo = date('Y-m-d H:i:s', time() - 86400);
+        $dayTotal = (int)(SQLSelectOne("SELECT COUNT(*) AS C FROM system_events WHERE CREATED>'" . $dayAgo . "'")['C'] ?? 0);
+        $problemsTotal = (int)(SQLSelectOne("SELECT COUNT(*) AS C FROM system_events WHERE NAME IN ('" . \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_FAILED . "','" . \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_ABORTED . "')")['C'] ?? 0);
+        $lastRow = SQLSelectOne('SELECT CREATED FROM system_events ORDER BY ID DESC LIMIT 1');
+
+        $rows = SQLSelect("SELECT * FROM system_events WHERE $whereSql ORDER BY ID DESC LIMIT " . $offset . ',' . $limit);
+        $items = array();
+        foreach ($rows as $row) {
+            $name = (string)$row['NAME'];
+            $payload = json_decode((string)$row['PAYLOAD'], true);
+            if (!is_array($payload)) {
+                $payload = array();
+            }
+            $timestamp = strtotime((string)$row['CREATED']);
+            if (!$timestamp) {
+                $timestamp = time();
+            }
+            $items[] = array(
+                'date' => $this->systemEventDateLabel($timestamp),
+                'title' => \MajorDoMo\Core\Events\SystemEvents::title($name),
+                'text' => $this->systemEventText($name, $payload),
+                'time' => date('H:i', $timestamp),
+                'datetime' => date('Y-m-d H:i:s', $timestamp),
+                'icon' => $this->systemEventIcon($name),
+                'tone' => $this->systemEventTone(\MajorDoMo\Core\Events\SystemEvents::severity($name)),
+                'meta' => array_values(array_filter(array($name, (string)$row['SOURCE']))),
+            );
+        }
+
+        $out['SYSTEM_EVENTS_FEED'] = MDJUI::activityFeed(array(
+            'eyebrow' => 'Журнал',
+            'title' => 'События системы',
+            'subtitle' => 'Установка модулей, обновления, настройки и изменения циклов.',
+            'icon' => 'activity',
+            'items' => $items,
+            'empty_title' => 'Событий пока нет',
+            'empty_text' => 'Здесь появятся установка и удаление модулей, обновления системы, изменения настроек и циклов.',
+        ));
+        $out['SYSTEM_LOG_TOTAL'] = $total;
+        $out['SYSTEM_LOG_DAY'] = $dayTotal;
+        $out['SYSTEM_LOG_PROBLEMS'] = $problemsTotal;
+        $out['SYSTEM_LOG_HAS_PROBLEMS'] = $problemsTotal > 0 ? 1 : 0;
+        $out['SYSTEM_LOG_LAST'] = isset($lastRow['CREATED']) ? date('d.m.Y H:i', strtotime((string)$lastRow['CREATED'])) : '';
+        $out['EVENT_FILTER'] = $eventFilter;
+        $eventOptions = array('<option value="">Все события</option>');
+        foreach ($names as $eventName) {
+            $eventOptions[] = '<option value="' . MDJUI::e($eventName) . '"'
+                . ($eventFilter === $eventName ? ' selected' : '') . '>'
+                . MDJUI::e(\MajorDoMo\Core\Events\SystemEvents::title($eventName)) . '</option>';
+        }
+        $out['EVENT_FILTER_SELECT'] = implode('', $eventOptions);
+        $out['ONLY_PROBLEMS'] = $onlyProblems ? 1 : 0;
+        $out['LIMIT'] = $limit;
+        $out['OFFSET'] = $offset;
+        $out['PREV_OFFSET'] = max(0, $offset - $limit);
+        $out['NEXT_OFFSET'] = $offset + $limit;
+        $out['HAS_PREV'] = $offset > 0 ? 1 : 0;
+        $out['HAS_NEXT'] = ($offset + $limit) < $total ? 1 : 0;
+        $out['VIEW_MODE'] = 'system_events';
+        $out['DATA_SOURCE'] = 'system_events';
+    }
+
+    private function systemEventDateLabel(int $timestamp): string
+    {
+        $today = date('Y-m-d');
+        $date = date('Y-m-d', $timestamp);
+        if ($date === $today) {
+            return 'Сегодня';
+        }
+        if ($date === date('Y-m-d', time() - 86400)) {
+            return 'Вчера';
+        }
+        return date('d.m.Y', $timestamp);
+    }
+
+    private function systemEventText(string $name, array $payload): string
+    {
+        switch ($name) {
+            case \MajorDoMo\Core\Events\SystemEvents::MODULE_INSTALLED:
+                return 'Модуль ' . (string)($payload['module'] ?? '') . ' установлен.';
+            case \MajorDoMo\Core\Events\SystemEvents::MODULE_REMOVED:
+                $cycles = array_filter((array)($payload['cycles'] ?? array()));
+                $text = 'Модуль ' . (string)($payload['module'] ?? '') . ' удалён.';
+                if ($cycles !== array()) {
+                    $text .= ' Циклы: ' . implode(', ', $cycles) . '.';
+                }
+                return $text;
+            case \MajorDoMo\Core\Events\SystemEvents::MODULE_UPDATED:
+                $from = (string)($payload['from'] ?? '');
+                $to = (string)($payload['to'] ?? '');
+                return 'Модуль ' . (string)($payload['module'] ?? '') . ' обновлён'
+                    . ($to !== '' ? ' до ' . $to : '') . ($from !== '' ? ' (было ' . $from . ')' : '') . '.';
+            case \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_STARTED:
+            case \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATED:
+                $from = (string)($payload['from'] ?? '');
+                $to = (string)($payload['to'] ?? '');
+                $branch = (string)($payload['branch'] ?? '');
+                $parts = array();
+                if ($from !== '' || $to !== '') {
+                    $parts[] = ($from !== '' ? $from : '?') . ' → ' . ($to !== '' ? $to : '?');
+                }
+                if ($branch !== '') {
+                    $parts[] = 'ветка ' . $branch;
+                }
+                return $parts === array() ? 'Обновление системы.' : 'Версия: ' . implode(', ', $parts) . '.';
+            case \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_FAILED:
+            case \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_ABORTED:
+                $reason = trim((string)($payload['reason'] ?? ''));
+                return $reason === '' ? 'Файлы не заменены.' : $reason;
+            case \MajorDoMo\Core\Events\SystemEvents::SETTINGS_CHANGED:
+                $keys = array_slice((array)($payload['keys'] ?? array()), 0, 12);
+                $section = (string)($payload['section'] ?? '');
+                return 'Раздел «' . $section . '»'
+                    . ($keys !== array() ? ': ' . implode(', ', $keys) : '') . '.';
+            case \MajorDoMo\Core\Events\SystemEvents::CYCLE_SCRIPT_ADDED:
+                return 'Цикл ' . (string)($payload['cycle'] ?? '') . ' добавлен и запущен.';
+            case \MajorDoMo\Core\Events\SystemEvents::CYCLE_SCRIPT_REMOVED:
+                return 'Цикл ' . (string)($payload['cycle'] ?? '') . ' удалён, надзор остановлен.';
+        }
+        return '';
+    }
+
+    private function systemEventIcon(string $name): string
+    {
+        $icons = array(
+            \MajorDoMo\Core\Events\SystemEvents::MODULE_INSTALLED => 'puzzle',
+            \MajorDoMo\Core\Events\SystemEvents::MODULE_REMOVED => 'puzzle-off',
+            \MajorDoMo\Core\Events\SystemEvents::MODULE_UPDATED => 'package',
+            \MajorDoMo\Core\Events\SystemEvents::SYSTEM_INSTALLED => 'home-check',
+            \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_STARTED => 'download',
+            \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATED => 'refresh',
+            \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_FAILED => 'alert-circle',
+            \MajorDoMo\Core\Events\SystemEvents::SYSTEM_UPDATE_ABORTED => 'ban',
+            \MajorDoMo\Core\Events\SystemEvents::SETTINGS_CHANGED => 'settings',
+            \MajorDoMo\Core\Events\SystemEvents::CYCLE_SCRIPT_ADDED => 'rotate-clockwise',
+            \MajorDoMo\Core\Events\SystemEvents::CYCLE_SCRIPT_REMOVED => 'rotate-rectangle',
+        );
+        return $icons[$name] ?? 'activity';
+    }
+
+    private function systemEventTone(string $severity): string
+    {
+        return array('error' => 'danger', 'warning' => 'warning', 'success' => 'success')[$severity] ?? 'info';
+    }
+
     function search_events(&$out)
     {
         require(DIR_MODULES . $this->name . '/events_search.inc.php');

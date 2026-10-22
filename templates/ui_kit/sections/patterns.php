@@ -9,7 +9,7 @@ if (!class_exists('MDJUI')) {
 <section class="md-ui-section" id="patterns" data-md-doc-section>
     <div class="md-ui-section__intro">
         <?= MDJUI::sectionHeading(array(
-            'eyebrow' => '09 · Patterns',
+            'eyebrow' => '10 · Patterns',
             'title' => 'Паттерны страниц',
             'description' => 'Как собрать типовую страницу админки из готовых блоков: заголовок, KPI, таблица, карточка устройства и форма. Эти правила важнее вкусовых предпочтений.',
             'level' => 2,

@@ -1,0 +1,74 @@
+/* Shoutbox module: message journal on top of the md-ui design system. */
+
+body.md-admin-shell .md-shoutbox-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-shoutbox-main,
+body.md-admin-shell .md-shoutbox-side {
+  min-width: 0;
+}
+
+body.md-admin-shell .md-shoutbox-side {
+  position: sticky;
+  top: 86px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+body.md-admin-shell .md-shoutbox-page .md-activity-card .md-card__head {
+  align-items: flex-start;
+}
+
+body.md-admin-shell .md-shoutbox-page .md-activity__actions .md-icon-btn:hover {
+  color: var(--md-ui-danger);
+  border-color: color-mix(in srgb, var(--md-ui-danger) 45%, transparent);
+  background: var(--md-ui-danger-soft);
+}
+
+body.md-admin-shell .md-shoutbox-page .md-code-sample__scroll {
+  max-height: 180px;
+}
+
+@media (max-width: 1199.98px) {
+  body.md-admin-shell .md-shoutbox-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.md-admin-shell .md-shoutbox-side {
+    position: static;
+  }
+}
+
+@media (max-width: 767.98px) {
+  body.md-admin-shell .md-shoutbox-page .md-activity-card .md-card__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  body.md-admin-shell .md-shoutbox-page .md-activity-card .md-card__titles {
+    width: 100%;
+  }
+
+  body.md-admin-shell .md-shoutbox-page .md-card__actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  body.md-admin-shell .md-shoutbox-page .md-card__actions .md-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.md-admin-shell .md-shoutbox-page .md-card__head {
+    gap: 8px;
+  }
+}

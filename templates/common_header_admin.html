@@ -12,12 +12,16 @@ var ROOTHTML = window.ROOTHTML;
 window.MDJAdminDefaultTheme = '[#if "<#SETTINGS_THEME#>"!="dark" || PANEL_THEME=="light"#]light[#else#]dark[#endif#]';
 window.MDJAdminConfig = window.MDJAdminConfig || {};
 window.MDCodeEditorConfig = {
-    script: '<#ROOTHTML#>assets/admin/codeeditor.js?v=2026-10-21-0085',
-    style: '<#ROOTHTML#>assets/admin/codeeditor.css?v=2026-10-21-0085'
+    script: '<#ROOTHTML#>assets/admin/codeeditor.js?v=2026-10-22-0093',
+    style: '<#ROOTHTML#>assets/admin/codeeditor.css?v=2026-10-22-0093'
 };
 window.MDChartsConfig = {
-    script: '<#ROOTHTML#>assets/admin/charts.js?v=2026-10-21-0085',
-    style: '<#ROOTHTML#>assets/admin/charts.css?v=2026-10-21-0085'
+    script: '<#ROOTHTML#>assets/admin/charts.js?v=2026-10-22-0093',
+    style: '<#ROOTHTML#>assets/admin/charts.css?v=2026-10-22-0093'
+};
+window.MDCodeHighlightConfig = {
+    script: '<#ROOTHTML#>assets/admin/codehighlight.js?v=2026-10-22-0093',
+    style: '<#ROOTHTML#>assets/admin/codehighlight.css?v=2026-10-22-0093'
 };
 window.MDJAdminConfig.codeEditorDefaults = {
     theme: '[#if "<#SETTINGS_CODEEDITOR_THEME#>"!=""#]<#SETTINGS_CODEEDITOR_THEME#>[#else#]auto[#endif#]',
@@ -37,8 +41,8 @@ window.MDJAdminConfig.codeEditorDefaults = {
 </script>
 
 <!-- Admin bundle: Bootstrap 5, Bootstrap Icons, jQuery and shell plugins. -->
-<link rel="stylesheet" href="<#ROOTHTML#>assets/admin/admin.css?v=2026-10-21-0092" type="text/css">
-<script type="text/javascript" src="<#ROOTHTML#>assets/admin/admin.js?v=2026-10-21-0092"></script>
+<link rel="stylesheet" href="<#ROOTHTML#>assets/admin/admin.css?v=2026-10-22-0093" type="text/css">
+<script type="text/javascript" src="<#ROOTHTML#>assets/admin/admin.js?v=2026-10-22-0093"></script>
 
 <!-- Legacy global helpers still used by old module templates. -->
 <script language="javascript" type="text/javascript" src="<#ROOTHTML#>assets/js/scripts.js?v=2019-07-09"></script>

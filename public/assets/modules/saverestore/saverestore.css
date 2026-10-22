@@ -1031,6 +1031,10 @@ body.md-admin-shell .md-saverestore-worker {
 }
 
 @media (max-width: 767.98px) {
+  body.md-admin-shell .md-saverestore-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   body.md-admin-shell .md-saverestore-update-modal {
     padding: 8px;
   }

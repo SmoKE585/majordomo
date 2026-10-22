@@ -393,6 +393,39 @@ class MDJUI
         return self::render('history-drawer', $props);
     }
 
+    /**
+     * Activity feed / timeline of actions.
+     *
+     * @param array $props items|groups, title, subtitle, eyebrow, actions,
+     *                     footer, limit, more_href, compact, empty_text
+     */
+    public static function activityFeed(array $props = array())
+    {
+        return self::render('activity-feed', $props);
+    }
+
+    /**
+     * Contextual hint / note block.
+     *
+     * @param array $props tone, title, text, points, steps, actions, link,
+     *                     dismissible, compact
+     */
+    public static function hint(array $props = array(), $slot = '')
+    {
+        return self::render('hint', $props, $slot);
+    }
+
+    /**
+     * Read-only code sample with highlighting and copy.
+     *
+     * @param array $props language+code or tabs, title, caption, line_numbers,
+     *                     max_height, copy
+     */
+    public static function codeSample(array $props = array())
+    {
+        return self::render('code-sample', $props);
+    }
+
     // ---------------------------------------------------------------------
     // Forms
     // ---------------------------------------------------------------------
@@ -834,6 +867,70 @@ class MDJUI
             array('name' => 'Протечка воды', 'description' => 'Ванная · аварийный сценарий', 'state' => 'error', 'state_label' => 'Ошибка', 'last' => '3 ч назад', 'icon' => 'droplet', 'runs' => 0),
         );
 
+        $activity = array(
+            array(
+                'date' => 'Сегодня',
+                'title' => 'Кухня · Основной свет',
+                'text' => 'Яркость изменена с 0% на 72% сценарием «Доброе утро».',
+                'time' => '2 мин назад',
+                'datetime' => '2026-10-22 14:02:00',
+                'icon' => 'bulb',
+                'tone' => 'primary',
+                'actor' => 'Сценарий «Доброе утро»',
+                'meta' => array('Zigbee', array('text' => 'Кухня', 'icon' => 'map-pin')),
+                'badge' => 'Выполнено',
+                'badge_tone' => 'success',
+                'href' => '?action=objects',
+                'unread' => true,
+            ),
+            array(
+                'date' => 'Сегодня',
+                'title' => 'Датчик движения · Коридор',
+                'text' => 'Зафиксировано движение, сценарий подсветки запущен.',
+                'time' => '18 мин назад',
+                'datetime' => '2026-10-22 13:46:00',
+                'icon' => 'walk',
+                'tone' => 'info',
+                'actor' => 'Коридор',
+                'meta' => array('Zigbee', 'Батарея 86%'),
+            ),
+            array(
+                'date' => 'Сегодня',
+                'title' => 'Ошибка системы',
+                'text' => 'Цикл MQTT перезапущен после потери соединения с брокером.',
+                'time' => '43 мин назад',
+                'datetime' => '2026-10-22 13:21:00',
+                'icon' => 'alert-triangle',
+                'tone' => 'warning',
+                'actor' => 'Cycle Supervisor',
+                'badge' => 'Перезапуск',
+                'badge_tone' => 'warning',
+                'href' => '?action=system_errors',
+            ),
+            array(
+                'date' => 'Вчера',
+                'title' => 'Сценарий «Ночной режим»',
+                'text' => 'Свет в спальне выключен, климат переведён на 19 °C.',
+                'time' => 'вчера, 23:30',
+                'datetime' => '2026-10-21 23:30:00',
+                'icon' => 'moon-stars',
+                'tone' => 'success',
+                'actor' => 'Расписание',
+                'meta' => array('4 действия', '12 секунд'),
+            ),
+            array(
+                'date' => 'Вчера',
+                'title' => 'Обновление системы',
+                'text' => 'Установлена версия 2026.10.21, циклы перезапущены.',
+                'time' => 'вчера, 18:04',
+                'datetime' => '2026-10-21 18:04:00',
+                'icon' => 'cloud-upload',
+                'tone' => 'neutral',
+                'actor' => 'Администратор',
+                'href' => '?action=saverestore',
+            ),
+        );
+
         self::$demoData = array(
             'devices' => $devices,
             'scenes' => $scenes,
@@ -841,6 +938,7 @@ class MDJUI
             'rooms' => $rooms,
             'palette_items' => $paletteItems,
             'automations' => $automations,
+            'activity' => $activity,
             'energy' => array(
                 'today' => '8,4 кВт·ч',
                 'yesterday' => '9,1 кВт·ч',

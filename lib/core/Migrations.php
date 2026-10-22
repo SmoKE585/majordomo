@@ -125,14 +125,43 @@ final class Migrations
         if ((int)($lock['OK'] ?? 0) !== 1) throw new RuntimeException('Core migration is already running');
         try {
             $this->db->requireExec("CREATE TABLE IF NOT EXISTS core_migrations (VERSION varchar(100) NOT NULL PRIMARY KEY, APPLIED datetime NOT NULL) ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8");
-            $version = '20261021_core_runtime_v1';
-            if ($this->db->one("SELECT VERSION FROM core_migrations WHERE VERSION='$version'")) return;
-
-            $this->upgradeRuntime();
-            $this->db->requireExec("INSERT INTO core_migrations (VERSION,APPLIED) VALUES ('$version',NOW())");
+            $this->apply('20261021_core_runtime_v1', fn() => $this->upgradeRuntime());
+            $this->apply('20261022_system_events_v1', fn() => $this->ensureSystemEventsSchema());
         } finally {
             $this->db->one("SELECT RELEASE_LOCK('mjd:core-migrations')");
         }
+    }
+
+    /** Runs one versioned migration exactly once. */
+    private function apply(string $version, callable $migration): void
+    {
+        if ($this->db->one("SELECT VERSION FROM core_migrations WHERE VERSION='" . $this->db->escape($version) . "'")) return;
+        $migration();
+        $this->db->requireExec("INSERT INTO core_migrations (VERSION,APPLIED) VALUES ('" . $this->db->escape($version) . "',NOW())");
+    }
+
+    /**
+     * Append-only system event log used by MajorDoMo\Core\Events\EventBus.
+     * `PROCESSED` is the queue flag for module subscribers; history retention is
+     * applied by EventBus::prune() on maintenance runs.
+     */
+    private function ensureSystemEventsSchema(): void
+    {
+        $this->db->requireExec(
+            "CREATE TABLE IF NOT EXISTS system_events (" .
+            "ID bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY," .
+            "NAME varchar(100) NOT NULL," .
+            "PAYLOAD mediumtext NULL," .
+            "SOURCE varchar(100) NOT NULL DEFAULT ''," .
+            "CREATED datetime NOT NULL," .
+            "PROCESSED tinyint unsigned NOT NULL DEFAULT 0," .
+            "PROCESSED_AT datetime NULL," .
+            "ERROR text NULL," .
+            "KEY idx_system_events_created (CREATED)," .
+            "KEY idx_system_events_name (NAME,CREATED)," .
+            "KEY idx_system_events_queue (PROCESSED,ID)" .
+            ") ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8"
+        );
     }
     private function upgradeRuntime(): void
     {

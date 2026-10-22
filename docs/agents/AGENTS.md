@@ -59,6 +59,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - X-Ray переведён на общую систему: KPI, вкладки режимов, тулбар с фильтрами по дате и имени файла, консоль, карточки циклов и таблицы; генерация карточек/таблиц в `xray.js` использует `md-*`;
 - консоль X-Ray выводит структурированные записи: дата, время, файл, уровень и краткое сообщение; полный текст раскрывается по клику, абсолютные пути проекта сокращаются;
 - лог цикла X-Ray открывается в новом drawer: структурированные записи, фильтр, пауза автообновления, скачивание, очистка и empty-state для выключенного файлового лога;
+- в X-Ray исправлено двойное экранирование команд таймеров: API отдаёт `COMMANDS` как есть, а клиент экранирует только при вставке в HTML, поэтому `cm('Vannaya.onIdle');` отображается с обычными кавычками; выполнение не менялось — `Scheduler` использует исходную строку из `jobs`.
 - «Маркет дополнений» переведён на общую систему: hero, KPI, поиск, `md-tabs` категорий, компактные карточки модулей, ручная установка, empty-state, модалка с коммитами Git перед установкой/обновлением, отдельная модалка удаления и модалка прогресса на `md-*` с этапами и журналом; iframe-воркер невидим, при ошибке окно остаётся открытым, URL очищается;
 - все view_mode-табы приведены к единому паттерну `md-tabs` (классы, сценарии, объекты, X-Ray, настройки, saverestore); `md-tabs--compact`/`md-tabs--line` помечены в UI Kit как служебные;
 - исправлена мобильная тёмная тема shell: `.md-admin-layout` больше не оставляет светлый фон под заголовками страниц;
@@ -72,6 +73,9 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - модуль MQTT переделан в рабочее пространство для больших журналов: hero и KPI, состояние цикла, группировка по устройствам или корневым путям, поиск и фильтры, серверная пагинация, live-обновление значений, отдельная страница настроек брокера и редактор топика с привязкой, публикацией и историей сообщений; page-CSS/JS — `public/assets/modules/mqtt/mqtt.css` и `public/assets/modules/mqtt/mqtt.js`; чистые URL `/panel/mqtt.html`, `/panel/mqtt/add.html`, `/panel/mqtt/<id>.html`, `/panel/mqtt/<id>/delete.html`, `/panel/mqtt/settings.html`, `/panel/mqtt/clear-trash.html` и `/panel/mqtt/optimize.html`;
 - компонент `linkedobject` переведён на общую систему и собственный стабильный контроллер `MDLinkedObjectUI`: native input сохраняет `name/id/onchange`, свободный ввод, атомарная загрузка свойств/методов с кэшем, portal-dropdown, повторная инициализация после `partLoad`, поддержка клонированных строк и таблиц; демо — `?action=ui_kit#linkedobject`;
 - добавлен раздел «База знаний» (`/panel/knowledge_base.html`): читает `docs/**/*.md` без отдельной таблицы в БД, показывает категории, метки аудитории (`user`/`agent`), поиск, карточки и статью с оглавлением; Markdown рендерится безопасным серверным рендерером, относительные ссылки и картинки переписываются на базу знаний/`/docs/`; пользовательская инструкция по CLI — `docs/user/commands.md`, правила разметки — `docs/agents/knowledge-base.md`; чистые URL `/panel/knowledge_base.html` и `/panel/knowledge_base/<path>.html`.
+- добавлены компоненты `MDJUI::activityFeed()` (лента действий), `MDJUI::hint()` (контекстная подсказка с пунктами, шагами и закрытием) и `MDJUI::codeSample()` (read-only код с подсветкой PHP/Python, вкладками языков, номерами строк и копированием); подсветка — lazy-chunk `public/assets/admin/codehighlight.js` + `codehighlight.css` (highlight.js), демо — `?action=ui_kit#blocks`, документация — `docs/agents/DESIGN_SYSTEM.md`;
+- исправлен горизонтальный скролл страницы на мобильных: scroll-контейнеры таблиц (`md-table__scroll`) получили `position: relative`, чтобы абсолютные visually-hidden элементы не растягивали документ; футер карточки и длинные бейджи переносятся; сетка saverestore и мобильные `md-tabs` больше не выходят за экран; подсказка на странице общих настроек переведена на `MDJUI::hint()`.
+- модуль Shoutbox (`/panel/shoutbox.html`) переведён на общую систему: hero и KPI, журнал сообщений на `MDJUI::activityFeed()` с удалением отдельных записей и очисткой всего журнала, подсказка о `say()` и пример вызова на `MDJUI::hint()`/`MDJUI::codeSample()`; page-CSS — `public/assets/modules/shoutbox/shoutbox.css`.
 
 Следующий этап — **полировка мобильных деталей объектов** (длинные значения в редакторах, компактные формы), затем остальные модули.
 
@@ -147,6 +151,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `modules/knowledge_base/` | Модуль админки «База знаний» (`/panel/knowledge_base.html`) |
 | `templates/knowledge_base/` | Список материалов, статья, состояние «не найдено» |
 | `public/assets/modules/knowledge_base/` | Page-only CSS/JS базы знаний (не входят в общий бандл) |
+| `public/assets/modules/shoutbox/` | Page-only CSS журнала `say()` (`/panel/shoutbox.html`) |
 | `docs/agents/DESIGN_SYSTEM.md` | Обязательная документация дизайн-системы |
 | `resources/js/modules/admin_panel/` | Модули shell: core, drawer, search, console, notifications, init, dashboard, controls, header search, objects, data table, alpine, shared UI components, dashboard charts |
 | `resources/js/modules/admin_panel/100_chart_runtime.js` | Общий lazy-loader ApexCharts (`window.MDJCharts`) для дашборда и истории |
@@ -159,6 +164,10 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 | `resources/js/charts.js` | Entry отдельного Vite-chunk графиков (ApexCharts) |
 | `vite.charts.config.js` | Сборка `public/assets/admin/charts.js` + `charts.css` |
 | `public/assets/admin/` | Сгенерированный бандл, коммитится |
+| `resources/js/codehighlight/index.js` | Entry lazy-chunk подсветки read-only примеров (highlight.js: PHP, Python, JS, HTML/XML, CSS, Bash, JSON, YAML) |
+| `resources/css/codehighlight.css` | Палитра подсветки для `md-code-sample` |
+| `vite.codehighlight.config.js` | Сборка `public/assets/admin/codehighlight.js` + `codehighlight.css` |
+| `resources/js/modules/admin_panel/123_code_sample.js` | Вкладки, копирование и lazy-загрузка подсветки для `MDJUI::codeSample()` |
 | `resources/js/codeeditor/editor.js` | Обвязка CodeMirror 6 и рендер редактора; отдельный lazy-chunk |
 | `resources/js/codeeditor/loader.js` | Lazy-загрузка редактора; входит в основной бандл |
 | `resources/css/codeeditor.css` | Стили редактора, темы, поиск, drawer истории |
@@ -172,17 +181,19 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 
 ```bash
 npm install
-npm run build          # admin bundle + code editor chunk + charts chunk
+npm run build          # admin bundle + code editor + charts + code sample highlighter
 npm run watch          # admin bundle
 npm run watch:editor   # code editor (второй терминал)
 npm run watch:charts   # графики дашборда (второй терминал)
+npm run watch:highlight # подсветка примеров кода (второй терминал)
 ```
 
 - Не редактируйте `public/assets/admin/*` вручную.
-- После `npm run build` при необходимости поднимите версию в `templates/common_header_admin.html` (`?v=...`), `window.MDCodeEditorConfig` и `window.MDChartsConfig`.
+- После `npm run build` при необходимости поднимите версию в `templates/common_header_admin.html` (`?v=...`), `window.MDCodeEditorConfig`, `window.MDChartsConfig` и `window.MDCodeHighlightConfig`.
 - Бандл коммитится; на продакшене Node.js не нужен.
 - Редактор кода — отдельный lazy-chunk `public/assets/admin/codeeditor.js/css`; его собирает `vite.codeeditor.config.js`.
 - Графики — отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css` (ApexCharts); его собирает `vite.charts.config.js`, загрузка идёт из общего `100_chart_runtime.js` (дашборд и история).
+- Подсветка read-only примеров — отдельный lazy-chunk `public/assets/admin/codehighlight.js` + `codehighlight.css` (highlight.js); собирает `vite.codehighlight.config.js`, загружает `123_code_sample.js` только при наличии `[data-md-code-sample]`.
 
 ### Локальный сервер
 
@@ -313,6 +324,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `php tests/settings_cycles_smoke.php` — схема «Общих настроек», персистентные состояния и reconcile циклов.
 - `php tests/folder_picker_smoke.php` — границы folder picker: обход `..`, абсолютные пути вне проекта, скрытые каталоги, fallback на корень.
 - `php tests/knowledge_base_smoke.php` — сканирование `docs/`, front matter, безопасный Markdown, ссылки и категории базы знаний.
+- `php tests/template_include_smoke.php` — `[#inc *.tpl#]` рендерится через Smarty и при `DEBUG_MODE=0` (раньше прод отдавал `print_r` вместо страницы классов).
 - `php tools/config-audit.php` — не выросло ли число обращений к легаси-константам.
 - Открыть `/panel/` и затронутые страницы: console/exceptions, 390 px, светлая и тёмная темы.
 - После чистой установки проверить, что `/panel/` открывается без формы входа (доступ закрывает reverse proxy), а созданный пользователь есть в `users`.

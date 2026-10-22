@@ -85,13 +85,13 @@
         }
         alertDismissBound = true;
         document.addEventListener('click', function (event) {
-            var button = event.target.closest('[data-md-dismiss="alert"]');
+            var button = event.target.closest('[data-md-dismiss="alert"], [data-md-dismiss="hint"]');
             if (!button) {
                 return;
             }
-            var alert = button.closest('.md-alert');
-            if (alert) {
-                alert.remove();
+            var message = button.closest('.md-alert, .md-hint');
+            if (message) {
+                message.remove();
             }
         });
     }

@@ -2360,11 +2360,30 @@ class saverestore extends module
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_APPLY_CHANGES . ' ' . DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . " to " . DOC_ROOT . DIRECTORY_SEPARATOR . '</div>');
             }
 
+            $update_from = '';
+            $update_to = '';
+            if ($is_system_update) {
+                $update_from = $this->normalizeCommitId($this->config['LATEST_UPDATED_ID'] ?? '');
+                $update_to = isset($out['LATEST_ID']) ? $this->normalizeCommitId($out['LATEST_ID']) : '';
+                try {
+                    \MajorDoMo\Core\Events\SystemEvents::systemUpdateStarted($update_from, $update_to);
+                } catch (\Throwable $error) {
+                    DebMes('Cannot emit system update event: ' . $error->getMessage(), 'restore', 'warning');
+                }
+            }
+
             try {
                 $cycleUpdate = $this->stopCyclesBeforeSystemUpdate($iframe);
             } catch (\Throwable $error) {
                 DebMes('System update pause failed: ' . $error->getMessage(), 'restore', 'error');
                 if ($iframe) echonow(htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'), 'red');
+                if ($is_system_update) {
+                    try {
+                        \MajorDoMo\Core\Events\SystemEvents::systemUpdateAborted($error->getMessage());
+                    } catch (\Throwable $eventError) {
+                        DebMes('Cannot emit system update abort: ' . $eventError->getMessage(), 'restore', 'warning');
+                    }
+                }
                 return false;
             }
             $updateError = null;
@@ -2417,6 +2436,11 @@ class saverestore extends module
                     } else {
                         DebMes('Cannot detect latest update commit after applying archive.', 'restore', 'warning');
                     }
+                    try {
+                        \MajorDoMo\Core\Events\SystemEvents::systemUpdated($update_from, $latest_id !== '' ? $latest_id : $update_to, $update_branch);
+                    } catch (\Throwable $error) {
+                        DebMes('Cannot emit system updated event: ' . $error->getMessage(), 'restore', 'warning');
+                    }
                 }
 
                 if ($iframe) {
@@ -2426,6 +2450,13 @@ class saverestore extends module
                 $updateError = $error;
                 DebMes('System update apply failed: ' . $error->getMessage(), 'restore', 'error');
                 if ($iframe) echonow(htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'), 'red');
+                if ($is_system_update) {
+                    try {
+                        \MajorDoMo\Core\Events\SystemEvents::systemUpdateFailed($error->getMessage());
+                    } catch (\Throwable $eventError) {
+                        DebMes('Cannot emit system update failure: ' . $eventError->getMessage(), 'restore', 'warning');
+                    }
+                }
                 return false;
             } finally {
                 if ($updateError !== null) {

@@ -47,6 +47,32 @@ final class SettingsManager
     }
 
     /**
+     * Keys whose values differ from the loaded state.
+     *
+     * Secret fields left empty mean "keep the stored value"; values themselves
+     * are never included in the event, only the names.
+     *
+     * @param array<string,mixed> $values
+     * @return string[]
+     */
+    private function changedKeys(array $values): array
+    {
+        $changed = array();
+        foreach ($values as $key => $value) {
+            $old = (string)($this->values[$key] ?? '');
+            $new = (string)$value;
+            if ($old === $new) {
+                continue;
+            }
+            if ($new === '' && isset($this->existingSecrets[$key])) {
+                continue;
+            }
+            $changed[] = (string)$key;
+        }
+        return $changed;
+    }
+
+    /**
      * @return array<string,bool>
      */
     public function existingSecrets(): array
@@ -227,6 +253,14 @@ final class SettingsManager
             );
         }
         ConfigCache::clear($this->root);
+
+        $changedKeys = $this->changedKeys($values);
+        if ($changedKeys !== array()) {
+            \MajorDoMo\Core\Events\SystemEvents::settingsChanged(
+                (string)($post['section'] ?? $post['filter_name'] ?? 'general'),
+                $changedKeys
+            );
+        }
 
         $dbChanged = $this->isDatabaseChanged($dbConfig);
         $websocketsChanged = Config::bool('DISABLE_WEBSOCKETS') !== (($values['websockets_enabled'] ?? '0') !== '1');

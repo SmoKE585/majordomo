@@ -73,12 +73,9 @@
     </div>
     [#endif UPDATED#]
 
-    [#if SYSTEM_SECTION#]
-    <div class="md-alert md-alert--info" role="status">
-        <i class="ti ti-refresh md-alert__icon" aria-hidden="true"></i>
-        <div class="md-alert__body"><div class="md-alert__text">После сохранения фоновые циклы будут перезапущены. Если изменяется подключение к базе, основной цикл перезапустится целиком.</div></div>
-    </div>
-    [#endif SYSTEM_SECTION#]
+    [#if SYSTEM_HINT!=""#]
+    [#SYSTEM_HINT#]
+    [#endif SYSTEM_HINT#]
 
     <div class="md-section-head md-settings-section-head">
         <div class="md-section-head__text">

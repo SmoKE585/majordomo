@@ -1353,7 +1353,9 @@ class xray extends module
 
                     for ($i = 0; $i < $total; $i++) {
                         $responce['LIST'][$i]['TITLE'] = $res[$i]['TITLE'];
-                        $responce['LIST'][$i]['COMMAND'] = htmlspecialchars($res[$i]['COMMANDS']);
+                        // Keep the command raw: xray.js escapes it before HTML insertion.
+                        // Escaping here as well produced double-escaped quotes (&#039;).
+                        $responce['LIST'][$i]['COMMAND'] = $res[$i]['COMMANDS'];
 
                         $responce['LIST'][$i]['SCHEDULED'] = $res[$i]['RUNTIME'];
                         $url = ROOTHTML . 'panel/xray.html?view_mode=timers&timer=' . urlencode($res[$i]['TITLE']) . '&cmd=stop';

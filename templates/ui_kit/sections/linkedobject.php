@@ -183,6 +183,7 @@ CODE,
         'canvas_class' => 'md-ui-demo__canvas--block',
     ), function () { ?>
         <div class="md-table-wrap">
+            <div class="md-table__scroll">
             <table class="md-table" data-md-linkedobject-layout="table">
                 <thead>
                     <tr>
@@ -209,6 +210,7 @@ CODE,
                     </tr>
                 </tbody>
             </table>
+            </div>
         </div>
     <?php }); ?>
 

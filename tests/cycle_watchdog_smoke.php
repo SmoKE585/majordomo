@@ -173,7 +173,7 @@ try {
                     : '<?php while (true) usleep(100000);');
             }
         }
-        if ($scenario !== 'missing') {
+        if ($scenario !== 'missing' && !$websocketScenario) {
             $child = in_array($scenario, array('crash','storage'), true)
                 ? '<?php fwrite(STDERR,"fixture sensor failure\n"); exit(7);'
                 : ($scenario === 'cleanexit' ? '<?php echo "fixture unexpected clean exit\n"; exit(0);'
@@ -255,7 +255,8 @@ try {
             check(!$result['errors'] && substr_count($output, 'Starting thread:') === 3, 'Explicit restart must start exactly one replacement without false crash errors: ' . json_encode($result['errors']) . "\n" . $output);
             check(!empty($result['beats']['cycle_marketRun']), 'Delayed close notification must not clear the replacement heartbeat');
         } elseif ($scenario === 'missing') {
-            check(count($result['errors']) >= 1 && str_contains(json_encode($result['errors']), 'Process start failed'), 'A missing cycle script must be reported');
+            check(!$result['errors'], 'A missing cycle script must not spam recovery errors: ' . json_encode($result['errors']));
+            check(!str_contains(json_encode($result['active']), 'cycle_market.php'), 'A missing cycle script must not be started');
             check(str_contains($output, 'script was removed; supervision stopped'), 'A missing script must stop being supervised instead of retrying forever');
         } else {
             check(count($result['errors']) >= 3 && str_contains(json_encode($result['errors']), 'CRITICAL'), 'Repeated failure must escalate in ' . $scenario);

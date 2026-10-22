@@ -1,0 +1,85 @@
+/*
+ * Syntax palette for read-only code samples.
+ *
+ * The code surface stays dark in both admin themes (like the UI Kit example
+ * blocks); everything else uses design-system tokens in ui-system.css.
+ */
+.md-code-sample__code.hljs {
+  color: #d6e2f0;
+  background: transparent;
+}
+
+.md-code-sample__code .hljs-comment,
+.md-code-sample__code .hljs-quote {
+  color: #6b819b;
+  font-style: italic;
+}
+
+.md-code-sample__code .hljs-doctag,
+.md-code-sample__code .hljs-keyword,
+.md-code-sample__code .hljs-formula,
+.md-code-sample__code .hljs-selector-tag,
+.md-code-sample__code .hljs-literal {
+  color: #c792ea;
+}
+
+.md-code-sample__code .hljs-section,
+.md-code-sample__code .hljs-name,
+.md-code-sample__code .hljs-selector-id,
+.md-code-sample__code .hljs-selector-class,
+.md-code-sample__code .hljs-deletion,
+.md-code-sample__code .hljs-tag {
+  color: #f07178;
+}
+
+.md-code-sample__code .hljs-string,
+.md-code-sample__code .hljs-regexp,
+.md-code-sample__code .hljs-addition,
+.md-code-sample__code .hljs-attribute,
+.md-code-sample__code .hljs-meta .hljs-string {
+  color: #a5d6a7;
+}
+
+.md-code-sample__code .hljs-attr,
+.md-code-sample__code .hljs-variable,
+.md-code-sample__code .hljs-template-variable,
+.md-code-sample__code .hljs-type,
+.md-code-sample__code .hljs-selector-attr,
+.md-code-sample__code .hljs-selector-pseudo,
+.md-code-sample__code .hljs-number {
+  color: #ffcb6b;
+}
+
+.md-code-sample__code .hljs-symbol,
+.md-code-sample__code .hljs-bullet,
+.md-code-sample__code .hljs-link,
+.md-code-sample__code .hljs-meta,
+.md-code-sample__code .hljs-built_in,
+.md-code-sample__code .hljs-title.class_,
+.md-code-sample__code .hljs-title.function_ {
+  color: #82aaff;
+}
+
+.md-code-sample__code .hljs-title,
+.md-code-sample__code .hljs-params {
+  color: #82aaff;
+}
+
+.md-code-sample__code .hljs-operator,
+.md-code-sample__code .hljs-punctuation,
+.md-code-sample__code .hljs-subst {
+  color: #89ddff;
+}
+
+.md-code-sample__code .hljs-variable.language_,
+.md-code-sample__code .hljs-property {
+  color: #ffcb6b;
+}
+
+.md-code-sample__code .hljs-emphasis {
+  font-style: italic;
+}
+
+.md-code-sample__code .hljs-strong {
+  font-weight: 600;
+}

@@ -1177,6 +1177,7 @@ class market extends module
     function installUnpacketPlugin($folder, $plugin_name)
     {
         $out = array();
+        $was_installed = $plugin_name !== '' && is_dir(ROOT . 'modules/' . $plugin_name);
         if (is_dir($folder . '/import')) {
             if (is_dir($folder . '/import/scripts')) {
                 include_once(DIR_MODULES . 'scripts/scripts.class.php');
@@ -1212,6 +1213,17 @@ class market extends module
         }
         $files = $this->copyTree($folder, ROOT, 1); // restore all files
         $this->removeTree($folder);
+        if ($plugin_name !== '') {
+            try {
+                if ($was_installed) {
+                    \MajorDoMo\Core\Events\SystemEvents::moduleUpdated($plugin_name);
+                } else {
+                    \MajorDoMo\Core\Events\SystemEvents::moduleInstalled($plugin_name);
+                }
+            } catch (\Throwable $error) {
+                DebMes('Cannot emit module install event: ' . $error->getMessage(), 'market', 'warning');
+            }
+        }
         return $files;
     }
 
@@ -1251,10 +1263,17 @@ class market extends module
             } else {
                 $cycle_name = ROOT . 'scripts/cycle_' . $name . '.php';
             }
+            $removed_cycles = array();
             if (file_exists($cycle_name)) {
+                $removed_cycles[] = basename($cycle_name, '.php');
                 @unlink($cycle_name);
             }
             removeMissingSubscribers();
+            try {
+                \MajorDoMo\Core\Events\SystemEvents::moduleRemoved($name, $removed_cycles);
+            } catch (\Throwable $error) {
+                DebMes('Cannot emit module removal event: ' . $error->getMessage(), 'market', 'warning');
+            }
         }
 
         $files_list_filename = ROOT . 'cms/modules_installed/' . $name . '.files';

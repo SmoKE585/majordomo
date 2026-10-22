@@ -9,7 +9,7 @@ if (!class_exists('MDJUI')) {
 <section class="md-ui-section" id="smarthome" data-md-doc-section>
     <div class="md-ui-section__intro">
         <?= MDJUI::sectionHeading(array(
-            'eyebrow' => '08 · Smart home',
+            'eyebrow' => '09 · Smart home',
             'title' => 'Компоненты умного дома',
             'description' => 'Устройства, датчики, климат, свет, сцены и энергия используют те же карточки, статусы и токены, что и остальная админка. Отдельного «IoT-стиля» нет.',
             'level' => 2,

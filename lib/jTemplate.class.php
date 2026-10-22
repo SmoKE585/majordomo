@@ -715,42 +715,50 @@ class jTemplate
                     $old_template = $this->template;
                     $this->template = $file_name;
 
-                    if (defined('DEBUG_MODE') && DEBUG_MODE && !is_integer(strpos($file_name, ".js"))) {
-                        $id = "block" . (int)rand(0, 100000);
-                        /*
-                        $replaceStr  = "<!-- begin of file $file_name -->";
-                        $replaceStr .= $this->parse($this->loadfile($file_name) . "<!-- end of file $file_name -->", $new_hash, $new_root);
-                        $res = str_replace($matches[0][$i], $replaceStr, $res);
-                        */
-                        if (preg_match('/\.tpl$/', $file_name)) {
-                            require_once ROOT . '3rdparty/smarty3/Smarty.class.php';
-                            $smarty = new Smarty;
-                            $smarty->setCacheDir(ROOT . 'cms/cached/template_c');
-                            $smarty->setTemplateDir(ROOT . './templates')
-                                ->setCompileDir(ROOT . './cms/cached/templates_c')
-                                ->setCacheDir(ROOT . './cms/cached');
-                            $smarty->debugging = false;
-                            $smarty->caching = true;
-                            $smarty->setCaching(120);
-                            foreach ($new_hash as $k => $v) {
-                                $smarty->assign($k, $v);
-                            }
-                            $res = str_replace($matches[0][$i], "" . $smarty->fetch($file_name), $res);
-                        } else {
-                            $res = str_replace($matches[0][$i], "" . $this->parse($this->loadfile($file_name) . "", $new_hash, $new_root), $res);
-                        }
+                    // .tpl includes are rendered by Smarty regardless of DEBUG_MODE.
+                    // Previously the non-debug branch called dprint($new_hash), so on
+                    // production (DEBUG_MODE=0) any page including a Smarty template —
+                    // e.g. the classes tree via view_tree.tpl — dumped the whole data
+                    // array and exited instead of rendering the page.
+                    if (preg_match('/\.tpl$/', $file_name)) {
+                        $include_result = $this->renderSmartyInclude($file_name, $new_hash);
                     } else {
-                        if (preg_match('/\.tpl$/', $file_name)) {
-                            dprint($new_hash);
-                        } else {
-                            $res = str_replace($matches[0][$i], $this->parse($this->loadfile($file_name), $new_hash, $new_root), $res);
-                        }
+                        $include_result = $this->parse($this->loadfile($file_name), $new_hash, $new_root);
                     }
+                    $res = str_replace($matches[0][$i], $include_result, $res);
                     $this->template = $old_template;
                     endMeasure('including ' . $file_name);
                 }
             }
         }
+    }
+
+    /**
+     * Render a Smarty template included with the [#inc file.tpl#] tag.
+     *
+     * Admin pages that use Smarty show live data (a class or object added a
+     * second ago has to appear immediately), so output caching stays disabled.
+     *
+     * @access private
+     * @param string $file_name .tpl file name, relative to the project root
+     * @param array $hash data for the template
+     * @return string
+     */
+    private function renderSmartyInclude($file_name, &$hash)
+    {
+        require_once ROOT . '3rdparty/smarty3/Smarty.class.php';
+
+        $smarty = new Smarty;
+        $smarty->setTemplateDir(ROOT . './templates')
+            ->setCompileDir(ROOT . './cms/cached/templates_c')
+            ->setCacheDir(ROOT . './cms/cached');
+        $smarty->debugging = false;
+        $smarty->caching = false;
+        foreach ($hash as $k => $v) {
+            $smarty->assign($k, $v);
+        }
+
+        return (string)$smarty->fetch($file_name);
     }
 
     /**

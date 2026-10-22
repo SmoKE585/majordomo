@@ -18,6 +18,7 @@ $tableRows = isset($data['table_rows']) ? $data['table_rows'] : array();
 $rooms = isset($data['rooms']) ? $data['rooms'] : array();
 $paletteItems = isset($data['palette_items']) ? $data['palette_items'] : array();
 $automations = isset($data['automations']) ? $data['automations'] : array();
+$activity = isset($data['activity']) ? $data['activity'] : array();
 $energy = isset($data['energy']) ? $data['energy'] : array();
 $sensors = isset($data['sensors']) ? $data['sensors'] : array();
 $connections = isset($data['connections']) ? $data['connections'] : array();
@@ -111,6 +112,7 @@ function md_ui_label($text)
             <a class="md-ui-docs__nav-link" href="#cards" data-md-doc-link><?= MDJUI::icon('layout-text-window') ?>Карточки</a>
             <a class="md-ui-docs__nav-link" href="#data" data-md-doc-link><?= MDJUI::icon('table') ?>Таблицы и данные</a>
             <a class="md-ui-docs__nav-link" href="#feedback" data-md-doc-link><?= MDJUI::icon('chat-square-text') ?>Уведомления</a>
+            <a class="md-ui-docs__nav-link" href="#blocks" data-md-doc-link><?= MDJUI::icon('code') ?>Лента и код</a>
             <a class="md-ui-docs__nav-link" href="#smarthome" data-md-doc-link><?= MDJUI::icon('house-gear') ?>Умный дом</a>
             <a class="md-ui-docs__nav-link" href="#patterns" data-md-doc-link><?= MDJUI::icon('rulers') ?>Паттерны</a>
         </nav>
@@ -124,6 +126,7 @@ function md_ui_label($text)
             <?php include __DIR__ . '/sections/cards.php'; ?>
             <?php include __DIR__ . '/sections/data.php'; ?>
             <?php include __DIR__ . '/sections/feedback.php'; ?>
+            <?php include __DIR__ . '/sections/blocks.php'; ?>
             <?php include __DIR__ . '/sections/smarthome.php'; ?>
             <?php include __DIR__ . '/sections/patterns.php'; ?>
         </main>

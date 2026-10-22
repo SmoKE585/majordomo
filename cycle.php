@@ -605,6 +605,8 @@ $last_cache_failure = 0;
 $pauseStartedAt = 0;
 $pauseReportedAt = 0;
 $missingSince = array();
+$topologyEventId = -1;
+$topologyScannedAt = 0;
 
 $thisComputerObject = getObject('Computer.ThisComputer');
 $supervisorFailures = 0;
@@ -717,38 +719,65 @@ while (true) {
     if ((time() - $last_cycles_control_check) >= 5) {
 
         $last_cycles_control_check = time();
-        // Keep the supervised set in sync with the scripts directory: a module
-        // removed with its cycle file must not be restarted or reported forever.
-        $discovered_cycles = $discovered_titles = array();
-        if ($cycles_dir = @opendir(ROOT . 'scripts')) {
-            while (($cycle_file = readdir($cycles_dir)) !== false) {
-                if (!preg_match('/^cycle_.+?\.php$/D', $cycle_file)) {
-                    continue;
-                }
-                $discovered_cycles[] = './scripts/' . $cycle_file;
-                $discovered_titles[] = substr($cycle_file, 0, -4);
+        // Keep the supervised set in sync with the scripts directory. Events point
+        // at a topology change immediately; a periodic scan remains as a safety net
+        // for files removed by hand or by git.
+        $topologyChanged = false;
+        try {
+            $currentTopologyEvent = \MajorDoMo\Core\Events\EventBus::lastId(array(
+                \MajorDoMo\Core\Events\SystemEvents::MODULE_INSTALLED,
+                \MajorDoMo\Core\Events\SystemEvents::MODULE_REMOVED,
+                \MajorDoMo\Core\Events\SystemEvents::MODULE_UPDATED,
+                \MajorDoMo\Core\Events\SystemEvents::CYCLE_SCRIPT_ADDED,
+                \MajorDoMo\Core\Events\SystemEvents::CYCLE_SCRIPT_REMOVED,
+            ));
+            if ($currentTopologyEvent !== $topologyEventId) {
+                $topologyEventId = $currentTopologyEvent;
+                $topologyChanged = true;
             }
-            closedir($cycles_dir);
+        } catch (Throwable $error) {
+            $topologyChanged = true;
+        }
+        if (!$topologyChanged && (time() - $topologyScannedAt) < 60) {
+            $discovered_titles = $cycleTitles;
+            $discovered_cycles = $cycles;
+        } else {
+            $topologyScannedAt = time();
+            $discovered_cycles = $discovered_titles = array();
+            if ($cycles_dir = @opendir(ROOT . 'scripts')) {
+                while (($cycle_file = readdir($cycles_dir)) !== false) {
+                    if (!preg_match('/^cycle_.+?\.php$/D', $cycle_file)) {
+                        continue;
+                    }
+                    $discovered_cycles[] = './scripts/' . $cycle_file;
+                    $discovered_titles[] = substr($cycle_file, 0, -4);
+                }
+                closedir($cycles_dir);
+            }
         }
         if ($discovered_titles !== array()) {
-            foreach ($discovered_titles as $discovered_title) {
-                if (in_array($discovered_title, $cycleTitles, true)) {
-                    continue;
-                }
+            foreach (array_diff($discovered_titles, $cycleTitles) as $discovered_title) {
                 $to_start[$discovered_title] = time() + 2;
                 setCycleRuntimeStatus($discovered_title, 'starting', 'Cycle script discovered');
                 addCycleRuntimeLog($discovered_title, 'Cycle script discovered; starting');
                 DebMes('Cycle ' . $discovered_title . ' script discovered; starting', 'boot');
-            }
-            foreach ($cycleTitles as $removed_title) {
-                if (in_array($removed_title, $discovered_titles, true)) {
-                    continue;
+                try {
+                    \MajorDoMo\Core\Events\SystemEvents::cycleScriptAdded($discovered_title);
+                } catch (Throwable $error) {
+                    error_log('Cannot emit cycle added event: ' . $error->getMessage());
                 }
+            }
+            foreach (array_diff($cycleTitles, $discovered_titles) as $removed_title) {
                 unset($to_start[$removed_title], $to_stop[$removed_title], $missingSince[$removed_title], $started_when[$removed_title]);
                 $message = 'Cycle ' . $removed_title . ' script was removed; supervision stopped';
                 DebMes($message, 'boot', 'warning');
                 addCycleRuntimeLog('cycle_controller', $message);
                 echo date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
+                try {
+                    \MajorDoMo\Core\Events\SystemEvents::cycleScriptRemoved($removed_title);
+                } catch (Throwable $error) {
+                    error_log('Cannot emit cycle removed event: ' . $error->getMessage());
+                }
             }
             $cycleTitles = $discovered_titles;
             $cycles = $discovered_cycles;
