@@ -4,6 +4,23 @@
         root.querySelectorAll('[data-md-zigbee]').forEach(page => {
             if (page.dataset.zigbeeReady) return;
             page.dataset.zigbeeReady = '1';
+            page.querySelectorAll('[data-md-zigbee-photo]').forEach(img => {
+                const loaded = () => img.closest('[data-md-zigbee-image]').classList.add('md-zigbee-image--loaded');
+                const failed = () => { img.hidden = true; img.closest('[data-md-zigbee-image]').classList.remove('md-zigbee-image--loaded'); };
+                img.addEventListener('load', loaded, { once: true });
+                img.addEventListener('error', failed, { once: true });
+                if (img.complete) { if (img.naturalWidth > 0) loaded(); else failed(); }
+            });
+            page.querySelectorAll('[data-md-zigbee-adopt]').forEach(form => {
+                const all = form.querySelector('[data-md-zigbee-select-all]');
+                const boxes = [...form.querySelectorAll('input[name="device_ids[]"]')];
+                form.addEventListener('change', event => {
+                    if (event.target === all) boxes.forEach(box => { box.checked = all.checked; });
+                    const selected = boxes.filter(box => box.checked).length;
+                    all.checked = selected === boxes.length && selected > 0;
+                    all.indeterminate = selected > 0 && selected < boxes.length;
+                });
+            });
             page.addEventListener('click', event => {
                 const remove = event.target.closest('[data-md-zigbee-remove-pair]');
                 if (remove) {

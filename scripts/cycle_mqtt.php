@@ -154,6 +154,7 @@ function mqttRunOnce()
     $mqtt_integrations = new MqttIntegrations();
 
     $mqtt_client = new Bluerhinos\phpMQTT($host, $port, $client_name);
+    setGlobal('mqttConnected', 0, 1);
     $mqtt_client->setReadLimits(\MajorDoMo\Core\Config::int('MQTT_MAX_PACKET_BYTES'), \MajorDoMo\Core\Config::float('MQTT_PACKET_TIMEOUT'));
     try {
     if (!empty($mqtt->config['MQTT_AUTH'])) {
@@ -164,6 +165,7 @@ function mqttRunOnce()
     if (!$connect) {
         throw new Exception("Failed to connect to MQTT broker {$host}:{$port}");
     }
+    setGlobal('mqttConnected', 1, 1);
 
     $topics = array();
     $query_list = explode(',', $query);
@@ -234,6 +236,7 @@ function mqttRunOnce()
         }
     }
     } finally {
+        setGlobal('mqttConnected', 0, 1);
         $mqtt_client->close();
     }
 }

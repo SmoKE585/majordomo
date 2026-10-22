@@ -5,9 +5,14 @@ use MajorDoMo\Modules\Zigbee\Repository;
 use MajorDoMo\Modules\Zigbee\Schema;
 use MajorDoMo\Modules\Zigbee\Service;
 use MajorDoMo\Modules\Zigbee\ValueTransformer;
+use MajorDoMo\Modules\Zigbee\HealthSettings;
+use MajorDoMo\Modules\Zigbee\HealthMonitor;
 
 require_once __DIR__ . '/Schema.php';
 require_once __DIR__ . '/ValueTransformer.php';
+require_once __DIR__ . '/Battery.php';
+require_once __DIR__ . '/HealthSettings.php';
+require_once __DIR__ . '/HealthMonitor.php';
 require_once __DIR__ . '/Repository.php';
 require_once __DIR__ . '/Service.php';
 
@@ -26,7 +31,14 @@ class zigbee extends module
 
     public function service(): Service
     {
-        return $this->zigbeeService ??= new Service(new Repository(Core::database()));
+        if (!$this->zigbeeService) {
+            Schema::upgrade(Core::database());
+            $subscription = Core::database()->one("SELECT VALUE FROM settings WHERE NAME='HOOK_EVENT_MINUTELY'");
+            $registry = json_decode($subscription['VALUE'] ?? '{}', true, 64, JSON_THROW_ON_ERROR);
+            if (!array_key_exists($this->name, $registry)) subscribeToEvent($this->name, 'MINUTELY');
+            $this->zigbeeService = new Service(new Repository(Core::database()));
+        }
+        return $this->zigbeeService;
     }
 
     public function dbInstall($data)
@@ -38,6 +50,7 @@ class zigbee extends module
     {
         parent::install($parent_name);
         subscribeToEvent($this->name, 'MQTT_MESSAGE');
+        subscribeToEvent($this->name, 'MINUTELY');
         setGlobal('cycle_mqttControl', 'restart');
     }
 
@@ -46,6 +59,7 @@ class zigbee extends module
     public function processSubscription($event, &$details)
     {
         if ($event === 'MQTT_MESSAGE') $this->service()->receive($details['topic'], $details['payload']);
+        if ($event === 'MINUTELY') (new HealthMonitor($this->service()->repository))->tick();
     }
 
     public function propertySetHandle($object, $property, $value)
@@ -88,6 +102,7 @@ class zigbee extends module
         $search = mb_substr(self::request('q'), 0, 100);
         $page = max(1, (int)self::request('page'));
         $bridges = $repo->bridges();
+        $locations = $repo->db->select('SELECT ID,TITLE FROM locations ORDER BY TITLE');
         $device = $view === 'device' ? $repo->row('zigbee_devices', $id) : null;
         $property = $view === 'property' ? $repo->row('zigbee_properties', $id) : null;
         if ($property) $device = $repo->row('zigbee_devices', (int)$property['DEVICE_ID']);
@@ -95,6 +110,15 @@ class zigbee extends module
             http_response_code(404); $error = 'Устройство или свойство не найдено.';
         }
         $binding = $property ? ($repo->binding($id) ?? array()) : array();
+        $healthDeviceId = $view === 'monitoring' ? max(0, (int)self::request('device_id')) : 0;
+        $healthDevice = $healthDeviceId ? $repo->row('zigbee_devices', $healthDeviceId) : null;
+        if ($healthDeviceId && !$healthDevice) { http_response_code(404); $error = 'Устройство не найдено.'; }
+        $healthSettings = $view === 'monitoring' ? $repo->healthSettings($healthDevice) : array();
+        $healthInherit = $healthDevice && empty($healthDevice['HEALTH_CONFIG']);
+        if ($view === 'monitoring' && ($_POST['operation'] ?? '') === 'health_settings') {
+            try { $healthSettings = self::healthFromPost(); $healthInherit = self::posted('health_inherit') === '1'; }
+            catch (Throwable $e) { if ($error === '') $error = $e->getMessage(); }
+        }
         if (isset($_POST['operation']) && is_string($_POST['operation']) && in_array($_POST['operation'], array('binding', 'preview_incoming', 'preview_outgoing'), true)) {
             $draftValue = static fn($name) => isset($_POST[$name]) && is_scalar($_POST[$name]) ? (string)$_POST[$name] : '';
             foreach (array('LINKED_OBJECT', 'LINKED_PROPERTY', 'LINKED_METHOD', 'EVENT_MODE') as $field) $binding[$field] = $draftValue(strtolower($field));
@@ -112,16 +136,13 @@ class zigbee extends module
             }
         }
         $properties = $device ? $repo->properties((int)$device['ID']) : array();
-        $where = $bridgeId ? 'd.BRIDGE_ID=' . $bridgeId : '1=1';
-        if ($search !== '') {
-            $like = $repo->quote('%' . strtr($search, array('=' => '==', '%' => '=%', '_' => '=_')) . '%');
-            $where .= " AND (d.FRIENDLY_NAME LIKE $like ESCAPE '=' OR d.TITLE LIKE $like ESCAPE '=' OR d.IEEE_ADDRESS LIKE $like ESCAPE '=' OR d.MODEL LIKE $like ESCAPE '=')";
-        }
+        $where = $this->devicesWhere($view === 'discovered', $bridgeId, $search);
         $count = (int)($repo->db->one('SELECT COUNT(*) AS CNT FROM zigbee_devices d WHERE ' . $where)['CNT'] ?? 0);
         $pages = max(1, (int)ceil($count / 40)); $page = min($page, $pages);
-        $devices = $repo->db->select('SELECT d.*,b.TITLE AS BRIDGE_TITLE,b.ENABLED AS BRIDGE_ENABLED,b.STATE AS BRIDGE_STATE FROM zigbee_devices d JOIN zigbee_bridges b ON b.ID=d.BRIDGE_ID WHERE ' . $where . ' ORDER BY d.ID DESC LIMIT 40 OFFSET ' . (($page - 1) * 40));
+        $devices = $repo->db->select('SELECT d.*,b.TITLE AS BRIDGE_TITLE,b.ENABLED AS BRIDGE_ENABLED,b.STATE AS BRIDGE_STATE,l.TITLE AS LOCATION_TITLE FROM zigbee_devices d JOIN zigbee_bridges b ON b.ID=d.BRIDGE_ID LEFT JOIN locations l ON l.ID=d.LOCATION_ID WHERE ' . $where . ' ORDER BY d.ID DESC LIMIT 40 OFFSET ' . (($page - 1) * 40));
         $events = $repo->db->select('SELECT * FROM zigbee_events' . ($device ? ' WHERE DEVICE_ID=' . (int)$device['ID'] : ($bridgeId ? ' WHERE BRIDGE_ID=' . $bridgeId : '')) . ' ORDER BY ID DESC LIMIT 100');
-        $stats = array('devices' => (int)($repo->db->one('SELECT COUNT(*) AS CNT FROM zigbee_devices')['CNT'] ?? 0),
+        $stats = array('devices' => (int)($repo->db->one("SELECT COUNT(*) AS CNT FROM zigbee_devices WHERE STATUS='added'")['CNT'] ?? 0),
+            'discovered' => (int)($repo->db->one("SELECT COUNT(*) AS CNT FROM zigbee_devices WHERE STATUS='discovered'")['CNT'] ?? 0),
             'bindings' => (int)($repo->db->one("SELECT COUNT(*) AS CNT FROM zigbee_bindings WHERE ENABLED=1 AND LINKED_OBJECT<>''")['CNT'] ?? 0),
             'errors' => (int)($repo->db->one("SELECT COUNT(*) AS CNT FROM zigbee_bindings WHERE LAST_ERROR IS NOT NULL")['CNT'] ?? 0));
         $linkedControl = '';
@@ -136,6 +157,18 @@ class zigbee extends module
         require ROOT . 'templates/zigbee/zigbee.php';
         // PHP views need the same form/pd state pass as parser-owned templates.
         $this->result = $this->parseLinks(ob_get_clean());
+    }
+
+    private function devicesWhere(bool $discovered, int $bridgeId, string $search): string
+    {
+        $repo = $this->service()->repository;
+        $where = "d.STATUS='" . ($discovered ? 'discovered' : 'added') . "'";
+        if ($bridgeId) $where .= ' AND d.BRIDGE_ID=' . $bridgeId;
+        if ($search !== '') {
+            $like = $repo->quote('%' . strtr($search, array('=' => '==', '%' => '=%', '_' => '=_')) . '%');
+            $where .= " AND (d.FRIENDLY_NAME LIKE $like ESCAPE '=' OR d.TITLE LIKE $like ESCAPE '=' OR d.IEEE_ADDRESS LIKE $like ESCAPE '=' OR d.MODEL LIKE $like ESCAPE '=')";
+        }
+        return $where;
     }
 
     private static function request(string $name): string
@@ -183,13 +216,46 @@ class zigbee extends module
             $this->service()->command((int)self::posted('bridge_id'), self::posted('command'), $data);
             return 'Запрос отправлен. Ответ появится в журнале экземпляра.';
         }
-        if ($operation === 'device_title') {
+        if (in_array($operation, array('adopt', 'adopt_all'), true)) {
+            if ($operation === 'adopt_all') {
+                $where = $this->devicesWhere(true, max(0, (int)self::posted('filter_bridge_id')), mb_substr(self::posted('filter_q'), 0, 100));
+                $ids = array_column($repo->db->select('SELECT d.ID FROM zigbee_devices d WHERE ' . $where), 'ID');
+            } elseif (self::posted('device_id') !== '') {
+                $ids = array((int)self::posted('device_id'));
+            } else {
+                $ids = $_POST['device_ids'] ?? array();
+                if (!is_array($ids) || array_filter($ids, static fn($id) => !is_string($id) || !ctype_digit($id))) throw new InvalidArgumentException('Некорректный список устройств.');
+            }
+            $total = $this->service()->configureDevices($ids, (int)self::posted('location_id'), true);
+            return 'Добавлено устройств: ' . $total . '. Привязки можно настроить в разделе «Устройства».';
+        }
+        if ($operation === 'device_settings') {
             $device = $repo->row('zigbee_devices', (int)self::posted('device_id'));
             if (!$device) throw new InvalidArgumentException('Устройство не найдено.');
-            $repo->save('zigbee_devices', array('ID' => $device['ID'], 'TITLE' => mb_substr(self::posted('title'), 0, 190)));
-            return 'Название сохранено.';
+            $this->service()->configureDevices(array((int)$device['ID']), (int)self::posted('location_id'), false, self::posted('title'));
+            return 'Название и комната сохранены.';
+        }
+        if ($operation === 'health_settings') {
+            $deviceId = (int)self::posted('health_device_id');
+            $inherit = $deviceId > 0 && self::posted('health_inherit') === '1';
+            $repo->saveHealthSettings($inherit ? array() : self::healthFromPost(), $deviceId, $inherit);
+            return 'Мониторинг сохранён. Проверка выполняется раз в минуту; сохранение не запускает say или PHP-код.';
         }
         throw new InvalidArgumentException('Неизвестное действие.');
+    }
+
+    private static function healthFromPost(): array
+    {
+        $settings = HealthSettings::defaults();
+        $settings['enabled'] = self::posted('health_enabled') === '1';
+        foreach (array('offline_delay', 'timeout_mains', 'timeout_battery', 'low', 'critical', 'recovery', 'battery_source', 'voltage_path', 'voltage_unit', 'voltage_profile') as $key) $settings[$key] = self::posted('health_' . $key);
+        $points = self::posted('health_voltage_points');
+        $settings['voltage_points'] = $points === '' ? array() : json_decode($points, true, 32, JSON_THROW_ON_ERROR);
+        foreach (HealthSettings::EVENTS as $key => $label) {
+            foreach (array('enabled', 'say') as $field) $settings['events'][$key][$field] = self::posted('health_' . $key . '_' . $field) === '1';
+            foreach (array('level', 'repeat_hours', 'message', 'code') as $field) $settings['events'][$key][$field] = self::posted('health_' . $key . '_' . $field);
+        }
+        return $settings;
     }
 
     public static function parseValue(string $value): mixed

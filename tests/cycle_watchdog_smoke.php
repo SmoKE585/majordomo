@@ -83,6 +83,29 @@ namespace MajorDoMo\Core {
 namespace {
     function fixtureNow() { return $GLOBALS['fixtureTime']; }
     function fixtureBeforeIteration() {
+        if (str_starts_with($GLOBALS['scenario'], 'update')) {
+            if ($GLOBALS['fixtureIteration'] === 5) {
+                $GLOBALS['fixtureUpdater'] = new \MajorDoMo\Core\Cycles\CycleMaintenance(ROOT);
+                $GLOBALS['fixtureUpdater']->begin($GLOBALS['scenario'] === 'updateowner' ? 'cycle_market' : '');
+            }
+            if ($GLOBALS['fixtureIteration'] === 8) {
+                if ($GLOBALS['scenario'] === 'updatestop') $GLOBALS['cycleStateStore']->set('cycle_market', 'stopped');
+                if ($GLOBALS['scenario'] === 'updatedisable') $GLOBALS['cycleStateStore']->set('cycle_market', 'disabled');
+                $GLOBALS['fixturePaused'] = array_values($GLOBALS['threads']->commandLines);
+                $GLOBALS['fixturePauseReady'] = is_file(ROOT . 'cms/cycles/update.ready');
+            }
+            if ($GLOBALS['scenario'] === 'updateowner' && $GLOBALS['fixtureIteration'] === 9) {
+                $GLOBALS['cycleStateStore']->set('cycle_market', 'running', true);
+                $GLOBALS['fixtureCache']['cycle_marketControl'] = 'restart';
+            }
+            if ($GLOBALS['scenario'] === 'updateowner' && $GLOBALS['fixtureIteration'] === 11) {
+                $GLOBALS['fixtureOwnerAlive'] = count($GLOBALS['threads']->commandLines) === 1;
+            }
+            if ($GLOBALS['fixtureIteration'] === 12) {
+                if ($GLOBALS['scenario'] !== 'updatecrash') $GLOBALS['fixtureUpdater']->finish();
+                unset($GLOBALS['fixtureUpdater']);
+            }
+        }
         if ($GLOBALS['scenario'] === 'wsdisabled' && $GLOBALS['fixtureIteration'] === 5) {
             $GLOBALS['cycleStateStore']->set('cycle_wscache', 'running', true);
             $GLOBALS['fixtureCache']['cycle_wscacheControl'] = 'start';
@@ -112,9 +135,9 @@ namespace {
     function getObject($name) { return null; }
     function isRebootRequired() {
         if ($GLOBALS['scenario'] === 'controller') throw new RuntimeException('fixture controller failure');
-        return false;
+        return is_file(ROOT . 'reboot');
     }
-    function resetRebootRequired() {}
+    function resetRebootRequired() { if (is_file(ROOT . 'reboot')) unlink(ROOT . 'reboot'); }
     function startCycleThread($threads, $title, $cmd) {
         if ($GLOBALS['scenario'] === 'spawnfail' && $title === 'cycle_market') return false;
         $id = $threads->newThread($cmd);
@@ -126,7 +149,7 @@ namespace {
 PHP;
 
 try {
-    foreach (array('crash','cleanexit','silent','hung','disabled','stopped','restart','storage','missing','spawnfail','filelog','controller','wsdisabled','wsstop','wsenable') as $scenario) {
+    foreach (array('crash','cleanexit','silent','hung','disabled','stopped','restart','storage','missing','spawnfail','filelog','controller','wsdisabled','wsstop','wsenable','update','updatecrash','updatestop','updatedisable','updateowner') as $scenario) {
         if (isset($argv[1]) && $argv[1] !== $scenario) continue;
         $directory = $fixture . '/' . $scenario;
         mkdir($directory . '/scripts', 0777, true);
@@ -154,6 +177,7 @@ try {
             . 'require_once ' . var_export($project . '/lib/threads.php', true) . ";\n"
             . 'require_once ' . var_export($project . '/lib/core/Cycles/CycleWatchdog.php', true) . ";\n"
             . 'require_once ' . var_export($project . '/lib/core/Cycles/CycleStateStore.php', true) . ";\n"
+            . 'require_once ' . var_export($project . '/lib/core/Cycles/CycleMaintenance.php', true) . ";\n"
             . 'require_once ' . var_export($directory . '/CycleSupervisor.php', true) . ";\n"
             . 'define("ROOT",' . var_export($directory . '/', true) . ");\n"
             . ($scenario === 'filelog' ? 'define("LOG_CYCLES",1); define("LOG_DIRECTORY",'.var_export($directory.'/logs',true).");\n" : '')
@@ -164,10 +188,11 @@ try {
                 ? '$cycles=array(ROOT."scripts/cycle_wscache.php",ROOT."scripts/cycle_websockets.php",ROOT."scripts/cycle_healthy.php"); $cycleTitles=array("cycle_wscache","cycle_websockets","cycle_healthy");'
                 : '$cycles=array(ROOT."scripts/cycle_market.php",ROOT."scripts/cycle_healthy.php"); $cycleTitles=array("cycle_market","cycle_healthy");') . "\n"
             . '$cycleStateStore=new \MajorDoMo\Core\Cycles\CycleStateStore(ROOT); $cycleSupervisor=new \MajorDoMo\Core\Cycles\CycleSupervisor($cycleStateStore); $cycleSupervisor->bootstrap($cycleTitles);' . "\n"
+            . '$cycleMaintenance=new \MajorDoMo\Core\Cycles\CycleMaintenance(ROOT);' . "\n"
             . '$threads=new Threads(); $threads->phpPath=PHP_BINARY;' . "\n"
             . 'register_shutdown_function(function() use ($threads) { foreach(array_keys($threads->handles) as $id) $threads->closeThread($id); });' . "\n"
             . $report . "\n" . $runtime
-            . 'echo "FIXTURE_RESULT ".json_encode(array("errors"=>$fixtureErrors,"logs"=>$fixtureLogs,"beats"=>$fixtureCache,"active"=>array_values($threads->commandLines),"iterations"=>$fixtureIteration,"desired"=>$cycleStateStore->desired("cycle_market"),"wsDesired"=>array($cycleStateStore->desired("cycle_wscache"),$cycleStateStore->desired("cycle_websockets")))).PHP_EOL;' . "\n}\n";
+            . 'echo "FIXTURE_RESULT ".json_encode(array("errors"=>$fixtureErrors,"logs"=>$fixtureLogs,"beats"=>$fixtureCache,"active"=>array_values($threads->commandLines),"iterations"=>$fixtureIteration,"desired"=>$cycleStateStore->desired("cycle_market"),"paused"=>$fixturePaused??null,"pauseReady"=>$fixturePauseReady??false,"ownerAlive"=>$fixtureOwnerAlive??false,"wsDesired"=>array($cycleStateStore->desired("cycle_wscache"),$cycleStateStore->desired("cycle_websockets")))).PHP_EOL;' . "\n}\n";
         file_put_contents($directory . '/controller.php', $bootstrap . $setup);
         $started = microtime(true);
         $outputPath = $directory . '/stdout.txt';
@@ -195,8 +220,17 @@ try {
         if (!preg_match('/^FIXTURE_RESULT (.+)$/m', $output, $match)) throw new RuntimeException("Fixture failed ($scenario), exit=$code: $output $errors");
         $result = json_decode($match[1], true, 512, JSON_THROW_ON_ERROR);
         check($code === 0 && microtime(true) - $started < 15, 'Supervisor must stay responsive in ' . $scenario);
-        check(substr_count($output, '/scripts/cycle_healthy.php" "--params"') <= 1 || PHP_OS_FAMILY !== 'Windows', 'A healthy cycle must not be repeatedly restarted');
-        if ($websocketScenario) {
+        if (!str_starts_with($scenario, 'update')) check(substr_count($output, '/scripts/cycle_healthy.php" "--params"') <= 1 || PHP_OS_FAMILY !== 'Windows', 'A healthy cycle must not be repeatedly restarted');
+        if (str_starts_with($scenario, 'update')) {
+            $intentionalStop = in_array($scenario, array('updatestop','updatedisable'), true);
+            check(!$result['errors'], 'Update pause must not register cycle failures: ' . $scenario . json_encode($result['errors']));
+            check($result['pauseReady'], 'Supervisor must confirm all non-updater children have stopped');
+            check(count($result['paused']) === ($scenario === 'updateowner' ? 1 : 0), 'No cycle may start during the update; its owner must remain alive');
+            check(count($result['active']) === ($intentionalStop ? 1 : 2), 'Enabled cycles must recover after the update or updater crash');
+            check($result['desired'] === ($scenario === 'updatestop' ? 'stopped' : ($scenario === 'updatedisable' ? 'disabled' : 'running')), 'Maintenance must preserve administrator preferences');
+            check(substr_count($output, 'Starting thread:') === ($intentionalStop ? 3 : 4), 'Each desired cycle must restart exactly once after the update');
+            if ($scenario === 'updateowner') check($result['ownerAlive'], 'A queued restart must not kill the writer during an automatic update');
+        } elseif ($websocketScenario) {
             check(!$result['errors'], 'Configuration-disabled WebSockets must not cause recovery alarms');
             check($result['wsDesired'] === array('running','running'), 'Configuration must not overwrite persistent cycle preferences');
             check(empty($result['beats']['cycle_wscacheDisabled']) && empty($result['beats']['cycle_websocketsDisabled']), 'Configuration must not leave sticky legacy disabled flags');

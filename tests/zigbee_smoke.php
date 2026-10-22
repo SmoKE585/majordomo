@@ -25,17 +25,30 @@ namespace {
     use MajorDoMo\Modules\Zigbee\Schema;
     use MajorDoMo\Modules\Zigbee\Service;
     use MajorDoMo\Modules\Zigbee\ValueTransformer as T;
+    use MajorDoMo\Modules\Zigbee\Battery;
+    use MajorDoMo\Modules\Zigbee\HealthSettings;
+    use MajorDoMo\Modules\Zigbee\HealthMonitor;
 
     $pdo = new PDO('sqlite::memory:', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
     if (getenv('APP_ENV') !== 'testing' || $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') throw new RuntimeException('Isolation failed');
     $pdo->exec('PRAGMA foreign_keys=ON');
     $adapter = new class($pdo) {
         public function __construct(public PDO $pdo) {}
-        public function Select($sql) { return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC); }
-        public function SelectOne($sql) { return $this->pdo->query($sql)->fetch(PDO::FETCH_ASSOC); }
+        public function Select($sql) {
+            if ($sql === 'SHOW COLUMNS FROM zigbee_devices') return array_map(static fn($row) => array('Field' => $row['name'], 'Default' => trim((string)$row['dflt_value'], "'")), $this->pdo->query('PRAGMA table_info(zigbee_devices)')->fetchAll(PDO::FETCH_ASSOC));
+            return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        }
+        public function SelectOne($sql) {
+            if (str_contains($sql, 'GET_LOCK(')) return array('ACQUIRED' => 1);
+            if (str_contains($sql, 'RELEASE_LOCK(')) return array('RELEASED' => 1);
+            return $this->pdo->query($sql)->fetch(PDO::FETCH_ASSOC);
+        }
         public function DbSafe1($value) { return str_replace("'", "''", (string)$value); }
         public function DbSafe($value) { return str_replace(array('%', '_'), array('\\%', '\\_'), (string)$value); }
-        public function Exec($sql, $ignore = false) { $this->pdo->exec($sql === 'START TRANSACTION' ? 'BEGIN' : $sql); return true; }
+        public function Exec($sql, $ignore = false) {
+            if (str_starts_with($sql, 'CREATE TABLE IF NOT EXISTS zigbee_health_')) return true; // created with SQLite schema below
+            $this->pdo->exec($sql === 'START TRANSACTION' ? 'BEGIN' : $sql); return true;
+        }
         public function Insert($table, &$row) {
             if (in_array(null, $row, true)) throw new RuntimeException('Nullable inserts must omit fields for the legacy SQL adapter');
             $sql = 'INSERT INTO ' . $table . ' (' . implode(',', array_keys($row)) . ') VALUES (' . implode(',', array_fill(0, count($row), '?')) . ')';
@@ -49,6 +62,10 @@ namespace {
     Core::$database = new Database($adapter);
     Core::$queue = new class { public array $items = array(); public function enqueue(...$args) { $this->items[] = $args; return count($this->items); } };
     foreach (Schema::statements(true) as $sql) $pdo->exec($sql);
+    $pdo->exec('CREATE TABLE locations (ID INTEGER PRIMARY KEY, TITLE TEXT)');
+    $pdo->exec("INSERT INTO locations VALUES (1, 'Кухня'), (2, 'Прихожая')");
+    $pdo->exec('CREATE TABLE settings (NAME TEXT PRIMARY KEY, VALUE TEXT)');
+    $pdo->exec("INSERT INTO settings VALUES ('HOOK_EVENT_MINUTELY', '{\"zigbee\":{}}')");
     $repo = new Repository(Core::database());
     $checks = 0;
     function check($condition, $message) { global $checks; if (!$condition) throw new RuntimeException('FAILED: ' . $message); $checks++; }
@@ -101,6 +118,8 @@ namespace {
     ))));
     $service->receive('Z2M/House/bridge/devices', T::json($metadata));
     $device = $repo->device($house, 'Kitchen/Motion', '0x001');
+    $service->configureDevices(array((int)$device['ID']), 0, true);
+    $device = $repo->row('zigbee_devices', (int)$device['ID']);
     check($device['ID'] === $early['ID'] && $device['IEEE_ADDRESS'] === '0x001', 'Early reports reconcile with stable IEEE identity');
     $other = $repo->device($garage, 'Kitchen/Motion', '0x001');
     check($other['ID'] !== $device['ID'], 'Same IEEE on different roots remains separate');
@@ -190,9 +209,157 @@ namespace {
     check(!MqttIntegrations::matches('root[v2].house/#', 'rootv2xhouse/device'), 'Regex-like roots do not match other topics');
 
     require ROOT . 'lib/admin_router.php';
-    foreach (array('/panel/zigbee/bridges.html', '/panel/zigbee/journal.html', '/panel/zigbee/device/3.html', '/panel/zigbee/property/7.html') as $path) {
+    foreach (array('/panel/zigbee/discovered.html', '/panel/zigbee/bridges.html', '/panel/zigbee/journal.html', '/panel/zigbee/device/3.html', '/panel/zigbee/property/7.html') as $path) {
         $resolved = mdj_admin_resolve_path($path);
         check($resolved !== false && mdj_admin_pretty_url('/admin.php?' . http_build_query($resolved['query'])) === $path, 'Zigbee route round-trip: ' . $path);
     }
+    $button = $repo->device($house, 'Button');
+    $service->configureDevices(array((int)$button['ID']), 0, true);
+    $single = $repo->property((int)$button['ID'], 'action:single');
+    $repo->save('zigbee_bindings', array('PROPERTY_ID' => $single['ID'], 'LINKED_OBJECT' => 'ButtonObject', 'LINKED_PROPERTY' => 'action', 'EVENT_MODE' => 'always'));
+    $calls = array();
+    $service->receive('Z2M/House/Button', '{"action":"single"}');
+    $service->receive('Z2M/House/Button', '{"action":"single"}');
+    check(count($calls) === 2 && $calls[0][1] === 'ButtonObject.action', 'Repeated single presses reach their event binding');
+    check($calls[0][2] !== $calls[1][2] && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/D', $calls[1][2]), 'Event timestamps distinguish rapid repeated presses');
+    $service->receive('Z2M/House/Button', '{"action":"double"}');
+    $service->receive('Z2M/House/Button', '{"action":""}');
+    check(count($calls) === 2, 'Other actions and cleared action do not trigger single');
+    $action = $repo->property((int)$button['ID'], 'action');
+    check(T::decode($repo->row('zigbee_properties', (int)$action['ID'])['RAW_VALUE']) === '', 'Ordinary action value remains separate from press events');
+
+    $roomCalls = array(); $roomLookups = array(); $failRoom = false;
+    $roomService = new Service($repo, null,
+        function ($target, $value, $source) use (&$roomCalls) { $roomCalls[] = array('set', $target, $value); },
+        function ($target, $params) use (&$roomCalls, &$failRoom) { if ($failRoom && $target === 'Room1.deviceChanged') throw new RuntimeException('room handler failed'); $roomCalls[] = array('method', $target, $params); },
+        function ($location, $create) use (&$roomLookups) { $roomLookups[] = array($location, $create); return 'Room' . $location; });
+    $roomService->receive('Z2M/House/NewSensor', '{"occupancy":true}');
+    $pending = $repo->device($house, 'NewSensor');
+    $motion = $repo->property((int)$pending['ID'], 'occupancy');
+    $roomBinding = $repo->save('zigbee_bindings', array('PROPERTY_ID' => $motion['ID'], 'LINKED_OBJECT' => 'NewSensor', 'LINKED_PROPERTY' => 'motion', 'LINKED_METHOD' => 'changed', 'INCOMING' => '{"mode":"binary"}'));
+    $roomService->configureDevices(array((int)$pending['ID']), 1);
+    $roomService->receive('Z2M/House/NewSensor', '{"occupancy":true}');
+    check(!$roomCalls && $pending['STATUS'] === 'discovered', 'Discovered device collects data without executing bindings or room logic');
+    check($roomService->configureDevices(array((int)$pending['ID']), 1, true) === 1 && !$roomCalls, 'Adoption does not replay stale values');
+    $roomService->receive('Z2M/House/NewSensor', '{"occupancy":true}');
+    $roomService->receive('Z2M/House/NewSensor', '{"occupancy":true}');
+    check(count($roomCalls) === 6 && $roomCalls[0][0] === 'set' && $roomCalls[1][1] === 'NewSensor.changed' && $roomCalls[2][1] === 'Room1.deviceChanged', 'Binding write, explicit method and room notification run in order for every repeat');
+    check($roomCalls[5][2]['NEW_VALUE'] === 1 && $roomCalls[5][2]['OLD_VALUE'] === 1 && $roomCalls[5][2]['RAW_VALUE'] === true && $roomCalls[5][2]['PROPERTY'] === 'occupancy' && $roomCalls[5][2]['LOCATION_ID'] === 1, 'Room receives typed old/new/raw values and device context');
+    $repo->save('zigbee_bindings', array('ID' => $roomBinding, 'EVENT_MODE' => 'change'));
+    $roomService->receive('Z2M/House/NewSensor', '{"occupancy":true}');
+    check(count($roomCalls) === 7 && end($roomCalls)[1] === 'Room1.deviceChanged', 'Room still receives repeats when the explicit binding is change-only');
+    $roomService->receive('Z2M/House/NewSensor', '{"temperature":23}');
+    check(count($roomCalls) === 8 && end($roomCalls)[2]['PROPERTY'] === 'temperature', 'Room notification does not require an object binding');
+    check($roomService->configureDevices(array((int)$pending['ID']), 0, true) === 0 && (int)$repo->row('zigbee_devices', (int)$pending['ID'])['LOCATION_ID'] === 1, 'Repeated adoption preserves the existing room');
+    rejects(fn() => $roomService->configureDevices(array((int)$pending['ID']), 999, true), 'Missing room is rejected');
+    rejects(fn() => $roomService->configureDevices(array((int)$pending['ID'], 99999), 2), 'Partial bulk assignment is rolled back');
+    check((int)$repo->row('zigbee_devices', (int)$pending['ID'])['LOCATION_ID'] === 1, 'Failed bulk assignment preserves rooms');
+    $failRoom = true;
+    rejects(fn() => $roomService->receive('Z2M/House/NewSensor', '{"occupancy":false}'), 'Room errors propagate for durable retry');
+    check($repo->binding((int)$motion['ID'])['LAST_DELIVERED'] === '1', 'Room failure does not advance successful binding delivery');
+    $failRoom = false;
+    $roomService->receive('Z2M/House/NewSensor', '{"occupancy":false}');
+    check($repo->binding((int)$motion['ID'])['LAST_DELIVERED'] === '0' && $repo->binding((int)$motion['ID'])['LAST_ERROR'] === null, 'Room retry completes and clears binding error');
+
+    $health = HealthSettings::defaults();
+    check(!$health['events']['offline']['say'] && $health['timeout_battery'] === 0, 'Monitoring starts without unsolicited voice or sleep timeout assumptions');
+    rejects(fn() => HealthSettings::validate(array('critical' => 30)), 'Invalid battery threshold ordering rejected');
+    rejects(fn() => HealthSettings::validate(array('events' => array('offline' => array('code' => 'if (')))), 'PHP syntax checked without executing code');
+    rejects(fn() => HealthSettings::validate(array('events' => array('offline' => array('code' => '<?php say("bad");')))), 'PHP tags rejected');
+    rejects(fn() => HealthSettings::validate(array('voltage_profile' => 'custom', 'voltage_points' => array(array('voltage' => 3, 'percent' => 100)))), 'Custom voltage curve needs two points');
+    $health['voltage_profile'] = 'linear3v';
+    check(Battery::estimate(2550, $health) === 50 && Battery::estimate(2100, $health) === 0 && Battery::estimate(3000, $health) === 100, 'Millivolt conversion and linear endpoints');
+    check(Battery::estimate(220000, $health) === null && Battery::estimate(2.9, $health) === null && Battery::estimate(false, $health) === null, 'Mains voltage, wrong units and invalid readings cannot become battery percentage');
+    $health['voltage_unit'] = 'V';
+    check(Battery::estimate(2.55, $health) === 50, 'Explicit volt conversion');
+    $health['voltage_profile'] = 'custom';
+    $health['voltage_points'] = array(array('voltage' => 2.1, 'percent' => 0), array('voltage' => 2.7, 'percent' => 40), array('voltage' => 3.0, 'percent' => 100));
+    check(Battery::estimate(2.85, $health) === 70, 'Custom curve interpolates adjacent points');
+    rejects(fn() => Battery::validatePoints(array_reverse($health['voltage_points'])), 'Reversed curve rejected');
+
+    $health = HealthSettings::defaults();
+    foreach ($health['events'] as &$rule) { $rule['say'] = true; $rule['code'] = '// user handler'; } unset($rule);
+    $repo->saveHealthSettings($health);
+    $pdo->exec("UPDATE zigbee_devices SET HEALTH_CONFIG='{\"enabled\":false}'");
+    $repo->save('zigbee_bridges', array('ID' => $house, 'STATE' => 'online'));
+    $repo->save('zigbee_bridges', array('ID' => $garage, 'ENABLED' => 0));
+    $sensor = $repo->device($house, 'HealthSensor', '0xhealth');
+    $sensorId = (int)$sensor['ID'];
+    $repo->save('zigbee_devices', array('ID' => $sensorId, 'STATUS' => 'added', 'LOCATION_ID' => 1, 'METADATA' => '{"power_source":"Battery"}'));
+    $roomService->receive('Z2M/House/HealthSensor', '{"battery":80,"voltage":2900}');
+    $spoken = array(); $handled = array(); $transport = 'online'; $failCode = false;
+    $makeMonitor = function () use ($repo, &$spoken, &$handled, &$transport, &$failCode) {
+        return new HealthMonitor($repo,
+            function ($message, $level) use (&$spoken) { $spoken[] = array($message, $level); },
+            function ($code, $params) use (&$handled, &$failCode) { if ($failCode) throw new RuntimeException('test handler failure'); $handled[] = $params; },
+            function () use (&$transport) { return $transport; });
+    };
+    $now = time();
+    $makeMonitor()->tick($now);
+    check(!$spoken && !$handled, 'Healthy initial state is silent across device, bridge and broker');
+    $roomService->receive('Z2M/House/HealthSensor', '{"battery":15}');
+    $failCode = true;
+    $makeMonitor()->tick($now + 60);
+    check(count($spoken) === 1 && !$handled, 'say succeeds independently of failed custom code');
+    $failCode = false;
+    $makeMonitor()->tick($now + 120);
+    check(count($spoken) === 1 && count($handled) === 1 && $handled[0]['EVENT'] === 'battery_low', 'Only failed channel retries across fresh monitor instances');
+    check($handled[0]['ROOM'] === 'Кухня' && $handled[0]['DEVICE_ID'] === $sensorId && $handled[0]['VALUE'] === 15.0 && $handled[0]['REPEAT'] === false, 'Custom handler receives typed state and room context');
+    $makeMonitor()->tick($now + 180);
+    check(count($spoken) === 1 && count($handled) === 1, 'Repeated battery packets do not announce the same incident');
+    $roomService->receive('Z2M/House/HealthSensor', '{"battery":22}');
+    $makeMonitor()->tick($now + 240);
+    check(count($handled) === 1, 'Small percentage rebound does not reset a low-battery incident');
+    $roomService->receive('Z2M/House/HealthSensor', '{"battery":8}');
+    $makeMonitor()->tick($now + 300);
+    check(end($handled)['EVENT'] === 'battery_critical', 'Critical threshold has an independent event');
+    $roomService->receive('Z2M/House/HealthSensor', '{"battery":90}');
+    $makeMonitor()->tick($now + 360);
+    check(end($handled)['EVENT'] === 'battery_ok', 'Battery replacement produces configurable recovery');
+    $spokenBefore = count($spoken); $handledBefore = count($handled);
+    $roomService->receive('Z2M/House/HealthSensor/availability', '{"state":"offline"}');
+    $lastSeen = $repo->row('zigbee_devices', $sensorId)['LAST_SEEN'];
+    $makeMonitor()->tick($now + 420); $makeMonitor()->tick($now + 480);
+    check(count($handled) === $handledBefore, 'Short offline interval does not trigger a notification');
+    $makeMonitor()->tick($now + 540);
+    check(end($handled)['EVENT'] === 'offline' && count($spoken) === $spokenBefore + 1, 'Confirmed offline incident uses common pipeline');
+    $makeMonitor()->tick($now + 600);
+    check(count($spoken) === $spokenBefore + 1 && $repo->row('zigbee_devices', $sensorId)['LAST_SEEN'] === $lastSeen, 'Offline retained messages do not refresh contact time or duplicate announcements');
+    $health['events']['offline']['repeat_hours'] = 1;
+    $repo->saveHealthSettings($health);
+    $makeMonitor()->tick($now + 4140);
+    check(end($handled)['REPEAT'] === true && count($spoken) === $spokenBefore + 2, 'Configured reminder repeats an unresolved incident');
+    $roomService->receive('Z2M/House/HealthSensor', '{"battery":90}');
+    $makeMonitor()->tick($now + 4200);
+    check(end($handled)['EVENT'] === 'online' && end($handled)['OLD_STATE'] === 'offline', 'Contact restoration has its own event');
+    $handledBefore = count($handled);
+    $repo->save('zigbee_bridges', array('ID' => $house, 'STATE' => 'offline'));
+    $roomService->receive('Z2M/House/HealthSensor/availability', 'offline');
+    $makeMonitor()->tick($now + 4260); $makeMonitor()->tick($now + 4380);
+    check(count($handled) === $handledBefore + 1 && end($handled)['KIND'] === 'bridge', 'Bridge outage produces one parent incident and suppresses child outages');
+    $transport = 'offline';
+    $makeMonitor()->tick($now + 4440); $makeMonitor()->tick($now + 4560);
+    check(end($handled)['KIND'] === 'mqtt' && end($handled)['EVENT'] === 'offline', 'MQTT outage is distinguished from bridge outage');
+    $handledBefore = count($handled); $transport = null;
+    $makeMonitor()->tick($now + 9000);
+    check(count($handled) === $handledBefore, 'Intentionally stopped or uninitialized transport suppresses monitoring');
+    $transport = 'online'; $repo->save('zigbee_bridges', array('ID' => $house, 'STATE' => 'online'));
+    $local = $health; $local['enabled'] = false;
+    $repo->saveHealthSettings($local, $sensorId);
+    check(!$repo->healthSettings($repo->row('zigbee_devices', $sensorId))['enabled'], 'Per-device override is independent of global settings');
+    $local = $health; $local['battery_source'] = 'voltage'; $local['voltage_profile'] = 'linear3v';
+    $repo->saveHealthSettings($local, $sensorId);
+    $roomService->receive('Z2M/House/HealthSensor', '{"battery":90,"voltage":2550}');
+    check(T::decode($repo->property($sensorId, 'battery_estimated')['VALUE']) === 50 && T::decode($repo->property($sensorId, 'voltage')['RAW_VALUE']) === 2550, 'On-the-fly battery estimate is separate from raw voltage and reported battery');
+    $local['battery_source'] = 'auto'; $repo->saveHealthSettings($local, $sensorId);
+    $roomService->receive('Z2M/House/HealthSensor', '{"battery":90,"voltage":2200}');
+    $makeMonitor()->tick($now + 9060);
+    $batteryState = $pdo->query("SELECT DATA FROM zigbee_health_state WHERE SUBJECT='device:$sensorId:battery'")->fetchColumn();
+    check(T::decode($batteryState)['reading'] === 90.0, 'Reported percent takes priority over voltage in automatic mode');
+    $repo->saveHealthSettings(array(), $sensorId, true);
+    check($repo->row('zigbee_devices', $sensorId)['HEALTH_CONFIG'] === null && $repo->healthSettings($repo->row('zigbee_devices', $sensorId))['events']['offline']['repeat_hours'] === 1, 'Device can return to inherited settings');
+    $route = mdj_admin_pretty_url('/admin.php?action=zigbee&md=zigbee&view_mode=monitoring&device_id=' . $sensorId);
+    check(str_contains((string)$route, '/panel/zigbee/monitoring.html') && str_contains((string)$route, 'device_id=' . $sensorId), 'Monitoring route preserves device scope');
+
     echo 'Zigbee smoke tests passed: ' . $checks . " checks; SQLite :memory:, no external connections.\n";
 }

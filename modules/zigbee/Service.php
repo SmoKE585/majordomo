@@ -14,8 +14,9 @@ final class Service
     private Closure $publish;
     private Closure $set;
     private Closure $call;
+    private Closure $room;
 
-    public function __construct(public readonly Repository $repository, ?callable $publish = null, ?callable $set = null, ?callable $call = null)
+    public function __construct(public readonly Repository $repository, ?callable $publish = null, ?callable $set = null, ?callable $call = null, ?callable $room = null)
     {
         $this->publish = Closure::fromCallable($publish ?? static function ($topic, $payload): void {
             $data = ValueTransformer::json(array('v' => $payload, 'q' => 0, 'r' => 0));
@@ -28,6 +29,35 @@ final class Service
         });
         $this->call = Closure::fromCallable($call ?? static function ($target, $params): void {
             if (callMethod($target, $params) === false) throw new RuntimeException('Метод не найден или вернул false: ' . $target);
+        });
+        $this->room = Closure::fromCallable($room ?? static function (int $location, bool $create): string {
+            if ($create && !addClassMethod('Rooms', 'deviceChanged')) throw new RuntimeException('Не удалось создать метод Rooms.deviceChanged.');
+            $name = getRoomObjectByLocation($location, $create ? 1 : 0);
+            if ($name === '') throw new RuntimeException('Объект комнаты не найден.');
+            return $name;
+        });
+    }
+
+    public function configureDevices(array $ids, int $location, bool $adopt = false, ?string $title = null): int
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        if (!$ids || min($ids) <= 0) throw new InvalidArgumentException('Выберите устройства.');
+        if ($title !== null && (count($ids) !== 1 || mb_strlen($title) > 190)) throw new InvalidArgumentException('Название задаётся одному устройству, до 190 символов.');
+        if ($location < 0 || ($location && !$this->repository->db->one('SELECT ID FROM locations WHERE ID=' . $location))) throw new InvalidArgumentException('Комната не найдена.');
+        return $this->repository->transaction(function () use ($ids, $location, $adopt, $title): int {
+            $devices = $this->repository->db->select('SELECT * FROM zigbee_devices WHERE ID IN (' . implode(',', $ids) . ')');
+            if (count($devices) !== count($ids)) throw new InvalidArgumentException('Одно из устройств больше не существует. Обновите страницу.');
+            if ($location) ($this->room)($location, true);
+            $total = 0;
+            foreach ($devices as $device) {
+                if ($adopt && $device['STATUS'] === 'added') continue;
+                $row = array('ID' => $device['ID'], 'LOCATION_ID' => $location);
+                if ($title !== null) $row['TITLE'] = $title;
+                if ($adopt) $row['STATUS'] = 'added';
+                $this->repository->save('zigbee_devices', $row);
+                $total++;
+            }
+            return $total;
         });
     }
 
@@ -44,6 +74,15 @@ final class Service
         return false;
     }
 
+    public static function deviceImageUrl(string $model): ?string
+    {
+        $model = trim($model);
+        if ($model === '') return null;
+        // Use the same filename convention as the Zigbee2MQTT frontend.
+        $model = preg_replace('/[:\s\/]/u', '-', $model);
+        return 'https://www.zigbee2mqtt.io/images/devices/' . rawurlencode($model) . '.png';
+    }
+
     public function receive(string $topic, string $payload): void
     {
         // Workers are short-lived; always respect the current enabled state.
@@ -58,22 +97,48 @@ final class Service
                 $value = $availability && in_array($payload, array('online', 'offline'), true) ? $payload : json_decode($payload, true, 64, JSON_THROW_ON_ERROR);
                 $device = $this->repository->device((int)$bridge['ID'], $name);
                 $now = date('Y-m-d H:i:s');
-                $update = array('ID' => $device['ID'], 'LAST_SEEN' => $now);
+                $update = array('ID' => $device['ID']);
                 if ($availability) {
                     $state = is_array($value) ? ($value['state'] ?? '') : $value;
                     if (!in_array($state, array('online', 'offline'), true)) throw new InvalidArgumentException('Неизвестный статус доступности.');
                     $update['AVAILABLE'] = $state;
+                    if ($state === 'online') $update['LAST_SEEN'] = $now;
+                    $this->repository->save('zigbee_devices', $update);
                 } else {
                     if (!is_array($value) || !str_starts_with(ltrim($payload), '{')) throw new InvalidArgumentException('Ожидался JSON-объект состояния устройства.');
                     $update['AVAILABLE'] = 'online';
+                    $update['LAST_SEEN'] = $now;
+                    // Receiving data proves contact even when an object handler
+                    // subsequently fails. Monitoring must not confuse the two.
+                    $this->repository->save('zigbee_devices', $update);
                     $failures = array();
-                    foreach (self::flatten($value) as $path => $raw) {
+                    $values = self::flatten($value);
+                    $health = $this->repository->healthSettings($device);
+                    $metadata = ValueTransformer::decode($device['METADATA']) ?? array();
+                    $batteryPowered = str_contains(strtolower((string)($metadata['power_source'] ?? '')), 'battery');
+                    $reported = $values['battery'] ?? null;
+                    if ($health['battery_source'] !== 'off' && ($health['battery_source'] === 'voltage' || $batteryPowered)
+                        && !($health['battery_source'] === 'auto' && Battery::number($reported) && $reported >= 0 && $reported <= 100)) {
+                        $estimated = Battery::estimate($values[$health['voltage_path']] ?? null, $health);
+                        if ($estimated !== null) {
+                            $values['battery_estimated'] = $estimated;
+                            $this->repository->property((int)$device['ID'], 'battery_estimated', array('type' => 'numeric', 'property' => 'battery_estimated',
+                                'label' => 'Заряд батареи (примерно)', 'unit' => '%', 'access' => 1, 'source' => 'voltage'));
+                        }
+                    }
+                    // A button action is an event even when the same action repeats.
+                    // Keep the ordinary action value and expose a selectable event
+                    // property whose value changes on each received press.
+                    if (isset($value['action']) && is_string($value['action']) && $value['action'] !== '') {
+                        $eventPath = 'action:' . $value['action'];
+                        if (strlen($eventPath) <= 190) $values[$eventPath] = (new \DateTimeImmutable())->format('Y-m-d H:i:s.u');
+                    }
+                    foreach ($values as $path => $raw) {
                         try { $this->deliver($bridge, $device, $path, $raw, $topic); }
                         catch (Throwable $e) { $failures[] = $path . ': ' . $e->getMessage(); }
                     }
                     if ($failures) throw new RuntimeException(implode('; ', $failures));
                 }
-                $this->repository->save('zigbee_devices', $update);
                 return;
             } catch (Throwable $e) {
                 $this->repository->log((int)$bridge['ID'], null, $topic, $e->getMessage(), 'error');
@@ -136,17 +201,27 @@ final class Service
             $value = $binding && $binding['ENABLED'] ? ValueTransformer::apply($raw, ValueTransformer::decode($binding['INCOMING']) ?? array(), ValueTransformer::decode($property['EXPOSE']) ?? array()) : $raw;
             $encoded = ValueTransformer::json($value);
             $this->repository->save('zigbee_properties', array('ID' => $property['ID'], 'VALUE' => $encoded));
-            if (!$binding || !$binding['ENABLED']) return;
-            if ($binding['EVENT_MODE'] === 'change' && $binding['LAST_DELIVERED'] === $encoded) return;
+            if ($device['STATUS'] !== 'added') return;
+            $deliverBinding = $binding && $binding['ENABLED'] && !($binding['EVENT_MODE'] === 'change' && $binding['LAST_DELIVERED'] === $encoded);
             $source = 'zigbee:' . $bridge['BASE_TOPIC'] . '/' . $device['FRIENDLY_NAME'] . ':' . $path;
             // New value must be visible to both ONCHANGE and the explicit method.
-            if ($binding['LINKED_OBJECT'] !== '' && $binding['LINKED_PROPERTY'] !== '') ($this->set)($binding['LINKED_OBJECT'] . '.' . $binding['LINKED_PROPERTY'], $value, $source);
-            if ($binding['LINKED_OBJECT'] !== '' && $binding['LINKED_METHOD'] !== '') {
+            if ($deliverBinding && $binding['LINKED_OBJECT'] !== '' && $binding['LINKED_PROPERTY'] !== '') ($this->set)($binding['LINKED_OBJECT'] . '.' . $binding['LINKED_PROPERTY'], $value, $source);
+            if ($deliverBinding && $binding['LINKED_OBJECT'] !== '' && $binding['LINKED_METHOD'] !== '') {
                 ($this->call)($binding['LINKED_OBJECT'] . '.' . $binding['LINKED_METHOD'], array('VALUE' => $value, 'NEW_VALUE' => $value,
                     'OLD_VALUE' => ValueTransformer::decode($binding['LAST_DELIVERED']), 'RAW_VALUE' => $raw, 'TITLE' => $path,
                     'SOURCE' => $source, 'IEEE_ADDRESS' => $device['IEEE_ADDRESS'], 'BRIDGE_ID' => (int)$bridge['ID']));
             }
-            $this->repository->save('zigbee_bindings', array('ID' => $binding['ID'], 'LAST_DELIVERED' => $encoded, 'LAST_ERROR' => null));
+            if ($device['LOCATION_ID']) {
+                if (!$this->repository->db->one('SELECT ID FROM locations WHERE ID=' . (int)$device['LOCATION_ID'])) throw new RuntimeException('Комната устройства удалена. Выберите другую комнату.');
+                $room = ($this->room)((int)$device['LOCATION_ID'], false);
+                ($this->call)($room . '.deviceChanged', array('DEVICE_ID' => (int)$device['ID'], 'DEVICE_NAME' => $device['FRIENDLY_NAME'],
+                    'DEVICE_TITLE' => $device['TITLE'], 'IEEE_ADDRESS' => $device['IEEE_ADDRESS'], 'BRIDGE_ID' => (int)$bridge['ID'],
+                    'BASE_TOPIC' => $bridge['BASE_TOPIC'], 'LOCATION_ID' => (int)$device['LOCATION_ID'], 'TOPIC' => $topic,
+                    'PROPERTY' => $path, 'TITLE' => $path, 'VALUE' => $value, 'NEW_VALUE' => $value,
+                    'OLD_VALUE' => ValueTransformer::decode($property['VALUE']), 'RAW_VALUE' => $raw, 'SOURCE' => $source));
+            }
+            if (!$deliverBinding && !$device['LOCATION_ID']) return;
+            if ($deliverBinding) $this->repository->save('zigbee_bindings', array('ID' => $binding['ID'], 'LAST_DELIVERED' => $encoded, 'LAST_ERROR' => null));
             $this->repository->log((int)$bridge['ID'], (int)$device['ID'], $topic, $path . ': ' . ValueTransformer::json($raw) . ' → ' . $encoded . ' · обработано');
         } catch (Throwable $e) {
             if ($binding) $this->repository->save('zigbee_bindings', array('ID' => $binding['ID'], 'LAST_ERROR' => $e->getMessage()));
@@ -161,6 +236,7 @@ final class Service
         $device = $this->repository->row('zigbee_devices', (int)$property['DEVICE_ID']);
         $bridge = $this->repository->row('zigbee_bridges', (int)$device['BRIDGE_ID']);
         if (!$bridge['ENABLED']) throw new InvalidArgumentException('Экземпляр Zigbee2MQTT выключен.');
+        if ($device['STATUS'] !== 'added') throw new InvalidArgumentException('Сначала добавьте устройство из раздела «Обнаруженные».');
         $expose = ValueTransformer::decode($property['EXPOSE']) ?? array();
         if (!isset($expose['access']) || !((int)$expose['access'] & 2)) throw new InvalidArgumentException('Устройство не разрешает запись этого свойства (exposes).');
         $binding = $this->repository->binding($propertyId);

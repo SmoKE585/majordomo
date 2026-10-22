@@ -9,6 +9,11 @@
 
 chdir(dirname(__FILE__));
 
+// Wait before loading code/config that an updater may currently be replacing.
+require_once __DIR__ . '/lib/core/Cycles/CycleMaintenance.php';
+$cycleMaintenance = new \MajorDoMo\Core\Cycles\CycleMaintenance(__DIR__);
+$cycleMaintenance->beginStartup();
+
 include_once("./config.php");
 include_once("./lib/loader.php");
 include_once("./lib/threads.php");
@@ -599,12 +604,21 @@ $last_cache_failure = 0;
 
 $thisComputerObject = getObject('Computer.ThisComputer');
 $supervisorFailures = 0;
+$cycleMaintenance->endStartup();
 
 while (true) {
     try {
+    $cycleUpdate = $cycleMaintenance->active();
+    if ($cycleUpdate !== null) {
+        $to_start = array();
+        foreach ($is_running as $pauseTitle => $pauseId) {
+            // Auto-update can run inside a cycle or its operation worker.
+            if ($pauseTitle !== ($cycleUpdate['owner_cycle'] ?? '')) $to_stop[$pauseTitle] = time();
+        }
+    }
     $result = $threads->iteration();
     if ($result === false) {
-        if ((time() - $last_no_threads_log) >= 30) {
+        if ($cycleUpdate === null && !isRebootRequired() && (time() - $last_no_threads_log) >= 30) {
             DebMes('No active cycle threads left. Scheduling all enabled cycles for restart.', 'boot', 'warning');
             addCycleRuntimeLog('cycle_controller', 'No active cycle threads left. Scheduling all enabled cycles for restart.');
             $last_no_threads_log = time();
@@ -615,7 +629,7 @@ while (true) {
                 continue;
             }
             $title = $m[1];
-            if ($cycleReloadStarted || !$cycleSupervisor->isDesiredRunning($title)) {
+            if ($cycleReloadStarted || $cycleUpdate !== null || isRebootRequired() || !$cycleSupervisor->isDesiredRunning($title)) {
                 continue;
             }
             if (!isset($to_start[$title])) {
@@ -718,7 +732,7 @@ while (true) {
                 } else {
                     setCycleRuntimeStatus($title, 'starting');
                 }
-                if ($cycle_cache_available && !$cycleReloadStarted && !isRebootRequired() && $cycleSupervisor->isDesiredRunning($title)
+                if ($cycle_cache_available && !$cycleReloadStarted && $cycleUpdate === null && !isRebootRequired() && $cycleSupervisor->isDesiredRunning($title)
                     && !isset($to_start[$title]) && !isset($to_stop[$title])) {
                     $reason = $cycleWatchdog->stalled($title, $started_when[$title], (int)$cycle_updated_timestamp, time());
                     if ($reason !== null) {
@@ -734,7 +748,7 @@ while (true) {
         $cycleSupervisor->touch();
         $cycleSupervisor->reconcile($cycleTitles, $is_running, $to_start, $to_stop);
         // Recover even if a controller exception interrupted handling a close notification.
-        if (!$cycleReloadStarted && !isRebootRequired() && strpos((string)$result, 'THREAD CLOSED:') === false) {
+        if (!$cycleReloadStarted && $cycleUpdate === null && !isRebootRequired() && strpos((string)$result, 'THREAD CLOSED:') === false) {
             foreach ($cycleTitles as $missingTitle) {
                 if ($cycleSupervisor->isDesiredRunning($missingTitle) && !isset($is_running[$missingTitle])
                     && !isset($to_start[$missingTitle]) && !isset($to_stop[$missingTitle])) {
@@ -743,7 +757,7 @@ while (true) {
             }
         }
 
-        if ($cycleSupervisor->reloadRequested() && !$cycleReloadStarted) {
+        if ($cycleSupervisor->reloadRequested() && !$cycleReloadStarted && $cycleUpdate === null) {
             $cycleReloadStarted = time();
             $to_start = array();
             foreach ($is_running as $reloadTitle => $reloadId) {
@@ -761,35 +775,32 @@ while (true) {
     }
 
 
-    if (isRebootRequired()) {
+    if ($cycleUpdate !== null) {
+        $reboot_timer = 0;
+    } elseif (isRebootRequired()) {
         if (!$reboot_timer) {
             $reboot_timer = time();
         } elseif ((time() - $reboot_timer) > 10) {
             $reboot_reason = trim((string)@file_get_contents(ROOT . 'reboot'));
-            if ($reboot_reason == 'system_update') {
-                DebMes("Reboot flag is set for system update, keeping services stopped until update completes.", 'boot');
-                $reboot_timer = time();
-            } else {
-                $reboot_timer = 0;
-                // force close all running threads
-                DebMes("Force closing all running services. Reboot reason: " . $reboot_reason, 'boot');
-                $to_start = array();
-                foreach ($is_running as $k => $v) {
-                    $to_stop[$k] = time();
+            $reboot_timer = 0;
+            // force close all running threads
+            DebMes("Force closing all running services. Reboot reason: " . $reboot_reason, 'boot');
+            $to_start = array();
+            foreach ($is_running as $k => $v) {
+                $to_stop[$k] = time();
+            }
+            resetRebootRequired();
+            foreach ($cycles as $path) {
+                if (!preg_match('/(cycle_.+?)\.php/is', $path, $m)) {
+                    continue;
                 }
-                resetRebootRequired();
-                foreach ($cycles as $path) {
-                    if (!preg_match('/(cycle_.+?)\.php/is', $path, $m)) {
-                        continue;
-                    }
-                    $title = $m[1];
-                    if (!$cycleSupervisor->isDesiredRunning($title) || getGlobal($title . 'Disabled')) {
-                        continue;
-                    }
-                    $to_start[$title] = time() + 5;
-                    setCycleRuntimeStatus($title, 'starting', 'Scheduled after reboot flag reset');
-                    addCycleRuntimeLog($title, 'Scheduled after reboot flag reset');
+                $title = $m[1];
+                if (!$cycleSupervisor->isDesiredRunning($title) || getGlobal($title . 'Disabled')) {
+                    continue;
                 }
+                $to_start[$title] = time() + 5;
+                setCycleRuntimeStatus($title, 'starting', 'Scheduled after reboot flag reset');
+                addCycleRuntimeLog($title, 'Scheduled after reboot flag reset');
             }
         }
     } else {
@@ -798,6 +809,8 @@ while (true) {
 
     foreach ($to_stop as $title => $tm) {
 
+        // A restart/disable requested during the copy must wait for its writer.
+        if ($cycleUpdate !== null && $title === ($cycleUpdate['owner_cycle'] ?? '')) continue;
         if ($tm <= time()) {
             if (isset($is_running[$title])) {
                 $id = $is_running[$title];
@@ -817,12 +830,19 @@ while (true) {
         }
     }
 
+    if ($cycleUpdate !== null) {
+        $unpaused = $threads->commandLines;
+        $updaterId = $is_running[$cycleUpdate['owner_cycle'] ?? ''] ?? null;
+        if ($updaterId !== null) unset($unpaused[$updaterId]);
+        if ($unpaused === array()) $cycleMaintenance->acknowledge($cycleUpdate);
+    }
+
     foreach ($to_start as $title => $tm) {
         if ($cycleReloadStarted) {
             unset($to_start[$title]);
             continue;
         }
-        if (!$cycleSupervisor->isDesiredRunning($title) || isRebootRequired()) {
+        if (!$cycleSupervisor->isDesiredRunning($title) || $cycleUpdate !== null || isRebootRequired()) {
             unset($to_start[$title]);
             continue;
         }

@@ -23,7 +23,7 @@ final class Repository
     }
     private function table(string $table): void
     {
-        if (!in_array($table, array('zigbee_bridges', 'zigbee_devices', 'zigbee_properties', 'zigbee_bindings', 'zigbee_events'), true)) throw new InvalidArgumentException('Unknown Zigbee table');
+        if (!in_array($table, array('zigbee_bridges', 'zigbee_devices', 'zigbee_properties', 'zigbee_bindings', 'zigbee_events', 'zigbee_health_state'), true)) throw new InvalidArgumentException('Unknown Zigbee table');
     }
     public function save(string $table, array $row): int
     {
@@ -87,6 +87,20 @@ final class Repository
     private function mergeProvisional(int $target, int $source): array
     {
         $replay = array();
+        $fromDevice = $this->row('zigbee_devices', $source);
+        $toDevice = $this->row('zigbee_devices', $target);
+        if (!empty($fromDevice['HEALTH_CONFIG'])) {
+            if (!empty($toDevice['HEALTH_CONFIG']) && $fromDevice['HEALTH_CONFIG'] !== $toDevice['HEALTH_CONFIG']) throw new InvalidArgumentException('Разные настройки мониторинга у объединяемых устройств.');
+            $this->save('zigbee_devices', array('ID' => $target, 'HEALTH_CONFIG' => $fromDevice['HEALTH_CONFIG']));
+        }
+        if ($fromDevice['STATUS'] === 'added' && $toDevice['STATUS'] !== 'added') {
+            $this->save('zigbee_devices', array('ID' => $target, 'STATUS' => 'added', 'LOCATION_ID' => $fromDevice['LOCATION_ID'], 'TITLE' => $fromDevice['TITLE']));
+        } elseif ($fromDevice['STATUS'] === 'added' && $toDevice['STATUS'] === 'added'
+            && $fromDevice['LOCATION_ID'] && $toDevice['LOCATION_ID'] && $fromDevice['LOCATION_ID'] !== $toDevice['LOCATION_ID']) {
+            throw new InvalidArgumentException('Разные комнаты у объединяемых устройств.');
+        } elseif ($fromDevice['STATUS'] === 'added' && $fromDevice['LOCATION_ID'] && !$toDevice['LOCATION_ID']) {
+            $this->save('zigbee_devices', array('ID' => $target, 'LOCATION_ID' => $fromDevice['LOCATION_ID']));
+        }
         foreach ($this->db->select('SELECT * FROM zigbee_properties WHERE DEVICE_ID=' . $source) as $property) {
             $existing = $this->db->one('SELECT * FROM zigbee_properties WHERE DEVICE_ID=' . $target . ' AND PATH=' . $this->quote($property['PATH']));
             if (!$existing) {
@@ -104,7 +118,29 @@ final class Repository
         }
         $this->db->requireExec('UPDATE zigbee_events SET DEVICE_ID=' . $target . ' WHERE DEVICE_ID=' . $source);
         $this->db->requireExec('DELETE FROM zigbee_devices WHERE ID=' . $source);
+        $this->db->requireExec('DELETE FROM zigbee_health_state WHERE SUBJECT LIKE ' . $this->quote('device:' . $source . ':%'));
         return $replay;
+    }
+
+    public function healthSettings(?array $device = null): array
+    {
+        $row = $this->db->one('SELECT CONFIG FROM zigbee_health_settings WHERE ID=1');
+        $global = HealthSettings::validate(ValueTransformer::decode($row['CONFIG'] ?? null) ?? array());
+        return empty($device['HEALTH_CONFIG']) ? $global : HealthSettings::validate(ValueTransformer::decode($device['HEALTH_CONFIG']));
+    }
+
+    public function saveHealthSettings(array $settings, int $deviceId = 0, bool $inherit = false): void
+    {
+        $config = ValueTransformer::json(HealthSettings::validate($settings));
+        if ($deviceId) {
+            if (!$this->row('zigbee_devices', $deviceId)) throw new InvalidArgumentException('Устройство не найдено.');
+            $this->save('zigbee_devices', array('ID' => $deviceId, 'HEALTH_CONFIG' => $inherit ? null : $config));
+        } elseif ($this->db->one('SELECT ID FROM zigbee_health_settings WHERE ID=1')) {
+            if (!$this->db->update('zigbee_health_settings', array('ID' => 1, 'CONFIG' => $config))) throw new RuntimeException('Не удалось сохранить мониторинг.');
+        } else {
+            $record = array('ID' => 1, 'CONFIG' => $config);
+            if (!$this->db->insert('zigbee_health_settings', $record)) throw new RuntimeException('Не удалось сохранить мониторинг.');
+        }
     }
     public function property(int $device, string $path, ?array $expose = null): array
     {

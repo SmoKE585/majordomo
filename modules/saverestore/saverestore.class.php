@@ -829,18 +829,22 @@ class saverestore extends module
 
     function stopCyclesBeforeSystemUpdate($iframe = 0)
     {
-        setRebootRequired('system_update');
-        $cycles = array('cycle_main', 'cycle_core', 'cycle_execs', 'cycle_scheduler', 'cycle_states', 'cycle_ping', 'cycle_phistory', 'cycle_wscache', 'cycle_websockets');
-        foreach ($cycles as $cycle) {
-            sg($cycle . 'Control', 'stop');
-            sg('ThisComputer.' . $cycle . 'Run', '');
-            sg($cycle . 'Run', '');
-        }
-
+        $maintenance = new \MajorDoMo\Core\Cycles\CycleMaintenance(DOC_ROOT);
+        $script = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
+        $ownerCycle = PHP_SAPI === 'cli' && preg_match('/^cycle_[A-Za-z0-9_]+\.php$/D', $script)
+            ? basename($script, '.php') : '';
+        if (PHP_SAPI === 'cli' && $script === 'core_worker.php') $ownerCycle = 'cycle_core';
+        $maintenance->begin($ownerCycle);
         if ($iframe) {
             echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Waiting for cycles to stop...</div>');
         }
-        sleep(12);
+        try {
+            $maintenance->waitUntilReady();
+            return $maintenance;
+        } catch (\Throwable $error) {
+            $maintenance->finish();
+            throw $error;
+        }
     }
 
     /**
@@ -2332,66 +2336,74 @@ class saverestore extends module
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_APPLY_CHANGES . ' ' . DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . " to " . DOC_ROOT . DIRECTORY_SEPARATOR . '</div>');
             }
 
-            $this->stopCyclesBeforeSystemUpdate($iframe);
-            if ($is_system_update) {
-                $this->removeFilesDeletedFromSystemUpdate($old_manifest, $new_manifest, $iframe);
-                $this->removeObsoleteSystemUpdatePaths($iframe);
+            try {
+                $cycleUpdate = $this->stopCyclesBeforeSystemUpdate($iframe);
+            } catch (\Throwable $error) {
+                DebMes('System update pause failed: ' . $error->getMessage(), 'restore', 'error');
+                if ($iframe) echonow(htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'), 'red');
+                return false;
             }
-
-            // UPDATING FILES DIRECTLY Исправлено верно на док_руут - потому что функция копиТрее не воспринимает других слешей 
-            copyTree($update_root, DOC_ROOT, 1);
-            if ($is_system_update) {
-                $this->cleanupObsoleteSystemModules($iframe);
-            }
-            if ($is_system_update) {
-                $this->saveSystemUpdateManifest($new_manifest);
-            }
-
-            if ($iframe) {
-                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
-            }
-
-            if (file_exists(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/dump.sql')) {
-                // data restore
-                if ($iframe) {
-                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_RESTORE_DB . '</div>');
+            try {
+                if ($is_system_update) {
+                    $this->removeFilesDeletedFromSystemUpdate($old_manifest, $new_manifest, $iframe);
+                    $this->removeObsoleteSystemUpdatePaths($iframe);
                 }
-                $result = $this->restoredatabase(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/dump.sql');
+
+                copyTree($update_root, DOC_ROOT, 1);
+                if ($is_system_update) {
+                    $this->cleanupObsoleteSystemModules($iframe);
+                    $this->saveSystemUpdateManifest($new_manifest);
+                }
+
                 if ($iframe) {
                     echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
                 }
-            }
 
-            if ($is_system_update) {
-                $latest_id = isset($out['LATEST_ID']) ? $this->normalizeCommitId($out['LATEST_ID']) : '';
-                $update_branch = isset($out['UPDATE_CURR_BRANCH']) ? $this->normalizeUpdateBranch($out['UPDATE_CURR_BRANCH']) : '';
-                if ($latest_id == '' || $update_branch == '') {
-                    $update_info = $this->readLatestUpdateInfo(isset($this->url) ? $this->url : $this->getUpdateURL());
-                    if ($latest_id == '' && $update_info['LATEST_ID'] != '') {
-                        $latest_id = $update_info['LATEST_ID'];
+                if (file_exists(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/dump.sql')) {
+                    if ($iframe) {
+                        echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_RESTORE_DB . '</div>');
                     }
-                    if ($update_branch == '' && $update_info['UPDATE_CURR_BRANCH'] != '') {
-                        $update_branch = $update_info['UPDATE_CURR_BRANCH'];
+                    $result = $this->restoredatabase(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . '/dump.sql');
+                    if ($iframe) {
+                        echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
                     }
                 }
 
-                if ($latest_id != '') {
-                    $this->config['LATEST_UPDATED_ID'] = $latest_id;
-                    $this->config['LATEST_CURR_BRANCH'] = $update_branch;
-                    $this->saveConfig();
-                    setGlobal('LatestUpdateId', $latest_id);
-                    setGlobal('LatestUpdateBranch', $update_branch);
-                    setGlobal('LatestUpdateTimestamp', date('d.m.Y H:i:s'));
-                } else {
-                    DebMes('Cannot detect latest update commit after applying archive.', 'restore', 'warning');
+                if ($is_system_update) {
+                    $latest_id = isset($out['LATEST_ID']) ? $this->normalizeCommitId($out['LATEST_ID']) : '';
+                    $update_branch = isset($out['UPDATE_CURR_BRANCH']) ? $this->normalizeUpdateBranch($out['UPDATE_CURR_BRANCH']) : '';
+                    if ($latest_id == '' || $update_branch == '') {
+                        $update_info = $this->readLatestUpdateInfo(isset($this->url) ? $this->url : $this->getUpdateURL());
+                        if ($latest_id == '' && $update_info['LATEST_ID'] != '') {
+                            $latest_id = $update_info['LATEST_ID'];
+                        }
+                        if ($update_branch == '' && $update_info['UPDATE_CURR_BRANCH'] != '') {
+                            $update_branch = $update_info['UPDATE_CURR_BRANCH'];
+                        }
+                    }
+
+                    if ($latest_id != '') {
+                        $this->config['LATEST_UPDATED_ID'] = $latest_id;
+                        $this->config['LATEST_CURR_BRANCH'] = $update_branch;
+                        $this->saveConfig();
+                        setGlobal('LatestUpdateId', $latest_id);
+                        setGlobal('LatestUpdateBranch', $update_branch);
+                        setGlobal('LatestUpdateTimestamp', date('d.m.Y H:i:s'));
+                    } else {
+                        DebMes('Cannot detect latest update commit after applying archive.', 'restore', 'warning');
+                    }
                 }
+
+                if ($iframe) {
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
+                }
+            } catch (\Throwable $error) {
+                DebMes('System update apply failed: ' . $error->getMessage(), 'restore', 'error');
+                if ($iframe) echonow(htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'), 'red');
+                return false;
+            } finally {
+                $cycleUpdate->finish();
             }
-
-
-            if ($iframe) {
-                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
-            }
-
             if ($iframe) {
                 return 1;
             } else {
@@ -2734,12 +2746,20 @@ class saverestore extends module
                 $res = $this->admin($out);
                 DebMes("Getting latest version and making backup", 'auto_update');
                 $res = $this->getLatest($out, 1);
+                if (!$res) {
+                    DebMes('System update download failed', 'auto_update', 'error');
+                    return false;
+                }
                 global $restore;
                 global $folder;
                 $restore = 'master.tgz';
                 $folder = '';
                 DebMes("Applying update from " . basename($this->url), 'auto_update');
                 $res = $this->upload($out, 1);
+                if (!$res) {
+                    DebMes('System update was not applied', 'auto_update', 'error');
+                    return false;
+                }
                 removeTree(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', 1);
                 // now downloading updates for modules
                 if ($this->config['UPDATE_AUTO_PLUGINS']) {
