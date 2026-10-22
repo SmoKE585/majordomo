@@ -681,7 +681,7 @@ legacy-обработчики продолжают работать. JS API: `MD
 </button>
 ```
 
-В Alpine-разметке: `$store.toasts.push({type, title, text, duration})`. Не показывайте больше трёх toast одновременно.
+В Alpine-разметке: `$store.toasts.push({type, title, text, duration})`. Общий host находится в `templates/panel.html`, справа вверху под шапкой; отдельные host в модулях не добавлять. Store ограничивает очередь тремя сообщениями. Старые `MDJAdminUI.showToast()` и `$.toast()` делегируют в этот же компонент. `duration=0` оставляет сообщение до закрытия.
 
 #### Modal и confirmation
 

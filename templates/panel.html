@@ -14,6 +14,21 @@
 	window.MDJAdminConfig.sanitizeFlashQuery = [#if FLASH_SANITIZE_URL="1"#]true[#else#]false[#endif#];
 	</script>
 	[#if PRINT!="1"#]
+	<!-- 2026-10-22 — единый toast-host для всей админки, включая UI Kit. -->
+	<div class="md-toast-stack" x-data="{}" x-cloak aria-live="polite" aria-atomic="false">
+		<template x-for="toast in $store.toasts.items" :key="toast.id">
+			<div class="md-toast" :class="'md-toast--' + toast.type" x-transition>
+				<i class="md-toast__icon" :class="'ti ti-' + toast.icon" aria-hidden="true"></i>
+				<div class="md-toast__body">
+					<div class="md-toast__title" x-text="toast.title"></div>
+					<div class="md-toast__text" x-text="toast.text" x-show="toast.text"></div>
+				</div>
+				<button type="button" class="md-toast__close" @click="$store.toasts.remove(toast.id)" aria-label="Закрыть уведомление">
+					<i class="ti ti-x" aria-hidden="true"></i>
+				</button>
+			</div>
+		</template>
+	</div>
 	<div class="md-admin-drawer-backdrop" data-md-drawer-close hidden></div>
 	<aside class="md-admin-drawer md-drawer" id="mdAdminDrawerHost" aria-labelledby="mdAdminDrawerTitle" aria-hidden="true" tabindex="-1" hidden>
 		<div class="md-admin-drawer__header md-drawer__header">

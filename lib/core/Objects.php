@@ -4,6 +4,13 @@ namespace MajorDoMo\Core;
 
 use \RuntimeException;
 
+/**
+ * Поиск объектов, значения свойств и вызовы методов по имени.
+ *
+ * Изменения:
+ * 2026-10-22 — boolean-значение (в том числе для cycle_*) приводится к '0'/'1':
+ *              false больше не превращается в пустую строку.
+ */
 final class Objects
 {
     public function __construct(
@@ -62,6 +69,9 @@ final class Objects
     public function setValue($varname, $value, $no_linked = 0, $source = '')
     {
         $varname = trim((string)$varname);
+        // bool — это 0/1, а не пустая строка: иначе false в кэше циклов и в
+        // свойствах выглядит как «значение не задано».
+        if (is_bool($value)) $value = $value ? '1' : '0';
         if (strpos($varname, 'cycle_') === 0) {
             $this->cache->saveCycle($varname, $value);
             return;

@@ -3,6 +3,7 @@
  *
  * Loaded in the shared admin bundle. Page-specific UI Kit behaviour lives in
  * js/admin/ui_kit.js and is connected only on the UI Kit page.
+ * 2026-10-22 — единый toast-store, максимум три сообщения, адаптер $.toast.
  */
 import Alpine from 'alpinejs';
 
@@ -10,6 +11,7 @@ import Alpine from 'alpinejs';
     'use strict';
 
     var toastSeq = 0;
+    var toastTimers = new Map();
     var toastIcons = {
         info: 'info-circle',
         success: 'circle-check',
@@ -21,8 +23,14 @@ import Alpine from 'alpinejs';
         show: function (options) {
             var store = Alpine.store ? Alpine.store('toasts') : null;
             if (store) {
-                store.push(options || {});
+                return store.push(options || {});
             }
+        },
+        dismiss: function (id) {
+            var store = Alpine.store('toasts');
+            if (!store) return;
+            if (id == null) store.items.slice().forEach(function (item) { store.remove(item.id); });
+            else store.remove(id);
         }
     };
 
@@ -33,20 +41,27 @@ import Alpine from 'alpinejs';
                 toast = toast || {};
                 var id = ++toastSeq;
                 var type = toast.type || 'info';
+                type = {error: 'danger', fail: 'danger', ok: 'success', warn: 'warning'}[type] || type;
+                if (!toastIcons[type]) type = 'info';
+                var duration = Number.isFinite(toast.duration) && toast.duration >= 0 ? toast.duration : 4200;
+                while (this.items.length >= 3) this.remove(this.items[0].id);
                 this.items.push({
                     id: id,
                     type: type,
                     icon: toast.icon || toastIcons[type] || 'info-circle',
-                    title: toast.title || 'Готово',
-                    text: toast.text || '',
-                    duration: typeof toast.duration === 'number' ? toast.duration : 4200
+                    title: toast.title || {info: 'Уведомление', success: 'Готово', warning: 'Внимание', danger: 'Ошибка'}[type],
+                    text: toast.text == null ? '' : String(toast.text),
+                    duration: duration
                 });
                 var self = this;
-                window.setTimeout(function () {
+                if (duration > 0) toastTimers.set(id, window.setTimeout(function () {
                     self.remove(id);
-                }, typeof toast.duration === 'number' ? toast.duration : 4200);
+                }, duration));
+                return id;
             },
             remove: function (id) {
+                window.clearTimeout(toastTimers.get(id));
+                toastTimers.delete(id);
                 this.items = this.items.filter(function (item) {
                     return item.id !== id;
                 });
@@ -297,5 +312,34 @@ import Alpine from 'alpinejs';
     }
 
     registerAlpineComponents();
+
+    // Совместимость дополнений: старый вызов рисует существующий md-toast,
+    // а не запускает второй renderer с собственными цветами и позицией.
+    if (window.jQuery) {
+        window.jQuery.toast = function (options) {
+            var id;
+            var current = {};
+            var handle = {
+                reset: function (scope) {
+                    if (scope === 'all') window.MDJUIToast.dismiss();
+                    else if (id != null) window.MDJUIToast.dismiss(id);
+                    return handle;
+                },
+                update: function (next) {
+                    if (id != null) window.MDJUIToast.dismiss(id);
+                    current = Object.assign(current, typeof next === 'string' ? {text: next} : (next || {}));
+                    var text = Array.isArray(current.text) ? current.text.join('\n') : current.text;
+                    if (text || current.heading) id = window.MDJUIToast.show({
+                        title: current.heading || '', text: text || '', type: current.icon || 'info',
+                        duration: current.hideAfter === false ? 0 : current.hideAfter
+                    });
+                    return handle;
+                }
+            };
+            if (options !== undefined) handle.update(options);
+            return handle;
+        };
+        window.jQuery.toast.options = {position: 'top-right', stack: 3};
+    }
 })(window, document);
 

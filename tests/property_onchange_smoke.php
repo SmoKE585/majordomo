@@ -104,6 +104,16 @@ namespace {
     check($queued === array(array('modulepropertyset', 'yandexhome')),
         'Source module does not receive its own echo for the delivered property');
 
+    // boolean — это состояние 0/1, а не «пусто»: иначе false сохранялся как '',
+    // карточка свойства показывала «Значение не задано», а журнал — 0.
+    $properties->set($object, 'cmd', false);
+    check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=2')->fetchColumn() === '0',
+        'Boolean false is stored as 0, not as an empty string');
+    check(end($object->calls)[1]['NEW_VALUE'] === '0', 'ONCHANGE receives 0 for boolean false');
+    $properties->set($object, 'cmd', true);
+    check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=2')->fetchColumn() === '1',
+        'Boolean true is stored as 1');
+
     // Событие должно объяснять себя: причину, что сохранено и что делать.
     $propertiesWithErrors = new MajorDoMo\Core\Properties(
         new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(),

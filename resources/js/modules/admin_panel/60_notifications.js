@@ -1,7 +1,8 @@
+/* 2026-10-22 — единые уведомления UI-кита и дедупликация сообщений журнала. */
 (function (window, document, $) {
     'use strict';
 
-    var latestMessage = '';
+    var latestMessage = null;
     var latestMessageTimer = 0;
     var latestMessageInFlight = false;
     var latestMessageLoopStarted = false;
@@ -35,28 +36,13 @@
         var normalized = (type || 'info').toString().toLowerCase();
         if (normalized === 'ok') {
             normalized = 'success';
-        } else if (normalized === 'danger' || normalized === 'fail') {
-            normalized = 'error';
+        } else if (normalized === 'error' || normalized === 'fail') {
+            normalized = 'danger';
         } else if (normalized === 'warn') {
             normalized = 'warning';
         }
 
-        var palette = {
-            success: {bgColor: '#198754', loaderBg: '#b7efcb'},
-            error: {bgColor: '#dc3545', loaderBg: '#ffb9c0'},
-            warning: {bgColor: '#b7791f', loaderBg: '#f4d38f'},
-            info: {bgColor: '#24415c', loaderBg: '#8cc2ea'}
-        };
-
-        return palette[normalized] ? {
-            name: normalized,
-            bgColor: palette[normalized].bgColor,
-            loaderBg: palette[normalized].loaderBg
-        } : {
-            name: 'info',
-            bgColor: palette.info.bgColor,
-            loaderBg: palette.info.loaderBg
-        };
+        return ['success', 'danger', 'warning', 'info'].includes(normalized) ? normalized : 'info';
     }
 
     function sanitizeFlashQuery() {
@@ -81,25 +67,15 @@
     }
 
     function showToast(notification) {
-        if (!$ || !notification || !notification.message) {
+        if (!window.MDJUIToast || !notification || !(notification.message || notification.text || notification.title)) {
             return false;
         }
 
-        var type = normalizeToastType(notification.type);
-        var text = notification.title ? notification.title + ': ' + notification.message : notification.message;
-
-        $.toast({
-            text: text,
-            showHideTransition: 'fade',
-            allowToastClose: true,
-            hideAfter: notification.hideAfter || 4500,
-            stack: 5,
-            position: 'top-right',
-            bgColor: type.bgColor,
-            textColor: '#ffffff',
-            textAlign: 'left',
-            loader: true,
-            loaderBg: type.loaderBg
+        window.MDJUIToast.show({
+            type: normalizeToastType(notification.type),
+            title: notification.title || '',
+            text: notification.message || notification.text || '',
+            duration: typeof notification.hideAfter === 'number' ? notification.hideAfter : notification.duration
         });
 
         return true;
@@ -139,25 +115,13 @@
         $.ajax({
             url: window.ROOTHTML + 'getlatestnote.html'
         }).done(function (data) {
-            if (data !== latestMessage) {
-                latestMessage = data;
-                var dataJSON = safeJsonParse(latestMessage);
-                if (dataJSON && dataJSON.DATA !== '' && latestMessageTimer !== 0) {
-                    $.toast({
-                        text: dataJSON.DATA,
-                        showHideTransition: 'fade',
-                        allowToastClose: true,
-                        hideAfter: 3000,
-                        stack: 5,
-                        position: 'bottom-left',
-                        bgColor: '#444444',
-                        textColor: '#eeeeee',
-                        textAlign: 'left',
-                        loader: true,
-                        loaderBg: '#9EC600'
-                    });
-                }
-            }
+            var note = safeJsonParse(data);
+            if (!note || typeof note.DATA !== 'string') return;
+            var identity = note.ID ? 'id:' + note.ID : 'text:' + note.DATA;
+            // Первый ответ — исходное состояние, а не новое уведомление.
+            var changed = latestMessage !== null && identity !== latestMessage;
+            latestMessage = identity;
+            if (changed && note.DATA.trim()) showToast({title: 'Журнал сообщений', message: note.DATA, type: 'info'});
         }).always(function () {
             latestMessageInFlight = false;
             clearTimeout(latestMessageTimer);
@@ -212,10 +176,9 @@
     };
     window.showFlashNotifications = showFlashNotifications;
 
-    if (window.MDJAdminUI) {
-        window.MDJAdminUI.showToast = showToast;
-        window.MDJAdminUI.showToasts = showFlashNotifications;
-    }
+    window.MDJAdminUI = window.MDJAdminUI || {};
+    window.MDJAdminUI.showToast = showToast;
+    window.MDJAdminUI.showToasts = showFlashNotifications;
 
     if ($) {
         $(bindAdminShellHandlers);

@@ -51,7 +51,7 @@ npm run watch:highlight # пересборка подсветки примеро
 - `@tabler/icons-webfont` (5 247 иконок, канонический набор нового UI);
 - `alpinejs` (локальные состояния, см. `115_alpine.js`);
 - `tom-select` (JS + CSS);
-- `jquery-toast-plugin`;
+- адаптер `$.toast()` к общему `MDJUIToast` (отдельный jquery-toast-plugin удалён);
 - `@fancyapps/fancybox`;
 - `html-duration-picker`;
 - `jquery.cookie`, `jquery.tiny-pubsub` (локальные плагины);

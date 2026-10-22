@@ -192,21 +192,6 @@ function md_ui_label($text)
         </div>
     </div>
 
-    <!-- Toast host -->
-    <div class="md-toast-stack" aria-live="polite" aria-atomic="false">
-        <template x-for="toast in $store.toasts.items" :key="toast.id">
-            <div class="md-toast" :class="'md-toast--' + toast.type" x-transition>
-                <i class="md-toast__icon" :class="'ti ti-' + toast.icon" aria-hidden="true"></i>
-                <div class="md-toast__body">
-                    <div class="md-toast__title" x-text="toast.title"></div>
-                    <div class="md-toast__text" x-text="toast.text"></div>
-                </div>
-                <button type="button" class="md-toast__close" @click="$store.toasts.remove(toast.id)" aria-label="Закрыть уведомление">
-                    <?= MDJUI::icon('x-lg') ?>
-                </button>
-            </div>
-        </template>
-    </div>
 </div>
 <script src="<?= ROOTHTML ?>assets/js/admin/ui_kit.js?v=2026-10-21-2"></script>
 

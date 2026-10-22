@@ -3597,7 +3597,7 @@ body.md-admin-shell .md-alert__close:hover {
 body.md-admin-shell .md-toast-stack {
   position: fixed;
   right: 18px;
-  bottom: 18px;
+  top: calc(var(--md-shell-header-height, 68px) + 12px + env(safe-area-inset-top, 0px));
   z-index: 1090;
   display: flex;
   flex-direction: column;
@@ -3650,6 +3650,8 @@ body.md-admin-shell .md-toast__title {
 body.md-admin-shell .md-toast__text {
   margin-top: 1px;
   color: var(--md-ui-muted);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 body.md-admin-shell .md-toast__close {
@@ -6418,7 +6420,7 @@ body.md-admin-shell .md-ui-page-footer a:hover {
 
   body.md-admin-shell .md-toast-stack {
     right: 10px;
-    bottom: 10px;
+    top: calc(var(--md-shell-header-height, 68px) + 10px + env(safe-area-inset-top, 0px));
     width: calc(100vw - 20px);
   }
 
