@@ -1215,9 +1215,9 @@ function processTitle($title, $object = 0)
         if (preg_match('/\[#.+?#\]/is', $title)) {
             startMeasure('processTitleJTemplate');
             if ($object) {
-                $jTempl = new jTemplate($title, $object->data, $object);
+                $jTempl = new \MajorDoMo\Core\Template\JTemplate($title, $object->data, $object);
             } else {
-                $jTempl = new jTemplate($title, $data);
+                $jTempl = new \MajorDoMo\Core\Template\JTemplate($title, $data);
             }
 
             $title = $jTempl->result;

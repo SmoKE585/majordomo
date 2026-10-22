@@ -8742,10 +8742,14 @@ body.md-admin-shell .md-code-sample__pre {
   overflow: visible;
   color: #d6e2f0;
   background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   font-family: var(--md-ui-font-mono);
   font-size: .75rem;
   line-height: 1.65;
   tab-size: 4;
+  white-space: pre;
 }
 
 body.md-admin-shell .md-code-sample__code {

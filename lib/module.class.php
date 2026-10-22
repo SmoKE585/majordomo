@@ -676,7 +676,7 @@ class module
         }
 
         if (isset($cached_result) && $cached_result == '') {
-            $p = new jTemplate(DIR_TEMPLATES . 'null.html', $this->data, $this);
+            $p = new \MajorDoMo\Core\Template\JTemplate(DIR_TEMPLATES . 'null.html', $this->data, $this);
 
             $cached_result = $p->parse($content, $this->data, DIR_TEMPLATES);
 
