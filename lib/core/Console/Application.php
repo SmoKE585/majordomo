@@ -13,7 +13,8 @@ final class Application
         private string $root,
         private ?\Closure $runtimeReader = null,
         private ?\Closure $usersFactory = null,
-        private ?TerminalInput $terminalInput = null
+        private ?TerminalInput $terminalInput = null,
+        private ?\Closure $modesFactory = null
     )
     {
         foreach (array(
@@ -27,6 +28,7 @@ final class Application
             new Commands\InstallStatusCommand(), new Commands\InstallCheckCommand(), new Commands\InstallTestDbCommand(),
             new Commands\InstallResetCommand(), new Commands\InstallCompleteCommand(),
             new Commands\UsersListCommand(), new Commands\UsersPasswordCommand(),
+            new Commands\ModesListCommand(), new Commands\ModesSetCommand(),
         ) as $command) $this->register($command);
     }
 
@@ -67,7 +69,7 @@ final class Application
                 $this->describe($command, $output);
                 return $output->finish(0);
             }
-            $context = new Context($this->root, $this, $this->runtimeReader, $this->usersFactory, $this->terminalInput);
+            $context = new Context($this->root, $this, $this->runtimeReader, $this->usersFactory, $this->terminalInput, $this->modesFactory);
             return $output->finish($command->execute($input, $output, $context));
         } catch (\InvalidArgumentException $error) {
             $output->error($error->getMessage());

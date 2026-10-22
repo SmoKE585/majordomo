@@ -14,7 +14,8 @@ final class Context
         public readonly Application $application,
         private ?\Closure $runtimeReader = null,
         private ?\Closure $usersFactory = null,
-        private ?TerminalInput $terminal = null
+        private ?TerminalInput $terminal = null,
+        private ?\Closure $modesFactory = null
     ) {}
 
     public function terminalInput(): TerminalInput { return $this->terminal ??= new TerminalInput(); }
@@ -26,6 +27,17 @@ final class Context
     }
 
     public function config(): void { Config::boot($this->root); }
+
+    public function modes(): \MajorDoMo\Core\Modes\ModeManager
+    {
+        if ($this->modesFactory !== null) return ($this->modesFactory)();
+        chdir($this->root);
+        require_once $this->root . '/config.php';
+        require_once $this->root . '/lib/loader.php';
+        require_once $this->root . '/load_settings.php';
+        if (!isModuleInstalled('modes')) throw new \RuntimeException('Откройте раздел «Режимы» в панели для установки модуля.');
+        return \MajorDoMo\Core\Modes\ModeManager::shared();
+    }
 
     public function cycles(bool $runtime = false): CycleManager
     {

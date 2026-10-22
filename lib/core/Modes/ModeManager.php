@@ -53,7 +53,9 @@ final class ModeManager
     public function set(string $name, bool $active, string $source = 'code'): bool
     {
         return $this->synchronized(function () use ($name, $active, $source): bool {
-            $changed = $this->transition($this->get($name), $active, Rules::text($source, 190), array());
+            $mode = $this->get($name);
+            $this->primeForExternalChange($mode);
+            $changed = $this->transition($mode, $active, Rules::text($source, 190), array());
             $this->evaluate();
             return $changed;
         });
@@ -123,6 +125,23 @@ final class ModeManager
             $this->db->requireExec('DELETE FROM modes WHERE ID=' . $id);
             $this->syncProperties($before, $this->properties());
         });
+    }
+
+    /** An already true condition is not a new trigger caused by a PHP command. */
+    private function primeForExternalChange(array $mode): void
+    {
+        $runtime = json_decode($mode['RUNTIME'], true, 64, JSON_THROW_ON_ERROR);
+        $now = $this->now();
+        foreach (json_decode($mode['RULES'], true, 64, JSON_THROW_ON_ERROR) as $index => $rule) {
+            $state = $runtime[$index] ?? array();
+            if ($rule['trigger'] === 'condition' && !isset($state['since']) && Rules::matches($rule, $now,
+                $this->propertyReader ?? static fn($property) => \getGlobal($property), fn($name) => (int)$this->get($name)['ACTIVE'])) {
+                $runtime[$index] = array('since' => $now);
+            }
+            if ($rule['trigger'] === 'time' && date('H:i', $now) === $rule['at'] && !$state) $runtime[$index] = array('slot' => date('Y-m-d', $now) . ' ' . $rule['at']);
+        }
+        $json = $this->json($runtime);
+        if ($json !== $mode['RUNTIME']) $this->update(array('ID' => $mode['ID'], 'RUNTIME' => $json));
     }
 
     private function validateAction(mixed $action): array
