@@ -57,6 +57,7 @@ import './modules/admin_panel/10_core.js';
 import './modules/admin_panel/20_drawer.js';
 import './modules/admin_panel/30_search.js';
 import './modules/admin_panel/40_history.js';
+import './modules/admin_panel/41_trace.js';
 import './modules/admin_panel/50_console.js';
 import './modules/admin_panel/60_notifications.js';
 import './modules/admin_panel/99_init.js';

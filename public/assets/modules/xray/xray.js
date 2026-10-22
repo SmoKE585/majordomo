@@ -539,7 +539,8 @@
 		clearTimeout(state.checkTimer);
 
 		return fetch(buildFetchUrl().toString(), {
-			credentials: 'same-origin'
+			credentials: 'same-origin',
+			cache: 'no-store'
 		}).then(function (response) {
 			return response.text();
 		}).then(function (text) {

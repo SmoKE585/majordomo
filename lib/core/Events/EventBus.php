@@ -129,6 +129,16 @@ final class EventBus
                 $payload = array();
             }
             $error = null;
+            $audit = null;
+            $auditOwned = false;
+            if ($name !== '' && preg_match(self::NAME_PATTERN, $name) && class_exists(Core::class) && isset($GLOBALS['db'])) {
+                try {
+                    $audit = Core::audit();
+                    $auditOwned = $audit->beginIfMissing('event', $name, $payload, array('source' => 'event:' . $name));
+                } catch (Throwable $ignored) {
+                    $audit = null;
+                }
+            }
             try {
                 if ($name !== '' && preg_match(self::NAME_PATTERN, $name)) {
                     processSubscriptions($name, $payload);
@@ -136,6 +146,11 @@ final class EventBus
             } catch (Throwable $failure) {
                 $error = substr($failure->getMessage(), 0, 1000);
                 self::log('System event subscriber failed for ' . $name . ': ' . $error);
+            } finally {
+                if ($audit && $auditOwned) {
+                    $audit->finishRun($error === null ? 'done' : 'error');
+                    $audit->leave();
+                }
             }
             try {
                 $database->exec(

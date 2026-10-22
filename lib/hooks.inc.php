@@ -124,6 +124,9 @@ function processSubscriptions($event_name, $details = '', $return_output = false
     if (!is_array($details)) {
         $details = array();
     }
+    // Mode rules are editable at runtime. Deliver independently of immutable
+    // SETTINGS_HOOK_EVENT_* constants cached by long-running legacy cycles.
+    if (function_exists('modesProcessEvent')) modesProcessEvent((string)$event_name, $details);
     if (!defined('SETTINGS_HOOK_EVENT_' . strtoupper($event_name))) {
         return 0;
     }

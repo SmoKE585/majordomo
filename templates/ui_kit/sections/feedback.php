@@ -261,6 +261,110 @@ CODE,
     <?php }); ?>
 
     <?php md_ui_demo(array(
+        'title' => 'Trace drawer: цепочка изменений свойства',
+        'desc' => 'Always-on журнал: запуск, методы и сценарии, параметры на входе и выходе, старое и новое значение, ссылки на метод/свойство/сценарий. Компонент использует общий drawer shell и не загружает данные без триггера.',
+        'api' => 'MDJUI::traceDrawer() · [data-md-trace-open]',
+        'badge' => 'компонент',
+        'canvas_class' => 'md-ui-demo__canvas--block',
+        'code' => <<<'CODE'
+<button type="button"
+        class="md-btn md-btn--secondary"
+        data-md-trace-open
+        data-md-trace-target="traceDrawer"
+        data-trace-object-id="12"
+        data-trace-property-id="34"
+        data-trace-title="Kitchen.Temperature">
+  Цепочка
+</button>
+
+<?= MDJUI::traceDrawer([
+    'id' => 'traceDrawer',
+    'eyebrow' => 'Цепочка изменений',
+    'default_range' => '24h',
+]) ?>
+CODE,
+    ), function () {
+        $traceDemo = array(
+            'status' => 'ok',
+            'meta' => array(
+                'object_id' => 12,
+                'property_id' => 34,
+                'object_title' => 'Kitchen',
+                'property_title' => 'Temperature',
+                'property_name' => 'Kitchen.Temperature',
+                'description' => 'Температура воздуха на кухне',
+                'retention_days' => 30,
+            ),
+            'range' => array('key' => '24h', 'label' => '24 часа'),
+            'runs' => array(
+                array(
+                    'id' => 128,
+                    'trace_id' => 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+                    'started_label' => '22.10.2026 07:00:02',
+                    'finished_label' => '22.10.2026 07:00:02',
+                    'duration_seconds' => 1,
+                    'status' => 'done',
+                    'status_label' => 'Завершён',
+                    'trigger_type' => 'job',
+                    'trigger_label' => 'Задача',
+                    'trigger_title' => 'Утренний сценарий',
+                    'source' => 'Job: Утренний сценарий',
+                    'actor' => 'CLI: www-data',
+                    'request_uri' => '',
+                    'params' => array('mode' => 'morning'),
+                    'result' => array('ok' => true),
+                    'error' => '',
+                    'events' => array(
+                        array(
+                            'id' => 1, 'type' => 'method', 'type_label' => 'Метод', 'status' => 'done',
+                            'title' => 'Kitchen.onMorning', 'time_label' => '07:00:02', 'duration_ms' => 24,
+                            'method_id' => 7, 'object_id' => 12,
+                            'params' => array('mode' => 'morning'), 'out_params' => array('mode' => 'morning', 'ready' => true),
+                            'result' => true, 'links' => array(array('label' => 'Метод', 'icon' => 'braces', 'url' => '#')),
+                        ),
+                        array(
+                            'id' => 2, 'type' => 'script', 'type_label' => 'Сценарий', 'status' => 'done',
+                            'title' => 'Morning lights', 'time_label' => '07:00:02', 'duration_ms' => 12,
+                            'script_id' => 4, 'params' => array('brightness' => 40), 'result' => true,
+                            'links' => array(array('label' => 'Сценарий', 'icon' => 'file-code', 'url' => '#')),
+                        ),
+                        array(
+                            'id' => 3, 'type' => 'property', 'type_label' => 'Свойство', 'status' => 'done',
+                            'title' => 'Kitchen.Temperature', 'time_label' => '07:00:02',
+                            'property_id' => 34, 'object_id' => 12, 'old_value' => '21.4', 'new_value' => '23.0',
+                            'is_target' => true, 'chain' => array('property:Kitchen.Temperature'),
+                            'links' => array(array('label' => 'Свойство', 'icon' => 'adjustments-horizontal', 'url' => '#')),
+                        ),
+                    ),
+                ),
+            ),
+            'pagination' => array('page' => 1, 'per_page' => 10, 'total' => 1, 'pages' => 1,
+                'from' => 1, 'to' => 1, 'has_prev' => false, 'has_next' => false),
+        );
+        ?>
+        <div class="md-ui-dialog-buttons">
+            <button type="button"
+                    class="md-btn md-btn--secondary"
+                    data-md-trace-open
+                    data-md-trace-target="uiKitTraceDrawer"
+                    data-trace-title="Kitchen.Temperature"
+                    data-trace-subtitle="Цепочка запуска «Утренний сценарий»"
+                    data-trace-eyebrow="Цепочка изменений"
+                    aria-haspopup="dialog">
+                <?= MDJUI::icon('route') ?><span class="md-btn__label">Открыть цепочку</span>
+            </button>
+        </div>
+        <?= MDJUI::traceDrawer(array(
+            'id' => 'uiKitTraceDrawer',
+            'eyebrow' => 'Цепочка изменений',
+            'title' => 'Kitchen.Temperature',
+            'subtitle' => 'Демо-данные: запуск, метод, сценарий и изменение свойства.',
+            'default_range' => '24h',
+            'demo_data' => $traceDemo,
+        )) ?>
+    <?php }); ?>
+
+    <?php md_ui_demo(array(
         'title' => 'Popover, tooltip и inline validation',
         'desc' => 'Popover — для пояснения с действием, tooltip — для короткой подсказки. Ошибка поля показывается под контролом и не дублируется только toast.',
         'api' => 'Bootstrap popover/tooltip · md-field__error',

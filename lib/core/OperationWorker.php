@@ -13,11 +13,17 @@ final class OperationWorker
         private RedisConnection $redis,
         private OperationsQueue $queue,
         private ProcessRunner $processes,
-        private ?ErrorReporter $errors = null
+        private ?ErrorReporter $errors = null,
+        private ?PropertyAudit $audit = null
     ) {}
 
     public function execute($id, $token)
     {
+        $data = array();
+        $params = array();
+        $auditStep = null;
+        $auditError = null;
+        $result = null;
         try {
             $item = $this->queue->claimed('core_runtime', $id, $token);
             $data = json_decode($item['DATAVALUE'], true, 512, JSON_THROW_ON_ERROR);
@@ -31,6 +37,19 @@ final class OperationWorker
             $_REQUEST = $_GET;
             $_SERVER['REQUEST_URI'] = $data['path'];
             $_SERVER['REQUEST_METHOD'] = 'GET';
+
+            if ($this->audit) {
+                $traceId = PropertyAudit::normalizeTraceId((string)($params['_trace'] ?? ''));
+                if ($traceId !== '') {
+                    $this->audit->enter($traceId, 'resume', 'Продолжение');
+                } else {
+                    $trigger = $item['DATANAME'] === 'moduleevent' ? 'event'
+                        : ($item['DATANAME'] === 'modulepropertyset' ? 'module' : 'method');
+                    $title = (string)($data['target'] ?? 'Операция');
+                    $this->audit->begin($trigger, $title, $params);
+                }
+            }
+
             if ($item['DATANAME'] === 'method') {
                 $result = Core::objects()->call($data['target'], $params);
             } elseif (in_array($item['DATANAME'], array('modulepropertyset', 'moduleevent'), true)) {
@@ -46,33 +65,50 @@ final class OperationWorker
                     if ($this->isInstalled($name)) throw new RuntimeException('Linked module files are temporarily unavailable');
                     // A deployment can briefly remove the file; confirm through normal retries.
                     if ((int)($item['ATTEMPTS'] ?? 1) < 3) throw new RuntimeException('Linked module is not installed');
-                    return $this->removeStaleBinding($name, $params, 'module is not installed');
+                    $result = $this->removeStaleBinding($name, $params, 'module is not installed');
                 }
-                require_once $file;
-                if (!class_exists($name, false)) throw new RuntimeException('Linked module class was not loaded');
-                if ($item['DATANAME'] === 'moduleevent') {
-                    if (!method_exists($name, 'processSubscription')) throw new RuntimeException('Module has no subscription handler');
-                    $module = new $name();
-                    $details = $params['details'];
-                    if ($module->processSubscription($params['event'], $details) === false) throw new RuntimeException('Subscription handler returned false');
-                    return array('success' => true);
+                if ($result === null) {
+                    require_once $file;
+                    if (!class_exists($name, false)) throw new RuntimeException('Linked module class was not loaded');
+                    $auditStep = $this->audit?->stepStart('module', $name, array(
+                        'module' => $name,
+                        'subtitle' => $item['DATANAME'] === 'moduleevent' ? 'Обработчик события' : 'Обработчик свойства',
+                        'params' => $params,
+                    ));
+                    if ($item['DATANAME'] === 'moduleevent') {
+                        if (!method_exists($name, 'processSubscription')) throw new RuntimeException('Module has no subscription handler');
+                        $module = new $name();
+                        $details = $params['details'];
+                        if ($module->processSubscription($params['event'], $details) === false) throw new RuntimeException('Subscription handler returned false');
+                        $result = array('success' => true);
+                    } else {
+                        if (!method_exists($name, 'propertySetHandle')) {
+                            $result = $this->removeStaleBinding($name, $params, 'module has no property handler');
+                        } else {
+                            $module = new $name();
+                            $result = $module->propertySetHandle($params['object'], $params['property'], $params['value']);
+                        }
+                    }
                 }
-                if (!method_exists($name, 'propertySetHandle')) {
-                    return $this->removeStaleBinding($name, $params, 'module has no property handler');
-                }
-                $module = new $name();
-                $result = $module->propertySetHandle($params['object'], $params['property'], $params['value']);
             } else throw new InvalidArgumentException('Unknown core operation');
             if ($item['DATANAME'] === 'modulepropertyset' && $result === false) throw new RuntimeException('Module handler returned false');
-            return array('success' => true);
+            if (!is_array($result) || !array_key_exists('success', $result)) $result = array('success' => true);
+            return $result;
         } catch (Throwable $e) {
+            $auditError = $e;
             $context = array('target' => $data['target'] ?? null);
             foreach (array('object', 'property') as $key) {
                 if (isset($params[$key]) && is_string($params[$key])) $context[$key] = $params[$key];
             }
-            return array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage()
+            $result = array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage()
                 . ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+            return $result;
         } finally {
+            if ($this->audit) {
+                $this->audit->stepFinish($auditStep, $result, $auditError);
+                $this->audit->finishRun($auditError ? 'error' : 'done', $result, $auditError);
+                $this->audit->leave();
+            }
             PropertyChain::leave();
         }
     }

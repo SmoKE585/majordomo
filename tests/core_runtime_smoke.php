@@ -79,7 +79,7 @@ try {
     check(!SQLSelectOne("SELECT ID FROM project_modules WHERE NAME='connect'"), 'Connect module registration removed');
     check(!isset(json_decode(SQLSelectOne("SELECT VALUE FROM settings WHERE NAME='HOOK_EVENT_TEST'")['VALUE'], true)['connect']), 'Connect hook removed structurally');
     Core::migrations()->run();
-    check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_migrations')['C'] === 1, 'migration is idempotent');
+    check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_migrations')['C'] === 3, 'migration is idempotent');
     check(SQLSelectOne("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pvalues'")['ENGINE'] === 'InnoDB', 'hot tables migrated to InnoDB');
 
     sg('Lamp.status', 0);
@@ -95,7 +95,8 @@ try {
     sg('Lamp.status', 0);
     $queries = $db->queryCount - $before;
     check((string)gg('Lamp.status') === '0', 'repeated value writes stay current');
-    if (USE_REDIS) check($queries <= 3, 'warm sg uses at most three SQL statements (value lookup, value write, history)');
+    // The always-on property audit adds a run/event write for a real value change.
+    if (USE_REDIS) check($queries <= 10, 'warm sg plus audit stays within ten SQL statements');
     echo 'METRIC warm sg SQL statements: ' . $queries . PHP_EOL;
     $property = SQLSelectOne("SELECT * FROM properties WHERE TITLE='status'");
     $property['VALIDATION_TYPE'] = 1; $property['VALIDATION_NUM_MIN'] = '10'; $property['VALIDATION_NUM_MAX'] = '20';

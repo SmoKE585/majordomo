@@ -106,6 +106,7 @@
     <div class="md-admin-record-list md-object-properties-list" id="proplist">
         [#begin PROPERTIES#]
         <div class="md-object-property-item"
+             id="prop-[#ID#]"
              data-md-object-property
              data-md-prop-full-name="[#FULL_NAME#]"
              data-md-prop-scope="[#if CLASS_ID!="0"#]class[#else#]object[#endif#]"
@@ -191,6 +192,19 @@
                     </div>
                 </div>
                 <div class="md-admin-record-card__actions">
+                    <button
+                        type="button"
+                        class="md-btn md-btn--secondary md-btn--sm"
+                        data-md-trace-open
+                        data-md-trace-target="mdPropertyTraceDrawer"
+                        data-trace-object-id="<#ID#>"
+                        data-trace-property-id="[#ID#]"
+                        data-trace-title="[#FULL_NAME_ATTR#]"
+                        data-trace-subtitle="[#DESCRIPTION_ATTR#]"
+                        data-trace-eyebrow="Цепочка изменений"
+                        aria-haspopup="dialog">
+                        <i class="ti ti-route" aria-hidden="true"></i><span>Цепочка</span>
+                    </button>
                     [#if KEEP_HISTORY!="0"#]
                     <button
                         type="button"
@@ -301,6 +315,7 @@
 </section>
 
 [#PROPERTY_HISTORY_DRAWER#]
+[#PROPERTY_TRACE_DRAWER#]
 
 <script>
 (function () {

@@ -394,6 +394,19 @@ class MDJUI
     }
 
     /**
+     * Always-on property trace drawer.
+     *
+     * Renders a hidden template mounted into the shared drawer host by
+     * `41_trace.js`. The server endpoint is selected from the trigger's
+     * `data-trace-object-id` / `data-trace-property-id`; a demo payload can be
+     * passed through `demo_data` for the UI Kit.
+     */
+    public static function traceDrawer(array $props = array())
+    {
+        return self::render('trace-drawer', $props);
+    }
+
+    /**
      * Activity feed / timeline of actions.
      *
      * @param array $props items|groups, title, subtitle, eyebrow, actions,

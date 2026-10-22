@@ -67,6 +67,11 @@ if (isset($request[0])) {
     }
     include_once("./load_settings.php");
 
+    // Continue a causal run started by a timer/module/method in another process.
+    // The queue worker already restores it; this covers direct HTTP API calls and
+    // the synchronous script/method endpoints.
+    \MajorDoMo\Core\Core::audit()->adoptRequest($_GET);
+
     startMeasure('TOTAL');
     $startedTime = getmicrotime();
     register_shutdown_function('apiShutdown');
@@ -238,8 +243,29 @@ if (!isset($request[0])) {
         include_once($module_file);
         $module = new $module_name;
         if (method_exists($module, 'propertySetHandle')) {
-            $result['setHandleResult'] = $module->propertySetHandle($object, $property, $value);
-            $result['result'] = true;
+            $audit = \MajorDoMo\Core\Core::audit();
+            $auditOwned = $audit->beginIfMissing('module', $module_name, array(
+                'object' => $object, 'property' => $property, 'value' => $value,
+            ));
+            $auditStep = $audit->stepStart('module', $module_name, array(
+                'module' => $module_name,
+                'subtitle' => 'Обработчик свойства',
+                'params' => array('object' => $object, 'property' => $property, 'value' => $value),
+            ));
+            $auditError = null;
+            try {
+                $result['setHandleResult'] = $module->propertySetHandle($object, $property, $value);
+                $result['result'] = true;
+            } catch (Throwable $e) {
+                $auditError = $e;
+                throw $e;
+            } finally {
+                $audit->stepFinish($auditStep, $result['setHandleResult'] ?? null, $auditError);
+                if ($auditOwned) {
+                    $audit->finishRun($auditError ? 'error' : 'done', null, $auditError);
+                    $audit->leave();
+                }
+            }
         }
     }
 } elseif (strtolower($request[0]) == 'events' && isset($request[1])) {

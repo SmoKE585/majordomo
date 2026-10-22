@@ -167,7 +167,7 @@ check(is_file($cleanSchemaPath), 'clean installation schema exists');
 $cleanSchema = is_file($cleanSchemaPath) ? (string)file_get_contents($cleanSchemaPath) : '';
 check(!preg_match('/^\s*INSERT\s+/mi', $cleanSchema), 'clean schema contains no demo data');
 check(!preg_match('/AUTO_INCREMENT=\d+/i', $cleanSchema), 'clean schema has no demo AUTO_INCREMENT counters');
-foreach (array('actions_log', 'classes', 'objects', 'project_modules', 'properties', 'settings', 'users') as $requiredTable) {
+foreach (array('actions_log', 'classes', 'objects', 'project_modules', 'properties', 'property_audit_runs', 'property_audit_events', 'settings', 'users') as $requiredTable) {
     check(
         (bool)preg_match('/CREATE TABLE IF NOT EXISTS `' . preg_quote($requiredTable, '/') . '`/i', $cleanSchema),
         'clean schema contains table: ' . $requiredTable

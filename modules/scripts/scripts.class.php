@@ -163,29 +163,59 @@ class scripts extends module
             }
             SQLUpdate('scripts', $update_rec);
 
-            if (isItPythonCode($rec['CODE'])) {
-                python_run_code($rec['CODE'], $params);
-            } else {
-                try {
-                    $code = trim($rec['CODE']);
-                    if ($code != '') {
-                        setEvalCode($code);
-                        $success = eval($code);
-                    } else {
-                        $success = true;
+            $audit = class_exists('\\MajorDoMo\\Core\\Core') ? \MajorDoMo\Core\Core::audit() : null;
+            $auditOwned = $audit ? $audit->beginIfMissing('script', (string)$rec['TITLE'], $this->auditParams($params)) : false;
+            $auditStep = $audit?->stepStart('script', (string)$rec['TITLE'], array(
+                'script_id' => (int)$rec['ID'],
+                'subtitle' => (string)($rec['DESCRIPTION'] ?? ''),
+                'params' => $this->auditParams($params),
+                'source' => $source,
+            ));
+            $auditError = null;
+            try {
+                if (isItPythonCode($rec['CODE'])) {
+                    python_run_code($rec['CODE'], $params);
+                } else {
+                    try {
+                        $code = trim($rec['CODE']);
+                        if ($code != '') {
+                            setEvalCode($code);
+                            $success = eval($code);
+                        } else {
+                            $success = true;
+                        }
+                        if ($success === false) {
+                            //getLogger($this)->error(sprintf('Error in script "%s". Code: %s', $rec['TITLE'], $code));
+                            registerError('script', sprintf('Error in script "%s". Code: %s', $rec['TITLE'], $code));
+                        }
+                        return $success;
+                    } catch (Exception $e) {
+                        //getLogger($this)->error(sprintf('Error in script "%s"', $rec['TITLE']), $e);
+                        $auditError = $e;
+                        registerError('script', sprintf('Error in script "%s": ' . $e->getMessage(), $rec['TITLE']));
                     }
-                    if ($success === false) {
-                        //getLogger($this)->error(sprintf('Error in script "%s". Code: %s', $rec['TITLE'], $code));
-                        registerError('script', sprintf('Error in script "%s". Code: %s', $rec['TITLE'], $code));
+                }
+            } catch (Throwable $e) {
+                $auditError = $e;
+                throw $e;
+            } finally {
+                if ($audit) {
+                    $audit->stepFinish($auditStep, $success ?? null, $auditError, $this->auditParams($params));
+                    if ($auditOwned) {
+                        $audit->finishRun($auditError ? 'error' : 'done', null, $auditError);
+                        $audit->leave();
                     }
-                    return $success;
-                } catch (Exception $e) {
-                    //getLogger($this)->error(sprintf('Error in script "%s"', $rec['TITLE']), $e);
-                    registerError('script', sprintf('Error in script "%s": ' . $e->getMessage(), $rec['TITLE']));
                 }
             }
 
         }
+    }
+
+    private function auditParams($params): array
+    {
+        if (!is_array($params)) return array('value' => $params);
+        foreach (array('m_c_s', 'r_s_s', 'r_s_m', 'raiseEvent', '_trace', '_chain') as $key) unset($params[$key]);
+        return $params;
     }
 
     function runScriptAjax()

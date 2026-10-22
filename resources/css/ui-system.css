@@ -8077,6 +8077,451 @@ body.md-admin-shell .md-history__actions {
 }
 
 /* --------------------------------------------------------------------------
+   Property trace drawer (MDJUI::traceDrawer)
+   -------------------------------------------------------------------------- */
+
+body.md-admin-shell .md-trace {
+  display: grid;
+  gap: var(--md-ui-space-3);
+  min-width: 0;
+}
+
+body.md-admin-shell .md-trace__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+body.md-admin-shell .md-trace__ranges {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-trace__intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.45;
+}
+
+body.md-admin-shell .md-trace__intro i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--md-ui-primary);
+  font-size: 15px;
+}
+
+body.md-admin-shell .md-trace__intro p {
+  margin: 0;
+}
+
+body.md-admin-shell .md-trace__state {
+  display: flex;
+  min-height: 240px;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+body.md-admin-shell .md-trace__loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-trace__content {
+  display: grid;
+  gap: var(--md-ui-space-3);
+  min-width: 0;
+}
+
+body.md-admin-shell .md-trace__runs {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-trace__run {
+  overflow: hidden;
+  background: var(--md-ui-surface);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-md);
+}
+
+body.md-admin-shell .md-trace__run[open] {
+  border-color: var(--md-ui-border-strong);
+}
+
+body.md-admin-shell .md-trace__run-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 11px 13px;
+  cursor: pointer;
+  list-style: none;
+}
+
+body.md-admin-shell .md-trace__run-head::-webkit-details-marker {
+  display: none;
+}
+
+body.md-admin-shell .md-trace__chevron {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--md-ui-muted);
+  font-size: 16px;
+  transition: transform .16s ease;
+}
+
+body.md-admin-shell .md-trace__run[open] > .md-trace__run-head .md-trace__chevron {
+  transform: rotate(180deg);
+}
+
+body.md-admin-shell .md-trace__run-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-radius: var(--md-ui-radius-pill);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-trace__run-main {
+  display: flex;
+  flex: 1 1 260px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 10px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-trace__run-title {
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+}
+
+body.md-admin-shell .md-trace__run-time {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-trace__run-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+body.md-admin-shell .md-trace__run-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 13px 13px;
+  border-top: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-trace__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 14px;
+  padding-top: 12px;
+}
+
+body.md-admin-shell .md-trace__fact {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-trace__fact-label {
+  color: var(--md-ui-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+body.md-admin-shell .md-trace__fact-value {
+  color: var(--md-ui-text-soft);
+  font-size: var(--md-ui-fs-xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-trace__trace-id {
+  color: var(--md-ui-text-soft);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  letter-spacing: -.01em;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-trace__chain {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body.md-admin-shell .md-trace__event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 0 10px;
+  padding-bottom: 10px;
+}
+
+body.md-admin-shell .md-trace__event:last-child {
+  padding-bottom: 0;
+}
+
+body.md-admin-shell .md-trace__event::before {
+  position: absolute;
+  top: 27px;
+  bottom: 0;
+  left: 13px;
+  width: 1px;
+  background: var(--md-ui-border);
+  content: "";
+}
+
+body.md-admin-shell .md-trace__event:last-child::before {
+  display: none;
+}
+
+body.md-admin-shell .md-trace__event-marker {
+  display: inline-flex;
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: 50%;
+  font-size: 13px;
+}
+
+body.md-admin-shell .md-trace__event.is-target .md-trace__event-marker {
+  color: var(--md-ui-primary);
+  background: var(--md-ui-primary-soft);
+  border-color: var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-trace__event.is-error .md-trace__event-marker {
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+  border-color: var(--md-ui-danger);
+}
+
+body.md-admin-shell .md-trace__event-body {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+body.md-admin-shell .md-trace__event-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 8px;
+}
+
+body.md-admin-shell .md-trace__event-time {
+  color: var(--md-ui-muted);
+  font-family: var(--md-ui-font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-trace__event-title {
+  min-width: 0;
+  color: var(--md-ui-text);
+  font-size: var(--md-ui-fs-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-trace__event-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+body.md-admin-shell .md-trace__event-title a:hover,
+body.md-admin-shell .md-trace__event-title a:focus-visible {
+  color: var(--md-ui-primary);
+  text-decoration: underline;
+}
+
+body.md-admin-shell .md-trace__event-subtitle {
+  color: var(--md-ui-muted);
+  font-size: var(--md-ui-fs-xs);
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-trace__event-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+body.md-admin-shell .md-trace__event-links .md-badge {
+  text-decoration: none;
+}
+
+body.md-admin-shell .md-trace__values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 6px 8px;
+  background: var(--md-ui-surface-2);
+  border-radius: var(--md-ui-radius-sm);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+body.md-admin-shell .md-trace__value {
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 5px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  border-radius: 4px;
+}
+
+body.md-admin-shell .md-trace__value--old {
+  color: var(--md-ui-muted);
+  background: var(--md-ui-surface-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--md-ui-border-strong);
+}
+
+body.md-admin-shell .md-trace__value--new {
+  color: var(--md-ui-text);
+  background: var(--md-ui-success-soft);
+}
+
+body.md-admin-shell .md-trace__arrow {
+  color: var(--md-ui-muted);
+  font-size: 12px;
+}
+
+body.md-admin-shell .md-trace__details {
+  min-width: 0;
+}
+
+body.md-admin-shell .md-trace__details > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--md-ui-primary);
+  cursor: pointer;
+  font-size: var(--md-ui-fs-xs);
+  font-weight: 500;
+  list-style: none;
+}
+
+body.md-admin-shell .md-trace__details > summary::-webkit-details-marker {
+  display: none;
+}
+
+body.md-admin-shell .md-trace__details > summary::before {
+  content: "▸";
+  font-size: 11px;
+  transition: transform .15s ease;
+}
+
+body.md-admin-shell .md-trace__details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+body.md-admin-shell .md-trace__json {
+  max-height: 260px;
+  margin: 5px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  color: var(--md-ui-text-soft);
+  background: var(--md-ui-surface-2);
+  border: 1px solid var(--md-ui-border);
+  border-radius: var(--md-ui-radius-sm);
+  font-family: var(--md-ui-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-trace__error {
+  padding: 7px 9px;
+  color: var(--md-ui-danger);
+  background: var(--md-ui-danger-soft);
+  border-radius: var(--md-ui-radius-sm);
+  font-size: var(--md-ui-fs-xs);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+body.md-admin-shell .md-trace__empty {
+  padding: 28px 16px;
+}
+
+body.md-admin-shell .md-trace__pagination-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+body.md-admin-shell .md-trace__actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 767.98px) {
+  body.md-admin-shell .md-trace__facts {
+    grid-template-columns: 1fr;
+  }
+
+  body.md-admin-shell .md-trace__run-meta {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  body.md-admin-shell .md-trace__actions .md-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* --------------------------------------------------------------------------
    14. Activity feed, hints and read-only code samples
    -------------------------------------------------------------------------- */
 

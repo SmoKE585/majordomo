@@ -182,6 +182,7 @@ final class Migrations
             $this->db->requireExec("CREATE TABLE IF NOT EXISTS core_migrations (VERSION varchar(100) NOT NULL PRIMARY KEY, APPLIED datetime NOT NULL) ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8");
             $this->apply('20261021_core_runtime_v1', fn() => $this->upgradeRuntime());
             $this->apply('20261022_system_events_v1', fn() => $this->ensureSystemEventsSchema());
+            $this->apply('20261023_property_audit_v1', fn() => $this->ensurePropertyAuditSchema());
         } finally {
             $this->db->one("SELECT RELEASE_LOCK('mjd:core-migrations')");
         }
@@ -218,6 +219,77 @@ final class Migrations
             ") ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8"
         );
     }
+
+    /**
+     * Persistent, always-on property audit journal.
+     *
+     * `property_audit_runs` is the run header (trigger, actor, input params,
+     * final result); `property_audit_events` stores the timeline: jobs,
+     * methods, scripts, module handlers and property writes. Keeping property
+     * changes in the same event stream means the UI can render the complete
+     * causal chain without reconstructing it from several histories.
+     */
+    public function ensurePropertyAuditSchema(): void
+    {
+        $this->db->requireExec(
+            "CREATE TABLE IF NOT EXISTS property_audit_runs (" .
+            "ID bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY," .
+            "TRACE_ID char(32) NOT NULL," .
+            "STARTED datetime NOT NULL," .
+            "LAST_SEEN datetime NOT NULL," .
+            "FINISHED datetime NULL," .
+            "STATUS varchar(16) NOT NULL DEFAULT 'running'," .
+            "TRIGGER_TYPE varchar(32) NOT NULL DEFAULT ''," .
+            "TRIGGER_TITLE varchar(255) NOT NULL DEFAULT ''," .
+            "SOURCE varchar(255) NOT NULL DEFAULT ''," .
+            "ACTOR varchar(255) NOT NULL DEFAULT ''," .
+            "IP varchar(45) NOT NULL DEFAULT ''," .
+            "REQUEST_URI varchar(255) NOT NULL DEFAULT ''," .
+            "PARAMS mediumtext NULL," .
+            "RESULT mediumtext NULL," .
+            "ERROR text NULL," .
+            "CHAIN text NULL," .
+            "EVENTS_COUNT int unsigned NOT NULL DEFAULT 0," .
+            "UNIQUE KEY uq_property_audit_trace (TRACE_ID)," .
+            "KEY idx_property_audit_started (STARTED)," .
+            "KEY idx_property_audit_status (STATUS,STARTED)" .
+            ") ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8"
+        );
+        $this->db->requireExec(
+            "CREATE TABLE IF NOT EXISTS property_audit_events (" .
+            "ID bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY," .
+            "RUN_ID bigint unsigned NOT NULL DEFAULT 0," .
+            "TRACE_ID char(32) NOT NULL," .
+            "ADDED datetime NOT NULL," .
+            "FINISHED datetime NULL," .
+            "DURATION_MS int unsigned NOT NULL DEFAULT 0," .
+            "TYPE varchar(32) NOT NULL DEFAULT ''," .
+            "STATUS varchar(16) NOT NULL DEFAULT 'running'," .
+            "TITLE varchar(255) NOT NULL DEFAULT ''," .
+            "SUBTITLE varchar(255) NOT NULL DEFAULT ''," .
+            "OBJECT_ID int NOT NULL DEFAULT 0," .
+            "PROPERTY_ID int NOT NULL DEFAULT 0," .
+            "PROPERTY_NAME varchar(255) NOT NULL DEFAULT ''," .
+            "METHOD_ID int NOT NULL DEFAULT 0," .
+            "CLASS_ID int NOT NULL DEFAULT 0," .
+            "SCRIPT_ID int NOT NULL DEFAULT 0," .
+            "MODULE varchar(100) NOT NULL DEFAULT ''," .
+            "OLD_VALUE mediumtext NULL," .
+            "NEW_VALUE mediumtext NULL," .
+            "SOURCE varchar(255) NOT NULL DEFAULT ''," .
+            "PARAMS mediumtext NULL," .
+            "OUT_PARAMS mediumtext NULL," .
+            "RESULT mediumtext NULL," .
+            "ERROR text NULL," .
+            "CHAIN text NULL," .
+            "KEY idx_property_audit_events_trace (TRACE_ID,ID)," .
+            "KEY idx_property_audit_events_property (PROPERTY_ID,OBJECT_ID,ADDED)," .
+            "KEY idx_property_audit_events_added (ADDED)," .
+            "KEY idx_property_audit_events_type (TYPE,ADDED)" .
+            ") ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8"
+        );
+    }
+
     private function upgradeRuntime(): void
     {
         $this->ensureOperationsSchema();

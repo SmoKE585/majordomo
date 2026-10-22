@@ -160,6 +160,11 @@ class panel extends module
             new zigbee();
         }
 
+        if (!defined('NO_DATABASE_CONNECTION') && !isModuleInstalled('modes')) {
+            require_once DIR_MODULES . 'modes/modes.class.php';
+            new modes();
+        }
+
         $requestedAction = isset($this->action) && is_scalar($this->action) ? trim((string)$this->action) : '';
         $requestedModuleValue = gr('md');
         $requestedModule = is_scalar($requestedModuleValue) ? trim((string)$requestedModuleValue) : '';
@@ -202,6 +207,7 @@ class panel extends module
         $modules = SQLSelect($sqlQuery);
 
         $sidebarIcons = array(
+            'modes' => 'ti-adjustments-horizontal',
             'panel' => 'ti-home',
             'objects' => 'ti-box-seam',
             'classes' => 'ti-hierarchy',

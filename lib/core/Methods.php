@@ -6,7 +6,7 @@ use \Throwable;
 
 final class Methods
 {
-    public function __construct(private Database $db, private MetadataCache $metadata, private CodeExecutor $code) {}
+    public function __construct(private Database $db, private MetadataCache $metadata, private CodeExecutor $code, private ?PropertyAudit $audit = null) {}
 
     public function resolve($object, $name, $class_id, $id)
     {
@@ -89,6 +89,24 @@ final class Methods
             }
             $this->db->update('methods', $update_rec);
 
+            $auditOwned = false;
+            $auditError = null;
+            if ($this->audit) {
+                $trigger = (PHP_SAPI === 'cli' && preg_match('/^onNew(Minute|Hour|Day)$/i', $name)) ? 'timer' : 'method';
+                $auditOwned = $this->audit->beginIfMissing($trigger, $object->object_title . '.' . $name, $params);
+                $auditStep = $this->audit->stepStart('method', $object->object_title . '.' . $name, array(
+                    'subtitle' => (string)($method['DESCRIPTION'] ?? ''),
+                    'object_id' => (int)($method['OBJECT_ID'] ?? 0),
+                    'class_id' => (int)($method['CLASS_ID'] ?? 0),
+                    'method_id' => (int)($method['ID'] ?? 0),
+                    'params' => $this->auditParams($params),
+                    'source' => $source,
+                ));
+            } else {
+                $auditStep = null;
+            }
+            try {
+
             if ($method['OBJECT_ID'] && $method['CALL_PARENT'] == 1) {
                 // call class method
                 startMeasure('callParentMethod');
@@ -157,12 +175,34 @@ final class Methods
                 return $parent_success;
             }
 
+            } catch (Throwable $e) {
+                $auditError = $e;
+                throw $e;
+            } finally {
+                if ($this->audit) {
+                    $this->audit->stepFinish($auditStep, $success ?? $parent_success ?? null, $auditError, $this->auditParams($params));
+                    if ($auditOwned) {
+                        $this->audit->finishRun($auditError ? 'error' : 'done', null, $auditError);
+                        $this->audit->leave();
+                    }
+                }
+            }
+
         } else {
             endMeasure('callMethod (' . $original_method_name . ')', 1);
             endMeasure('callMethod', 1);
             return false;
         }
 
+    }
+
+    /** Removes queue/internal plumbing from params shown in the audit UI. */
+    private function auditParams(array $params): array
+    {
+        foreach (array('m_c_s', 'r_s_m', 'r_s_s', 'raiseEvent', '_trace', '_chain') as $key) {
+            unset($params[$key]);
+        }
+        return $params;
     }
 
     public function callSafe($object, $name, $params = 0)
@@ -220,15 +260,35 @@ final class Methods
         $chain = PropertyChain::current();
         if ($chain && !isset($params['_chain'])) $params['_chain'] = $chain;
 
+        $auditOwned = false;
+        if ($this->audit && !PropertyAudit::hasTrace()) {
+            $trigger = (PHP_SAPI === 'cli' && preg_match('/^onNew(Minute|Hour|Day)$/i', $name)) ? 'timer' : 'method';
+            $auditOwned = $this->audit->beginIfMissing($trigger, $object->object_title . '.' . $name, $this->auditParams($params));
+        }
+        PropertyAudit::attach($params);
+
         $call_stack[] = $current_call;
         $params['raiseEvent'] = $raiseEvent;
         $params['m_c_s'] = $call_stack;
         $params['r_s_m'] = $run_SafeMethod;
-        if (isset($_SERVER['REQUEST_URI']) && ($_SERVER['REQUEST_URI'] != '') && ((!$raiseEvent && $run_SafeMethod) || Config::bool('LOWER_BACKGROUND_PROCESSES'))) {
-            $result = $this->call($object, $name, $params);
-        } else {
-            $params['r_s_m'] = 1;
-            $result = callAPI('/api/method/' . urlencode($object->object_title . '.' . $name), 'GET', $params);
+        try {
+            if (isset($_SERVER['REQUEST_URI']) && ($_SERVER['REQUEST_URI'] != '') && ((!$raiseEvent && $run_SafeMethod) || Config::bool('LOWER_BACKGROUND_PROCESSES'))) {
+                $result = $this->call($object, $name, $params);
+            } else {
+                $params['r_s_m'] = 1;
+                $result = callAPI('/api/method/' . urlencode($object->object_title . '.' . $name), 'GET', $params);
+            }
+        } catch (Throwable $e) {
+            if ($auditOwned) {
+                $this->audit?->finishRun('error', null, $e);
+                $this->audit?->leave();
+            }
+            throw $e;
+        } finally {
+            if ($auditOwned && PropertyAudit::hasTrace()) {
+                $this->audit?->finishRun('done');
+                $this->audit?->leave();
+            }
         }
         endMeasure('callMethodSafe');
         return $result;

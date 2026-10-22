@@ -279,6 +279,12 @@ if ($this->tab == 'properties') {
         'title' => 'История изменения',
         'default_range' => '24h',
     ));
+    $out['PROPERTY_TRACE_DRAWER'] = MDJUI::traceDrawer(array(
+        'id' => 'mdPropertyTraceDrawer',
+        'eyebrow' => 'Цепочка изменений',
+        'title' => 'Журнал изменений свойства',
+        'default_range' => '24h',
+    ));
     $out['PROPERTIES'] = $props;
     $out['CLASS_PROPERTIES'] = array();
     $out['OBJECT_PROPERTIES'] = array();

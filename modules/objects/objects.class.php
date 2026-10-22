@@ -137,6 +137,8 @@ class objects extends module
             global $op;
             if ($op == 'property_history') {
                 $this->renderPropertyHistoryJson();
+            } elseif ($op == 'property_trace') {
+                $this->renderPropertyTraceJson();
             }
         }
 
@@ -246,6 +248,11 @@ class objects extends module
                 $range = gr('history_range', 'trim');
                 $page = (int)gr('history_page');
                 $res = $this->buildPropertyHistoryResponse((int)$id, $property_id, $range, $page);
+            } elseif ($op == 'property_trace') {
+                $property_id = (int)gr('property_id');
+                $range = gr('trace_range', 'trim');
+                $page = (int)gr('trace_page');
+                $res = $this->buildPropertyTraceResponse((int)$id, $property_id, $range, $page);
             }
             echo json_encode($res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -616,6 +623,158 @@ class objects extends module
 
         global $db;
         exit;
+    }
+
+    function renderPropertyTraceJson()
+    {
+        header("HTTP/1.0 200 OK\n");
+        header('Content-Type: application/json; charset=utf-8');
+
+        $object_id = (int)$this->id;
+        $property_id = (int)gr('property_id');
+        $range = gr('trace_range', 'trim');
+        $page = (int)gr('trace_page');
+
+        $response = $this->buildPropertyTraceResponse($object_id, $property_id, $range, $page);
+        echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        global $db;
+        exit;
+    }
+
+    function buildPropertyTraceResponse($object_id, $property_id, $range, $page = 1)
+    {
+        $object = SQLSelectOne("SELECT * FROM objects WHERE ID=" . (int)$object_id);
+        if (empty($object['ID'])) {
+            return array('status' => 'error', 'message' => 'Object not found');
+        }
+        $property = SQLSelectOne("SELECT * FROM properties WHERE ID=" . (int)$property_id);
+        if (empty($property['ID'])) {
+            return array('status' => 'error', 'message' => 'Property not found');
+        }
+        $object_instance = getObject($object['TITLE']);
+        if (!$object_instance) {
+            return array('status' => 'error', 'message' => 'Object instance not found');
+        }
+        $linked_property_id = $object_instance->getPropertyByName($property['TITLE'], $object_instance->class_id, $object_instance->id);
+        if ((int)$linked_property_id !== (int)$property['ID']) {
+            return array('status' => 'error', 'message' => 'Property is not linked to the selected object');
+        }
+
+        $range_data = $this->getPropertyTraceRangeDefinition($range);
+        $page = max(1, (int)$page);
+        $data = \MajorDoMo\Core\Core::audit()->tracesForProperty(
+            (int)$object['ID'],
+            (int)$property['ID'],
+            (int)$range_data['start_time'],
+            (int)$range_data['stop_time'],
+            $page,
+            10
+        );
+
+        foreach ($data['runs'] as &$run) {
+            foreach ($run['events'] as &$event) {
+                $event['links'] = $this->buildTraceEventLinks($event, $object, $property);
+            }
+            unset($event);
+            $run['target_property_name'] = $object['TITLE'] . '.' . $property['TITLE'];
+        }
+        unset($run);
+
+        return array(
+            'status' => 'ok',
+            'meta' => array(
+                'object_id' => (int)$object['ID'],
+                'property_id' => (int)$property['ID'],
+                'object_title' => $object['TITLE'],
+                'property_title' => $property['TITLE'],
+                'property_name' => $object['TITLE'] . '.' . $property['TITLE'],
+                'description' => $property['DESCRIPTION'],
+                'retention_days' => \MajorDoMo\Core\Config::int('PROPERTY_AUDIT_RETENTION_DAYS'),
+            ),
+            'range' => array(
+                'key' => $range_data['key'],
+                'label' => $range_data['label'],
+                'started_at' => date('c', $range_data['start_time']),
+                'ended_at' => date('c', $range_data['stop_time']),
+            ),
+            'runs' => $data['runs'],
+            'pagination' => $data['pagination'],
+        );
+    }
+
+    function getPropertyTraceRangeDefinition($range)
+    {
+        $definitions = array(
+            '3h' => array('seconds' => 3 * 60 * 60, 'label' => '3 часа'),
+            '12h' => array('seconds' => 12 * 60 * 60, 'label' => '12 часов'),
+            '24h' => array('seconds' => 24 * 60 * 60, 'label' => '24 часа'),
+            '7d' => array('seconds' => 7 * 24 * 60 * 60, 'label' => '7 дней'),
+            '30d' => array('seconds' => 30 * 24 * 60 * 60, 'label' => '30 дней'),
+        );
+        if (empty($definitions[$range])) $range = '24h';
+        $stop_time = time();
+        return array(
+            'key' => $range,
+            'label' => $definitions[$range]['label'],
+            'seconds' => $definitions[$range]['seconds'],
+            'stop_time' => $stop_time,
+            'start_time' => $stop_time - $definitions[$range]['seconds'],
+        );
+    }
+
+    function buildTraceEventLinks($event, $object, $property)
+    {
+        $links = array();
+        $root = defined('ROOTHTML') ? ROOTHTML : '/';
+        $object_id = (int)($event['object_id'] ?? 0);
+        $class_id = (int)($event['class_id'] ?? 0);
+        $method_id = (int)($event['method_id'] ?? 0);
+        $script_id = (int)($event['script_id'] ?? 0);
+        $property_id = (int)($event['property_id'] ?? 0);
+
+        if ($method_id > 0) {
+            if ($class_id > 0 && $object_id < 1) {
+                $links[] = array(
+                    'label' => 'Метод класса',
+                    'icon' => 'hierarchy-2',
+                    'url' => $root . 'admin.php?action=classes&md=classes&view_mode=edit_classes&id=' . $class_id
+                        . '&tab=methods&overwrite=1&method_id=' . $method_id,
+                );
+            } else {
+                $links[] = array(
+                    'label' => 'Метод',
+                    'icon' => 'braces',
+                    'url' => $root . 'admin.php?action=objects&md=objects&view_mode=edit_objects&id='
+                        . ($object_id > 0 ? $object_id : (int)$object['ID'])
+                        . '&tab=methods&overwrite=1&method_id=' . $method_id,
+                );
+            }
+        }
+        if ($script_id > 0) {
+            $links[] = array(
+                'label' => 'Сценарий',
+                'icon' => 'file-code',
+                'url' => $root . 'admin.php?action=scripts&md=scripts&view_mode=edit_scripts&id=' . $script_id,
+            );
+        }
+        if (($event['type'] ?? '') === 'property' && $property_id > 0) {
+            $links[] = array(
+                'label' => 'Свойство',
+                'icon' => 'adjustments-horizontal',
+                'url' => $root . 'admin.php?action=objects&md=objects&view_mode=edit_objects&id=' . (int)$object['ID']
+                    . '&tab=properties#prop-' . $property_id,
+            );
+        }
+        $module = trim((string)($event['module'] ?? ''));
+        if ($module !== '' && preg_match('/^[a-zA-Z0-9_]+$/D', $module)) {
+            $links[] = array(
+                'label' => 'Модуль',
+                'icon' => 'puzzle',
+                'url' => $root . 'admin.php?action=' . $module . '&md=' . $module,
+            );
+        }
+        return $links;
     }
 
     function buildPropertyHistoryResponse($object_id, $property_id, $range, $page = 1)

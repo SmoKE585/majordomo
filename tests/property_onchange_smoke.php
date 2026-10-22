@@ -41,7 +41,7 @@ namespace {
         }
         public function DbSafe1($value) { return str_replace("'", "''", $value); }
     };
-    require dirname(__DIR__) . '/lib/core/Database.php'; require dirname(__DIR__) . '/lib/core/PropertyChain.php'; require dirname(__DIR__) . '/lib/core/Properties.php';
+    require dirname(__DIR__) . '/lib/core/Database.php'; require dirname(__DIR__) . '/lib/core/PropertyChain.php'; require dirname(__DIR__) . '/lib/core/PropertyAudit.php'; require dirname(__DIR__) . '/lib/core/Properties.php';
     $locks = new MajorDoMo\Core\PropertyLock();
     $properties = new MajorDoMo\Core\Properties(new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(), new MajorDoMo\Core\MetadataCache(), $locks, new MajorDoMo\Core\WebSocketQueue(), new MajorDoMo\Core\CodeExecutor());
     $object = new class {

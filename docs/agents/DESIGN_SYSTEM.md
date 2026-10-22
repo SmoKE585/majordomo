@@ -710,6 +710,36 @@ legacy-обработчики продолжают работать. JS API: `MD
 
 Ответ endpoint: `{status: "ok", meta, range, current, stats, chart, history, history_pagination}`. График рисуется только для `meta.is_numeric` и `chart.has_data`; иначе компонент показывает empty-state, а журнал остаётся доступным. Кнопки «Обновить» и «CSV» находятся в футере drawer, период — в `md-tabs`. Длинные значения переносятся и прокручиваются внутри карточки текущего значения.
 
+#### Trace drawer
+
+`MDJUI::traceDrawer()` — always-on журнал изменений свойства: запуск, метод,
+сценарий, параметры на входе/выходе, старое/новое значение и готовые ссылки на
+метод, свойство, сценарий или модуль. Это не замена `historyDrawer`: история
+отвечает за график значения, trace — за причинную цепочку.
+
+```php
+<button type="button" class="md-btn md-btn--secondary"
+        data-md-trace-open
+        data-md-trace-target="propertyTrace"
+        data-trace-object-id="12"
+        data-trace-property-id="34"
+        data-trace-title="Kitchen.Temperature">
+  Цепочка
+</button>
+
+<?= MDJUI::traceDrawer([
+    'id' => 'propertyTrace',
+    'eyebrow' => 'Цепочка изменений',
+    'default_range' => '24h',
+]) ?>
+```
+
+Компонент монтируется в общий drawer host; данные грузит
+`resources/js/modules/admin_panel/41_trace.js`. Внутри — нативные `<details>`,
+поэтому длинная цепочка не требует отдельного JS-аккордеона. Для статичного
+демо в UI Kit используйте `demo_data`. Тёмная тема и 390 px наследуются от
+`md-drawer`.
+
 #### Popover и tooltip
 
 ```html

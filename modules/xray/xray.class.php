@@ -942,6 +942,11 @@ class xray extends module
             if ($op == 'getcontent') {
                 header("HTTP/1.0 200 OK\n");
                 header('Content-Type: application/json; charset=utf-8');
+                // X-Ray polls this endpoint every few seconds. Without explicit
+                // no-cache headers browsers/proxies may keep serving the first
+                // response, which looks like "no property changes for an hour".
+                header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+                header('Pragma: no-cache');
                 if ($this->view_mode == 'properties') {
                     $qry = "1";
                     if ($filter) {
@@ -965,8 +970,9 @@ class xray extends module
                         $responce['LIST'][$i]['SOURCE'] = $res[$i]['SOURCE'];
                     }
 
-                    $this->reverseResponseList($responce);
-
+                    // The SQL query is already ORDER BY UPDATED DESC. Reversing
+                    // it showed the oldest rows first: active sensors moved to
+                    // the bottom of a long table and looked "stuck".
                     echo json_encode($responce);
                 }
 

@@ -292,6 +292,63 @@ CREATE TABLE IF NOT EXISTS `project_modules` (
   `ADDED` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
+CREATE TABLE IF NOT EXISTS `property_audit_runs` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `TRACE_ID` char(32) NOT NULL,
+  `STARTED` datetime NOT NULL,
+  `LAST_SEEN` datetime NOT NULL,
+  `FINISHED` datetime DEFAULT NULL,
+  `STATUS` varchar(16) NOT NULL DEFAULT 'running',
+  `TRIGGER_TYPE` varchar(32) NOT NULL DEFAULT '',
+  `TRIGGER_TITLE` varchar(255) NOT NULL DEFAULT '',
+  `SOURCE` varchar(255) NOT NULL DEFAULT '',
+  `ACTOR` varchar(255) NOT NULL DEFAULT '',
+  `IP` varchar(45) NOT NULL DEFAULT '',
+  `REQUEST_URI` varchar(255) NOT NULL DEFAULT '',
+  `PARAMS` mediumtext DEFAULT NULL,
+  `RESULT` mediumtext DEFAULT NULL,
+  `ERROR` text DEFAULT NULL,
+  `CHAIN` text DEFAULT NULL,
+  `EVENTS_COUNT` int unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `uq_property_audit_trace` (`TRACE_ID`),
+  KEY `idx_property_audit_started` (`STARTED`),
+  KEY `idx_property_audit_status` (`STATUS`,`STARTED`)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `property_audit_events` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `RUN_ID` bigint unsigned NOT NULL DEFAULT 0,
+  `TRACE_ID` char(32) NOT NULL,
+  `ADDED` datetime NOT NULL,
+  `FINISHED` datetime DEFAULT NULL,
+  `DURATION_MS` int unsigned NOT NULL DEFAULT 0,
+  `TYPE` varchar(32) NOT NULL DEFAULT '',
+  `STATUS` varchar(16) NOT NULL DEFAULT 'running',
+  `TITLE` varchar(255) NOT NULL DEFAULT '',
+  `SUBTITLE` varchar(255) NOT NULL DEFAULT '',
+  `OBJECT_ID` int NOT NULL DEFAULT 0,
+  `PROPERTY_ID` int NOT NULL DEFAULT 0,
+  `PROPERTY_NAME` varchar(255) NOT NULL DEFAULT '',
+  `METHOD_ID` int NOT NULL DEFAULT 0,
+  `CLASS_ID` int NOT NULL DEFAULT 0,
+  `SCRIPT_ID` int NOT NULL DEFAULT 0,
+  `MODULE` varchar(100) NOT NULL DEFAULT '',
+  `OLD_VALUE` mediumtext DEFAULT NULL,
+  `NEW_VALUE` mediumtext DEFAULT NULL,
+  `SOURCE` varchar(255) NOT NULL DEFAULT '',
+  `PARAMS` mediumtext DEFAULT NULL,
+  `OUT_PARAMS` mediumtext DEFAULT NULL,
+  `RESULT` mediumtext DEFAULT NULL,
+  `ERROR` text DEFAULT NULL,
+  `CHAIN` text DEFAULT NULL,
+  PRIMARY KEY (`ID`),
+  KEY `idx_property_audit_events_trace` (`TRACE_ID`,`ID`),
+  KEY `idx_property_audit_events_property` (`PROPERTY_ID`,`OBJECT_ID`,`ADDED`),
+  KEY `idx_property_audit_events_added` (`ADDED`),
+  KEY `idx_property_audit_events_type` (`TYPE`,`ADDED`)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8;
+
 CREATE TABLE IF NOT EXISTS `properties` (
   `ID` int(10) UNSIGNED NOT NULL,
   `CLASS_ID` int(10) NOT NULL DEFAULT 0,

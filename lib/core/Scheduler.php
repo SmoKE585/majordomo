@@ -7,22 +7,41 @@ use \RuntimeException;
 
 final class Scheduler
 {
-    public function __construct(private Database $db, private ProcessRunner $processes) {}
+    public function __construct(private Database $db, private ProcessRunner $processes, private ?PropertyAudit $audit = null) {}
 
     public function execute($id, $token)
     {
         $job = $this->db->one('SELECT * FROM jobs WHERE ID=' . (int)$id . ' AND PROCESSED=0 AND EXPIRED=0');
         if (!$job || $token === '' || !hash_equals($job['CLAIM_TOKEN'], (string)$token)) return array('success' => false, 'error' => 'Job claim is no longer valid');
+        $auditStep = null;
+        $auditError = null;
         try {
             if (!defined('CALL_SOURCE')) define('CALL_SOURCE', 'Job: ' . $job['TITLE']);
+            if ($this->audit) {
+                $this->audit->begin('job', (string)$job['TITLE'], array('commands' => (string)$job['COMMANDS']), array(
+                    'source' => 'Job: ' . $job['TITLE'],
+                ));
+                $auditStep = $this->audit->stepStart('job', (string)$job['TITLE'], array(
+                    'subtitle' => 'Планировщик',
+                    'source' => 'Job: ' . $job['TITLE'],
+                    'params' => array('commands' => (string)$job['COMMANDS']),
+                ));
+            }
             setEvalCode($job['COMMANDS']);
             $result = eval($job['COMMANDS']);
             if ($result === false) throw new RuntimeException('Job returned false');
             return array('success' => true);
         } catch (Throwable $e) {
+            $auditError = $e;
             return array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage());
         } finally {
+            if ($this->audit) {
+                $this->audit->stepFinish($auditStep, isset($result) ? $result : null, $auditError);
+                $this->audit->finishRun($auditError ? 'error' : 'done', null, $auditError);
+                $this->audit->leave();
+            }
             setEvalCode();
+            unset($result);
         }
     }
 

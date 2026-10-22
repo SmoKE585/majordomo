@@ -14,7 +14,8 @@ final class Properties
         private PropertyLock $locks,
         private WebSocketQueue $websockets,
         private CodeExecutor $code,
-        private ?ErrorReporter $errors = null
+        private ?ErrorReporter $errors = null,
+        private ?PropertyAudit $audit = null
     ) {}
 
     /**
@@ -369,6 +370,32 @@ final class Properties
             $next_chain = PropertyChain::append($chain, $chain_token);
             if ($chain_stopped) {
                 $this->reportChainStop($object->object_title, $property, $chain);
+                $this->audit?->note('chain', 'Цикл привязок остановлен', array(
+                    'object_id' => (int)$object->id,
+                    'property_id' => (int)$id,
+                    'property_name' => $object->object_title . '.' . $property,
+                    'source' => $source,
+                    'chain' => $chain,
+                ));
+            }
+
+            // The journal stores actual value changes only. A repeated value is
+            // still delivered to ONCHANGE/subscribers, but does not create a
+            // second "changed" row for every sensor poll.
+            $audit_owned = false;
+            if ($this->audit && (string)$old_value !== (string)$value) {
+                $full_name = $object->object_title . '.' . $property;
+                $audit_owned = $this->audit->beginIfMissing('property', $full_name, array(), array('source' => $source));
+                $this->audit->propertyChanged(array(
+                    'title' => $full_name,
+                    'object_id' => (int)$object->id,
+                    'property_id' => (int)$id,
+                    'property_name' => $full_name,
+                    'old_value' => $old_value === false ? '' : $old_value,
+                    'new_value' => $value,
+                    'source' => $source,
+                    'chain' => $next_chain,
+                ));
             }
 
             $skip_notifications = !empty($v['LINKED_MODULES']) && !is_array($no_linked) && $no_linked;
@@ -391,77 +418,109 @@ final class Properties
                 if (!$this->db->insert('phistory_queue', $q_rec)) throw new RuntimeException('Property history was not queued');
             }
 
+            $abort_after_save = false;
             if (!$chain_stopped && isset($v['LINKED_MODULES']) && $v['LINKED_MODULES']) {
                 if (!is_array($no_linked) && $no_linked) {
-                    return;
-                } elseif (!is_array($no_linked)) {
-                    $no_linked = array();
-                }
-                // A module handling a notification must not receive its own echo.
-                $delivery_source = PropertyChain::source();
-                if ($delivery_source !== '') $no_linked[$delivery_source] = 0;
-
-                $tmp = explode(',', $v['LINKED_MODULES']);
-                $total = count($tmp);
-                $seen = array();
-
-                startMeasure('linkedModulesProcessing');
-                for ($i = 0; $i < $total; $i++) {
-                    $linked_module = trim($tmp[$i]);
-                    if ($linked_module === '' || isset($no_linked[$linked_module]) || isset($seen[$linked_module])) {
-                        continue;
+                    // Legacy callers use a truthy $no_linked as "value only":
+                    // no module deliveries and no ONCHANGE after this point.
+                    $abort_after_save = true;
+                } else {
+                    if (!is_array($no_linked)) {
+                        $no_linked = array();
                     }
-                    $seen[$linked_module] = true;
-                    startMeasure('linkedModule' . $linked_module);
-                    // The worker validates availability and removes confirmed stale subscribers.
-                    $params = array();
-                    $params['object'] = $object->object_title;
-                    $params['property'] = $property;
-                    $params['value'] = $value;
-                    $params['_chain'] = $next_chain;
-                    $url = '/api/modulePropertySet/' . urlencode($linked_module);
-                    try {
-                        if (!Core::api()->request($url, 'GET', $params)) throw new RuntimeException('Linked operation was not queued');
-                    } catch (Throwable $e) {
-                        // The value is already saved. A failed notification is
-                        // reported once per module/window, not per value.
-                        $linked_operation_errors[] = $e;
-                        $this->errors?->report('property_delivery',
-                            'Не удалось поставить в очередь уведомление модулю ' . $linked_module
-                            . ' для ' . $object->object_title . '.' . $property . ': ' . $e->getMessage(),
-                            $linked_module);
+                    // A module handling a notification must not receive its own echo.
+                    $delivery_source = PropertyChain::source();
+                    if ($delivery_source !== '') $no_linked[$delivery_source] = 0;
+
+                    $tmp = explode(',', $v['LINKED_MODULES']);
+                    $total = count($tmp);
+                    $seen = array();
+
+                    startMeasure('linkedModulesProcessing');
+                    for ($i = 0; $i < $total; $i++) {
+                        $linked_module = trim($tmp[$i]);
+                        if ($linked_module === '' || isset($no_linked[$linked_module]) || isset($seen[$linked_module])) {
+                            continue;
+                        }
+                        $seen[$linked_module] = true;
+                        startMeasure('linkedModule' . $linked_module);
+                        // The worker validates availability and removes confirmed stale subscribers.
+                        $params = array();
+                        $params['object'] = $object->object_title;
+                        $params['property'] = $property;
+                        $params['value'] = $value;
+                        $params['_chain'] = $next_chain;
+                        PropertyAudit::attach($params);
+                        $url = '/api/modulePropertySet/' . urlencode($linked_module);
+                        try {
+                            if (!Core::api()->request($url, 'GET', $params)) throw new RuntimeException('Linked operation was not queued');
+                        } catch (Throwable $e) {
+                            // The value is already saved. A failed notification is
+                            // reported once per module/window, not per value.
+                            $linked_operation_errors[] = $e;
+                            $this->errors?->report('property_delivery',
+                                'Не удалось поставить в очередь уведомление модулю ' . $linked_module
+                                . ' для ' . $object->object_title . '.' . $property . ': ' . $e->getMessage(),
+                                $linked_module);
+                        }
+                        endMeasure('linkedModule' . $linked_module);
                     }
-                    endMeasure('linkedModule' . $linked_module);
+                    endMeasure('linkedModulesProcessing');
                 }
-                endMeasure('linkedModulesProcessing');
+            }
+
+            if ($abort_after_save) {
+                if ($audit_owned) {
+                    $this->audit?->finishRun('done');
+                    $this->audit?->leave();
+                }
+                return;
             }
 
         } catch (Throwable $e) {
             $this->cache->delete($cached_name ?? ('MJD:' . $object->object_title . '.' . $property));
+            if (!empty($audit_owned)) {
+                $this->audit?->finishRun('error', null, $e);
+                $this->audit?->leave();
+            }
             throw $e;
         } finally {
             $this->locks->release($property_lock);
         }
 
-        if (!$chain_stopped && isset($prop['ONCHANGE']) && $prop['ONCHANGE']) {
-            global $property_linked_history;
-            if (!isset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']])) {
-                $property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']] = 1;
-                $params = array();
-                $params['PROPERTY'] = $property;
-                $params['NEW_VALUE'] = (string)$value;
-                $params['OLD_VALUE'] = (string)$old_value;
-                $params['SOURCE'] = (string)$source;
-                $params['NO_LINKED'] = $no_linked;
-                $params['_chain'] = $next_chain;
-                try {
-                    // Always enqueue: a web request must not wait for user code,
-                    // and web/CLI must behave identically. The worker executes
-                    // the method and carries the chain into nested writes.
-                    $object->raiseEvent($prop['ONCHANGE'], $params);
-                } finally {
-                    unset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']]);
+        try {
+            if (!$chain_stopped && isset($prop['ONCHANGE']) && $prop['ONCHANGE']) {
+                global $property_linked_history;
+                if (!isset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']])) {
+                    $property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']] = 1;
+                    $params = array();
+                    $params['PROPERTY'] = $property;
+                    $params['NEW_VALUE'] = (string)$value;
+                    $params['OLD_VALUE'] = (string)$old_value;
+                    $params['SOURCE'] = (string)$source;
+                    $params['NO_LINKED'] = $no_linked;
+                    $params['_chain'] = $next_chain;
+                    PropertyAudit::attach($params);
+                    try {
+                        // Always enqueue: a web request must not wait for user code,
+                        // and web/CLI must behave identically. The worker executes
+                        // the method and carries the chain into nested writes.
+                        $object->raiseEvent($prop['ONCHANGE'], $params);
+                    } finally {
+                        unset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']]);
+                    }
                 }
+            }
+        } catch (Throwable $e) {
+            if ($audit_owned) {
+                $this->audit?->finishRun('error', null, $e);
+                $this->audit?->leave();
+            }
+            throw $e;
+        } finally {
+            if ($audit_owned) {
+                $this->audit?->finishRun('done');
+                $this->audit?->leave();
             }
         }
 

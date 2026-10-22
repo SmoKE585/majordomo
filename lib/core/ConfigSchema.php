@@ -73,6 +73,9 @@ final class ConfigSchema
             'LOWER_BACKGROUND_PROCESSES' => array('type' => 'boolean', 'optional' => true),
             'ENABLE_PANEL_ACCELERATION' => array('type' => 'boolean', 'optional' => true),
             'PROPERTY_DELIVERY_STRICT' => array('type' => 'boolean', 'default' => false, 'constant' => false),
+            // Always-on property audit journal. 0 keeps entries indefinitely;
+            // a positive value prunes old runs during startup maintenance.
+            'PROPERTY_AUDIT_RETENTION_DAYS' => array('type' => 'integer', 'default' => 0, 'constant' => false),
 
             // Logging --------------------------------------------------------
             'LOG_DIRECTORY' => array('type' => 'string', 'optional' => true),
