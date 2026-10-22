@@ -321,6 +321,11 @@ php tools/config-audit.php
 
 ## 9. Что нельзя делать без необходимости
 
+Команды API: `php majordomo api:tokens` — список без секретов;
+`php majordomo api:revoke <id>` — немедленный отзыв;
+`php majordomo api:spec` — спецификация OpenAPI без БД. Для автоматизации
+доступен `--json`. Выпуск и перевыпуск — в разделе API панели.
+
 - Запускать `php majordomo install:reset` на рабочей системе «просто так»: мастер перехватит админку, сайт и API до завершения настройки.
 - Запускать `php majordomo config:migrate --write --force` без резервной копии `.env`.
 - Запускать `php majordomo config:clear` и одновременно править `.env`: кеш может перезаписаться.

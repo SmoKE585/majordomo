@@ -339,6 +339,16 @@ class MDJUI
         return self::render('card', $props, $slot);
     }
 
+    public static function disclosure(array $props = array(), $slot = '')
+    {
+        return self::render('disclosure', $props, $slot);
+    }
+
+    public static function modal(array $props = array(), $slot = '')
+    {
+        return self::render('modal', $props, $slot);
+    }
+
     public static function drawer(array $props = array(), $slot = '')
     {
         return self::render('drawer', $props, $slot);

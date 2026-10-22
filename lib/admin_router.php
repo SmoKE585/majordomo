@@ -90,6 +90,26 @@ function mdj_admin_route_table($rootHtml = null)
             => '?(panel:{action=yandexhome})&md=yandexhome&view_mode=delete_yandexhome_devices&id=\1',
         '/^' . $root . 'panel\/yandexhome\/(\d+)\.html/is'
             => '?(panel:{action=yandexhome})&md=yandexhome&view_mode=edit_yandexhome_devices&id=\1',
+        '/^' . $root . 'panel\/yadevices\/settings\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=settings',
+        '/^' . $root . 'panel\/yadevices\/about\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=about',
+        '/^' . $root . 'panel\/yadevices\/auth\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=auth',
+        '/^' . $root . 'panel\/yadevices\/devices\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=search_yadevices',
+        '/^' . $root . 'panel\/yadevices\/scenarios\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=search_scenarios',
+        '/^' . $root . 'panel\/yadevices\/stations\/(\d+)\/delete\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=delete_yastations&id=\1',
+        '/^' . $root . 'panel\/yadevices\/stations\/(\d+)\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=edit_yastations&id=\1',
+        '/^' . $root . 'panel\/yadevices\/devices\/(\d+)\/delete\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=delete_yadevice&id=\1',
+        '/^' . $root . 'panel\/yadevices\/devices\/(\d+)\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=edit_yadevices&id=\1',
+        '/^' . $root . 'panel\/yadevices\/(\d+)\.html/is'
+            => '?(panel:{action=yadevices})&md=yadevices&view_mode=edit_yastations&id=\1',
         '/^' . $root . 'panel\/locations\/add\.html/is'
             => '?(panel:{action=locations})&md=locations&view_mode=edit_locations',
         '/^' . $root . 'panel\/locations\/(\d+)\/delete\.html/is'
@@ -961,6 +981,83 @@ function mdj_admin_build_pretty($state)
             $dropView = true;
             return array(
                 'path' => '/panel/yandexhome.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        return null;
+    }
+
+    if ($module === 'yadevices') {
+        if ($parents) {
+            return null;
+        }
+        if ($id > 0 && $tab === '' && ($view === '' || $view === 'edit_yastations')) {
+            $dropView = $view === 'edit_yastations';
+            return array(
+                'path' => '/panel/yadevices/stations/' . $id . '.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id > 0 && $tab === '' && $view === 'delete_yastations') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yadevices/stations/' . $id . '/delete.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id > 0 && $tab === '' && ($view === '' || $view === 'edit_yadevices')) {
+            $dropView = $view === 'edit_yadevices';
+            return array(
+                'path' => '/panel/yadevices/devices/' . $id . '.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id > 0 && $tab === '' && $view === 'delete_yadevice') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yadevices/devices/' . $id . '/delete.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && $view === 'search_yadevices') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yadevices/devices.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && $view === 'search_scenarios') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yadevices/scenarios.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && ($view === 'settings' || $view === 'update_settings')) {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yadevices/settings.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && $view === 'auth') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yadevices/auth.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && $view === 'about') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yadevices/about.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && ($view === '' || $view === 'search_yastations')) {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yadevices.html',
                 'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
             );
         }

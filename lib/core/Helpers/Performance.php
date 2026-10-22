@@ -1,0 +1,141 @@
+<?php
+
+/** System helpers. Public names and argument defaults are part of the module API. */
+
+/**
+ * Printing report for all blocks
+ * @param mixed $hidden n/a (default 1)
+ * @return void
+ */
+function PerformanceReport($no_print = 0)
+{
+    global $perf_data;
+
+    $result = array();
+    if (!is_array($perf_data)) return $result;
+
+    foreach ($perf_data as $k => $v) {
+        if (!isset($v['NUM']) || !$v['NUM']) {
+            EndMeasure($k);
+        }
+    }
+
+    foreach ($perf_data as $k => $v) {
+        if (isset($perf_data['TOTAL']) && $perf_data['TOTAL']['TIME']) {
+            $v['PROC'] = ((int)($v['TIME'] / $perf_data['TOTAL']['TIME'] * 100 * 100)) / 100;
+        } else {
+            $v['PROC'] = 0;
+        }
+        $rs = "$k (" . $v['NUM'] . "): " . round($v['TIME'], 4) . " " . round($v['PROC'], 2) . "%";
+        if (isset($v['MEMORY_START'])) {
+            $rs .= ' M (s): ' . $v['MEMORY_START'] . 'b';
+        }
+        if (isset($v['MEMORY_END'])) {
+            $rs .= ' M (e): ' . $v['MEMORY_END'] . 'b';
+        }
+        if (!isset($v['NUM']) || !$v['NUM']) {
+            $result[] = "Not finished $k";
+        } else {
+            $result[] = $rs;
+        }
+    }
+
+    if (!$no_print) {
+        echo "<!-- BEGIN PERFORMANCE REPORT\n";
+        echo implode("\n", $result);
+        echo "\n END PERFORMANCE REPORT -->";
+    }
+    return $result;
+}
+
+/**
+ * Ending measurement of time for specified block
+ * @param mixed $mpoint monitoring block name
+ * @param mixed $save_to_db Save to DB (Default 0) Currently not used
+ * @return void
+ */
+function endMeasure($mpoint)
+{
+    global $perf_data;
+
+    if (!isset($perf_data[$mpoint]['START'])) {
+        return;
+    }
+
+    $perf_data[$mpoint]['END'] = getmicrotime();
+
+    if (defined('TRACK_MEMORY_USAGE')) {
+        if (!isset($perf_data[$mpoint]['MEMORY_END']) && function_exists('memory_get_usage')) {
+            $perf_data[$mpoint]['MEMORY_END'] = memory_get_usage();
+        }
+    }
+
+    if (!isset($perf_data[$mpoint]['TIME'])) {
+        $perf_data[$mpoint]['TIME'] = 0;
+    }
+
+    $perf_data[$mpoint]['TIME'] += $perf_data[$mpoint]['END'] - $perf_data[$mpoint]['START'];
+
+    if (!isset($perf_data[$mpoint]['NUM'])) {
+        $perf_data[$mpoint]['NUM'] = 0;
+    }
+
+    $perf_data[$mpoint]['NUM']++;
+
+    //$save_to_db=1;
+    /*
+    if ($save_to_db) {
+        global $db;
+        if ($db->dbh) {
+            $rec = array();
+            $rec['OPERATION'] = substr($mpoint, 0, 200);
+            $rec['COUNTER'] = 1;
+            $rec['TIMEUSED'] = $perf_data[$mpoint]['TIME'];
+            $rec['ADDED'] = date('Y-m-d H:i:s');
+            if ($_SERVER['REQUEST_URI']) {
+                $rec['SOURCE'] = 'web';
+            } else {
+                $rec['SOURCE'] = 'cmd';
+            }
+            SQLInsert('performance_log', $rec);
+        }
+    }
+*/
+}
+
+/**
+ * Getting micro-time
+ * @return double|int
+ */
+function getmicrotime()
+{
+    list($usec, $sec) = explode(" ", microtime());
+
+    return ((float)$usec + (float)$sec);
+}
+
+/**
+ * Starting measurement of time for specified block
+ * @param mixed $mpoint Monitoring block name
+ * @return void
+ */
+function startMeasure($mpoint)
+{
+    global $perf_data;
+
+    global $script_started_time;
+    if ($mpoint == 'TOTAL' && $script_started_time) {
+        $perf_data[$mpoint]['START'] = $script_started_time;
+    } else {
+        $perf_data[$mpoint]['START'] = getmicrotime();
+    }
+
+    if (defined('TRACK_MEMORY_USAGE')) {
+        if ((isset($perf_data[$mpoint]['MEMORY_START']) && !$perf_data[$mpoint]['MEMORY_START'])
+            || !isset($perf_data[$mpoint]['MEMORY_START'])
+            && function_exists('memory_get_usage')
+        ) {
+            $perf_data[$mpoint]['MEMORY_START'] = memory_get_usage();
+        }
+    }
+}

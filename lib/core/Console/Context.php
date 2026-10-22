@@ -15,10 +15,17 @@ final class Context
         private ?\Closure $runtimeReader = null,
         private ?\Closure $usersFactory = null,
         private ?TerminalInput $terminal = null,
-        private ?\Closure $modesFactory = null
+        private ?\Closure $modesFactory = null,
+        private ?\Closure $apiTokensFactory = null
     ) {}
 
     public function terminalInput(): TerminalInput { return $this->terminal ??= new TerminalInput(); }
+
+    public function apiTokens(): \MajorDoMo\Core\Api\TokenStore
+    {
+        $this->config();
+        return $this->apiTokensFactory !== null ? ($this->apiTokensFactory)() : \MajorDoMo\Core\Api\TokenStore::connect();
+    }
 
     public function users(): UserAccounts
     {

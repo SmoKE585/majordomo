@@ -90,6 +90,9 @@ final class OperationWorker
                         }
                     }
                 }
+            } elseif ($item['DATANAME'] === 'api') {
+                $result = Core::api()->request($data['path'], $data['method'], $params, true);
+                if ($result === false) throw new RuntimeException('Internal API operation failed');
             } else throw new InvalidArgumentException('Unknown core operation');
             if ($item['DATANAME'] === 'modulepropertyset' && $result === false) throw new RuntimeException('Module handler returned false');
             if (!is_array($result) || !array_key_exists('success', $result)) $result = array('success' => true);

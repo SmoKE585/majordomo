@@ -49,7 +49,7 @@ namespace {
     function isRebootRequired() { return false; }
     function DebMes($message, $channel) { throw new RuntimeException($message); }
 PHP;
-$facade = file_get_contents($project . '/lib/common.class.php');
+$facade = file_get_contents($project . '/lib/core/Helpers/Scheduler.php');
 if (!preg_match('/function runScheduledJobs\([^}]+\}/', $facade, $match)) throw new RuntimeException('Scheduler facade not found');
 $loader .= "\n" . $match[0] . "\n";
 $loader .= 'require ' . var_export($project . '/lib/core/Scheduler.php', true) . ";\n";

@@ -55,7 +55,7 @@ try {
     $runtime = array('cycle_mqttrun' => (string)time(), 'cycle_mqttstatus' => 'running');
     $application = new Application($root, static function () use (&$runtime) { return $runtime; });
     [$code, $data] = runCli($application, array());
-    check($code === 0 && count($data['data']['commands']) === 27, 'All concrete command classes are registered');
+    check($code === 0 && count($data['data']['commands']) === 30, 'All concrete command classes are registered');
     [$code, $data] = runCli($application, array('list', 'cycles'));
     check($code === 0 && count($data['data']['commands']) === 6, 'Group filter lists cycle commands');
     foreach ($application->commands() as $command) {

@@ -49,6 +49,9 @@ foreach($preload_libraries as $lib_file) {
 $ignore_libs[] = 'loader.php';
 $ignore_libs[] = 'threads.php';
 
+// Register all public system helpers through their compatibility entry points.
+require_once __DIR__ . '/core/Helpers/bootstrap.php';
+
 // liblary modules loader
 if ($lib_dir = @opendir("./lib")) {
     while (($lib_file = readdir($lib_dir)) !== false) {

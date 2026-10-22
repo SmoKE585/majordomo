@@ -205,4 +205,9 @@ PY,
             <span>Кнопка копирует текущую вкладку. Переключение языка работает с клавиатуры стрелками и Home/End.</span>
         </div>
     <?php }); ?>
+    <?php md_ui_demo(array('title' => 'Раскрывающийся блок и модальное окно', 'desc' => 'Общие компоненты инструкций и подтверждений.', 'api' => 'MDJUI::disclosure() · MDJUI::modal()', 'badge' => 'компонент', 'canvas_class' => 'md-ui-demo__canvas--block', 'code' => '<?= MDJUI::disclosure(["title" => "Описание"], "<p>Содержимое</p>") ?>'), function () { ?>
+        <?= MDJUI::disclosure(array('title' => 'Описание операции', 'description' => 'Раскрывается мышью и клавиатурой', 'badge' => 'GET', 'badge_tone' => 'success'), '<p>Параметры, инструкции и примеры остаются внутри общего компонента.</p>') ?>
+        <?= MDJUI::button('Открыть модальное окно', array('variant' => 'secondary', 'attrs' => array('data-bs-toggle' => 'modal', 'data-bs-target' => '#md-kit-modal'))) ?>
+        <?= MDJUI::modal(array('id' => 'md-kit-modal', 'title' => 'Общее модальное окно', 'footer' => MDJUI::button('Закрыть', array('variant' => 'secondary', 'attrs' => array('data-bs-dismiss' => 'modal')))), '<p>Bootstrap управляет фокусом, Esc и возвратом к кнопке.</p>') ?>
+    <?php }); ?>
 </section>

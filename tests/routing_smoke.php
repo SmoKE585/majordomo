@@ -110,6 +110,16 @@ $cases = [
     '/panel/yandexhome/5/delete.html' => ['module' => 'yandexhome', 'params' => ['id' => '5', 'view_mode' => 'delete_yandexhome_devices']],
     '/panel/yandexhome/settings.html' => ['module' => 'yandexhome', 'params' => ['view_mode' => 'settings']],
     '/panel/yandexhome/about.html' => ['module' => 'yandexhome', 'params' => ['view_mode' => 'about']],
+    '/panel/yadevices.html' => ['module' => 'yadevices', 'params' => []],
+    '/panel/yadevices/devices.html' => ['module' => 'yadevices', 'params' => ['view_mode' => 'search_yadevices']],
+    '/panel/yadevices/scenarios.html' => ['module' => 'yadevices', 'params' => ['view_mode' => 'search_scenarios']],
+    '/panel/yadevices/settings.html' => ['module' => 'yadevices', 'params' => ['view_mode' => 'settings']],
+    '/panel/yadevices/auth.html' => ['module' => 'yadevices', 'params' => ['view_mode' => 'auth']],
+    '/panel/yadevices/about.html' => ['module' => 'yadevices', 'params' => ['view_mode' => 'about']],
+    '/panel/yadevices/stations/5.html' => ['module' => 'yadevices', 'params' => ['id' => '5', 'view_mode' => 'edit_yastations']],
+    '/panel/yadevices/stations/5/delete.html' => ['module' => 'yadevices', 'params' => ['id' => '5', 'view_mode' => 'delete_yastations']],
+    '/panel/yadevices/devices/7.html' => ['module' => 'yadevices', 'params' => ['id' => '7', 'view_mode' => 'edit_yadevices']],
+    '/panel/yadevices/devices/7/delete.html' => ['module' => 'yadevices', 'params' => ['id' => '7', 'view_mode' => 'delete_yadevice']],
     '/panel/locations.html' => ['module' => 'locations', 'params' => []],
     '/panel/locations/add.html' => ['module' => 'locations', 'params' => ['view_mode' => 'edit_locations']],
     '/panel/locations/5.html' => ['module' => 'locations', 'params' => ['id' => '5', 'view_mode' => 'edit_locations']],
@@ -243,6 +253,46 @@ routingCheck(
     '[PRETTY] yandexhome about'
 );
 routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices') === '/panel/yadevices.html',
+    '[PRETTY] yadevices list'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=search_yadevices') === '/panel/yadevices/devices.html',
+    '[PRETTY] yadevices devices'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=search_scenarios') === '/panel/yadevices/scenarios.html',
+    '[PRETTY] yadevices scenarios'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=settings') === '/panel/yadevices/settings.html',
+    '[PRETTY] yadevices settings'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=auth') === '/panel/yadevices/auth.html',
+    '[PRETTY] yadevices auth'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=about') === '/panel/yadevices/about.html',
+    '[PRETTY] yadevices about'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=edit_yastations&id=5') === '/panel/yadevices/stations/5.html',
+    '[PRETTY] yadevices station edit'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=delete_yastations&id=5') === '/panel/yadevices/stations/5/delete.html',
+    '[PRETTY] yadevices station delete'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=edit_yadevices&id=7') === '/panel/yadevices/devices/7.html',
+    '[PRETTY] yadevices device edit'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yadevices&view_mode=delete_yadevice&id=7') === '/panel/yadevices/devices/7/delete.html',
+    '[PRETTY] yadevices device delete'
+);
+routingCheck(
     mdj_admin_pretty_url('/admin.php?action=locations') === '/panel/locations.html',
     '[PRETTY] locations list'
 );
@@ -346,7 +396,7 @@ $printUrl = '/admin.php?pd=cGFuZWw6e2FjdGlvbj1jbGFzc2VzfQ%3D%3Dpz_&md=classes&vi
 routingCheck(mdj_admin_pretty_url($printUrl) === $printUrl, '[FALLBACK] print URL must stay legacy');
 
 // Every pretty URL we emit must resolve back to the same state.
-foreach (array($objectPath, '/panel/class/10/objects.html', '/panel/class/10/methods/45.html', '/panel/script/10.html', '/panel/users/5.html', '/panel/users/add.html', '/panel/users/5/delete.html', '/panel/pinghosts/5.html', '/panel/pinghosts/add.html', '/panel/pinghosts/5/delete.html', '/panel/yandexhome.html', '/panel/yandexhome/5.html', '/panel/yandexhome/add.html', '/panel/yandexhome/5/delete.html', '/panel/yandexhome/settings.html', '/panel/yandexhome/about.html', '/panel/locations/5.html', '/panel/locations/5/logic.html', '/panel/locations/add.html', '/panel/locations/5/up.html', '/panel/system_errors/10.html', '/panel/system_errors/10/history.html', '/panel/system_errors/readall.html', '/panel/system_errors/test.html', '/panel/mqtt/10.html', '/panel/mqtt/add.html', '/panel/mqtt/10/delete.html', '/panel/mqtt/settings.html', '/panel/mqtt/clear-trash.html', '/panel/mqtt/optimize.html', '/panel/knowledge_base.html', '/panel/knowledge_base/user/commands.html', '/panel/knowledge_base/module/yandexhome/setup.html') as $pretty) {
+foreach (array($objectPath, '/panel/class/10/objects.html', '/panel/class/10/methods/45.html', '/panel/script/10.html', '/panel/users/5.html', '/panel/users/add.html', '/panel/users/5/delete.html', '/panel/pinghosts/5.html', '/panel/pinghosts/add.html', '/panel/pinghosts/5/delete.html', '/panel/yandexhome.html', '/panel/yandexhome/5.html', '/panel/yandexhome/add.html', '/panel/yandexhome/5/delete.html', '/panel/yandexhome/settings.html', '/panel/yandexhome/about.html', '/panel/yadevices.html', '/panel/yadevices/devices.html', '/panel/yadevices/scenarios.html', '/panel/yadevices/settings.html', '/panel/yadevices/auth.html', '/panel/yadevices/about.html', '/panel/yadevices/stations/5.html', '/panel/yadevices/stations/5/delete.html', '/panel/yadevices/devices/7.html', '/panel/yadevices/devices/7/delete.html', '/panel/locations/5.html', '/panel/locations/5/logic.html', '/panel/locations/add.html', '/panel/locations/5/up.html', '/panel/system_errors/10.html', '/panel/system_errors/10/history.html', '/panel/system_errors/readall.html', '/panel/system_errors/test.html', '/panel/mqtt/10.html', '/panel/mqtt/add.html', '/panel/mqtt/10/delete.html', '/panel/mqtt/settings.html', '/panel/mqtt/clear-trash.html', '/panel/mqtt/optimize.html', '/panel/knowledge_base.html', '/panel/knowledge_base/user/commands.html', '/panel/knowledge_base/module/yandexhome/setup.html') as $pretty) {
     $query = routingResolve($pretty);
     routingCheck($query !== null, "[ROUNDTRIP] {$pretty} did not resolve");
     if ($query !== null) {

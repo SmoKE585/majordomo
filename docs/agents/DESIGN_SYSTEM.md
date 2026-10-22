@@ -1,5 +1,19 @@
 # MajorDoMo Design System
 
+### Общие раскрывающиеся блоки и модальные окна
+
+`MDJUI::disclosure($props, $slot)` — native details/summary с клавиатурной
+навигацией. Параметры: `title`, `description`, `badge`, `badge_tone`, `open`,
+`id`, `class`, `attrs`. CSS — `md-disclosure__*`, цвета/отступы на токенах.
+Используется для описания операций API; подходит для инструкций и подробностей.
+
+`MDJUI::modal($props, $slot)` — единая оболочка Bootstrap 5 modal с `md-modal`,
+заголовком и кнопкой закрытия. Обязателен уникальный `id`; параметры `title`,
+`footer` (HTML из компонентов), `size` (`sm/lg/xl`), `attrs`.
+Открытие — Bootstrap `data-bs-toggle="modal"`/`data-bs-target` или Modal API.
+Не вставляйте интерактивные элементы в summary раскрывающегося блока.
+Демо обоих компонентов — UI Kit → «Лента, подсказки и код».
+
 Единая дизайн-система админки MajorDoMo. Документ обязателен для людей и ИИ-агентов, которые создают или меняют интерфейс панели управления.
 
 - Живая документация: **`/admin.php?action=ui_kit`**

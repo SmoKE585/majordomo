@@ -165,6 +165,11 @@ class panel extends module
             new modes();
         }
 
+        if (!defined('NO_DATABASE_CONNECTION') && !isModuleInstalled('api')) {
+            require_once DIR_MODULES . 'api/api.class.php';
+            new api();
+        }
+
         $requestedAction = isset($this->action) && is_scalar($this->action) ? trim((string)$this->action) : '';
         $requestedModuleValue = gr('md');
         $requestedModule = is_scalar($requestedModuleValue) ? trim((string)$requestedModuleValue) : '';
@@ -231,12 +236,14 @@ class panel extends module
             'mqtt' => 'ti-broadcast',
             'zigbee' => 'ti-access-point',
             'pinghosts' => 'ti-server',
+            'yadevices' => 'ti-device-speaker',
             'yandexhome' => 'ti-home-bolt',
             'duration_input' => 'ti-hourglass',
             'blockly_code' => 'ti-puzzle',
             'shoutbox' => 'ti-messages',
             'ui_kit' => 'ti-palette',
-            'knowledge_base' => 'ti-book'
+            'knowledge_base' => 'ti-book',
+            'api' => 'ti-api'
         );
 
         $old_cat = 'some_never_should_be_category_name';

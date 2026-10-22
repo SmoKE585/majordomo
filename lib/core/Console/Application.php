@@ -14,7 +14,8 @@ final class Application
         private ?\Closure $runtimeReader = null,
         private ?\Closure $usersFactory = null,
         private ?TerminalInput $terminalInput = null,
-        private ?\Closure $modesFactory = null
+        private ?\Closure $modesFactory = null,
+        private ?\Closure $apiTokensFactory = null
     )
     {
         foreach (array(
@@ -29,6 +30,7 @@ final class Application
             new Commands\InstallResetCommand(), new Commands\InstallCompleteCommand(),
             new Commands\UsersListCommand(), new Commands\UsersPasswordCommand(),
             new Commands\ModesListCommand(), new Commands\ModesSetCommand(),
+            new Commands\ApiTokensCommand(), new Commands\ApiRevokeCommand(), new Commands\ApiSpecCommand(),
         ) as $command) $this->register($command);
     }
 
@@ -69,7 +71,7 @@ final class Application
                 $this->describe($command, $output);
                 return $output->finish(0);
             }
-            $context = new Context($this->root, $this, $this->runtimeReader, $this->usersFactory, $this->terminalInput, $this->modesFactory);
+            $context = new Context($this->root, $this, $this->runtimeReader, $this->usersFactory, $this->terminalInput, $this->modesFactory, $this->apiTokensFactory);
             return $output->finish($command->execute($input, $output, $context));
         } catch (\InvalidArgumentException $error) {
             $output->error($error->getMessage());

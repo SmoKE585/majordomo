@@ -1,0 +1,104 @@
+// Real browser verification against api_http_smoke.php's isolated fixture.
+import {spawn} from 'node:child_process';
+import {existsSync} from 'node:fs';
+import {writeFile} from 'node:fs/promises';
+import {createServer} from 'node:net';
+import path from 'node:path';
+
+const [base, fixtureRoot] = process.argv.slice(2);
+if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(base || '') || !/^mjd-api-[a-f0-9]+$/.test(path.basename(fixtureRoot || ''))) throw new Error('Only isolated loopback fixture is allowed');
+const chrome = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find(existsSync);
+if (!chrome) throw new Error('Chrome/Edge unavailable');
+const listener = createServer();
+await new Promise(resolve => listener.listen(0, '127.0.0.1', resolve));
+const port = listener.address().port;
+await new Promise(resolve => listener.close(resolve));
+const browser = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--remote-debugging-port=' + port, '--user-data-dir=' + path.join(fixtureRoot, 'browser-profile'), 'about:blank'], {stdio: 'ignore', windowsHide: true});
+let socket;
+let checks = 0;
+const check = (condition, message) => { if (!condition) throw new Error(message); checks++; };
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+try {
+    let page;
+    for (let i = 0; i < 100; i++) {
+        try { page = await (await fetch('http://127.0.0.1:' + port + '/json/new?about:blank', {method: 'PUT'})).json(); break; }
+        catch { await pause(100); }
+    }
+    if (!page?.webSocketDebuggerUrl) throw new Error('Browser debugger did not start');
+    socket = new WebSocket(page.webSocketDebuggerUrl);
+    await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, {once: true}); socket.addEventListener('error', reject, {once: true}); });
+    let sequence = 0;
+    const pending = new Map();
+    const errors = [];
+    socket.addEventListener('message', event => {
+        const response = JSON.parse(event.data);
+        if (response.id) {
+            const entry = pending.get(response.id);
+            if (!entry) return;
+            pending.delete(response.id); clearTimeout(entry.timer);
+            if (response.error) entry.reject(new Error(response.error.message)); else entry.resolve(response.result);
+        } else if (response.method === 'Runtime.exceptionThrown') errors.push(response.params.exceptionDetails.text + ': ' + (response.params.exceptionDetails.exception?.description || ''));
+    });
+    const send = (method, params = {}) => new Promise((resolve, reject) => {
+        const id = ++sequence;
+        const timer = setTimeout(() => { pending.delete(id); reject(new Error('CDP timeout: ' + method)); }, 15000);
+        pending.set(id, {resolve, reject, timer}); socket.send(JSON.stringify({id, method, params}));
+    });
+    const evaluate = async expression => {
+        const value = await send('Runtime.evaluate', {expression, returnByValue: true, awaitPromise: true});
+        if (value.exceptionDetails) throw new Error(value.exceptionDetails.exception?.description || value.exceptionDetails.text);
+        return value.result.value;
+    };
+    const waitFor = async expression => {
+        for (let i = 0; i < 100; i++) { if (await evaluate(expression)) return; await pause(75); }
+        const diagnostics = await evaluate('({feedback:document.querySelector("[data-api-feedback]")?.textContent, ready:document.readyState, url:location.pathname})');
+        throw new Error('UI condition did not become true: ' + expression + '; ' + JSON.stringify(diagnostics) + '; exceptions: ' + errors.join('; '));
+    };
+    await send('Page.enable'); await send('Runtime.enable');
+    for (const theme of ['light', 'dark']) {
+        for (const width of [1440, 390]) {
+            await send('Emulation.setDeviceMetricsOverride', {width, height: 1000, deviceScaleFactor: 1, mobile: false});
+            await send('Page.navigate', {url: base + '/preview?theme=' + theme});
+            await waitFor('document.querySelector("[data-md-api]")?.dataset.apiBound === "1"');
+            await evaluate('document.fonts.ready.then(() => true)');
+            await pause(200);
+            const dimensions = await evaluate('({scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth, tabs: [...document.querySelectorAll(".tab-pane")].filter(e => getComputedStyle(e).display !== "none").length, operations: document.querySelectorAll("[data-api-operation]").length})');
+            check(dimensions.scroll <= dimensions.client + 1, theme + ' ' + width + ': no horizontal page overflow');
+            check(dimensions.tabs === 1 && dimensions.operations >= 20, 'Only selected tab visible, all operation cards rendered');
+            await evaluate('document.querySelector("[data-api-operation] summary").click()');
+            check(await evaluate('document.querySelector("[data-api-operation]").open'), 'Native disclosure opens');
+            await evaluate('document.querySelector("[data-api-search]").value = "no_such_operation"; document.querySelector("[data-api-search]").dispatchEvent(new Event("input", {bubbles:true}))');
+            check(await evaluate('document.querySelector("[data-api-empty]").hidden === false && [...document.querySelectorAll("[data-api-operation]")].every(e => e.hidden)'), 'Search and empty state');
+            await evaluate('document.querySelector("[data-api-search]").value = ""; document.querySelector("[data-api-search]").dispatchEvent(new Event("input", {bubbles:true})); document.querySelector("#md-api-tab-tokens").click()');
+            await waitFor('document.querySelector("#md-api-tokens").classList.contains("active")');
+            await pause(180);
+            const shot = await send('Page.captureScreenshot', {format: 'png', captureBeyondViewport: false});
+            await writeFile(path.join(fixtureRoot, 'api-' + theme + '-' + width + '.png'), Buffer.from(shot.data, 'base64'));
+        }
+    }
+    await evaluate('document.querySelector("#md-api-token-name").value = "Browser integration"; document.querySelector("form[data-api-action]").requestSubmit()');
+    await waitFor('!document.querySelector("[data-api-secret]").hidden');
+    check(await evaluate('document.querySelector("[data-api-token-list]").textContent.includes("Browser integration")'), 'Issue token updates list');
+    check(await evaluate('/mdm_[a-f0-9]{64}/.test(document.querySelector("[data-api-secret]").textContent)'), 'Full token shown once');
+    await evaluate('[...document.querySelectorAll("[data-api-token-list] form")].find(f => f.elements.operation.value === "rotate").requestSubmit()');
+    await waitFor('document.querySelector("#md-api-confirm").classList.contains("show")');
+    check(await evaluate('document.querySelector("#md-api-confirm").contains(document.activeElement)'), 'Confirmation traps focus');
+    await evaluate('document.querySelector("[data-api-confirm-submit]").click()');
+    await waitFor('!document.querySelector("#md-api-confirm").classList.contains("show") && document.querySelector("[data-api-secret]").textContent.includes("mdm_")');
+    await pause(300);
+    await evaluate('[...document.querySelectorAll("[data-api-token-list] form")].find(f => f.elements.operation.value === "revoke").requestSubmit()');
+    await waitFor('document.querySelector("#md-api-confirm").classList.contains("show")');
+    await pause(200);
+    await evaluate('document.querySelector("[data-api-confirm-submit]").click()');
+    await waitFor('document.querySelector("[data-api-token-list]").textContent.includes("Browser integration") && document.querySelector("[data-api-secret]").hidden');
+    check(await evaluate('document.querySelector("[data-api-token-list]").textContent.includes("Отозван")'), 'Revoke updates status');
+    await send('Page.navigate', {url: base + '/preview'});
+    await waitFor('document.querySelector("[data-md-api]")?.dataset.apiBound === "1"');
+    check(await evaluate('document.querySelector("[data-api-secret]").hidden && !/mdm_[a-f0-9]{64}/.test(document.body.textContent)'), 'Reload never redisplays plaintext token');
+    check(errors.length === 0, 'No browser exceptions: ' + errors.join('\n'));
+    console.log('API UI smoke: ' + checks + ' passed (light/dark, 390/1440 px, token lifecycle).');
+} finally {
+    if (socket?.readyState === WebSocket.OPEN) socket.close();
+    browser.kill();
+    await new Promise(resolve => { if (browser.exitCode !== null) resolve(); else { browser.once('exit', resolve); setTimeout(resolve, 2000); } });
+}

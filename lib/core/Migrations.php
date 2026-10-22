@@ -183,6 +183,11 @@ final class Migrations
             $this->apply('20261021_core_runtime_v1', fn() => $this->upgradeRuntime());
             $this->apply('20261022_system_events_v1', fn() => $this->ensureSystemEventsSchema());
             $this->apply('20261023_property_audit_v1', fn() => $this->ensurePropertyAuditSchema());
+            $this->apply('20261024_core_api_v1', function () {
+                Api\Schema::install($this->db);
+                $table = $this->db->one("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='locations'");
+                if ($table && strcasecmp($table['ENGINE'], 'InnoDB') !== 0) $this->db->requireExec('ALTER TABLE locations ENGINE=InnoDB');
+            });
         } finally {
             $this->db->one("SELECT RELEASE_LOCK('mjd:core-migrations')");
         }

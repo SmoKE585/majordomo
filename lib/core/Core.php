@@ -35,6 +35,8 @@ final class Core
     public static function history(): HistoryWriter { return self::service(__FUNCTION__, fn() => new HistoryWriter(self::database(), self::historyStorage())); }
     public static function migrations(): Migrations { return self::service(__FUNCTION__, fn() => new Migrations(self::database(), self::cache(), self::queue(), self::historyStorage(), self::websockets())); }
     public static function api(): ApiClient { return self::service(__FUNCTION__, fn() => new ApiClient(self::queue())); }
+    public static function apiDispatcher(): Api\Dispatcher { return self::service(__FUNCTION__, fn() => new Api\Dispatcher(self::database())); }
+    public static function apiTokens(): Api\TokenStore { return self::service(__FUNCTION__, fn() => new Api\TokenStore($GLOBALS['db']->dbh)); }
     public static function processes(): ProcessRunner { return self::service(__FUNCTION__, fn() => new ProcessRunner()); }
     public static function scheduler(): Scheduler { return self::service(__FUNCTION__, fn() => new Scheduler(self::database(), self::processes(), self::audit())); }
     public static function worker(): OperationWorker { return self::service(__FUNCTION__, fn() => new OperationWorker(self::database(), self::redis(), self::queue(), self::processes(), self::errors(), self::audit())); }
