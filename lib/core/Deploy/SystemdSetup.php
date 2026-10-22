@@ -64,6 +64,10 @@ final class SystemdSetup
         $execStartPre = trim((string)($parsed['execStartPre'] ?? ''));
         if ($execStartPre === '') {
             $execStartPre = SystemdUnit::defaultExecStartPre(\MajorDoMo\Core\Config::string('DB_HOST', '127.0.0.1'));
+        } elseif ($this->manager->user() !== 'root' && stripos($execStartPre, 'mysqladmin') !== false) {
+            // Старый unit запускался от root и мог использовать root-овые
+            // MySQL-креды. Для пользователя сайта такая проверка ложно падает.
+            $execStartPre = SystemdUnit::defaultExecStartPre(\MajorDoMo\Core\Config::string('DB_HOST', '127.0.0.1'));
         }
         return array(
             'unit' => $this->manager->unitFor($execStartPre),
@@ -185,10 +189,21 @@ final class SystemdSetup
         }
         $start = $this->manager->run(array($systemctl, 'enable', '--now', $service . '.service'), 90);
         if (!$start['ok'] || !$this->isActive($service)) {
+            $diagnostics = $this->diagnostics($service, $systemctl);
             if ($oldStopped) $this->manager->run(array($systemctl, 'start', $old), 60);
-            throw new RuntimeException('Не удалось запустить ' . $service . ': ' . trim($start['err'] . ' ' . $start['out']));
+            throw new RuntimeException('Не удалось запустить ' . $service . ': ' . trim($start['err'] . ' ' . $start['out'])
+                . ($diagnostics !== '' ? ' | ' . $diagnostics : ''));
         }
         return array('ok' => true, 'disabled_old' => $oldStopped, 'started_new' => true, 'message' => 'Служба запущена');
+    }
+
+    /** Короткая причина отказа: status + последние строки journal. */
+    private function diagnostics(string $service, string $systemctl): string
+    {
+        $status = $this->manager->run(array($systemctl, 'status', $service . '.service', '--no-pager', '--lines=20'), 15);
+        $journal = $this->manager->run(array('journalctl', '-u', $service . '.service', '-n', '30', '--no-pager'), 15);
+        $text = trim($status['out'] . ' ' . $status['err'] . ' ' . $journal['out'] . ' ' . $journal['err']);
+        return mb_substr(preg_replace('/\s+/u', ' ', $text) ?? $text, 0, 2500);
     }
 
     /** @return array<int,string> */

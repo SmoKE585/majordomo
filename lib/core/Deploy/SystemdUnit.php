@@ -127,9 +127,10 @@ final class SystemdUnit
 
     public static function defaultExecStartPre(string $dbHost = '127.0.0.1'): string
     {
-        $host = $dbHost === '' || $dbHost === 'localhost' ? '127.0.0.1' : $dbHost;
-        if (!preg_match('/^[A-Za-z0-9_.:-]+$/D', $host)) $host = '127.0.0.1';
-        return "/bin/sh -c 'for i in $(seq 1 60); do mysqladmin ping -h " . $host . " --silent && exit 0; sleep 2; done; exit 1'";
+        // Не используем mysqladmin: новый unit работает от пользователя сайта,
+        // у которого может не быть MySQL-пользователя/пароля. Проверяем службу
+        // БД через systemctl — это не требует авторизации в MySQL.
+        return "/bin/sh -c 'for i in $(seq 1 60); do systemctl is-active --quiet mysql && exit 0; systemctl is-active --quiet mariadb && exit 0; sleep 2; done; exit 1'";
     }
 
     public static function validateName(string $value, string $label): string
