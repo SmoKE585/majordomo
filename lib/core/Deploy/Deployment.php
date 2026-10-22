@@ -213,14 +213,18 @@ final class Deployment
         $stateFile = $this->root . '/cms/deploy/assets.json';
         $state = is_file($stateFile) ? json_decode((string)@file_get_contents($stateFile), true) : array();
         $hash = is_file($lock) ? (string)hash_file('sha256', $lock) : '';
-        $needsCi = !is_dir($this->root . '/node_modules') || !is_array($state) || ($state['lock_hash'] ?? '') !== $hash;
+        $viteInstalled = is_file($this->root . '/node_modules/.bin/vite') || is_file($this->root . '/node_modules/vite/bin/vite.js');
+        $needsCi = !is_dir($this->root . '/node_modules') || !$viteInstalled || !is_array($state) || ($state['lock_hash'] ?? '') !== $hash;
         $output = '';
         $npmEnvironment = array(
             // На FastPanel/серверах NODE_ENV часто = production. В этом режиме
             // npm ci не ставит vite из devDependencies, и `npm run build`
-            // падает с `vite: not found` (127).
+            // падает с `vite: not found` (127). npm читает env в нижнем регистре.
             'NODE_ENV' => 'development',
             'NPM_CONFIG_PRODUCTION' => 'false',
+            'npm_config_production' => 'false',
+            'NPM_CONFIG_OMIT' => '',
+            'npm_config_omit' => '',
         );
         if ($needsCi) {
             $this->log($log, 'npm ci', 'info');
