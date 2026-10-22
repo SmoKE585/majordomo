@@ -50,6 +50,11 @@ public/install.php ───> InstallApplication (config only, без loader/set
 1. `lib/loader.php` — подключает библиотеки и открывает `$db`;
 2. после этого доступны `gr()`, `SQLSelect()`, `DebMes()`, `Core::*`.
 
+Общие PHP-функции подключаются внутри loader через `lib/core/Helpers/bootstrap.php`.
+Реализации находятся в `lib/core/Helpers/`; старые библиотечные пути сохранены
+как адаптеры для модулей. Описание API — [системные функции](../user/system-functions.md).
+Сам helpers bootstrap не открывает соединение с БД и не загружает настройки.
+
 `Application::bootSettings()`:
 
 1. `load_settings.php` — `SETTINGS_*`, timezone, токены WebSocket;
@@ -75,7 +80,7 @@ public/install.php ───> InstallApplication (config only, без loader/set
 | `$view_mode` | модули | роутер/`$_REQUEST` (как раньше) |
 | `$fake_doc` | `AdminApplication`, `SiteApplication` | `nf.php` |
 | `$filterblock` | postprocess | никто (обычно пусто) |
-| `$wsClient` | `index.php` при закрытии | `lib/caching.class.php` |
+| `$wsClient` | `index.php` при закрытии | `lib/core/Helpers/WebSockets.php` через адаптер `lib/caching.class.php` |
 
 Если переносите код в метод, объявляйте `global $session` и т.п. **до**
 использования. Иначе `panel::run()` создаст вторую сессию и сломает

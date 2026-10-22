@@ -89,7 +89,9 @@ try {
         $command = array('node', __DIR__ . '/api_ui_smoke.mjs', $base, $root);
         $ui = proc_open($command, array(0 => array('pipe', 'r'), 1 => STDOUT, 2 => STDERR), $uiPipes, dirname(__DIR__), $env, array('bypass_shell' => true));
         if (!is_resource($ui)) throw new RuntimeException('Cannot launch browser test'); fclose($uiPipes[0]);
-        check(proc_close($ui) === 0, 'Browser UI smoke');
+        $uiCode = proc_close($ui);
+        if ($uiCode !== 0) throw new RuntimeException('Browser UI smoke; fixture log: ' . substr(file_get_contents($root . '/http.log'), -5000));
+        check(true, 'Browser UI smoke');
     }
     [$status, $data] = request('GET', '/api/v1/objects', null, array('X-Fixture-Unsetup' => '1'));
     check($status === 503 && $data['error']['code'] === 'install_required' && isset($data['error']['details']['install_url']), 'Setup gate uses v1 error envelope');

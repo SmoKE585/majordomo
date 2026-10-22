@@ -75,6 +75,12 @@ namespace {
         helpersCheck(helperContract($function) === array_intersect_key($contract, array_flip(array('parameters', 'return', 'reference'))), 'Parameters, defaults and types are preserved: ' . $name);
         helpersCheck(str_contains(str_replace('\\', '/', $function->getFileName()), '/lib/core/Helpers/'), 'Implementation is centralized: ' . $name);
     }
+    foreach (get_defined_functions()['user'] as $name) {
+        $function = new ReflectionFunction($name);
+        if (str_contains(str_replace('\\', '/', $function->getFileName()), '/lib/core/Helpers/')) {
+            helpersCheck(isset($contracts[$function->getName()]), 'New public helpers must be added to the contract and reference: ' . $name);
+        }
+    }
     if ($legacy !== '') {
         echo 'OK: compatibility entry ' . $legacy . PHP_EOL;
         exit;
@@ -175,6 +181,11 @@ PHP
     }
     $reference = file_get_contents($project . '/docs/user/system-functions.md');
     foreach ($contracts as $name => $contract) helpersCheck(str_contains($reference, '`' . $contract['signature'] . '`'), 'Reference includes exact public signature: ' . $name);
+    require_once $project . '/lib/knowledge_base.php';
+    $article = (new MDKnowledgeBase($project . '/docs', '/'))->document('user/system-functions');
+    helpersCheck(is_array($article) && $article['audience'] === array('user', 'agent'), 'Reference is discoverable by users and agents in the knowledge base');
+    helpersCheck(substr_count($article['html'], 'md-prose__table') === 43, 'Every helper group renders as a knowledge base table');
+    helpersCheck(count($article['toc']) >= 43 && str_contains($article['html'], 'callScript'), 'Reference renders with navigation and examples');
     foreach (array_merge(array_unique(array_column($contracts, 'source')), array('request')) as $entry) {
         $process = proc_open(array(PHP_BINARY, __FILE__, $entry), array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, $project);
         if (!is_resource($process)) throw new RuntimeException('Cannot start compatibility fixture');

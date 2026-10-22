@@ -19,7 +19,8 @@ description: Полная цепочка записи свойства, вызо
 
 | Слой | Файл |
 | --- | --- |
-| Публичные функции `gg/sg/getGlobal/setGlobal/callMethod/callMethodSafe` | `lib/objects.class.php` |
+| Публичные функции `gg/sg/getGlobal/setGlobal/callMethod/callMethodSafe` | `lib/core/Helpers/Objects.php`; старое подключение — `lib/objects.class.php` |
+| Публичные функции привязок модулей | `lib/core/Helpers/PropertyBindings.php` |
 | Запись/чтение свойств, `ONCHANGE`, постановка уведомлений | `lib/core/Properties.php` |
 | Разрешение объекта, свойства и строки значения | `lib/core/Objects.php` |
 | Подписки `pvalues.LINKED_MODULES` | `lib/core/PropertyBindings.php` |

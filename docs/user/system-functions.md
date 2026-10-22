@@ -87,7 +87,7 @@ $average = getHistoryAvg('Sensor.temperature', -3600);
 | `function getObjectClassTemplate($object_name, $view = '')` | Возвращает шаблон класса указанного объекта и представления. |
 | `function getObjectsByClass($class_name)` | Возвращает записи объектов класса и его дочерних классов. |
 | `function getObjectsByClassCollectIds($class_id, $children_by_parent, $visited = array())` | Внутренний обход дерева классов для getObjectsByClass с защитой от циклических ссылок. |
-| `function getObjectsByProperty($property_name, $condition = '', $condition_value = '')` | Ищет объекты по имени свойства и условию; возвращает подходящие имена объектов. |
+| `function getObjectsByProperty($property_name, $condition = '', $condition_value = '')` | Ищет объекты по имени свойства и условию; возвращает список имён. Если нет записей значения свойства — legacy-результат 0. |
 | `function getRoomObjectByLocation($location_id, $auto_add = 0)` | Возвращает имя объекта помещения; auto_add разрешает создать объект при отсутствии. |
 | `function getUserObjectByTitle($user_id, $auto_add = 0)` | Возвращает имя объекта пользователя по ID пользователя; auto_add разрешает создание. |
 | `function getValueIdByName($object_name, $property)` | Возвращает ID записи значения по имени объекта и свойства. |
@@ -543,7 +543,7 @@ $average = getHistoryAvg('Sensor.temperature', -3600);
 | `function copyFiles($source, $destination, $over = 0, $patterns = 0)` | Копирует файлы между каталогами с правилами перезаписи и шаблонами. |
 | `function copyNewFile($path, $days)` | Обрабатывает копирование файлов по пути и временному ограничению через legacy-синхронизацию. |
 | `function copyTree($source, $destination, $over = 0, $patterns = 0)` | Копирует дерево каталогов с правилами перезаписи и шаблонами. |
-| `function getDirFiles($dir, &$results = array())` | Собирает файлы каталога, дополняя results по ссылке. |
+| `function getDirFiles($dir, &$results = array())` | Собирает файлы одного каталога без рекурсии: NAME, FILENAME, DT, TM, SIZE. Дополняет results по ссылке и возвращает его. |
 | `function getDirTree($dir, &$results = array())` | Рекурсивно собирает плоский список файлов с FILENAME, DT, TM, SIZE, дополняя results по ссылке. |
 | `function getFilesTree($destination, $sort = 'name')` | Возвращает дерево файлов с выбранной сортировкой. |
 | `function getLocalFilesTree($dir, $pattern, $ex_pattern, &$log, $verbose)` | Собирает дерево файлов с включающим и исключающим шаблонами; log передаётся по ссылке. |
