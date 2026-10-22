@@ -118,6 +118,7 @@ final class HealthMonitor
     {
         $state = $this->state($subject);
         $normal = $kind === 'battery' ? 'normal' : 'online';
+        $state['reason'] = $reason;
         if (($state['pending'] ?? null) !== $value) { $state['pending'] = $value; $state['since'] = $now; }
         if ($value === 'offline' && $now - $state['since'] < $settings['offline_delay']) { $this->persist($subject, $state); return; }
         $previous = $state['current'] ?? null;
@@ -131,6 +132,7 @@ final class HealthMonitor
         if ($previous !== $value) {
             $state['current'] = $value; $state['previous'] = $previous;
             $state['previous_reading'] = $state['reading'] ?? null;
+            $state['changed_at'] = $now;
             $state['revision'] = ($state['revision'] ?? 0) + 1;
         }
         $revision = $state['revision'];

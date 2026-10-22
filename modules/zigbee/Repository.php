@@ -143,6 +143,31 @@ final class Repository
             $this->db->requireExec('INSERT INTO zigbee_health_settings (ID,CONFIG) VALUES (1,' . $this->quote($config) . ')');
         }
     }
+
+    public function withHealth(array $devices): array
+    {
+        if (!$devices) return $devices;
+        $settings = $this->healthSettings();
+        if (!$settings['enabled']) return $devices;
+        $subjects = array();
+        foreach ($devices as $device) foreach (array('availability', 'battery') as $kind) $subjects[] = $this->quote('device:' . (int)$device['ID'] . ':' . $kind);
+        $states = array();
+        foreach ($this->db->select('SELECT SUBJECT,DATA FROM zigbee_health_state WHERE SUBJECT IN (' . implode(',', $subjects) . ')') as $row) $states[$row['SUBJECT']] = ValueTransformer::decode($row['DATA']);
+        foreach ($devices as &$device) {
+            $local = empty($device['HEALTH_CONFIG']) ? $settings : HealthSettings::validate(ValueTransformer::decode($device['HEALTH_CONFIG']));
+            if (!$local['enabled'] || $device['STATUS'] !== 'added') continue;
+            $availability = $states['device:' . $device['ID'] . ':availability'] ?? array();
+            // A fresh packet wins immediately over an older timeout incident.
+            if (($availability['current'] ?? '') === 'offline' && ($availability['reason'] ?? '') === 'timeout'
+                && ($availability['changed_at'] ?? 0) >= strtotime($device['LAST_SEEN'] ?: '1970-01-01')) $device['AVAILABLE'] = 'offline';
+            $battery = $states['device:' . $device['ID'] . ':battery'] ?? array();
+            if ($local['battery_source'] !== 'off' && isset($battery['reading'])) {
+                $device['_BATTERY'] = $battery['reading']; $device['_BATTERY_ESTIMATED'] = ($battery['reason'] ?? '') === 'voltage';
+                $device['_BATTERY_LEVEL'] = $battery['current'] ?? 'normal';
+            }
+        } unset($device);
+        return $devices;
+    }
     public function property(int $device, string $path, ?array $expose = null): array
     {
         if ($path === '' || strlen($path) > 190) throw new InvalidArgumentException('Путь свойства слишком длинный или пустой.');

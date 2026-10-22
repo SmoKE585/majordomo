@@ -140,6 +140,8 @@ class zigbee extends module
         $count = (int)($repo->db->one('SELECT COUNT(*) AS CNT FROM zigbee_devices d WHERE ' . $where)['CNT'] ?? 0);
         $pages = max(1, (int)ceil($count / 40)); $page = min($page, $pages);
         $devices = $repo->db->select('SELECT d.*,b.TITLE AS BRIDGE_TITLE,b.ENABLED AS BRIDGE_ENABLED,b.STATE AS BRIDGE_STATE,l.TITLE AS LOCATION_TITLE FROM zigbee_devices d JOIN zigbee_bridges b ON b.ID=d.BRIDGE_ID LEFT JOIN locations l ON l.ID=d.LOCATION_ID WHERE ' . $where . ' ORDER BY d.ID DESC LIMIT 40 OFFSET ' . (($page - 1) * 40));
+        $devices = $repo->withHealth($devices);
+        if ($device) $device = $repo->withHealth(array($device))[0];
         $events = $repo->db->select('SELECT * FROM zigbee_events' . ($device ? ' WHERE DEVICE_ID=' . (int)$device['ID'] : ($bridgeId ? ' WHERE BRIDGE_ID=' . $bridgeId : '')) . ' ORDER BY ID DESC LIMIT 100');
         $stats = array('devices' => (int)($repo->db->one("SELECT COUNT(*) AS CNT FROM zigbee_devices WHERE STATUS='added'")['CNT'] ?? 0),
             'discovered' => (int)($repo->db->one("SELECT COUNT(*) AS CNT FROM zigbee_devices WHERE STATUS='discovered'")['CNT'] ?? 0),
