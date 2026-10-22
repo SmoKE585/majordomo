@@ -14,7 +14,7 @@ final class Rules
         foreach ($rules as $rule) {
             if (!is_array($rule)) throw new InvalidArgumentException('Некорректное правило.');
             $trigger = self::choice($rule['trigger'] ?? '', array('time', 'event', 'condition'));
-            $target = self::choice((string)($rule['target'] ?? ''), array('0', '1'));
+            $target = self::choice(self::text($rule['target'] ?? '', 1), array('0', '1'));
             $match = self::choice($rule['match'] ?? 'all', array('all', 'any'));
             $delay = filter_var($rule['delay'] ?? 0, FILTER_VALIDATE_INT);
             if ($delay === false || $delay < 0 || $delay > 604800) throw new InvalidArgumentException('Задержка: от 0 до 604800 секунд.');
@@ -22,9 +22,9 @@ final class Rules
             $event = self::text($rule['event'] ?? '', 100);
             if ($trigger === 'time' && !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D', $at)) throw new InvalidArgumentException('Укажите время в формате ЧЧ:ММ.');
             if ($trigger === 'event' && !preg_match('/^[A-Za-z][A-Za-z0-9_]{0,99}$/D', $event)) throw new InvalidArgumentException('Укажите имя события: латинские буквы, цифры и подчёркивание.');
-            $days = $rule['days'] ?? array(1, 2, 3, 4, 5, 6, 7);
+            $days = $trigger === 'time' ? ($rule['days'] ?? array(1, 2, 3, 4, 5, 6, 7)) : array(1, 2, 3, 4, 5, 6, 7);
             if (!is_array($days) || !$days || count($days) > 7) throw new InvalidArgumentException('Выберите дни недели.');
-            $days = array_values(array_unique(array_map(static fn($day) => (int)self::choice((string)$day, array('1','2','3','4','5','6','7')), $days)));
+            $days = array_values(array_unique(array_map(static fn($day) => (int)self::choice(self::text($day, 1), array('1','2','3','4','5','6','7')), $days)));
             $conditions = $rule['conditions'] ?? array();
             if (!is_array($conditions) || count($conditions) > 16 || ($trigger === 'condition' && !$conditions)) throw new InvalidArgumentException('Для правила по условию нужно от 1 до 16 условий.');
             $clean = array();
@@ -41,7 +41,7 @@ final class Rules
                     $name = self::text($condition['mode'] ?? '', 100);
                     if (!self::validName($name) || $name === $ownName) throw new InvalidArgumentException('Выберите другой режим для условия.');
                     $clean[] = array('type' => $type, 'mode' => $name,
-                        'state' => (int)self::choice((string)($condition['state'] ?? 1), array('0', '1')));
+                        'state' => (int)self::choice(self::text($condition['state'] ?? 1, 1), array('0', '1')));
                 } else {
                     $start = self::text($condition['start'] ?? '', 5); $end = self::text($condition['end'] ?? '', 5);
                     foreach (array($start, $end) as $time) if (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/D', $time)) throw new InvalidArgumentException('Укажите начало и конец интервала ЧЧ:ММ.');
