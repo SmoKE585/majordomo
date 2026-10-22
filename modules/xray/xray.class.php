@@ -1247,8 +1247,7 @@ class xray extends module
                         $responce['LIST'][$i]['SOURCE'] = $res[$i]['EXECUTED_SRC'];
                     }
 
-                    $this->reverseResponseList($responce);
-
+                    // ORDER BY EXECUTED DESC already puts the latest call first.
                     echo json_encode($responce);
                 }
 
@@ -1280,8 +1279,7 @@ class xray extends module
                         }
                     }
 
-                    $this->reverseResponseList($responce);
-
+                    // ORDER BY EXECUTED DESC already puts the latest run first.
                     echo json_encode($responce);
 
                 }
@@ -1439,8 +1437,7 @@ class xray extends module
                         $responce['LIST'][$i]['ADDED'] = $res[$i]['ADDED'];
                     }
 
-                    $this->reverseResponseList($responce);
-
+                    // ORDER BY ADDED DESC already puts the newest event first.
                     echo json_encode($responce);
                 }
 
