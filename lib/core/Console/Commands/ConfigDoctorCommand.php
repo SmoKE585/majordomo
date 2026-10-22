@@ -15,7 +15,8 @@ final class ConfigDoctorCommand extends Command
         $checks = array();
         $checks[] = array('status' => is_file($context->root . '/.env') ? 'ok' : 'fail', 'message' => '.env');
         $source = is_file($context->root . '/config.php') ? file_get_contents($context->root . '/config.php') : '';
-        $checks[] = array('status' => preg_match('/\\bdefine\\s*\\(/i', $source) ? 'fail' : 'ok', 'message' => 'config.php: конфигурация должна храниться в .env');
+        $shim = is_string($source) && str_contains($source, 'Config::boot') && !preg_match('/\\bdefine\\s*\\(/i', $source);
+        $checks[] = array('status' => $shim ? 'ok' : 'fail', 'message' => 'config.php: ожидается shim с Config::boot');
         foreach (Config::schema() as $key => $definition) {
             if (($definition['required'] ?? false) && (Config::get($key) === null || Config::get($key) === '')) {
                 $checks[] = array('status' => 'fail', 'message' => 'Не задан обязательный ключ ' . $key);

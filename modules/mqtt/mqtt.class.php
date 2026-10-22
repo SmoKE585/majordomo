@@ -1350,7 +1350,8 @@ class mqtt extends module
 
     function propertySetHandle($object, $property, $value)
     {
-        $mqtt_properties = SQLSelect("SELECT ID, LOGGING FROM mqtt WHERE READONLY=0 AND LINKED_OBJECT LIKE '" . DBSafe($object) . "' AND LINKED_PROPERTY LIKE '" . DBSafe($property) . "'");
+        // Exact match: LIKE treats "_" and "%" in object/property titles as wildcards.
+        $mqtt_properties = SQLSelect("SELECT ID, LOGGING FROM mqtt WHERE READONLY=0 AND LINKED_OBJECT='" . DBSafe($object) . "' AND LINKED_PROPERTY='" . DBSafe($property) . "'");
         $total = count($mqtt_properties);
         if ($total) {
             for ($i = 0; $i < $total; $i++) {

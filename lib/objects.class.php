@@ -283,43 +283,19 @@ function getValueIdByName($object_name, $property)
  */
 function addLinkedProperty($object, $property, $module)
 {
-    $sqlQuery = "SELECT *
-                  FROM pvalues
-                 WHERE ID = '" . getValueIdByName($object, $property) . "'";
-
-    $value = SQLSelectOne($sqlQuery);
-
-    if (isset($value['ID'])) {
-        if (!$value['LINKED_MODULES']) {
-            $tmp = array();
-        } else {
-            $tmp = explode(',', $value['LINKED_MODULES']);
-        }
-        if (!in_array($module, $tmp)) {
-            $tmp[] = $module;
-
-            $value['LINKED_MODULES'] = implode(',', $tmp);
-
-            SQLUpdate('pvalues', $value);
-        }
-        return $value['ID'];
-    } else {
-        return 0;
-    }
+    // Atomic subscription; no longer rewrites the whole pvalues row.
+    return \MajorDoMo\Core\Core::bindings()->attach((string)$object, (string)$property, (string)$module);
 }
 
 function removeLinkedPropertyIfNotUsed($table_name, $object, $property, $module)
 {
-    $tmp = SQLSelectOne("SELECT ID FROM " . DBSafe($table_name) . " WHERE LINKED_OBJECT='" . DBSafe($object) . "' AND LINKED_PROPERTY='" . DBSafe($property) . "'");
-    if (!isset($tmp['ID'])) {
-        removeLinkedProperty($object, $property, $module);
-    }
+    // The table is whitelisted by PropertyBindings; it must not be user input.
+    return \MajorDoMo\Core\Core::bindings()->detachIfUnused((string)$table_name, (string)$object, (string)$property, (string)$module);
 }
 
 function removeLinkedProperty($object, $property, $module)
 {
-    // Keep legacy callers on the same selective, concurrency-safe removal path.
-    if (!\MajorDoMo\Core\Core::properties()->removeLinkedModule((string)$object, (string)$property, (string)$module)) return 0;
+    return \MajorDoMo\Core\Core::bindings()->detach((string)$object, (string)$property, (string)$module);
 }
 
 /**

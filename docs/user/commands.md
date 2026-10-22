@@ -136,7 +136,7 @@ php majordomo install:reset
 
 ## 2. Конфигурация
 
-CLI конфигурации: `tools/config.php`.
+Команды конфигурации: группа `config:*`.
 
 | Команда | Что делает |
 | --- | --- |
@@ -168,6 +168,7 @@ php tools/config-audit.php --no-log
 | --- | --- |
 | `php tests/routing_smoke.php` | Чистые URL `/panel/...`, legacy `pd`-ссылки, round-trip маршрутов, nginx-контракт. |
 | `php tests/config_smoke.php` | Парсер `.env`, типы и кеш конфигурации, легаси-мост. |
+| `php tests/console_smoke.php` | CLI: справка, строгие аргументы, JSON, циклы, журналы и адаптеры на временных файлах без БД/Redis. |
 | `php tests/install_smoke.php` | Мастер настройки, `.env`-писатель, маркер установки, схема и gate. |
 | `php tests/core_cycle_smoke.php` | Изолированная проверка цикла на фикстурах; рабочая база не используется. |
 | `php tests/core_runtime_smoke.php` | Интеграционная проверка ядра. Требует `APP_ENV=testing` и отдельные тестовые порты MariaDB/Redis. |

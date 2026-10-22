@@ -34,6 +34,11 @@ final class OperationWorker
                 $file = DIR_MODULES . $name . '/' . $name . '.class.php';
                 if (!is_file($file)) {
                     if ($item['DATANAME'] === 'moduleevent') throw new RuntimeException('Subscribed module is not installed');
+                    // A module that is still registered may be in the middle of a
+                    // deployment (files replaced, container starting). Never unlink
+                    // it on a short retry window: keep the binding and surface the
+                    // failure through operations_failed instead.
+                    if ($this->isInstalled($name)) throw new RuntimeException('Linked module files are temporarily unavailable');
                     // A deployment can briefly remove the file; confirm through normal retries.
                     if ((int)($item['ATTEMPTS'] ?? 1) < 3) throw new RuntimeException('Linked module is not installed');
                     return $this->removeStaleBinding($name, $params, 'module is not installed');
@@ -65,6 +70,23 @@ final class OperationWorker
         }
     }
 
+    /** Marker or project registry row means the module is expected to exist. */
+    private function isInstalled(string $module): bool
+    {
+        if (function_exists('isModuleInstalled') && defined('ROOT')) {
+            try {
+                if (isModuleInstalled($module)) return true;
+            } catch (Throwable $e) {
+                // Fall through to the registry lookup.
+            }
+        }
+        try {
+            return (bool)$this->db->one("SELECT ID FROM project_modules WHERE NAME='" . $this->db->escape($module) . "' LIMIT 1");
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
     private function removeStaleBinding(string $module, array $params, string $reason): array
     {
         $object = $params['object'] ?? null;
@@ -72,7 +94,7 @@ final class OperationWorker
         if (!is_string($object) || !is_string($property) || $object === '' || $property === '') {
             throw new InvalidArgumentException('Object and property are required to remove a stale module binding');
         }
-        if (Core::properties()->removeLinkedModule($object, $property, $module)) {
+        if (Core::bindings()->detach($object, $property, $module)) {
             DebMes('Removed stale module binding: ' . json_encode(array('module' => $module,
                 'object' => $object, 'property' => $property, 'reason' => $reason),
                 JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), 'core_runtime', 'warning');

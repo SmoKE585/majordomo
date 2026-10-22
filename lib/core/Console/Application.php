@@ -46,6 +46,10 @@ final class Application
     {
         $output = new Output($stdout ?? STDOUT, $stderr ?? STDERR);
         $output->setJson(in_array('--json', $arguments, true));
+        set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
+            if (!(error_reporting() & $severity)) return false;
+            throw new \ErrorException($message, 0, $severity, $file, $line);
+        });
         try {
             $name = isset($arguments[0]) && !str_starts_with($arguments[0], '-') ? array_shift($arguments) : 'list';
             $command = $this->command($name);
@@ -63,6 +67,8 @@ final class Application
         } catch (\Throwable $error) {
             $output->error($error->getMessage());
             return $output->finish(1);
+        } finally {
+            restore_error_handler();
         }
     }
 

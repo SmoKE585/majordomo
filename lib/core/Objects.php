@@ -142,24 +142,48 @@ final class Objects
         return $safe ? Core::methods()->callSafe($object, $methodName, $params) : Core::methods()->call($object, $methodName, $params);
     }
 
-    public function valueId($objectName, $property): int
+    /**
+     * Resolves the value row for the *currently active* property.
+     *
+     * PROPERTY_NAME is only a denormalized label: an old row of an overridden
+     * inherited property can keep the same name while the active property has
+     * another PROPERTY_ID. Binding a module to that obsolete row makes the
+     * subscription silently stop working, so the active property is resolved
+     * first and the row is looked up by (PROPERTY_ID, OBJECT_ID).
+     */
+    public function valueId($objectName, $property, bool $create = true): int
     {
-        $row = $this->db->one("SELECT ID FROM pvalues WHERE PROPERTY_NAME='" . $this->db->escape($objectName . '.' . $property) . "' LIMIT 1");
-        if ($row) return (int)$row['ID'];
         $object = $this->get($objectName);
-        if (!$object) return 0;
+        if (!$object || !$object->object_title) return 0;
+        $property = trim((string)$property);
+        if ($property === '') return 0;
         $propertyId = $this->properties->resolve($object, $property, $object->class_id, $object->id);
         if (!$propertyId) return 0;
-        $lock = $this->locks->acquire($object->id, $property);
+        $propertyName = $object->object_title . '.' . $property;
+        $lock = $create ? $this->locks->acquire($object->id, $property) : null;
         try {
-            $row = $this->db->one('SELECT ID FROM pvalues WHERE PROPERTY_ID=' . (int)$propertyId . ' AND OBJECT_ID=' . (int)$object->id);
-            if ($row) return (int)$row['ID'];
-            $row = array('PROPERTY_ID' => $propertyId, 'OBJECT_ID' => $object->id, 'PROPERTY_NAME' => $object->object_title . '.' . $property, 'VALUE' => '');
-            $id = $this->db->insert('pvalues', $row);
-            if (!$id) throw new RuntimeException('Cannot create property value');
+            $row = $this->db->one('SELECT ID,PROPERTY_NAME FROM pvalues WHERE PROPERTY_ID=' . (int)$propertyId
+                . ' AND OBJECT_ID=' . (int)$object->id . ' LIMIT 1');
+            if ($row) {
+                if ($create && (string)($row['PROPERTY_NAME'] ?? '') === '') {
+                    $this->db->update('pvalues', array('ID' => (int)$row['ID'], 'PROPERTY_NAME' => $propertyName));
+                }
+                return (int)$row['ID'];
+            }
+            if (!$create) return 0;
+            $record = array('PROPERTY_ID' => $propertyId, 'OBJECT_ID' => $object->id,
+                'PROPERTY_NAME' => $propertyName, 'VALUE' => '', 'SOURCE' => '');
+            $id = (int)$this->db->insert('pvalues', $record);
+            if (!$id) {
+                // Another writer created the row while this one was waiting for the lock.
+                $row = $this->db->one('SELECT ID FROM pvalues WHERE PROPERTY_ID=' . (int)$propertyId
+                    . ' AND OBJECT_ID=' . (int)$object->id . ' LIMIT 1');
+                if ($row) return (int)$row['ID'];
+                throw new RuntimeException('Cannot create property value');
+            }
             return $id;
         } finally {
-            $this->locks->release($lock);
+            if ($lock !== null) $this->locks->release($lock);
         }
     }
 

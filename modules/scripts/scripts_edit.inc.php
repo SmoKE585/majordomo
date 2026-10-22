@@ -28,6 +28,8 @@ if ($this->mode == 'update') {
     //print_r($_REQUEST);exit;
 
     $ok = 1;
+    $old_linked_object = (string)($rec['LINKED_OBJECT'] ?? '');
+    $old_linked_property = (string)($rec['LINKED_PROPERTY'] ?? '');
     //updating 'TITLE' (varchar)
     global $title;
     $rec['TITLE'] = $title;
@@ -126,15 +128,17 @@ if ($this->mode == 'update') {
             $rec['AUTO_LINK_AVAILABLE'] = 0;
         }
 
-        $rec['AUTO_LINK'] = gr('auto_link', 'int');
-        $rec['LINKED_OBJECT'] = $linked_object;
-        $rec['LINKED_PROPERTY'] = $linked_property;
-
-        if ($rec['AUTO_LINK'] && $rec['LINKED_OBJECT'] != '' && $rec['LINKED_PROPERTY'] != '') {
-            addLinkedProperty($linked_object, $linked_property, $this->name);
-        } else {
+        $rec['AUTO_LINK'] = gr('auto_link', 'int') ? 1 : 0;
+        $auto_link_enabled = $rec['AUTO_LINK'] && $linked_object !== '' && $linked_property !== '';
+        if (!$auto_link_enabled) {
             $rec['AUTO_LINK'] = 0;
-            removeLinkedPropertyIfNotUsed('scripts', $rec['LINKED_OBJECT'], $rec['LINKED_PROPERTY'], $this->name);
+            // Keep the derived pair out of the saved row: "still used" checks
+            // run after the save and must not see this script as its own user.
+            $rec['LINKED_OBJECT'] = '';
+            $rec['LINKED_PROPERTY'] = '';
+        } else {
+            $rec['LINKED_OBJECT'] = $linked_object;
+            $rec['LINKED_PROPERTY'] = $linked_property;
         }
 
         $rec['UPDATED'] = date('Y-m-d H:i:s');
@@ -145,6 +149,20 @@ if ($this->mode == 'update') {
             $new_rec = 1;
             $rec['ID'] = SQLInsert($table_name, $rec); // adding new record
         }
+
+        if ($auto_link_enabled) {
+            addLinkedProperty($linked_object, $linked_property, $this->name);
+            if ($old_linked_object !== '' && $old_linked_property !== ''
+                && ($old_linked_object !== $linked_object || $old_linked_property !== $linked_property)) {
+                removeLinkedPropertyIfNotUsed('scripts', $old_linked_object, $old_linked_property, $this->name);
+            }
+        } elseif ($old_linked_object !== '' && $old_linked_property !== '') {
+            removeLinkedPropertyIfNotUsed('scripts', $old_linked_object, $old_linked_property, $this->name);
+        } elseif ($linked_object !== '' && $linked_property !== '') {
+            // No saved pair, but an older bug could have left a stale token.
+            removeLinkedPropertyIfNotUsed('scripts', $linked_object, $linked_property, $this->name);
+        }
+
         $out['OK'] = 1;
 
         global $edit_run;

@@ -4,6 +4,7 @@ namespace MajorDoMo\Core\Console\Commands;
 
 use MajorDoMo\Core\Console\{Command, Input, Output, Context};
 use MajorDoMo\Core\Install\InstallState;
+use MajorDoMo\Core\Config;
 
 final class InstallStatusCommand extends Command
 {
@@ -11,8 +12,9 @@ final class InstallStatusCommand extends Command
     public function description(): string { return 'Состояние установки и маркер мастера'; }
     public function execute(Input $input, Output $output, Context $context): int
     {
+        $context->config();
         $state = InstallState::state($context->root);
-        $data = $state + array('marker' => InstallState::markerPath($context->root));
+        $data = $state + array('marker' => InstallState::markerPath($context->root), 'install_url' => InstallState::installUrl(Config::string('ROOTHTML', '/')));
         $rows = array();
         foreach ($data as $key => $value) if (is_scalar($value)) $rows[] = array($key, is_bool($value) ? ($value ? 'yes' : 'no') : (string)$value);
         $output->table(array('Параметр', 'Значение'), $rows);

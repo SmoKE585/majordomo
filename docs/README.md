@@ -40,6 +40,7 @@ description: Карта документации MajorDoMo: материалы �
 - Меняете управление циклами: [`agents/cycles.md`](agents/cycles.md).
 - Добавляете CLI-команду: [`agents/console.md`](agents/console.md); список команд для пользователя — [`user/commands.md`](user/commands.md).
 - Добавляете системное событие или подписку: [`agents/events.md`](agents/events.md).
+- Меняете свойства, `ONCHANGE` или привязку модуля к свойству: [`agents/property-bindings.md`](agents/property-bindings.md).
 - Меняете точку входа или boot: [`agents/entrypoints.md`](agents/entrypoints.md).
 - Трогаете сборку: [`agents/admin-assets.md`](agents/admin-assets.md).
 - Трогаете URL/роутинг: [`agents/admin-routing.md`](agents/admin-routing.md).

@@ -75,17 +75,19 @@ if ($this->mode == 'update') {
         if ($rec['LINKED_OBJECT'] !== '' && $rec['LINKED_PROPERTY'] !== '') {
             addLinkedProperty($rec['LINKED_OBJECT'], $rec['LINKED_PROPERTY'], $this->name);
         }
-        if ($old_linked_object !== '' && $old_linked_property !== '' &&
-            ($old_linked_object !== $rec['LINKED_OBJECT'] || $old_linked_property !== $rec['LINKED_PROPERTY'])) {
-            removeLinkedProperty($old_linked_object, $old_linked_property, $this->name);
-        }
-
         if ($rec['PATH_WRITE'] !== '' && $rec['PATH_WRITE'] !== $rec['PATH']) {
             $conflict = SQLSelectOne("SELECT ID FROM mqtt WHERE PATH='" . DBSafe($rec['PATH_WRITE']) . "' AND ID!=" . (int)$rec['ID']);
             if (!empty($conflict['ID'])) {
                 SQLExec("DELETE FROM mqtt WHERE ID=" . (int)$conflict['ID']);
             }
             $this->invalidateLookupCache();
+        }
+
+        if ($old_linked_object !== '' && $old_linked_property !== '' &&
+            ($old_linked_object !== $rec['LINKED_OBJECT'] || $old_linked_property !== $rec['LINKED_PROPERTY'])) {
+            // Several MQTT topics may share one object property. Remove the
+            // module only when this topic was the last one using the pair.
+            removeLinkedPropertyIfNotUsed('mqtt', $old_linked_object, $old_linked_property, $this->name);
         }
 
         $set_new_value = (int)gr('set_new_value');

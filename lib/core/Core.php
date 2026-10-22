@@ -25,6 +25,7 @@ final class Core
     public static function locks(): PropertyLock { return self::service(__FUNCTION__, fn() => new PropertyLock(self::database(), self::redis())); }
     public static function properties(): Properties { return self::service(__FUNCTION__, fn() => new Properties(self::database(), self::cache(), self::metadata(), self::locks(), self::websockets(), self::code())); }
     public static function objects(): Objects { return self::service(__FUNCTION__, fn() => new Objects(self::database(), self::metadata(), self::cache(), self::properties(), self::locks())); }
+    public static function bindings(): PropertyBindings { return self::service(__FUNCTION__, fn() => new PropertyBindings(self::database(), self::properties(), self::locks())); }
     public static function methods(): Methods { return self::service(__FUNCTION__, fn() => new Methods(self::database(), self::metadata(), self::code())); }
     public static function queue(): OperationsQueue { return self::service(__FUNCTION__, fn() => new OperationsQueue(self::database(), self::redis())); }
     public static function websockets(): WebSocketQueue { return self::service(__FUNCTION__, fn() => new WebSocketQueue(self::database(), self::redis(), self::queue())); }

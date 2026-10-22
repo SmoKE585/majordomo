@@ -604,9 +604,15 @@ class scripts extends module
      */
     function delete_scripts($id)
     {
-        $rec = SQLSelectOne("SELECT * FROM scripts WHERE ID='$id'");
+        $rec = SQLSelectOne("SELECT * FROM scripts WHERE ID='" . (int)$id . "'");
+        if (!isset($rec['ID'])) return;
         // some action for related tables
-        SQLExec("DELETE FROM scripts WHERE ID='" . $rec['ID'] . "'");
+        SQLExec("DELETE FROM scripts WHERE ID='" . (int)$rec['ID'] . "'");
+        // A deleted script must not leave a property subscriber behind. Other
+        // scripts using the same pair keep the module subscribed.
+        if (!empty($rec['LINKED_OBJECT']) && !empty($rec['LINKED_PROPERTY'])) {
+            removeLinkedPropertyIfNotUsed('scripts', $rec['LINKED_OBJECT'], $rec['LINKED_PROPERTY'], $this->name);
+        }
     }
 
     /**
@@ -645,7 +651,8 @@ class scripts extends module
 
     function propertySetHandle($object, $property, $value)
     {
-        $scripts = SQLSelect("SELECT ID FROM scripts WHERE AUTO_LINK=1 AND LINKED_OBJECT LIKE '" . DBSafe($object) . "' AND LINKED_PROPERTY LIKE '" . DBSafe($property) . "'");
+        // Exact match: LIKE treats "_" and "%" in object/property titles as wildcards.
+        $scripts = SQLSelect("SELECT ID FROM scripts WHERE AUTO_LINK=1 AND LINKED_OBJECT='" . DBSafe($object) . "' AND LINKED_PROPERTY='" . DBSafe($property) . "'");
         $total = count($scripts);
         if ($total) {
             for ($i = 0; $i < $total; $i++) {

@@ -24,7 +24,7 @@ final class LogTail
                 $buffer = $chunk . $buffer;
             }
             $truncated = $position > 0 && substr_count($buffer, "\n") <= $lines;
-            $rows = $buffer === '' ? array() : explode("\n", rtrim($buffer, "\n"));
+            $rows = $buffer === '' ? array() : explode("\n", str_ends_with($buffer, "\n") ? substr($buffer, 0, -1) : $buffer);
             return array('lines' => array_slice($rows, -$lines), 'offset' => $end, 'identity' => $stat['dev'] . ':' . $stat['ino'], 'truncated' => $truncated);
         } finally { fclose($handle); }
     }

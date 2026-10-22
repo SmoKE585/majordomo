@@ -233,9 +233,83 @@ $pdo->exec('DELETE FROM operations_queue');
 Core::properties()->set($object, 'status', 'next sensor value');
 check((int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 0, 'Subsequent property writes must stop queuing the removed subscriber');
 
+// --- subscription registration must be surgical and concurrency-safe ---
+$bindings = Core::bindings();
+$connection->beforeRemoval = null;
+setLinks('goodsubscriber');
+$pdo->exec("UPDATE pvalues SET VALUE='current value',UPDATED='2026-10-21 19:00:00',SOURCE='zigbee:test' WHERE ID=1");
+check($bindings->attach('Lamp', 'status', 'newsubscriber') === 1 && links() === 'goodsubscriber,newsubscriber',
+    'Attach appends a subscriber');
+check($pdo->query('SELECT VALUE,UPDATED,SOURCE FROM pvalues WHERE ID=1')->fetch(PDO::FETCH_ASSOC)
+    === array('VALUE' => 'current value', 'UPDATED' => '2026-10-21 19:00:00', 'SOURCE' => 'zigbee:test'),
+    'Attach must not rewrite VALUE, UPDATED or SOURCE');
+
+setLinks('goodsubscriber');
+$connection->beforeRemoval = static function () use ($connection, $pdo) {
+    $connection->beforeRemoval = null;
+    $pdo->exec("UPDATE pvalues SET LINKED_MODULES='goodsubscriber,concurrent' WHERE ID=1");
+};
+check($bindings->attach('Lamp', 'status', 'retried') === 1 && links() === 'goodsubscriber,concurrent,retried',
+    'Concurrent subscriber addition during attach must survive retry');
+$connection->beforeRemoval = null;
+
+setLinks('goodsubscriber');
+$invalidModule = false;
+try { $bindings->attach('Lamp', 'status', '../bad'); } catch (InvalidArgumentException $e) { $invalidModule = true; }
+check($invalidModule && links() === 'goodsubscriber', 'Invalid module name must not touch bindings');
+
+setLinks(' a , b ,, a ');
+$bindings->attach('Lamp', 'status', 'c');
+check(links() === 'a,b,c', 'Attach normalizes whitespace and duplicate tokens');
+
+setLinks(str_repeat('m', 250));
+$tooLong = false;
+try { $bindings->attach('Lamp', 'status', 'other'); } catch (RuntimeException $e) { $tooLong = true; }
+check($tooLong && links() === str_repeat('m', 250), 'Overlong subscription list must fail before it is truncated');
+
+setLinks('a,b,a,c');
+check($bindings->detach('Lamp', 'status', 'a') && links() === 'b,c', 'Detach removes every exact token and keeps other subscribers');
+check(!$bindings->detach('Lamp', 'status', 'missing') && links() === 'b,c', 'Detaching an absent module is a no-op');
+
+$pdo->exec("CREATE TABLE mqtt (ID INTEGER PRIMARY KEY, LINKED_OBJECT TEXT, LINKED_PROPERTY TEXT)");
+$pdo->exec("INSERT INTO mqtt VALUES (1,'Lamp','status')");
+setLinks('mqtt,other');
+check(!$bindings->detachIfUnused('mqtt', 'Lamp', 'status', 'mqtt') && links() === 'mqtt,other',
+    'Conditional detach keeps a module used by another record');
+$pdo->exec('DELETE FROM mqtt');
+check($bindings->detachIfUnused('mqtt', 'Lamp', 'status', 'mqtt') && links() === 'other',
+    'Conditional detach removes the module after the last owner record is gone');
+$invalidTable = false;
+try { $bindings->detachIfUnused('mqtt;DROP', 'Lamp', 'status', 'mqtt'); } catch (InvalidArgumentException $e) { $invalidTable = true; }
+check($invalidTable, 'Owner table name must be an identifier');
+
+// Obsolete inherited row must not receive the subscription.
+$pdo->exec("UPDATE pvalues SET PROPERTY_NAME='InheritedLamp.status',LINKED_MODULES='oldsub' WHERE ID=4");
+$pdo->exec("UPDATE pvalues SET PROPERTY_NAME='',LINKED_MODULES='oldsub' WHERE ID=5");
+check($bindings->attach('InheritedLamp', 'status', 'newsub') === 5
+    && $pdo->query('SELECT LINKED_MODULES FROM pvalues WHERE ID=5')->fetchColumn() === 'oldsub,newsub'
+    && $pdo->query('SELECT LINKED_MODULES FROM pvalues WHERE ID=4')->fetchColumn() === 'oldsub',
+    'Attach must use the active inherited property, not an obsolete same-name row');
+
+$pdo->exec("INSERT INTO properties(ID,TITLE,OBJECT_ID,CLASS_ID) VALUES (5,'level',1,0)");
+$created = $bindings->attach('Lamp', 'level', 'newsub');
+$createdRow = $pdo->query('SELECT VALUE,LINKED_MODULES FROM pvalues WHERE ID=' . (int)$created)->fetch(PDO::FETCH_ASSOC);
+check($created > 0 && $createdRow === array('VALUE' => '', 'LINKED_MODULES' => 'newsub'),
+    'Attach must create the missing value row for an existing property');
+
+$before = (int)$pdo->query('SELECT COUNT(*) FROM pvalues')->fetchColumn();
+check($bindings->attach('UnknownObject', 'status', 'newsub') === 0
+    && $bindings->attach('Lamp', 'unknown', 'newsub') === 0
+    && (int)$pdo->query('SELECT COUNT(*) FROM pvalues')->fetchColumn() === $before,
+    'Attach must not create objects/properties for an unknown pair');
+
 require_once dirname(__DIR__) . '/lib/objects.class.php';
+$pdo->exec("UPDATE pvalues SET VALUE='next sensor value' WHERE ID=1");
 setLinks('badsubscriber,goodsubscriber');
 removeLinkedProperty('Lamp', 'status', 'badsubscriber');
 check(links() === 'goodsubscriber' && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === 'next sensor value', 'Legacy unlink must use the same selective cleanup without overwriting values');
+setLinks('goodsubscriber');
+check(addLinkedProperty('Lamp', 'status', 'legacymodule') === 1 && links() === 'goodsubscriber,legacymodule',
+    'Legacy addLinkedProperty must use the atomic implementation');
 
 echo 'Stale module binding smoke tests passed: ' . $checks . ' checks (SQLite :memory:, no external services).' . PHP_EOL;
