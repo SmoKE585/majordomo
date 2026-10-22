@@ -60,7 +60,7 @@ final class Panel
         // эндпоинт отвечал 500 без внятной причины.
         try {
             $ticket = (new \MajorDoMo\Core\WebSockets\Tickets(rtrim(ROOT, '/\\'), \MajorDoMo\Core\Http\Session::effectiveDirectory()))
-                ->issue($user, session_id(), (int)($_SESSION['md_admin']['created'] ?? 0));
+                ->issue($user, session_id(), (int)($_SESSION['md_admin']['created'] ?? 0), null, (string)($_SERVER['HTTP_HOST'] ?? ''));
         } catch (\RuntimeException $error) {
             error_log('MajorDoMo WebSocket ticket: ' . $error->getMessage());
             throw new ApiException(503, 'websocket_ticket_unavailable', 'Билет WebSocket не выдан: ' . $error->getMessage());

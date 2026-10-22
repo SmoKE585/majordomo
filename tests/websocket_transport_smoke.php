@@ -126,6 +126,12 @@ try {
     fclose($stream);
     $rejections = (string)@file_get_contents($fixture . '/stderr') . (string)@file_get_contents($fixture . '/worker.log');
     check(str_contains($rejections, 'handshake rejected') && str_contains($rejections, 'cross_origin_denied'), 'rejection reason is written to the log');
+    // Если прокси не передал Host вообще, билет помнит хост, который видел браузер.
+    $proxySid = str_repeat('c', 32); file_put_contents($fixture . '/var/sessions/sess_' . $proxySid, 'fixture');
+    $proxyTicket = (new Tickets($fixture))->issue(array('id' => 7, 'stamp' => 'stamp'), $proxySid, time(), null, 'home.test');
+    [$stream, $response] = handshake($address, '?snapshot=0&ticket=' . $proxyTicket, array('X-Forwarded-For' => '192.168.1.6', 'Origin' => 'https://home.test'), '127.0.0.1:8001');
+    check(str_contains($response, '101'), 'ticket host restores the origin behind a proxy');
+    fclose($stream);
     $rows = snapshot($local);
     check(count($rows) === 2 && $rows[0]['VALUE'] === '21' && $rows[1]['VALUE'] === null, 'actual default snapshot, including null');
     sendRequest($local, 'SetGlobal');

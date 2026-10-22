@@ -19,9 +19,13 @@ final class Access
 
     public function authorize(array $server, array $query): array
     {
-        $this->checkOrigin($server);
-        if (isset($query['ticket'])) {
-            $ticket = is_string($query['ticket']) ? $this->tickets->consume($query['ticket']) : null;
+        // Билет читаем до проверки Origin: он запоминает host, который браузер
+        // видел при его получении. Так проверка не зависит от того, передал ли
+        // nginx исходный Host в WS-соединение.
+        $ticketProvided = isset($query['ticket']);
+        $ticket = $ticketProvided && is_string($query['ticket']) ? $this->tickets->consume($query['ticket']) : null;
+        $this->checkOrigin($server, (string)($ticket['host'] ?? ''));
+        if ($ticketProvided) {
             if ($ticket === null || !$this->tickets->valid($ticket, $this->adminState)) throw new ApiException(401, 'invalid_ticket', 'Билет WebSocket недействителен.');
             return array('type' => 'session', 'identity' => $ticket);
         }
@@ -48,7 +52,7 @@ final class Access
 
     public function clientIp(array $server): string { return $this->network->clientIp($server); }
 
-    private function checkOrigin(array $server): void
+    private function checkOrigin(array $server, string $ticketHost = ''): void
     {
         if (strtolower((string)($server['HTTP_SEC_FETCH_SITE'] ?? '')) === 'cross-site') throw new ApiException(403, 'cross_origin_denied', 'Межсайтовые подключения запрещены.');
         if (!isset($server['HTTP_ORIGIN'])) return; // Native integrations do not send Origin.
@@ -59,7 +63,7 @@ final class Access
             throw new ApiException(403, 'cross_origin_denied', 'Origin подключения не разрешён.');
         }
         $originHost = self::host((string)($origin['host'] ?? ''));
-        if ($originHost === '' || !in_array($originHost, $this->allowedHosts($server), true)) {
+        if ($originHost === '' || !in_array($originHost, $this->allowedHosts($server, $ticketHost), true)) {
             throw new ApiException(403, 'cross_origin_denied', 'Origin подключения не разрешён.');
         }
     }
@@ -69,16 +73,17 @@ final class Access
      *  1) Host самого handshake;
      *  2) X-Forwarded-Host от доверенного прокси — nginx может оставить в Host
      *     адрес апстрима (127.0.0.1:8001);
-     *  3) публичный адрес проекта (BASE_URL) — он не зависит от того, что
-     *     именно передал прокси.
+     *  3) host из одноразового билета: его записал веб-процесс, который видел
+     *     настоящий Host браузера;
+     *  4) публичный адрес проекта (BASE_URL).
      *
      * @return string[]
      */
-    private function allowedHosts(array $server): array
+    private function allowedHosts(array $server, string $ticketHost = ''): array
     {
         $forwarded = $this->network->viaTrustedProxy($server) ? (string)($server['HTTP_X_FORWARDED_HOST'] ?? '') : '';
         $hosts = array();
-        foreach (array((string)($server['HTTP_HOST'] ?? ''), $forwarded, $this->publicHost) as $candidate) {
+        foreach (array((string)($server['HTTP_HOST'] ?? ''), $forwarded, $ticketHost, $this->publicHost) as $candidate) {
             $host = self::host($candidate);
             if ($host !== '' && !in_array($host, $hosts, true)) $hosts[] = $host;
         }

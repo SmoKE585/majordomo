@@ -20,7 +20,11 @@ final class Tickets
      */
     public function __construct(private string $root, private string $sessionsDirectory = '') {}
 
-    public function issue(array $user, string $sessionId, int $created, ?int $now = null): string
+    /**
+     * @param string $host host, который браузер видел при получении билета:
+     *        по нему сервер WS проверяет Origin, если прокси не передал Host.
+     */
+    public function issue(array $user, string $sessionId, int $created, ?int $now = null, string $host = ''): string
     {
         $now ??= time();
         $sessions = $this->locate($sessionId);
@@ -40,7 +44,7 @@ final class Tickets
         }
         $ticket = bin2hex(random_bytes(32));
         $payload = array('id' => $user['id'], 'stamp' => $user['stamp'], 'session' => $sessionId, 'sessions' => $sessions,
-            'redeem_before' => $now + 30, 'expires' => min($now + 3600, $created + 43200));
+            'host' => $host, 'redeem_before' => $now + 30, 'expires' => min($now + 3600, $created + 43200));
         $file = $directory . '/' . hash('sha256', $ticket);
         if (file_put_contents($file, json_encode($payload, JSON_THROW_ON_ERROR), LOCK_EX) === false) throw new \RuntimeException('Не удалось сохранить билет WebSocket.');
         chmod($file, 0600);
