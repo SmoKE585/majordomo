@@ -158,7 +158,8 @@ final class Deployment
         $composer = $this->composerCommand();
         if ($composer === array()) throw new RuntimeException('Composer не найден. Установите Composer или задайте DEPLOY_COMPOSER.');
         $command = array_merge($composer, array(
-            'install', '--no-dev', '--prefer-dist', '--no-interaction', '--no-progress', '--optimize-autoloader',
+            'install', '--no-dev', '--prefer-dist', '--no-interaction', '--no-progress',
+            '--optimize-autoloader', '--no-scripts', '--no-plugins',
         ));
         $environment = $this->composerEnvironment();
         $this->log($log, 'composer install', 'info');
@@ -213,7 +214,9 @@ final class Deployment
         $stateFile = $this->root . '/cms/deploy/assets.json';
         $state = is_file($stateFile) ? json_decode((string)@file_get_contents($stateFile), true) : array();
         $hash = is_file($lock) ? (string)hash_file('sha256', $lock) : '';
-        $viteInstalled = is_file($this->root . '/node_modules/.bin/vite') || is_file($this->root . '/node_modules/vite/bin/vite.js');
+        $viteBin = $this->root . '/node_modules/.bin/vite';
+        $viteJs = $this->root . '/node_modules/vite/bin/vite.js';
+        $viteInstalled = is_file($viteBin) || is_file($viteJs);
         $needsCi = !is_dir($this->root . '/node_modules') || !$viteInstalled || !is_array($state) || ($state['lock_hash'] ?? '') !== $hash;
         $output = '';
         $npmEnvironment = array(
@@ -223,14 +226,24 @@ final class Deployment
             'NODE_ENV' => 'development',
             'NPM_CONFIG_PRODUCTION' => 'false',
             'npm_config_production' => 'false',
-            'NPM_CONFIG_OMIT' => '',
-            'npm_config_omit' => '',
+            'PATH' => getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin',
         );
         if ($needsCi) {
             $this->log($log, 'npm ci', 'info');
             $ci = $this->runner->run(array_merge($npm, array('ci', '--include=dev', '--no-audit', '--no-fund')), $this->timeout(), $npmEnvironment);
             $output .= $this->tail($ci['out']) . $this->tail($ci['err']);
             if (!$ci['ok']) throw new RuntimeException('npm ci завершился с кодом ' . $ci['code'] . ': ' . $this->tail($ci['err'] ?: $ci['out']));
+        }
+        if (!is_file($viteBin) && !is_file($viteJs)) {
+            // Некоторые версии npm/старые .npmrc игнорируют --include=dev.
+            // Явно доводим devDependencies, иначе build бессмысленно запускать.
+            $this->log($log, 'vite не установлен после npm ci — npm install --include=dev', 'warning');
+            $install = $this->runner->run(array_merge($npm, array('install', '--include=dev', '--no-save', '--no-audit', '--no-fund')), $this->timeout(), $npmEnvironment);
+            $output .= $this->tail($install['out']) . $this->tail($install['err']);
+            if (!$install['ok']) throw new RuntimeException('npm install --include=dev завершился с кодом ' . $install['code'] . ': ' . $this->tail($install['err'] ?: $install['out']));
+        }
+        if (!is_file($viteBin) && !is_file($viteJs)) {
+            throw new RuntimeException('vite не установлен: npm ci/install не создали node_modules/.bin/vite.');
         }
         $this->log($log, 'npm run build', 'info');
         $build = $this->runner->run(array_merge($npm, array('run', 'build')), $this->timeout(), $npmEnvironment);
@@ -376,6 +389,9 @@ final class Deployment
             // На некоторых хостингах IPv6 до Packagist/GitHub висит без ответа;
             // Composer поддерживает принудительный IPv4 через эту переменную.
             'COMPOSER_IPRESOLVE' => '4',
+            // Git fallback не должен ждать ввод пароля/токена.
+            'GIT_TERMINAL_PROMPT' => '0',
+            'COMPOSER_PROCESS_TIMEOUT' => '300',
         );
         if (function_exists('posix_geteuid') && posix_geteuid() === 0) $environment['COMPOSER_ALLOW_SUPERUSER'] = '1';
         return $environment;

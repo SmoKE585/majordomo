@@ -31,8 +31,7 @@ sudo php majordomo systemd:set \
   --user=mjdm_smart15_usr \
   --php=/usr/bin/php \
   --apply \
-  --disable-old \
-  --fix-owner
+  --disable-old
 ```
 
 Если ты уже в root-сессии (`su -`, SSH root, консоль FastPanel), `sudo` не
@@ -45,8 +44,8 @@ sudo php majordomo systemd:set \
 1. прочитается текущий `majordomo.service`, сохранится `ExecStartPre` с ожиданием MySQL;
 2. создастся `/etc/systemd/system/majordomo-mjdm_smart15_usr.service` с
    `User=mjdm_smart15_usr`, `WorkingDirectory` и `ExecStart=php cycle.php`;
-3. `cms`, `vendor`, `public/assets`, `node_modules` получат владельца сайта
-   (`--fix-owner`);
+3. при необходимости `--fix-owner` выставит владельца `cms`, `vendor`,
+   `public/assets`, `node_modules` (FastPanel обычно делает это сам);
 4. старый юнит будет остановлен и отключён только при `--disable-old`;
 5. новый юнит включится и запустится.
 

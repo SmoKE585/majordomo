@@ -105,7 +105,7 @@ sudo php majordomo systemd:set \
   --service=majordomo-mjdm_smart15_usr \
   --user=mjdm_smart15_usr \
   --php=/usr/bin/php \
-  --apply --disable-old --fix-owner
+  --apply --disable-old
 
 sudo php majordomo systemd:give-permissions \
   --service=majordomo-mjdm_smart15_usr \

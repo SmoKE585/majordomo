@@ -2487,6 +2487,12 @@ class saverestore extends module
                 }
 
                 copyTree($update_root, DOC_ROOT, 1);
+                // PHP-FPM может держать старый opcache после замены файлов.
+                // Текущий запрос уже загрузил классы, но следующие — новые.
+                if (function_exists('opcache_reset')) {
+                    @opcache_reset();
+                }
+                clearstatcache(true);
                 if ($is_system_update) {
                     // Файлы уже новые: зависимости и миграции обязательны до
                     // снятия паузы, иначе циклы стартуют со старым vendor.

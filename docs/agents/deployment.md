@@ -88,7 +88,7 @@ NODE_ENV=development npm run build
 
 Автообновление запускается внутри `cycle.php`. Ему нельзя вызывать
 `systemctl restart`: systemd остановит всю cgroup вместе с updater’ом. Вместо
-этого после успешных шагов ставится reload-флаг, супервизор завершается, а
+этого после успешных шагов ставится reload-флаг, `cycle.php` завершается, а
 systemd поднимает его заново по `Restart=always`.
 
 ## Миграции
@@ -127,7 +127,7 @@ systemd поднимает его заново по `Restart=always`.
 писать в `vendor`, `public/assets`, `cms`, `node_modules`. Для systemd:
 
 ```bash
-sudo php majordomo systemd:set --apply --disable-old --fix-owner
+sudo php majordomo systemd:set --apply --disable-old
 sudo php majordomo systemd:give-permissions
 ```
 

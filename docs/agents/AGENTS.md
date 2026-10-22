@@ -138,7 +138,7 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
 13. `docs/agents/code-comments.md` — **обязательно** при правке кода: комментарии по-русски и дата изменения класса.
 14. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
 15. Этот файл — текущее состояние и ограничения.
-16. `docs/agents/deployment.md` — пайплайн деплоя, миграции, removals, maintenance и systemd; пользовательская инструкция — `docs/deploy/systemd-sudo.md`.
+16. `docs/agents/deployment.md` — пайплайн деплоя, миграции, removals, maintenance и systemd; пошаговое развёртывание — `docs/deploy/server-setup.md`, детали sudo — `docs/deploy/systemd-sudo.md`.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 
