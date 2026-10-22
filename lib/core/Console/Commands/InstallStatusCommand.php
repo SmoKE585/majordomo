@@ -17,6 +17,7 @@ final class InstallStatusCommand extends Command
         $data = $state + array('marker' => InstallState::markerPath($context->root), 'install_url' => InstallState::installUrl(Config::string('ROOTHTML', '/')));
         $rows = array();
         foreach ($data as $key => $value) if (is_scalar($value)) $rows[] = array($key, is_bool($value) ? ($value ? 'yes' : 'no') : (string)$value);
+        $output->title('Состояние установки');
         $output->table(array('Параметр', 'Значение'), $rows);
         $output->result($data);
         return 0;

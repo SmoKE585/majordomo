@@ -325,7 +325,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 
 ## 11. Проверка перед завершением
 
-- `php tests/console_smoke.php` — при изменениях CLI: парсер, справка, JSON, состояния циклов, журналы и адаптеры без рабочей БД/Redis.
+- `php tests/console_smoke.php` и `php tests/console_users_smoke.php` — при изменениях CLI: парсер, справка, оформление, JSON, циклы, журналы, пользователи и смена пароля на изолированных фикстурах/SQLite без рабочей БД/Redis.
 
 - `php -l` для изменённых PHP-файлов.
 - `node --check` для изменённых JS.

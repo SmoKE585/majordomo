@@ -38,7 +38,7 @@ final class LogsTailCommand extends Command
         $result = array('lines' => array(), 'offset' => 0, 'identity' => '', 'truncated' => false);
         if (is_file($file)) $result = $tail->lastLines($file, $lines);
         elseif (!$input->option('follow')) throw new \RuntimeException('Журнал не найден: ' . $file);
-        $output->line('Журнал: ' . $file);
+        $output->muted('Журнал: ' . $file);
         foreach ($result['lines'] as $line) $output->line(rtrim($line, "\r"));
         if ($result['truncated']) $output->line('Прочитан последний фрагмент размером до 4 MiB.');
         $output->result(array('file' => $file, 'lines' => $result['lines'], 'truncated' => $result['truncated']));

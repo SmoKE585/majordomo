@@ -15,7 +15,8 @@ final class SystemReloadCommand extends Command
         $manager = $context->cycles();
         if (!$manager->isSupervisorRunning()) throw new \RuntimeException('Нет живого супервизора. Запустите настроенную службу MajorDoMo.');
         $manager->requestReload();
-        $output->line('Запрос reload сохранён. Супервизор завершит циклы и выйдет; повторный запуск выполняет менеджер службы.');
+        $output->success('Запрос reload сохранён.');
+        $output->info('Супервизор завершит циклы и выйдет; повторный запуск выполняет менеджер службы.');
         $output->result(array('accepted' => true, 'applied' => false, 'reload' => $manager->store()->reloadRequested()));
         return 0;
     }

@@ -31,6 +31,7 @@ class fixture_event {
 }
 PHP;
     file_put_contents($fixture . '/fixture_event/fixture_event.class.php', $source);
+    require dirname(__DIR__) . '/lib/core/PropertyChain.php';
     require dirname(__DIR__) . '/lib/core/OperationWorker.php';
     $queue = new MajorDoMo\Core\OperationsQueue();
     $worker = new MajorDoMo\Core\OperationWorker(new MajorDoMo\Core\Database(), new MajorDoMo\Core\RedisConnection(), $queue, new MajorDoMo\Core\ProcessRunner());

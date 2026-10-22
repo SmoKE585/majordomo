@@ -16,7 +16,7 @@ final class ConfigCacheCommand extends Command
         $values = array_replace(Env::parseFile($context->root . '/.env'), Env::parseFile($context->root . '/.env.local'));
         ConfigCache::write($context->root, $values, $fingerprint);
         if (ConfigCache::read($context->root, $fingerprint) === null) throw new \RuntimeException('Кеш не записан. Проверьте права на cms/cached.');
-        $output->line('Кеш конфигурации пересобран.');
+        $output->success('Кеш конфигурации пересобран.');
         $output->result(array('path' => ConfigCache::path($context->root)));
         return 0;
     }

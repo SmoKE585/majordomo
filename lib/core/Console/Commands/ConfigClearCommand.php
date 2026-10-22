@@ -12,7 +12,7 @@ final class ConfigClearCommand extends Command
     public function execute(Input $input, Output $output, Context $context): int
     {
         if (!ConfigCache::clear($context->root)) throw new \RuntimeException('Не удалось удалить кеш конфигурации');
-        $output->line('Кеш конфигурации удалён.');
+        $output->success('Кеш конфигурации удалён.');
         $output->result(array('path' => ConfigCache::path($context->root)));
         return 0;
     }

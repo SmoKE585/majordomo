@@ -163,6 +163,7 @@ moduleFixture('constructorfailure', 'class constructorfailure { public function 
 moduleFixture('brokenmodule', 'class brokenmodule {');
 moduleFixture('wrongclass', 'class unrelated_test_class {}');
 moduleFixture('inheritedsubscriber', 'require_once dirname(__DIR__)."/goodsubscriber/goodsubscriber.class.php"; class inheritedsubscriber extends goodsubscriber {}');
+moduleFixture('echoingsubscriber', 'class echoingsubscriber { public function propertySetHandle($object,$property,$value) { $target=(object)array("id"=>1,"class_id"=>0,"object_title"=>$object); \\MajorDoMo\\Core\\Core::properties()->set($target,"power",$value); } }');
 
 setLinks('badsubscriber,goodsubscriber, badsubscriber ,badsubscriber_extra');
 $result = runModule('badsubscriber');
@@ -184,6 +185,15 @@ setLinks('goodsubscriber,inheritedsubscriber');
 $before = count($calls);
 check(runModule('goodsubscriber')['success'] && runModule('inheritedsubscriber')['success'] && count($calls) === $before + 2, 'Existing and inherited handlers must still execute');
 check(links() === 'goodsubscriber,inheritedsubscriber', 'Working subscribers must remain bound');
+
+// A module writing another property must not be echoed back to itself.
+$pdo->exec("UPDATE pvalues SET LINKED_MODULES='echoingsubscriber' WHERE ID=3");
+setLinks('echoingsubscriber');
+$pdo->exec('DELETE FROM operations_queue');
+$echo = runModule('echoingsubscriber');
+check($echo['success'] && (int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 0
+    && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=3')->fetchColumn() === 'private value',
+    'The module handling a notification is excluded from its own property write');
 
 foreach (array('falsesubscriber', 'throwsubscriber', 'constructorfailure', 'brokenmodule', 'wrongclass') as $module) {
     setLinks($module . ',goodsubscriber');

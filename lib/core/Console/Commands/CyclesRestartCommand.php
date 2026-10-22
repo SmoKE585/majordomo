@@ -17,8 +17,8 @@ final class CyclesRestartCommand extends CycleActionCommand
         if (!$all) return parent::execute($input, $output, $context);
         $manager = $context->cycles();
         $result = $manager->restartAll();
-        $output->line($result['cycles'] > 0 ? 'Запрос перезапуска сохранён. Циклов: ' . $result['cycles'] . '.' : 'Нет циклов с желаемым состоянием running.');
-        $output->line($result['supervisor_running'] ? 'Ожидается применение супервизором.' : 'Супервизор не запущен: запрос ожидает его запуска.');
+        $output->success($result['cycles'] > 0 ? 'Запрос перезапуска сохранён. Циклов: ' . $result['cycles'] . '.' : 'Нет циклов с желаемым состоянием running.');
+        $output->info($result['supervisor_running'] ? 'Ожидается применение супервизором.' : 'Супервизор не запущен: запрос ожидает его запуска.');
         $output->result(array('accepted' => true, 'applied' => false, 'cycles' => $result['cycles'], 'supervisor_running' => $result['supervisor_running']));
         return 0;
     }

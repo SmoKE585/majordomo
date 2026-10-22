@@ -36,6 +36,6 @@ final class Core
     public static function api(): ApiClient { return self::service(__FUNCTION__, fn() => new ApiClient(self::queue())); }
     public static function processes(): ProcessRunner { return self::service(__FUNCTION__, fn() => new ProcessRunner()); }
     public static function scheduler(): Scheduler { return self::service(__FUNCTION__, fn() => new Scheduler(self::database(), self::processes())); }
-    public static function worker(): OperationWorker { return self::service(__FUNCTION__, fn() => new OperationWorker(self::database(), self::redis(), self::queue(), self::processes())); }
+    public static function worker(): OperationWorker { return self::service(__FUNCTION__, fn() => new OperationWorker(self::database(), self::redis(), self::queue(), self::processes(), self::errors())); }
     public static function network(): NetworkAccess { return self::service(__FUNCTION__, fn() => new NetworkAccess()); }
 }

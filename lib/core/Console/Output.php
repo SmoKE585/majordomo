@@ -14,7 +14,7 @@ final class Output
     public function __construct(private mixed $stdout, private mixed $stderr, ?int $columns = null)
     {
         $terminalColumns = getenv('COLUMNS');
-        $this->columns = max(40, min(200, $columns ?? (ctype_digit((string)$terminalColumns) ? (int)$terminalColumns : 100)));
+        $this->columns = max(40, min(200, $columns ?? (ctype_digit((string)$terminalColumns) ? (int)$terminalColumns : 80)));
     }
     public function setJson(bool $json): void { $this->json = $json; }
     public function setAnsi(?bool $ansi): void { $this->ansi = $ansi; }
@@ -39,7 +39,9 @@ final class Output
     {
         if ($this->json) { $this->messages[] = $text; return; }
         if ($space) fwrite($this->stdout, PHP_EOL);
-        fwrite($this->stdout, '  ' . $this->paint($text, $style, $this->stdout) . PHP_EOL);
+        foreach ($this->wrap($this->clean($text), $this->columns - 4) as $line) {
+            fwrite($this->stdout, '  ' . $this->paint($line, $style, $this->stdout) . PHP_EOL);
+        }
     }
 
     public function status(string $status, string $text): void

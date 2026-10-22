@@ -214,6 +214,12 @@ final class Methods
             $params = array();
         }
 
+        // A method invoked from a module/ONCHANGE handler must carry the
+        // property chain into the queue, otherwise a cross-link can restart
+        // from an empty chain in the worker process.
+        $chain = PropertyChain::current();
+        if ($chain && !isset($params['_chain'])) $params['_chain'] = $chain;
+
         $call_stack[] = $current_call;
         $params['raiseEvent'] = $raiseEvent;
         $params['m_c_s'] = $call_stack;

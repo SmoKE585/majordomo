@@ -26,6 +26,18 @@ final class Properties
         return Core::bindings()->removeLinkedModule($object, $property, $module);
     }
 
+    private function reportChainStop(string $object, string $property, array $chain): void
+    {
+        $tail = array_slice($chain, -5);
+        $message = 'Цикл привязок остановлен для ' . $object . '.' . $property
+            . '; цепочка: ' . ($tail ? implode(' -> ', $tail) : 'начало');
+        if ($this->errors) {
+            $this->errors->report('property_chain', $message, $object . '.' . $property, 60);
+        } elseif (function_exists('DebMes')) {
+            DebMes($message, 'property_chain', 'warning');
+        }
+    }
+
     /**
      * Keeps module owner rows and pvalue labels in sync after a property rename.
      *
@@ -379,12 +391,15 @@ final class Properties
                 if (!$this->db->insert('phistory_queue', $q_rec)) throw new RuntimeException('Property history was not queued');
             }
 
-            if (isset($v['LINKED_MODULES']) && $v['LINKED_MODULES']) {
+            if (!$chain_stopped && isset($v['LINKED_MODULES']) && $v['LINKED_MODULES']) {
                 if (!is_array($no_linked) && $no_linked) {
                     return;
                 } elseif (!is_array($no_linked)) {
                     $no_linked = array();
                 }
+                // A module handling a notification must not receive its own echo.
+                $delivery_source = PropertyChain::source();
+                if ($delivery_source !== '') $no_linked[$delivery_source] = 0;
 
                 $tmp = explode(',', $v['LINKED_MODULES']);
                 $total = count($tmp);
@@ -403,13 +418,18 @@ final class Properties
                     $params['object'] = $object->object_title;
                     $params['property'] = $property;
                     $params['value'] = $value;
+                    $params['_chain'] = $next_chain;
                     $url = '/api/modulePropertySet/' . urlencode($linked_module);
                     try {
                         if (!Core::api()->request($url, 'GET', $params)) throw new RuntimeException('Linked operation was not queued');
                     } catch (Throwable $e) {
-                        // The value is already saved. A failed notification to
-                        // one module must not suppress the property's ONCHANGE.
+                        // The value is already saved. A failed notification is
+                        // reported once per module/window, not per value.
                         $linked_operation_errors[] = $e;
+                        $this->errors?->report('property_delivery',
+                            'Не удалось поставить в очередь уведомление модулю ' . $linked_module
+                            . ' для ' . $object->object_title . '.' . $property . ': ' . $e->getMessage(),
+                            $linked_module);
                     }
                     endMeasure('linkedModule' . $linked_module);
                 }
@@ -423,7 +443,7 @@ final class Properties
             $this->locks->release($property_lock);
         }
 
-        if (isset($prop['ONCHANGE']) && $prop['ONCHANGE']) {
+        if (!$chain_stopped && isset($prop['ONCHANGE']) && $prop['ONCHANGE']) {
             global $property_linked_history;
             if (!isset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']])) {
                 $property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']] = 1;
@@ -433,21 +453,19 @@ final class Properties
                 $params['OLD_VALUE'] = (string)$old_value;
                 $params['SOURCE'] = (string)$source;
                 $params['NO_LINKED'] = $no_linked;
-                //$object->callMethod($prop['ONCHANGE'], $params);
-                //$object->callMethodSafe($prop['ONCHANGE'], $params);
+                $params['_chain'] = $next_chain;
                 try {
-                    if (isset($_SERVER['REQUEST_URI']) && ($_SERVER['REQUEST_URI'] != '')) {
-                        $object->callMethod($prop['ONCHANGE'], $params);
-                    } else {
-                        $object->raiseEvent($prop['ONCHANGE'], $params);
-                    }
+                    // Always enqueue: a web request must not wait for user code,
+                    // and web/CLI must behave identically. The worker executes
+                    // the method and carries the chain into nested writes.
+                    $object->raiseEvent($prop['ONCHANGE'], $params);
                 } finally {
                     unset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']]);
                 }
             }
         }
 
-        if ($linked_operation_errors) {
+        if ($linked_operation_errors && Config::bool('PROPERTY_DELIVERY_STRICT')) {
             throw new RuntimeException(implode('; ', array_map(static fn($e) => $e->getMessage(), $linked_operation_errors)), 0, $linked_operation_errors[0]);
         }
 

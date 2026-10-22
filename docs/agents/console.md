@@ -31,6 +31,8 @@ php majordomo list config --json
 | `lib/core/Console/Commands/*Command.php` | Один отдельный конкретный класс на команду |
 | `lib/core/Console/Input.php` | Строгая проверка аргументов, опций и числовых границ |
 | `lib/core/Console/Output.php` | stdout/stderr, таблицы, единый JSON |
+| `lib/core/Console/TerminalInput.php` | Скрытый ввод пароля с подтверждением в команде и чтение из stdin |
+| `lib/core/Users/UserAccounts.php` | Список/поиск пользователей и изменение пароля; подготовленные SQL-запросы |
 | `lib/core/Console/Context.php` | Корень приложения, ленивая конфигурация, доступ к CycleManager |
 | `lib/core/Console/CycleActionCommand.php` | Общая обвязка команд циклов, без собственного управления процессами |
 | `lib/core/Console/CycleRuntimeReader.php` | Снимок heartbeat из MySQL/Redis, только чтение |
@@ -90,7 +92,8 @@ php majordomo list config --json
 - Суффикс `?` у аргумента — необязательный; без него аргумент обязателен.
 - Суффикс `=` у опции — значение обязательно. Поддерживаются `--limit=10` и
   `--limit 10`. Опции без `=` — флаги. `--` завершает разбор опций.
-- `--help`, `-h` и `--json` добавляются автоматически. Справка не выполняет команду.
+- `--help`, `-h`, `--json`, `--ansi`, `--no-ansi`, `--verbose` добавляются автоматически
+  и зарезервированы для общего CLI. Справка не выполняет команду.
 - Неизвестные/повторные опции, лишние/пропущенные аргументы — ошибка, код `2`.
 - `execute()` возвращает код: `0` — успех, `1` — ошибка выполнения/диагностики,
   `2` — ошибка использования. Внутри классов запрещены `exit`/`die`.
@@ -102,6 +105,41 @@ php majordomo list config --json
   необработанный stdout/stderr старого конфига. `config:snapshot`/`config:migrate`
   маскируют ключи по `ConfigSchema.secret`; DB-диагностика не отдаёт `config`.
 - Длительный поток `logs:tail --follow` несовместим с `--json`.
+
+## Оформление команд
+
+- Используйте `Output::title()` для заголовка, `section()` для группы,
+  `muted()` для подсказок, `success()`, `warning()`, `info()`, `status()` для состояний.
+  Не вставляйте ANSI escape-последовательности в команды.
+- В терминале цвета включаются автоматически (в Windows — VT100); в файле и pipe
+  отключены. Учитываются `NO_COLOR`, `TERM=dumb`, `--ansi`, `--no-ansi`.
+- Таблицы, подсказки и статусы переносятся по `COLUMNS` (40–200, по умолчанию 80).
+  `line()`/`write()` оставлены для точного вывода, например строк журнала.
+- Оформление не должно менять `result()` и JSON-контракт. Цвет дополняет
+  текстовую метку, а не заменяет её. Пользовательские ANSI/управляющие символы
+  удаляются из таблиц, статусов и обычных строк.
+- Диагностика по умолчанию компактна; полные подсказки — с `--verbose`.
+
+## Пользователи и пароли
+
+`users` — источник пользователей и их прав. Команды `users:list` и
+`users:password <id>` вызывают `UserAccounts`, не подключая legacy loader.
+Продуктивное подключение — mysqli из Config; PDO нужен только изолированным
+SQLite-тестам и не является новым требованием к установке.
+
+- Список возвращает только ID, USERNAME, NAME, IS_ADMIN, IS_DEFAULT; PASSWORD
+  не читается и не возвращается. Поиск выполняется с подготовленными параметрами.
+- Смена пароля — один подготовленный UPDATE по первичному ID, без изменения прав
+  и остальных полей. Сохранён действующий контракт `hash('sha512', $password)`:
+  модуль users и установщик используют его же. Менять формат только в CLI нельзя.
+- Пароль вводится скрыто дважды через `TerminalInput`. При отсутствии терминала
+  нужен `--password-stdin`; для JSON этот флаг обязателен. В аргументах CLI,
+  Output, исключениях, журнале и временных файлах пароль и хеш не допускаются.
+- Скрытый ввод не имеет fallback на открытый ввод. Unix использует stty с
+  восстановлением состояния в finally (при наличии pcntl также обрабатываются
+  сигналы отмены); Windows — Console.ReadKey(true) в PowerShell с pipe в память.
+- Для тестов Application принимает ленивую фабрику UserAccounts и TerminalInput.
+  Тестовый hiddenReader — только подмена ввода, реальные команды его не создают.
 
 ## Загрузка и побочные эффекты
 
@@ -133,6 +171,7 @@ php majordomo list config --json
 php -l majordomo
 php -l lib/core/Console/Commands/ExampleStatusCommand.php
 php tests/console_smoke.php
+php tests/console_users_smoke.php
 php tests/settings_cycles_smoke.php
 php tests/routing_smoke.php
 php tests/config_smoke.php

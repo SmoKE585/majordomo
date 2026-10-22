@@ -12,7 +12,8 @@ final class OperationWorker
         private Database $db,
         private RedisConnection $redis,
         private OperationsQueue $queue,
-        private ProcessRunner $processes
+        private ProcessRunner $processes,
+        private ?ErrorReporter $errors = null
     ) {}
 
     public function execute($id, $token)
@@ -21,6 +22,9 @@ final class OperationWorker
             $item = $this->queue->claimed('core_runtime', $id, $token);
             $data = json_decode($item['DATAVALUE'], true, 512, JSON_THROW_ON_ERROR);
             $params = $data['params'];
+            $chain = is_array($params['_chain'] ?? null) ? $params['_chain'] : array();
+            $delivery_source = $item['DATANAME'] === 'modulepropertyset' ? (string)($data['target'] ?? '') : '';
+            PropertyChain::enter($chain, $delivery_source);
             $_GET = $params;
             $_GET['r_s_m'] = 1;
             $_REQUEST = $_GET;
@@ -67,6 +71,8 @@ final class OperationWorker
             }
             return array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage()
                 . ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+        } finally {
+            PropertyChain::leave();
         }
     }
 
@@ -119,10 +125,23 @@ final class OperationWorker
                     if (!$this->db->insert('operations_failed', $record)) throw new RuntimeException('Cannot preserve failed operation');
                 }
                 $this->queue->acknowledge($item);
-                DebMes('Core operation failed permanently: ' . $error, 'core_runtime', 'error');
+                if ($this->errors) {
+                    $this->errors->report('property_delivery',
+                        'Фоновая операция не выполнена после повторов: ' . $error,
+                        'worker:' . (string)($item['DATANAME'] ?? 'unknown'), 300);
+                } else {
+                    DebMes('Core operation failed permanently: ' . $error, 'core_runtime', 'error');
+                }
             } else {
-                $this->queue->release($item, 5);
-                DebMes('Core operation will retry: ' . ($result['error'] ?? 'unknown error'), 'core_runtime', 'warning');
+                $attempt = max(1, (int)($item['ATTEMPTS'] ?? 1));
+                $this->queue->release($item, min(300, 5 * (2 ** ($attempt - 1))));
+                if ($this->errors) {
+                    $this->errors->report('property_delivery',
+                        'Фоновая операция будет повторена: ' . ($result['error'] ?? 'unknown error'),
+                        'worker_retry:' . (string)($item['DATANAME'] ?? 'unknown'), 300);
+                } else {
+                    DebMes('Core operation will retry: ' . ($result['error'] ?? 'unknown error'), 'core_runtime', 'warning');
+                }
             }
         }
         return count($items);
