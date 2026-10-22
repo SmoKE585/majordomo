@@ -33,6 +33,8 @@ try {
     foreach (array('127.0.0.1', '::1', '192.168.0.5', '10.20.30.40', '172.16.0.1', '172.31.255.255', '169.254.4.1', 'fc00::1', 'fd12::4', 'fe80::1', '::ffff:192.168.1.5') as $ip) check($policy->isLocal(array('REMOTE_ADDR' => $ip)), 'Local: ' . $ip);
     foreach (array('8.8.8.8', '172.32.0.1', '172.15.255.255', '100.64.0.1', '2001:4860::1', '', 'bad') as $ip) check(!$policy->isLocal(array('REMOTE_ADDR' => $ip)), 'External/invalid: ' . $ip);
     check(!$policy->isLocal(array('REMOTE_ADDR' => '192.168.1.2', 'HTTP_X_FORWARDED_FOR' => '127.0.0.1')), 'Untrusted forwarding cannot prove local');
+    check(!$policy->isLocal(array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '8.8.8.8')), 'Loopback proxy forwards external client');
+    check($policy->isLocal(array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '192.168.1.5')), 'Loopback proxy is trusted without TRUSTED_PROXIES');
     $proxy = new AccessPolicy($network, '192.168.55.0/24', '127.0.0.2/32,10.0.0.1/32');
     check($proxy->isLocal(array('REMOTE_ADDR' => '127.0.0.2', 'HTTP_X_FORWARDED_FOR' => '192.168.55.10')), 'Trusted proxy LAN');
     check(!$proxy->isLocal(array('REMOTE_ADDR' => '127.0.0.2', 'HTTP_X_FORWARDED_FOR' => '192.168.55.10,8.8.8.8')), 'Forged leftmost XFF cannot bypass external hop');

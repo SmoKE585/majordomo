@@ -29,8 +29,10 @@ final class WebhookRunner
     /**
      * @param callable():void $boot загружает легаси-runtime и настройки после
      *        проверки, чтобы обработчик увидел обычный контекст MajorDoMo.
+     * @param string $pathInfo хвост после секрета; становится PATH_INFO
+     *        обработчика (например, /v1.0/... для Yandex Smart Home).
      */
-    public function run(string $secret, callable $boot): void
+    public function run(string $secret, callable $boot, string $pathInfo = ''): void
     {
         $record = $this->store->findBySecret($secret);
         if ($record === null) {
@@ -81,7 +83,7 @@ final class WebhookRunner
             // Контекст совместимости готовим до загрузчика: THIS_URL и
             // настройки видят уже очищенный URI, а AuthGate — проверенное
             // разрешение текущего процесса.
-            $this->prepareServer();
+            $this->prepareServer($pathInfo);
             $boot();
             include $this->handlerPath;
             $this->finish($this->statusCode());
@@ -161,22 +163,34 @@ final class WebhookRunner
         }
     }
 
-    private function prepareServer(): void
+    private function prepareServer(string $pathInfo = ''): void
     {
         $relative = 'modules/' . (string)$this->hook['MODULE'] . '/' . (string)$this->hook['HANDLER'];
         $_SERVER['SCRIPT_FILENAME'] = $this->handlerPath;
         $_SERVER['SCRIPT_NAME'] = '/' . $relative;
-        $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'];
         if (empty($_SERVER['DOCUMENT_ROOT'])) {
             $_SERVER['DOCUMENT_ROOT'] = rtrim(str_replace('\\', '/', $this->root), '/') . '/public';
         }
-        // Убираем секрет из REQUEST_URI: его читают старые журналы действий и
-        // аудита. Точный URL движка не входит в контракт обработчика, а
-        // SCRIPT_NAME, query, форма, тело и заголовки остаются без изменений.
-        if (isset($_SERVER['REQUEST_URI'])) {
-            $redacted = preg_replace('#(/api(?:\.php)?/hooks/)[a-f0-9]{64}#i', '$1[redacted]', (string)$_SERVER['REQUEST_URI']);
-            if (is_string($redacted)) {
-                $_SERVER['REQUEST_URI'] = $redacted;
+        $query = (string)($_SERVER['QUERY_STRING'] ?? '');
+        if ($pathInfo !== '') {
+            // Хвост после секрета — это PATH_INFO обработчика. REQUEST_URI
+            // становится относительным, как у отдельного nginx-входа Yandex
+            // Smart Home; секрет в него не попадает.
+            $_SERVER['PATH_INFO'] = $pathInfo;
+            $_SERVER['ORIG_PATH_INFO'] = $pathInfo;
+            $_SERVER['PATH_TRANSLATED'] = $this->handlerPath . str_replace('/', DIRECTORY_SEPARATOR, $pathInfo);
+            $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $pathInfo;
+            $_SERVER['REQUEST_URI'] = $pathInfo . ($query !== '' ? '?' . $query : '');
+        } else {
+            $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'];
+            unset($_SERVER['PATH_INFO'], $_SERVER['ORIG_PATH_INFO'], $_SERVER['PATH_TRANSLATED']);
+            // Убираем секрет из REQUEST_URI: его читают старые журналы действий
+            // и аудита. SCRIPT_NAME, query, форма, тело и заголовки не меняются.
+            if (isset($_SERVER['REQUEST_URI'])) {
+                $redacted = preg_replace('#(/api(?:\.php)?/hooks/)[a-f0-9]{64}#i', '$1[redacted]', (string)$_SERVER['REQUEST_URI']);
+                if (is_string($redacted)) {
+                    $_SERVER['REQUEST_URI'] = $redacted;
+                }
             }
         }
         // Легаси-обработчики MajorDoMo ищут config.php/lib/loader.php от корня

@@ -4,11 +4,19 @@ namespace MajorDoMo\Core\Api;
 
 use MajorDoMo\Core\NetworkAccess;
 
+/**
+ * Проверка сетевого доступа к API.
+ * Изменения: 2026-10-22 — loopback-прокси доверенный по умолчанию.
+ */
 final class AccessPolicy
 {
     public const LOCAL_NETWORKS = '127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,fc00::/7,fe80::/10';
 
-    public function __construct(private NetworkAccess $network, private string $homeNetworks = '', private string $trustedProxies = '') {}
+    public function __construct(private NetworkAccess $network, private string $homeNetworks = '', private string $trustedProxies = '')
+    {
+        // Локальный nginx всегда ходит с loopback, независимо от .env.
+        $this->trustedProxies = NetworkAccess::trustedProxies($this->trustedProxies);
+    }
 
     /** A proxy address alone never proves that the original caller is local. */
     public function clientIp(array $server): string
@@ -16,7 +24,11 @@ final class AccessPolicy
         $peer = self::normalize((string)($server['REMOTE_ADDR'] ?? ''));
         $forwarded = (string)($server['HTTP_X_FORWARDED_FOR'] ?? '');
         if (!$this->network->inNetworks($peer, $this->trustedProxies)) return $forwarded === '' ? $peer : '';
-        if ($forwarded === '' || strlen($forwarded) > 4096) return '';
+        // Прямой loopback-запрос (CLI-сервер, локальная проверка) не имеет XFF,
+        // но сам по себе является локальным. Внешний доверенный прокси без XFF
+        // по-прежнему неоднозначен и не получает локальность.
+        if ($forwarded === '') return $this->network->inNetworks($peer, NetworkAccess::LOOPBACK_PROXIES) ? $peer : '';
+        if (strlen($forwarded) > 4096) return '';
         $chain = array_reverse(explode(',', $forwarded));
         foreach ($chain as $candidate) {
             $candidate = self::normalize(trim($candidate));

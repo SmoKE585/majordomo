@@ -142,6 +142,11 @@ try {
     check($status === 200 && $json['method'] === 'POST' && $json['query']['a'] === '1' && $json['raw'] === '{"x":1}' && $json['header'] === $header, 'JSON body, query and header reach the handler unchanged');
     check($json['script'] === '/modules/fixturehook/webhook.php', 'Handler sees a normal module script name');
     check(str_contains($json['uri'], '[redacted]') && !str_contains($json['uri'], $secret), 'REQUEST_URI hides the secret from legacy logs');
+    [$status, $raw, , $json] = request('GET', $path . '/v1.0/user/devices?mode=echo&x=1', null, array('X-Fixture-Secret' => $header));
+    check($status === 200 && $json['path_info'] === '/v1.0/user/devices' && $json['uri'] === '/v1.0/user/devices?mode=echo&x=1', 'Trailing path becomes PATH_INFO');
+    check(!str_contains($json['uri'], $secret), 'PATH_INFO mode keeps the secret out of REQUEST_URI');
+    [$status, , , $json] = request('GET', $path . '/%2e%2e%2fconfig.php', null, array('X-Fixture-Secret' => $header));
+    check($status === 400 && ($json['error']['code'] ?? '') === 'invalid_path', 'Traversal in PATH_INFO rejected');
     [$status, $raw, $headers, $json] = request('GET', $path . '?mode=echo&b=2', null, array('X-Fixture-Secret' => $header));
     check($status === 200 && $json['method'] === 'GET' && $json['query']['b'] === '2' && $json['raw'] === '', 'GET request reaches the handler');
     [$status, $raw, $headers, $json] = request('POST', $path . '?mode=echo', 'foo=bar', array('Content-Type' => 'application/x-www-form-urlencoded', 'X-Fixture-Secret' => $header));

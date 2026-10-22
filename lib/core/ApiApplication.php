@@ -56,8 +56,17 @@ final class ApiApplication extends Application
             // администратора. Ветка идёт до JSON-парсера, AccessPolicy и loader.
             if (($probe->segments[0] ?? '') === 'hooks') {
                 $legacy = false;
-                $secret = count($probe->segments) === 2 ? (string)$probe->segments[1] : '';
+                $secret = count($probe->segments) >= 2 ? (string)$probe->segments[1] : '';
                 if (!preg_match(HookStore::SECRET_PATTERN, $secret)) throw new ApiException(404, 'not_found', 'Вход не найден.');
+                // Хвост после секрета — это PATH_INFO обработчика (Yandex Smart
+                // Home и подобные модули). Он не меняет сохранённый файл.
+                $tail = array_slice($probe->segments, 2);
+                foreach ($tail as $segment) {
+                    if ($segment === '.' || $segment === '..' || str_contains($segment, '/') || str_contains($segment, '\\')) {
+                        throw new ApiException(400, 'invalid_path', 'Некорректный путь webhook.');
+                    }
+                }
+                $pathInfo = $tail === array() ? '' : '/' . implode('/', $tail);
                 try {
                     $store = $this->hookStore ?? HookStore::connect();
                 } catch (\Throwable $error) {
@@ -68,7 +77,7 @@ final class ApiApplication extends Application
                 $webhook->run($secret, function (): void {
                     $this->bootLibraries();
                     $this->bootSettings();
-                });
+                }, $pathInfo);
                 $finished = true;
                 return;
             }

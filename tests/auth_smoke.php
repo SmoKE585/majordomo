@@ -50,6 +50,7 @@ try {
     check($cookie['httponly'] && $cookie['samesite'] === 'Strict' && !$cookie['secure'], 'HttpOnly, Strict, browser-session cookie');
     check(!Session::isSecure(array('REMOTE_ADDR' => '203.0.113.1', 'HTTP_X_FORWARDED_PROTO' => 'https')), 'Untrusted proxy cannot choose secure mode');
     check(Session::isSecure(array('REMOTE_ADDR' => '127.0.0.2', 'HTTP_X_FORWARDED_PROTO' => 'https')), 'Trusted TLS proxy accepted');
+    check(Session::isSecure(array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_PROTO' => 'https')), 'Loopback TLS proxy trusted without configuration');
     $session->set('filter', array('foo' => 1));
     check($session->get('filter')['foo'] === 1 && $session->has('filter'), 'Core state API');
     check($session->pull('filter')['foo'] === 1 && !$session->has('filter'), 'Pull consumes state');

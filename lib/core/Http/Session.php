@@ -2,7 +2,10 @@
 namespace MajorDoMo\Core\Http;
 use MajorDoMo\Core\Config;
 
-/** Native cookie-only sessions. Authentication is separate from UI state. */
+/**
+ * Native cookie-only sessions. Authentication is separate from UI state.
+ * Изменения: 2026-10-22 — loopback-прокси всегда доверенный для HTTPS-признака.
+ */
 final class Session
 {
     public string $name;
@@ -51,8 +54,10 @@ final class Session
     public static function isSecure(array $server): bool
     {
         if (!empty($server['HTTPS']) && strtolower((string)$server['HTTPS']) !== 'off') return true;
-        return (new \MajorDoMo\Core\NetworkAccess())->inNetworks($server['REMOTE_ADDR'] ?? '', Config::string('TRUSTED_PROXIES'))
-            && strtolower((string)($server['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+        return (new \MajorDoMo\Core\NetworkAccess())->inNetworks(
+            $server['REMOTE_ADDR'] ?? '',
+            \MajorDoMo\Core\NetworkAccess::trustedProxies(Config::string('TRUSTED_PROXIES'))
+        ) && strtolower((string)($server['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
     }
     public function csrfToken(): string
     {

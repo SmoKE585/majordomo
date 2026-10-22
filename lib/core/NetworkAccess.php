@@ -3,8 +3,26 @@
 namespace MajorDoMo\Core;
 
 
+/**
+ * Сетевое сопоставление и определение адреса клиента за reverse proxy.
+ *
+ * Изменения: 2026-10-22 — loopback всегда считается доверенным прокси, чтобы
+ * схема «nginx → 127.0.0.1:80» работала без дополнительной настройки.
+ */
 final class NetworkAccess
 {
+    /** Локальный reverse proxy по определению не может быть внешним клиентом. */
+    public const LOOPBACK_PROXIES = '127.0.0.1/32,::1/128';
+
+    /** Добавляет loopback к настроенным прокси, не заменяя пользовательский список. */
+    public static function trustedProxies($configured = ''): string
+    {
+        $configured = trim((string)$configured);
+        return $configured === ''
+            ? self::LOOPBACK_PROXIES
+            : self::LOOPBACK_PROXIES . ',' . $configured;
+    }
+
     public function matches($ip, $network)
     {
         $ip = trim((string)$ip);
@@ -35,6 +53,7 @@ final class NetworkAccess
 
     public function clientIp($peer, $forwarded = '', $trusted_proxies = '')
     {
+        $trusted_proxies = self::trustedProxies($trusted_proxies);
         if (!$this->inNetworks($peer, $trusted_proxies)) return $peer;
         $chain = array_reverse(explode(',', (string)$forwarded));
         foreach ($chain as $candidate) {

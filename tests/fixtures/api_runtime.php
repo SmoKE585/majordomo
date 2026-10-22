@@ -110,6 +110,7 @@ echo json_encode(array(
     'header' => $_SERVER['HTTP_X_FIXTURE_SECRET'] ?? '',
     'script' => $_SERVER['SCRIPT_NAME'] ?? '',
     'uri' => $_SERVER['REQUEST_URI'] ?? '',
+    'path_info' => $_SERVER['PATH_INFO'] ?? '',
 ));
 PHP);
         file_put_contents($root . '/cms/modules_installed/control_modules.installed', 'fixture');
