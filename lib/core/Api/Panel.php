@@ -10,6 +10,8 @@ use MajorDoMo\Core\{Core, Database};
  * 2026-10-22 — служебный AJAX панели переведён на /api/v1/panel: дашборд,
  * поиск, консоль, уведомления, билет WebSocket и запросы X-Ray. Маршруты
  * доступны только в сеансе администратора (проверка в Dispatcher).
+ * 2026-10-23 — билет WebSocket выпускается по фактическому каталогу сессий,
+ * а его ошибка возвращается как 503 с причиной вместо пустого 500.
  */
 final class Panel
 {
@@ -53,8 +55,16 @@ final class Panel
         if ($user === null) {
             throw new ApiException(401, 'authentication_required', 'Необходимо войти в систему.');
         }
-        $ticket = (new \MajorDoMo\Core\WebSockets\Tickets(rtrim(ROOT, '/\\')))
-            ->issue($user, session_id(), (int)($_SESSION['md_admin']['created'] ?? 0));
+        // Каталог берём фактический, а не предполагаемый: хостинг может
+        // навязывать свой session.save_path. Иначе билет не находится и
+        // эндпоинт отвечал 500 без внятной причины.
+        try {
+            $ticket = (new \MajorDoMo\Core\WebSockets\Tickets(rtrim(ROOT, '/\\'), \MajorDoMo\Core\Http\Session::effectiveDirectory()))
+                ->issue($user, session_id(), (int)($_SESSION['md_admin']['created'] ?? 0));
+        } catch (\RuntimeException $error) {
+            error_log('MajorDoMo WebSocket ticket: ' . $error->getMessage());
+            throw new ApiException(503, 'websocket_ticket_unavailable', 'Билет WebSocket не выдан: ' . $error->getMessage());
+        }
         return array('ticket' => $ticket);
     }
 

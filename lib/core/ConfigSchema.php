@@ -42,6 +42,11 @@ final class ConfigSchema
             'DIR_MODULES' => array('type' => 'string', 'default' => './modules/'),
             'ROOTHTML' => array('type' => 'string', 'default' => '/'),
             'BASE_URL' => array('type' => 'string', 'computed' => true),
+            // Каталог сессий. Пусто — <root>/var/sessions. Фактический путь
+            // (в том числе зафиксированный php_admin_value пула php-fpm) ядро
+            // определяет само; ключ нужен только для принудительного
+            // переопределения, например на общий каталог вне проекта.
+            'SESSION_SAVE_PATH' => array('type' => 'string', 'optional' => true, 'constant' => false),
 
             // Executables ----------------------------------------------------
             'PATH_TO_PHP' => array('type' => 'string', 'optional' => true),

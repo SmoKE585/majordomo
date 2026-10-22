@@ -381,6 +381,8 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `php -l` для изменённых PHP-файлов.
 - `node --check` для изменённых JS.
 - `npm run build` после изменений в `resources/`.
+- `node tests/panel_notifications_smoke.mjs` — модуль уведомлений в общем бандле: на странице входа без `window.ROOTHTML` опроса журнала нет, а в оболочке адрес строится по префиксу проекта.
+- `php tests/websocket_smoke.php` и `php tests/websocket_transport_smoke.php` — билет запоминает фактический каталог сессий (включая зафиксированный `php_admin_value`) и проверяется отдельным процессом.
 - `php tests/routing_smoke.php` — контракт friendly URL, round-trip и nginx-конфига.
 - `php tests/config_smoke.php` — парсер `.env`, типы, кеш и легаси-мост.
 - `composer validate --strict`, `composer dump-autoload --optimize --strict-psr`, `php tests/composer_smoke.php` — при изменениях PHP-зависимостей или автозагрузки. PHPMailer и локальный MQTT загружаются только Composer.

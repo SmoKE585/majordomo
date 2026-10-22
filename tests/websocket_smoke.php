@@ -82,6 +82,22 @@ try {
     denies(fn() => $access->authorize($remote, array('ticket' => $ticket)), 401);
     check(!$ticketStore->valid(array('session' => $sid, 'id' => 7, 'stamp' => 'stamp', 'expires' => time() - 1), $state), 'session expiration');
 
+    // Билет запоминает каталог сессий: сервер WebSocket работает отдельным
+    // процессом и не обязан видеть тот же session.save_path, что php-fpm.
+    $customSessions = $fixture . '/var/custom-sessions';
+    mkdir($customSessions, 0700, true);
+    file_put_contents($customSessions . '/sess_' . $sid, 'fixture');
+    unlink($fixture . '/var/sessions/sess_' . $sid);
+    $issuer = new Tickets($fixture, $customSessions);
+    $moved = (new Tickets($fixture))->consume($issuer->issue($user, $sid, time()));
+    check(is_array($moved) && ($moved['sessions'] ?? '') === str_replace('\\', '/', $customSessions), 'ticket keeps the session directory');
+    check((new Tickets($fixture))->valid($moved, $state), 'ticket validates against a non-default session directory');
+    $unsafe = $moved;
+    $unsafe['sessions'] = $fixture . '/../' . basename($fixture);
+    check(!(new Tickets($fixture))->valid($unsafe, $state), 'unsafe session path is rejected');
+    try { (new Tickets($fixture))->issue($user, str_repeat('c', 32), time()); throw new LogicException('Expected missing session failure'); }
+    catch (RuntimeException $error) { check($error->getMessage() !== '', 'missing session file explains the reason'); }
+
     $db->exec('CREATE TABLE classes (ID INTEGER PRIMARY KEY,PARENT_ID INTEGER)');
     $db->exec('CREATE TABLE objects (ID INTEGER PRIMARY KEY,TITLE TEXT COLLATE NOCASE,CLASS_ID INTEGER)');
     $db->exec('CREATE TABLE properties (ID INTEGER PRIMARY KEY,TITLE TEXT,CLASS_ID INTEGER,OBJECT_ID INTEGER)');

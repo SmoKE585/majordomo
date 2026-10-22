@@ -1,4 +1,7 @@
-/* 2026-10-22 — единые уведомления UI-кита и дедупликация сообщений журнала. */
+/* 2026-10-22 — единые уведомления UI-кита и дедупликация сообщений журнала.
+ * 2026-10-23 — опрос журнала не запускается вне админ-оболочки: на странице
+ * входа window.ROOTHTML не определён, и запрос уходил на
+ * /undefinedgetlatestnote.html. */
 (function (window, document, $) {
     'use strict';
 
@@ -107,13 +110,27 @@
         }
     }
 
+    // Адрес опроса строим только при определённом ROOTHTML: страница входа
+    // подключает тот же бандл, но оболочку и префикс проекта не задаёт.
+    function latestNoteUrl() {
+        if (typeof window.ROOTHTML !== 'string' || window.ROOTHTML === '') {
+            return '';
+        }
+        return window.ROOTHTML + 'getlatestnote.html';
+    }
+
     function checkLatestMessage() {
         if (latestMessageInFlight || !$) {
             return;
         }
+        var url = latestNoteUrl();
+        if (url === '') {
+            latestMessageLoopStarted = false;
+            return;
+        }
         latestMessageInFlight = true;
         $.ajax({
-            url: window.ROOTHTML + 'getlatestnote.html'
+            url: url
         }).done(function (data) {
             var note = safeJsonParse(data);
             if (!note || typeof note.DATA !== 'string') return;

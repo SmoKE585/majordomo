@@ -12,7 +12,7 @@ $theme = ($_COOKIE['theme'] ?? '') === 'dark' ? 'dark' : 'light';
     <title>Вход — MajorDoMo</title>
     <link rel="icon" href="<?= MDJUI::e($rootUrl) ?>favicon.ico?v=2026-10-22-logo" sizes="any">
     <link rel="apple-touch-icon" href="<?= MDJUI::e($rootUrl) ?>assets/img/logos/favicon.png">
-    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/admin/admin.css?v=2026-10-22-nav-profile">
+    <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/admin/admin.css?v=2026-10-23-panel-fix">
     <link rel="stylesheet" href="<?= MDJUI::e($rootUrl) ?>assets/auth/login.css?v=2026-10-22-nav-profile">
 </head>
 <body class="md-admin-shell md-auth">
@@ -37,6 +37,6 @@ $theme = ($_COOKIE['theme'] ?? '') === 'dark' ? 'dark' : 'light';
     </form>
     <?php $form = ob_get_clean(); echo MDJUI::card(array(), $form); ?>
 </main>
-<script src="<?= MDJUI::e($rootUrl) ?>assets/admin/admin.js?v=2026-10-22-auth" defer></script>
+<script src="<?= MDJUI::e($rootUrl) ?>assets/admin/admin.js?v=2026-10-23-panel-fix" defer></script>
 </body>
 </html>

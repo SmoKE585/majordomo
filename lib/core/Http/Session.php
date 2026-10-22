@@ -5,10 +5,17 @@ use MajorDoMo\Core\Config;
 /**
  * Native cookie-only sessions. Authentication is separate from UI state.
  * Изменения: 2026-10-22 — loopback-прокси всегда доверенный для HTTPS-признака.
+ * Изменения: 2026-10-23 — каталог сессий определяется одним методом и не
+ * предполагается равным var/sessions: хостинг может навязывать свой путь
+ * через php_admin_value, и тогда одноразовый билет WebSocket не находил файл
+ * сессии (500 на /api/v1/panel/websocket-ticket).
  */
 final class Session
 {
     public string $name;
+
+    /** Каталог, в который PHP фактически пишет сессии в этом процессе. */
+    private static string $effectiveDirectory = '';
 
     public function __construct(string $name = 'prj', ?string $root = null)
     {
@@ -16,17 +23,23 @@ final class Session
         if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/D', $this->name)) throw new \InvalidArgumentException('Недопустимое имя сессии.');
         if (session_status() !== PHP_SESSION_ACTIVE) {
             if (headers_sent()) throw new \RuntimeException('Сессия должна запускаться до вывода ответа.');
-            $directory = rtrim($root ?? Config::string('ROOT'), '/\\') . '/var/sessions';
-            if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new \RuntimeException('Не удалось создать хранилище сессий.');
+            $configured = self::directory($root);
+            session_save_path($configured);
+            // Хостинг может фиксировать каталог через php_admin_value пула
+            // php-fpm: тогда PHP игнорирует настройку проекта и пишет в свой
+            // путь. Работаем по фактическому и не создаём var/sessions зря.
+            $directory = self::runtimeDirectory() ?: $configured;
+            $pinned = !self::samePath($directory, $configured);
+            if (!$pinned && !is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new \RuntimeException('Не удалось создать хранилище сессий.');
             ini_set('session.use_strict_mode', '1');
             ini_set('session.use_only_cookies', '1');
             ini_set('session.use_cookies', '1');
             ini_set('session.use_trans_sid', '0');
             ini_set('session.gc_maxlifetime', '43200');
-            session_save_path($directory);
             session_name($this->name);
             session_set_cookie_params(array('lifetime' => 0, 'path' => self::cookiePath(), 'domain' => '', 'secure' => self::isSecure($_SERVER), 'httponly' => true, 'samesite' => 'Strict'));
             if (!session_start()) throw new \RuntimeException('Не удалось открыть сессию.');
+            self::$effectiveDirectory = $directory;
         } elseif (session_name() !== $this->name) {
             throw new \RuntimeException('Уже открыта другая сессия.');
         }
@@ -44,6 +57,48 @@ final class Session
     {
         $auth = $_SESSION['md_admin'] ?? null;
         return is_array($auth) ? array('id' => $auth['id'], 'username' => $auth['username'], 'name' => $auth['name']) : null;
+    }
+
+    /**
+     * Каталог сессий по конфигурации. Пустая настройка SESSION_SAVE_PATH
+     * означает штатный var/sessions внутри проекта.
+     * 2026-10-23 — единая точка и для билетов WebSocket.
+     */
+    public static function directory(?string $root = null): string
+    {
+        $configured = trim(Config::string('SESSION_SAVE_PATH', ''));
+        if ($configured !== '') return rtrim(str_replace('\\', '/', $configured), '/');
+        return rtrim(str_replace('\\', '/', $root ?? Config::string('ROOT')), '/\\') . '/var/sessions';
+    }
+
+    /**
+     * Каталог, который PHP использует сейчас, по его же настройке.
+     * session.save_path допускает префикс GC: "N;MODE;/path"; пустое значение
+     * означает системный временный каталог. Нужен, когда хостинг фиксирует
+     * путь через php_admin_value: ini_set его уже не меняет.
+     * 2026-10-23 — источник истины для билета WebSocket.
+     */
+    public static function runtimeDirectory(): string
+    {
+        $path = (string)session_save_path();
+        if (str_contains($path, ';')) $path = (string)substr($path, strrpos($path, ';') + 1);
+        $path = trim($path);
+        if ($path === '') $path = (string)sys_get_temp_dir();
+        return $path === '' ? '' : rtrim(str_replace('\\', '/', $path), '/');
+    }
+
+    /** Фактический каталог сессий процесса; до старта сессии — из конфигурации. */
+    public static function effectiveDirectory(): string
+    {
+        return self::$effectiveDirectory !== '' ? self::$effectiveDirectory : self::directory();
+    }
+
+    private static function samePath(string $left, string $right): bool
+    {
+        $resolvedLeft = realpath($left);
+        $resolvedRight = realpath($right);
+        if ($resolvedLeft !== false && $resolvedRight !== false) return $resolvedLeft === $resolvedRight;
+        return rtrim($left, '/\\') === rtrim($right, '/\\');
     }
 
     public static function cookiePath(): string
