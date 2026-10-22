@@ -215,14 +215,21 @@ final class Deployment
         $hash = is_file($lock) ? (string)hash_file('sha256', $lock) : '';
         $needsCi = !is_dir($this->root . '/node_modules') || !is_array($state) || ($state['lock_hash'] ?? '') !== $hash;
         $output = '';
+        $npmEnvironment = array(
+            // На FastPanel/серверах NODE_ENV часто = production. В этом режиме
+            // npm ci не ставит vite из devDependencies, и `npm run build`
+            // падает с `vite: not found` (127).
+            'NODE_ENV' => 'development',
+            'NPM_CONFIG_PRODUCTION' => 'false',
+        );
         if ($needsCi) {
             $this->log($log, 'npm ci', 'info');
-            $ci = $this->runner->run(array_merge($npm, array('ci', '--no-audit', '--no-fund')), $this->timeout());
+            $ci = $this->runner->run(array_merge($npm, array('ci', '--include=dev', '--no-audit', '--no-fund')), $this->timeout(), $npmEnvironment);
             $output .= $this->tail($ci['out']) . $this->tail($ci['err']);
             if (!$ci['ok']) throw new RuntimeException('npm ci завершился с кодом ' . $ci['code'] . ': ' . $this->tail($ci['err'] ?: $ci['out']));
         }
         $this->log($log, 'npm run build', 'info');
-        $build = $this->runner->run(array_merge($npm, array('run', 'build')), $this->timeout());
+        $build = $this->runner->run(array_merge($npm, array('run', 'build')), $this->timeout(), $npmEnvironment);
         $output .= $this->tail($build['out']) . $this->tail($build['err']);
         if (!$build['ok']) throw new RuntimeException('npm run build завершился с кодом ' . $build['code'] . ': ' . $this->tail($build['err'] ?: $build['out']));
         $this->writeJson($stateFile, array('lock_hash' => $hash, 'built_at' => date('c')));
