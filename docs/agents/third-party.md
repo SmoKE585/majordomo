@@ -46,12 +46,21 @@ composer check-platform-reqs --no-dev
 
 В `composer.json` зафиксирован `config.platform.php=8.1.0`. Новые зависимости
 должны поддерживать PHP 8.1. Composer не подключает рабочую БД или Redis.
-На сервере используется `install`, версии обновляются локально с переносом
-`composer.json` и `composer.lock`. После доставки перезапускаются CLI-циклы.
+
+Системное обновление само выполняет `composer install` после замены файлов:
+`lib/core/Deploy/Deployment.php` запускает Composer/NPM с таймаутом, проверяет
+автозагрузку `Bluerhinos\phpMQTT` и PHPMailer, собирает фронтенд
+(`npm ci` по изменению lock, `npm run build` при каждом обновлении) и только
+потом применяет миграции и перезапускает службу. Preflight не даёт начать
+обновление, если Composer/Node 24+ недоступны, поэтому старый `vendor/` больше
+не остаётся после переноса кода в Composer-пакет.
+
+Для systemd-службы и прав без пароля — [инструкция](../deploy/systemd-sudo.md),
+устройство пайплайна — [deployment.md](deployment.md).
 
 Общий загрузчик — `lib/core.class.php`: он подключает `vendor/autoload.php`
 для HTTP, CLI, модулей и сценариев. Ручные include PHPMailer и MQTT удалены.
-Встроенный updater не запускает Composer автоматически.
+Встроенный updater запускает Composer только через этот пайплайн.
 
 `vendor/`, `packages/` и системный `scripts/` не публикуются nginx или сервером
 разработки. Старый HTTP-вход `/objects/` удалён; внешние интеграции используют

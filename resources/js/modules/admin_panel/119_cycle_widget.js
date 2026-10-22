@@ -100,7 +100,6 @@
         card.dataset.mdCycleBound = '1';
 
         var cycle = card.getAttribute('data-md-cycle-name') || '';
-        var endpoint = card.getAttribute('data-md-cycle-endpoint') || ((window.ROOTHTML || '/') + 'ajax/xray.html?action=service');
         var poll = card.getAttribute('data-md-cycle-poll') === '1';
         var timer = 0;
 
@@ -119,21 +118,13 @@
         }
 
         function fetchState(op) {
-            var body = new FormData();
-            body.append('action', 'service');
-            body.append('ajax', '1');
-            body.append('cycle', cycle);
-            if (op) {
-                body.append('op', op);
+            if (!cycle || !window.MDJAdminApi) {
+                return Promise.reject(new Error('Cycle API is unavailable'));
             }
-
-            return fetch(endpoint, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: body
-            }).then(function (response) {
-                return response.json();
-            }).then(function (data) {
+            var request = op
+                ? window.MDJAdminApi.xray.command(cycle, op)
+                : window.MDJAdminApi.xray.service(cycle);
+            return request.then(function (data) {
                 updateCard(card, data);
                 return data;
             });

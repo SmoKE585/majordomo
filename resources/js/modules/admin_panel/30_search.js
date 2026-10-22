@@ -103,18 +103,7 @@
 
             renderState('is-loading', 'Ищем...', term);
             searchRequest = new AbortController();
-            fetch('?ajax_panel=1&op=filter&title=' + encodeURIComponent(term), {
-                headers: {
-                    Accept: 'application/json'
-                },
-                signal: searchRequest.signal
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('Search request failed: ' + response.status);
-                    }
-                    return response.json();
-                })
+            window.MDJAdminApi.search(term, {signal: searchRequest.signal})
                 .then(renderResults)
                 .catch(function (error) {
                     if (error.name === 'AbortError') {

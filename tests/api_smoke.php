@@ -71,6 +71,8 @@ try {
     rejects(fn() => Contract::match(new Request('GET', '/api/v1/rooms/order')), 405, 'method_not_allowed');
     rejects(fn() => Contract::match(new Request('GET', '/api/v1/method/Lamp.run')), 405, 'method_not_allowed');
     rejects(fn() => Contract::match(new Request('GET', '/api/v1/unknown')), 404, 'not_found');
+    [$panelOperation] = Contract::match(new Request('GET', '/api/v1/panel/xray/services/cycle_main/log'));
+    check($panelOperation['action'] === 'panelXrayCycleLog' && !empty($panelOperation['admin']), 'Panel routes resolve without entering OpenAPI');
     foreach (Contract::operations() as $operation) {
         $path = preg_replace('/\{\w+\}/', 'example', $operation['path']);
         [$matched] = Contract::match(new Request($operation['method'], '/api/v1' . $path));
@@ -79,8 +81,11 @@ try {
     }
     $spec = Contract::openApi('/home/');
     check($spec['servers'][0]['url'] === '/home/api/v1' && count($spec['paths']) >= 15 && isset($spec['components']['securitySchemes']['bearerAuth']), 'OpenAPI catalogue complete');
+    check(!isset($spec['paths']['/panel/dashboard']) && !isset($spec['paths']['/panel/xray/content']), 'Panel routes stay out of the public specification');
     $dispatcher = Core::apiDispatcher();
     $dispatch = static fn($method, $path, $body = array(), $query = array()) => $dispatcher->dispatch(new Request($method, $path, $query, $body));
+    rejects(fn() => $dispatch('GET', '/api/v1/panel/dashboard'), 401, 'admin_session_required');
+    rejects(fn() => $dispatch('GET', '/api/v1/panel/xray/content', array(), array('view' => 'scripts')), 401, 'admin_session_required');
     check(count($dispatch('GET', '/api/v1/objects')) === 1, 'Object list');
     check($dispatch('GET', '/api/v1/data/Lamp.level') === 0, 'Scalar property');
     $dispatch('POST', '/api/v1/data/Lamp.level', array('data' => false));

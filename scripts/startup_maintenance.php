@@ -29,6 +29,16 @@ if (defined('LANG_MODULE_SAVERESTORE')) {
 // Core migrations run once after an update; unrelated user properties are never matched by module-name substrings.
 \MajorDoMo\Core\Core::migrations()->run();
 
+// Auto-update завершает процесс до maintenance:off; новая служба снимает
+// маркер только после успешного деплоя (last.json status=success).
+try {
+    if ((new \MajorDoMo\Core\Maintenance\MaintenanceMode(ROOT))->completeIfDeployed()) {
+        DebMes('Maintenance mode cleared after successful deploy', 'maintenance');
+    }
+} catch (Throwable $error) {
+    DebMes('Cannot clear maintenance mode: ' . $error->getMessage(), 'maintenance', 'warning');
+}
+
 // Keep the system event journal bounded; the newest records always stay.
 try {
     $pruned_events = \MajorDoMo\Core\Events\EventBus::prune(90, 1000);

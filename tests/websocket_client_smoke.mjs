@@ -25,7 +25,7 @@ class FixtureSocket {
 }
 Object.assign(window, {
     location: {href: 'https://home.test/panel/'},
-    MDJWebSocketConfig: {url: '/ws', ticketUrl: '/admin.php?ajax_panel=1&op=websocket'},
+    MDJWebSocketConfig: {url: '/ws', ticketUrl: '/api/v1/panel/websocket-ticket'},
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
     clearTimeout(id) { timers.delete(id); },
     queueMicrotask,
@@ -33,7 +33,7 @@ Object.assign(window, {
         requests++;
         assert.equal(options.credentials, 'same-origin');
         assert.equal(options.cache, 'no-store');
-        return {ok: responseStatus === 200, status: responseStatus, json: async () => ({ticket: String(requests).padStart(64, 'a')})};
+        return {ok: responseStatus === 200, status: responseStatus, json: async () => ({ok: true, data: {ticket: String(requests).padStart(64, 'a')}})};
     },
 });
 const events = [];

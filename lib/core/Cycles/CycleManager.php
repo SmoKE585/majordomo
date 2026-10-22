@@ -84,7 +84,11 @@ final class CycleManager
         $watchdog = new CycleWatchdog(Config::int('CYCLE_HEARTBEAT_TIMEOUT', 120), Config::int('CYCLE_STARTUP_TIMEOUT', 180), Config::arrayValue('CYCLE_TIMEOUTS'), defined('JOBS_EXECUTION_TIMEOUT') ? (int)JOBS_EXECUTION_TIMEOUT : 300);
         $online = $updated > 0 && $updated <= time() + 5 && (time() - $updated) < $watchdog->timeout($name);
 
-        if ($desired === CycleStateStore::DISABLED) {
+        if ($this->store->isHeld()) {
+            $runtimeStatus = 'stopped';
+            $online = false;
+            $details = 'Deploy hold: ' . ($this->store->holdReason() ?: 'failed update');
+        } elseif ($desired === CycleStateStore::DISABLED) {
             $runtimeStatus = 'disabled';
         } elseif ($desired === CycleStateStore::STOPPED) {
             $runtimeStatus = $online ? 'stopping' : 'stopped';
@@ -186,6 +190,22 @@ final class CycleManager
         return $this->store->isSupervisorRunning();
     }
 
+    /** Удержать циклы остановленными после неудачного деплоя. */
+    public function hold(string $reason = 'deploy_failed'): void
+    {
+        $this->store->hold($reason);
+    }
+
+    public function releaseHold(): bool
+    {
+        return $this->store->releaseHold();
+    }
+
+    public function isHeld(): bool
+    {
+        return $this->store->isHeld();
+    }
+
     public function ensureRuntimeTables(): void
     {
         if (!isset($GLOBALS['db'])) {
@@ -215,6 +235,7 @@ final class CycleManager
 
         switch ($command) {
             case 'start':
+                $this->store->releaseHold();
                 $this->store->set($name, CycleStateStore::RUNNING);
                 $this->cycleSet($name . 'Disabled', '');
                 $this->cycleSet($name . 'Control', 'start');
@@ -228,6 +249,7 @@ final class CycleManager
             case 'restart':
                 // The supervisor watches `generation` and restarts the process
                 // itself, so no legacy control flag can race with this request.
+                $this->store->releaseHold();
                 $this->store->set($name, CycleStateStore::RUNNING, true);
                 $this->cycleSet($name . 'Disabled', '');
                 $this->setStatus($name, 'stopping', 'Restart requested by administrator');
@@ -239,6 +261,7 @@ final class CycleManager
                 $this->setStatus($name, 'disabled', 'Disabled by administrator');
                 break;
             case 'enable':
+                $this->store->releaseHold();
                 $this->store->set($name, CycleStateStore::RUNNING);
                 $this->cycleSet($name . 'Disabled', '');
                 $this->cycleSet($name . 'Control', 'start');

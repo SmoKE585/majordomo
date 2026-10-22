@@ -7,9 +7,12 @@ use MajorDoMo\Core\{Core, Database};
 /**
  * Обработчики API делегируют выполнение функциям и сервисам ядра.
  * Изменения: 2026-10-22 — сообщения и подписки доступны внешним клиентам v1.
+ * Изменения: 2026-10-22 — служебные операции панели только по сеансу админа.
  */
 final class Dispatcher
 {
+    private ?Panel $panel = null;
+
     public function __construct(private Database $db) {}
 
     public function dispatch(Request $request): mixed
@@ -17,6 +20,14 @@ final class Dispatcher
         [$operation, $route] = $request->legacy ? $this->legacyRoute($request) : Contract::match($request);
         $params = $request->params();
         $action = $operation['action'];
+        // Служебные данные панели не доступны по токену или правилу локальной
+        // сети: только действующий сеанс администратора.
+        if (!empty($operation['admin'])) {
+            if ($request->actor !== 'session') {
+                throw new ApiException(401, 'admin_session_required', 'Эта операция доступна только в сеансе администратора.');
+            }
+            return $this->panel($action, $route, $params);
+        }
         if (!$request->legacy && $operation['body'] !== null) {
             $input = in_array($action, array('say', 'sayReply', 'sayTo', 'subscriptions'), true) ? $params : $request->body;
             Contract::validate($input, $operation['body']);
@@ -49,6 +60,35 @@ final class Dispatcher
         if ($action === 'roomSave') return $result['room'];
         unset($result['result']);
         return $result === array() ? new \stdClass() : $result;
+    }
+
+    /**
+     * Служебные операции панели. Проверка сеанса уже выполнена в dispatch().
+     * 2026-10-22 — панель ходит сюда вместо admin.php?ajax_panel=1.
+     */
+    private function panel(string $action, array $route, array $params): array
+    {
+        $panel = $this->panel ??= new Panel($this->db);
+        return match ($action) {
+            'panelDashboard' => $panel->dashboard((string)($params['fresh'] ?? '') === '1'),
+            'panelSearch' => $panel->search($params),
+            'panelConsole' => $panel->console($params),
+            'panelWebsocket' => $panel->websocketTicket(),
+            'panelNotifications' => $panel->dismiss($params),
+            'panelXrayContent' => $panel->xrayContent($params),
+            'panelXrayServices' => $panel->xrayContent(array('view' => 'services', 'mode' => $params['mode'] ?? '')),
+            'panelXrayService' => $panel->xrayService((string)$route['cycle']),
+            'panelXrayCommand' => $panel->xrayCommand((string)$route['cycle'], (string)$route['command']),
+            'panelXrayCycleLog' => $panel->xrayCycleLog((string)$route['cycle']),
+            'panelXrayClearCycleLog' => $panel->xrayClearCycleLog((string)$route['cycle']),
+            'panelXrayClearLogs' => $panel->xrayClearLogs($params),
+            'panelXrayDatabase' => $panel->xrayDatabase((string)$route['table'], (string)$route['action']),
+            'panelXrayStopTimer' => $panel->xrayStopTimer((string)$route['timer']),
+            'panelPropertyHistory' => $panel->propertyHistory($route, $params),
+            'panelPropertyTrace' => $panel->propertyTrace($route, $params),
+            'panelUpdates' => $panel->updates(($params['force'] ?? '') === '1'),
+            default => throw new ApiException(404, 'not_found', 'Маршрут не найден.'),
+        };
     }
 
     private function legacyRoute(Request $request): array

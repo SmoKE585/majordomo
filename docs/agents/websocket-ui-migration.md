@@ -62,8 +62,9 @@ php majordomo cycles:restart websockets
   либо `X-API-Key: <token>` при handshake. Если клиент не умеет заголовки,
   поддерживается `?token=<token>`; используйте WSS и исключите URL из журналов.
 - Админка получает одноразовый билет из
-  `admin.php?ajax_panel=1&op=websocket`. Endpoint требует действующую сессию
-  администратора и возвращает JSON `{ticket}` с `Cache-Control: no-store`.
+  `GET /api/v1/panel/websocket-ticket` (legacy `admin.php?ajax_panel=1&op=websocket`
+  оставлен адаптером). Endpoint требует действующую сессию администратора и
+  возвращает JSON `{ok,data:{ticket}}` с `Cache-Control: no-store`.
   Клиент передаёт `?ticket=...`; билет действует 30 секунд и используется один раз.
 - Постоянный WS-секрет в HTML не передаётся; отдельная токенная настройка удалена.
 - Явно переданный неверный токен/билет не заменяется локальным доступом.

@@ -79,6 +79,42 @@ php majordomo doctor
 
 У CLI и веб-сервера должны быть права на общий каталог `cms/cycles`.
 
+### Обслуживание и обновление
+
+```bash
+php majordomo maintenance:on --reason=manual --ttl=3600 --message="Технические работы"
+php majordomo maintenance:status
+php majordomo maintenance:off
+
+php majordomo migrations:status
+php majordomo migrations:run
+```
+
+`maintenance:on` создаёт `cms/maintenance.json`: сайт и API отвечают `503`,
+админка и вход остаются доступны. `maintenance:off` выключает режим и снимает
+`cms/cycles/deploy.hold`, который удерживает циклы после неудачного деплоя.
+
+`migrations:status` показывает все файлы миграций и признак `missing_file`,
+`migrations:run` применяет отсутствующие версии. `--pending` только выводит
+список.
+
+Настройка systemd-службы (один раз, от root):
+
+```bash
+sudo php majordomo systemd:set \
+  --service=majordomo-mjdm_smart15_usr \
+  --user=mjdm_smart15_usr \
+  --php=/usr/bin/php8.4 \
+  --apply --disable-old --fix-owner
+
+sudo php majordomo systemd:give-permissions \
+  --service=majordomo-mjdm_smart15_usr \
+  --user=mjdm_smart15_usr
+```
+
+Проверка: `sudo -u mjdm_smart15_usr sudo -n /usr/local/sbin/majordomo-mjdm_smart15_usr status`.
+Подробно — [systemd и sudo](../deploy/systemd-sudo.md).
+
 ### Режимы дома
 
 ```bash

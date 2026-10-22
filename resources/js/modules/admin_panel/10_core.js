@@ -653,22 +653,20 @@
                 }, 8000);
 
                 var moduleName = badge.getAttribute('data-md-module');
-                var xhr = new XMLHttpRequest();
-                xhr.open('GET', '?ajax_panel=1&op=dismiss_module_notifications&module_name=' + encodeURIComponent(moduleName));
-                xhr.onload = function () {
-                    if (xhr.responseText.trim() === 'OK') {
+                if (window.MDJAdminApi) {
+                    window.MDJAdminApi.dismissModuleNotifications(moduleName).then(function () {
                         badge.style.transition = 'opacity .25s ease, transform .25s ease';
                         badge.style.opacity = '0';
                         badge.style.transform = 'scale(0.7)';
                         setTimeout(function () {
                             if (badge.parentNode) badge.remove();
                         }, 280);
-                    }
-                };
-                xhr.onerror = function () {
-                    if (popoverInstance) popoverInstance.hide();
-                };
-                xhr.send();
+                    }).catch(function () {
+                        if (popoverInstance) popoverInstance.hide();
+                    });
+                } else if (popoverInstance) {
+                    popoverInstance.hide();
+                }
             });
         });
     }

@@ -30,6 +30,7 @@ final class CycleStateStore
     private string $directory;
     private string $statePath;
     private string $lockPath;
+    private string $holdPath;
 
     public function __construct(string $root)
     {
@@ -37,6 +38,43 @@ final class CycleStateStore
         $this->directory = $this->root . DIRECTORY_SEPARATOR . 'cms' . DIRECTORY_SEPARATOR . 'cycles';
         $this->statePath = $this->directory . DIRECTORY_SEPARATOR . 'state.json';
         $this->lockPath = $this->directory . DIRECTORY_SEPARATOR . 'state.lock';
+        $this->holdPath = $this->directory . DIRECTORY_SEPARATOR . 'deploy.hold';
+    }
+
+    /**
+     * Удерживать циклы остановленными после неудачного деплоя.
+     *
+     * Это не `disabled` и не `stopped`: желаемое состояние пользователя не
+     * меняется, но супервизор не поднимает процессы, пока администратор не
+     * снимет hold через `cycles:start`/`maintenance:off`.
+     */
+    public function hold(string $reason = 'deploy_failed'): void
+    {
+        $this->ensureDirectory();
+        $payload = json_encode(array('reason' => $reason, 'created' => time(), 'pid' => getmypid()), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $temporary = $this->holdPath . '.' . bin2hex(random_bytes(4)) . '.tmp';
+        if (file_put_contents($temporary, $payload . PHP_EOL, LOCK_EX) === false || !@rename($temporary, $this->holdPath)) {
+            @unlink($temporary);
+            throw new \RuntimeException('Не удалось записать hold циклов.');
+        }
+    }
+
+    public function releaseHold(): bool
+    {
+        if (!is_file($this->holdPath)) return false;
+        return @unlink($this->holdPath);
+    }
+
+    public function isHeld(): bool
+    {
+        return is_file($this->holdPath);
+    }
+
+    public function holdReason(): string
+    {
+        if (!is_file($this->holdPath)) return '';
+        $data = json_decode((string)@file_get_contents($this->holdPath), true);
+        return is_array($data) ? (string)($data['reason'] ?? '') : '';
     }
 
     /**

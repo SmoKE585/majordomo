@@ -62,7 +62,7 @@ final class CycleSupervisor
 
     public function isDesiredRunning(string $name): bool
     {
-        return $this->store->desired($name) === CycleStateStore::RUNNING;
+        return !$this->store->isHeld() && $this->store->desired($name) === CycleStateStore::RUNNING;
     }
 
     public function isDisabled(string $name): bool
@@ -93,6 +93,19 @@ final class CycleSupervisor
      */
     public function reconcile(array $names, array $isRunning, array &$toStart, array &$toStop): void
     {
+        if ($this->store->isHeld()) {
+            $reason = $this->store->holdReason();
+            foreach ($names as $name) {
+                unset($toStart[$name]);
+                if (isset($isRunning[$name]) && !isset($toStop[$name])) {
+                    $toStop[$name] = time();
+                    $this->setStatus($name, 'stopping', 'Deploy hold: ' . ($reason !== '' ? $reason : 'failed update'));
+                } elseif (!isset($isRunning[$name])) {
+                    $this->setStatus($name, 'stopped', 'Deploy hold: ' . ($reason !== '' ? $reason : 'failed update'));
+                }
+            }
+            return;
+        }
         foreach ($names as $name) {
             $desired = $this->store->desired($name);
             $generation = $this->store->generation($name);

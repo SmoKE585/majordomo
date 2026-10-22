@@ -123,16 +123,7 @@
             renderState('Ищем...', term);
             state.controller = new AbortController();
 
-            fetch('?ajax_panel=1&op=filter&title=' + encodeURIComponent(term), {
-                headers: { Accept: 'application/json' },
-                signal: state.controller.signal
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('HTTP ' + response.status);
-                    }
-                    return response.json();
-                })
+            window.MDJAdminApi.search(term, {signal: state.controller.signal})
                 .then(function (data) {
                     if (state.term === term && state.results === results) {
                         renderResults(data, term);

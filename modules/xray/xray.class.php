@@ -8,12 +8,28 @@
  * @author Serge J. <info@atmatic.com>
  * @copyright http://www.activeunit.com/ (c)
  * @version 0.1 (wizard, 17:03:02 [Mar 04, 2010])
+ * 2026-10-22 — данные для /api/v1/panel отдают panel*(), legacy-AJAX сохранён.
  */
 //
 //
 class xray extends module
 {
+    // Панель и роутер пишут эти поля напрямую. Явные объявления убирают
+    // deprecation «Creation of dynamic property» в PHP 8.2+.
+    public $title;
+    public $module_category;
+    public $id;
+    public $cycle = '';
+    public $keyword;
+    public $code_id;
+    public $type;
+
     private ?\MajorDoMo\Core\Cycles\CycleManager $cycleManagerInstance = null;
+
+    // Режим API панели: тот же расчёт, но результат возвращается вызывающему
+    // коду вместо вывода и завершения запроса.
+    private bool $panelMode = false;
+    private ?array $panelResponse = null;
 
     /**
      * blank
@@ -331,10 +347,9 @@ class xray extends module
                     . ' desired: ' . htmlspecialchars($state['desired']),
             );
 
-            header("HTTP/1.0 200 OK\n");
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode($result);
-            exit;
+            if ($this->respond($result)) {
+                return;
+            }
         }
 
         if ($service !== '') {
@@ -630,6 +645,171 @@ class xray extends module
     }
 
     /**
+     * Данные X-Ray для API панели.
+     * 2026-10-22 — режимы переиспользуют admin()/service_control(), но отдают
+     * результат вызывающему коду: панель ходит сюда через /api/v1/panel.
+     */
+    public function panelContent(array $params): array
+    {
+        $view = (string)($params['view'] ?? '');
+        $mode = (string)($params['mode'] ?? '');
+        $query = array(
+            'ajax' => 1,
+            'op' => 'getcontent',
+            'view_mode' => $view,
+            'filter' => (string)($params['filter'] ?? ''),
+            'limit' => (int)($params['limit'] ?? 0),
+        );
+        if ($mode !== '') {
+            $query['mode'] = $mode;
+        }
+        $files = $params['files'] ?? array();
+        if (is_array($files) && $files !== array()) {
+            $query['files'] = array_values($files);
+        }
+        $this->view_mode = $view;
+        $this->mode = $mode;
+        return $this->panelCapture($query, function (&$out) {
+            $this->admin($out);
+        });
+    }
+
+    public function panelService(string $cycle, string $command = ''): array
+    {
+        $cycle = $this->normalizeCycleTitle($cycle);
+        if ($cycle === '') {
+            throw new \InvalidArgumentException('Укажите цикл.');
+        }
+        $this->cycle = $cycle;
+        $query = array('ajax' => 1, 'cycle' => $cycle);
+        if ($command !== '') {
+            $query['op'] = $command;
+        }
+        return $this->panelCapture($query, function (&$out) {
+            $this->service_control($out);
+        });
+    }
+
+    public function panelCycleLog(string $cycle): array
+    {
+        $cycle = $this->normalizeCycleTitle($cycle);
+        if ($cycle === '') {
+            throw new \InvalidArgumentException('Укажите цикл.');
+        }
+        $this->view_mode = 'services';
+        $this->cycle = $cycle;
+        return $this->panelCapture(
+            array('ajax' => 1, 'op' => 'cyclelog', 'view_mode' => 'services', 'cycle' => $cycle),
+            function (&$out) {
+                $this->admin($out);
+            }
+        );
+    }
+
+    public function panelClearCycleLog(string $cycle): array
+    {
+        $cycle = $this->normalizeCycleTitle($cycle);
+        if ($cycle === '') {
+            throw new \InvalidArgumentException('Укажите цикл.');
+        }
+        $this->view_mode = 'services';
+        $this->cycle = $cycle;
+        return $this->panelCapture(
+            array('ajax' => 1, 'op' => 'clearcyclelog', 'view_mode' => 'services', 'cycle' => $cycle),
+            function (&$out) {
+                $this->admin($out);
+            }
+        );
+    }
+
+    public function panelClearLogs(array $files): array
+    {
+        $files = array_values(array_filter(array_map('strval', $files), static function ($file) {
+            return $file !== '';
+        }));
+        if ($files === array()) {
+            throw new \InvalidArgumentException('Выберите хотя бы один лог-файл.');
+        }
+        $this->view_mode = '';
+        return $this->panelCapture(
+            array('ajax' => 1, 'op' => 'clearlog', 'view_mode' => '', 'files' => $files),
+            function (&$out) {
+                $this->admin($out);
+            }
+        );
+    }
+
+    public function panelDatabase(string $table, string $action): array
+    {
+        if (!preg_match('/^[A-Za-z0-9_]+$/D', $table)) {
+            throw new \InvalidArgumentException('Некорректное имя таблицы.');
+        }
+        if (!in_array($action, array('analyze', 'repair', 'optimize'), true)) {
+            throw new \InvalidArgumentException('Неизвестная операция с таблицей.');
+        }
+        $this->view_mode = 'database';
+        return $this->panelCapture(
+            array('ajax' => 1, 'op' => 'getcontent', 'view_mode' => 'database', $action => $table),
+            function (&$out) {
+                $this->admin($out);
+            }
+        );
+    }
+
+    public function panelStopTimer(string $timer): array
+    {
+        $timer = trim($timer);
+        if ($timer === '' || mb_strlen($timer) > 255) {
+            throw new \InvalidArgumentException('Укажите таймер.');
+        }
+        $this->view_mode = 'timers';
+        return $this->panelCapture(
+            array('ajax' => 1, 'op' => 'getcontent', 'view_mode' => 'timers', 'cmd' => 'stop', 'timer' => $timer),
+            function (&$out) {
+                $this->admin($out);
+            }
+        );
+    }
+
+    /**
+     * Выполнить сценарий и вернуть JSON вместо прямого вывода.
+     * В legacy-режиме поведение прежнее: заголовок, echo и exit.
+     */
+    private function respond(array $payload): bool
+    {
+        if ($this->panelMode) {
+            $this->panelResponse = $payload;
+            return true;
+        }
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode($payload);
+        exit;
+    }
+
+    private function panelCapture(array $query, callable $run): array
+    {
+        $saved = array($_GET, $_POST, $_REQUEST, $_SERVER);
+        $this->panelMode = true;
+        $this->panelResponse = null;
+        $_GET = $query;
+        $_POST = array();
+        $_REQUEST = $query;
+        try {
+            $out = array();
+            $run($out);
+        } finally {
+            $this->panelMode = false;
+            [$_GET, $_POST, $_REQUEST, $_SERVER] = $saved;
+        }
+        if (!is_array($this->panelResponse)) {
+            throw new \RuntimeException('X-Ray не вернул данные для выбранного режима.');
+        }
+        return $this->panelResponse;
+    }
+
+    /**
      * BackEnd
      *
      * Module backend
@@ -817,8 +997,10 @@ class xray extends module
             $op = gr('op');
             $filter = gr('filter');
             if ($op == 'clearlog') {
-                header("HTTP/1.0 200 OK\n");
-                header('Content-Type: application/json; charset=utf-8');
+                if (!$this->panelMode) {
+                    header("HTTP/1.0 200 OK\n");
+                    header('Content-Type: application/json; charset=utf-8');
+                }
 
                 if (defined('SETTINGS_SYSTEM_DEBMES_PATH') && SETTINGS_SYSTEM_DEBMES_PATH != '') {
                     $path = SETTINGS_SYSTEM_DEBMES_PATH;
@@ -831,12 +1013,14 @@ class xray extends module
                 $path_real = realpath($path);
                 $selected = gr('files');
                 if (!is_array($selected) || !count($selected)) {
-                    echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'No files selected'));
-                    exit;
+                    if ($this->respond(array('STATUS' => 'ERROR', 'MESSAGE' => 'No files selected'))) {
+                        return;
+                    }
                 }
                 if ($path_real === false) {
-                    echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Invalid log path'));
-                    exit;
+                    if ($this->respond(array('STATUS' => 'ERROR', 'MESSAGE' => 'Invalid log path'))) {
+                        return;
+                    }
                 }
 
                 $base_path = str_replace('\\', '/', $path_real);
@@ -862,21 +1046,23 @@ class xray extends module
                     }
                 }
 
-                if ($cleared > 0) {
-                    echo json_encode(array('STATUS' => 'OK', 'CLEARED' => $cleared));
-                } else {
-                    echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'No files cleared'));
-                }
-                exit;
+                $payload = $cleared > 0
+                    ? array('STATUS' => 'OK', 'CLEARED' => $cleared)
+                    : array('STATUS' => 'ERROR', 'MESSAGE' => 'No files cleared');
+                $this->respond($payload);
+                return;
             }
             if ($op == 'cyclelog') {
-                header("HTTP/1.0 200 OK\n");
-                header('Content-Type: application/json; charset=utf-8');
+                if (!$this->panelMode) {
+                    header("HTTP/1.0 200 OK\n");
+                    header('Content-Type: application/json; charset=utf-8');
+                }
                 $cycle = gr('cycle');
                 $cycle = $this->normalizeCycleTitle($cycle);
                 if ($cycle == '') {
-                    echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'));
-                    exit;
+                    if ($this->respond(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'))) {
+                        return;
+                    }
                 }
                 $logCyclesEnabled = (defined('LOG_CYCLES') && LOG_CYCLES == '1') ? 1 : 0;
                 $this->ensureCycleRuntimeTables();
@@ -923,31 +1109,36 @@ class xray extends module
                         'MESSAGE' => $l['MESSAGE'],
                     );
                 }
-                echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LOG_CYCLES_ENABLED' => $logCyclesEnabled, 'LINES' => $cleanLines));
-                exit;
+                $this->respond(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'LOG_CYCLES_ENABLED' => $logCyclesEnabled, 'LINES' => $cleanLines));
+                return;
             }
             if ($op == 'clearcyclelog') {
-                header("HTTP/1.0 200 OK\n");
-                header('Content-Type: application/json; charset=utf-8');
+                if (!$this->panelMode) {
+                    header("HTTP/1.0 200 OK\n");
+                    header('Content-Type: application/json; charset=utf-8');
+                }
                 $cycle = gr('cycle');
                 $cycle = $this->normalizeCycleTitle($cycle);
                 if ($cycle == '') {
-                    echo json_encode(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'));
-                    exit;
+                    if ($this->respond(array('STATUS' => 'ERROR', 'MESSAGE' => 'Empty cycle name'))) {
+                        return;
+                    }
                 }
                 $this->ensureCycleRuntimeTables();
                 SQLExec("DELETE FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycle) . "'");
-                echo json_encode(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'CLEARED' => 1));
-                exit;
+                $this->respond(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'CLEARED' => 1));
+                return;
             }
             if ($op == 'getcontent') {
-                header("HTTP/1.0 200 OK\n");
-                header('Content-Type: application/json; charset=utf-8');
-                // X-Ray polls this endpoint every few seconds. Without explicit
-                // no-cache headers browsers/proxies may keep serving the first
-                // response, which looks like "no property changes for an hour".
-                header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-                header('Pragma: no-cache');
+                if (!$this->panelMode) {
+                    header("HTTP/1.0 200 OK\n");
+                    header('Content-Type: application/json; charset=utf-8');
+                    // X-Ray polls this endpoint every few seconds. Without explicit
+                    // no-cache headers browsers/proxies may keep serving the first
+                    // response, which looks like "no property changes for an hour".
+                    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+                    header('Pragma: no-cache');
+                }
                 if ($this->view_mode == 'properties') {
                     $qry = "1";
                     if ($filter) {
@@ -974,13 +1165,17 @@ class xray extends module
                     // The SQL query is already ORDER BY UPDATED DESC. Reversing
                     // it showed the oldest rows first: active sensors moved to
                     // the bottom of a long table and looked "stuck".
-                    echo json_encode($responce);
+                    if ($this->respond($responce)) {
+                        return;
+                    }
                 }
 
                 if ($this->view_mode == '') {
 
-                    header("HTTP/1.0 200 OK\n");
-                    header('Content-Type: application/json; charset=utf-8');
+                    if (!$this->panelMode) {
+                        header("HTTP/1.0 200 OK\n");
+                        header('Content-Type: application/json; charset=utf-8');
+                    }
                     $limit = $out['LINES'];
                     $filter = $out['FILTER'];
                     if (!$limit) {
@@ -1183,7 +1378,9 @@ class xray extends module
 
                     $res_lines = array_reverse($res_lines);
 
-                    echo json_encode(array('MODE' => 'logs', 'CONTENT' => implode("<br/>", $res_lines), 'LINES' => $structured));
+                    if ($this->respond(array('MODE' => 'logs', 'CONTENT' => implode("<br/>", $res_lines), 'LINES' => $structured))) {
+                        return;
+                    }
 
                 }
 
@@ -1209,9 +1406,10 @@ class xray extends module
 
                     $this->reverseResponseList($responce);
 
-                    echo json_encode($responce);
-
                     SQLExec("DELETE FROM performance_log WHERE ADDED<'" . date('Y-m-d H:i:s', time() - 60 * 60) . "'");
+                    if ($this->respond($responce)) {
+                        return;
+                    }
                 }
 
                 if ($this->view_mode == 'methods') {
@@ -1249,7 +1447,9 @@ class xray extends module
                     }
 
                     // ORDER BY EXECUTED DESC already puts the latest call first.
-                    echo json_encode($responce);
+                    if ($this->respond($responce)) {
+                        return;
+                    }
                 }
 
                 if ($this->view_mode == 'scripts') {
@@ -1281,7 +1481,9 @@ class xray extends module
                     }
 
                     // ORDER BY EXECUTED DESC already puts the latest run first.
-                    echo json_encode($responce);
+                    if ($this->respond($responce)) {
+                        return;
+                    }
 
                 }
 
@@ -1338,9 +1540,13 @@ class xray extends module
                                 'color' => '#d9534f',
                                 'cyclename' => LANG_XRAY_DO_WORKING . ' ' . substr($onDisabled, 0, -2),
                             ));
-                        echo json_encode($chart);
+                        if ($this->respond($chart)) {
+                            return;
+                        }
                     } else {
-                        echo json_encode($responce);
+                        if ($this->respond($responce)) {
+                            return;
+                        }
                     }
                 }
 
@@ -1369,7 +1575,9 @@ class xray extends module
 
                     $this->reverseResponseList($responce);
 
-                    echo json_encode($responce);
+                    if ($this->respond($responce)) {
+                        return;
+                    }
 
                 }
 
@@ -1381,7 +1589,7 @@ class xray extends module
                     $pRecs = SQLSelect("SELECT ID FROM properties WHERE TITLE = 'alive'");
                     $total = count($pRecs);
                     if (!$total) {
-                        echo json_encode(array('MODE' => 'dead', 'TOTAL' => 0, 'LIST' => array()));
+                        $this->respond(array('MODE' => 'dead', 'TOTAL' => 0, 'LIST' => array()));
                         return;
                     }
                     $found = array();
@@ -1416,7 +1624,9 @@ class xray extends module
 
                     $this->reverseResponseList($responce);
 
-                    echo json_encode($responce);
+                    if ($this->respond($responce)) {
+                        return;
+                    }
                 }
 
                 if ($this->view_mode == 'events') {
@@ -1439,14 +1649,18 @@ class xray extends module
                     }
 
                     // ORDER BY ADDED DESC already puts the newest event first.
-                    echo json_encode($responce);
+                    if ($this->respond($responce)) {
+                        return;
+                    }
                 }
 
                 if ($this->view_mode == 'database') {
 
                     $tables = SQLSelect("SHOW TABLE STATUS;");
                     if (!$tables) {
-                        echo json_encode(array('MODE' => 'database', 'STATUS' => 0,));
+                        if ($this->respond(array('MODE' => 'database', 'STATUS' => 0,))) {
+                            return;
+                        }
                     } else {
                         usort($tables, function ($a, $b) {
                             if ($a['Rows'] == $b['Rows']) return 0;
@@ -1480,7 +1694,9 @@ class xray extends module
 
                         if ($this->mode == 'chart') {
                             $arrayDB = array_slice(array_reverse($responce['LIST']), 0, 7);
-                            echo json_encode($arrayDB);
+                            if ($this->respond($arrayDB)) {
+                                return;
+                            }
                         } else if ($this->mode == 'showdbload') {
                             $DBstat_PerSecType = 'main';
                             $DBstat_Connections = '';
@@ -1592,7 +1808,7 @@ class xray extends module
                                 $statusText = 'Повышенная нагрузка';
                             }
 
-                            echo json_encode(array(
+                            if ($this->respond(array(
                                 'MODE' => 'dbload',
                                 'STATUS' => 1,
                                 'second' => $requestsSecond,
@@ -1606,13 +1822,20 @@ class xray extends module
                                 'level' => $level,
                                 'status_text' => $statusText,
                                 'updated_at' => date('Y-m-d H:i:s'),
-                            ));
+                            ))) {
+                                return;
+                            }
                         } else {
-                            echo json_encode($responce);
+                            if ($this->respond($responce)) {
+                                return;
+                            }
                         }
                     }
                 }
 
+                if ($this->panelMode) {
+                    return;
+                }
                 exit;
             }
 

@@ -492,21 +492,9 @@
             clearAlerts();
             pendingModuleLoad = true;
 
-            var body = new URLSearchParams();
-            body.set('ajax_panel', '1');
-            body.set('op', 'console');
-            body.set('command', moduleField.value + "PHP_EOLjson_encode(get_class_methods('" + module + "'));");
+            var command = moduleField.value + "PHP_EOLjson_encode(get_class_methods('" + module + "'));";
 
-            fetch('?ajax_panel=1&op=console', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-                },
-                body: body.toString()
-            }).then(function (response) {
-                return response.text();
-            }).then(function (text) {
+            window.MDJAdminApi.console(command).then(function (text) {
                 var methods = [];
                 try {
                     methods = JSON.parse(text);
@@ -554,21 +542,7 @@
                 finalCommand = moduleField.value + trimmedCommand;
             }
 
-            var body = new URLSearchParams();
-            body.set('ajax_panel', '1');
-            body.set('op', 'console');
-            body.set('command', finalCommand);
-
-            return fetch('?ajax_panel=1&op=console', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-                },
-                body: body.toString()
-            }).then(function (response) {
-                return response.text();
-            }).then(function (text) {
+            return window.MDJAdminApi.console(finalCommand).then(function (text) {
                 var result = text || 'Запрос выполнен.';
                 var elapsed = ((window.performance && typeof window.performance.now === 'function' ? window.performance.now() : Date.now()) - startedAt) / 1000;
                 var level = 'success';

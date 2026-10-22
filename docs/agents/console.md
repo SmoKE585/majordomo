@@ -125,6 +125,24 @@ php majordomo list config --json
   удаляются из таблиц, статусов и обычных строк.
 - Диагностика по умолчанию компактна; полные подсказки — с `--verbose`.
 
+## Деплой, миграции и systemd
+
+| Команда | Назначение |
+| --- | --- |
+| `migrations:status` | применённые/ожидающие файловые миграции, `--pending` |
+| `migrations:run` | применить все отсутствующие версии; `--pending` только показать |
+| `maintenance:on` | включить `cms/maintenance.json`; `--reason`, `--ttl`, `--message` |
+| `maintenance:off` | выключить режим и снять `cms/cycles/deploy.hold` |
+| `maintenance:status` | состояние маркера и ошибки |
+| `systemd:set` | создать unit `majordomo-<user>`; `--apply`, `--disable-old`, `--fix-owner`, `--dry-run` |
+| `systemd:give-permissions` | wrapper + sudoers, только точные действия `systemctl` |
+
+`migrations:*` требуют БД и загружают штатный config/loader через
+`Context::migrations()`. `maintenance:*` работают без БД. `systemd:*` реально
+меняют ОС только от root; `--dry-run` доступен без root и печатает unit,
+wrapper и sudoers. Реальные команды проверяются на изолированных временных
+каталогах, а не на рабочем `/etc`.
+
 ## Пользователи и пароли
 
 `users` — источник пользователей и их прав. Команды `users:list` и

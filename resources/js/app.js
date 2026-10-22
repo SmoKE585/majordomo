@@ -49,6 +49,7 @@ import '../css/ui-system.css';
 /* Shell modules. Keep the order: runtime -> core -> features -> init -> pages. */
 import './modules/admin_panel/00_runtime.js';
 import './modules/admin_panel/05_auth.js';
+import './modules/admin_panel/07_api.js';
 import './modules/admin_panel/06_websockets.js';
 import './modules/admin_panel/10_core.js';
 import './modules/admin_panel/20_drawer.js';

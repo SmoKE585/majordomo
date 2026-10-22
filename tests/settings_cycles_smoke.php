@@ -147,6 +147,16 @@ try {
     $supervisor->reconcile(array('cycle_test'), array('cycle_test' => 1), $toStart, $toStop);
     check(isset($toStop['cycle_test']) && isset($toStart['cycle_test']), 'supervisor restarts a running cycle on a new generation');
 
+    $store->hold('deploy_failed');
+    check($store->isHeld() && $store->holdReason() === 'deploy_failed', 'deploy hold persisted with reason');
+    check(!$supervisor->shouldStartAtBoot('cycle_test'), 'deploy hold blocks startup');
+    $toStart = array();
+    $toStop = array();
+    $supervisor->reconcile(array('cycle_test'), array('cycle_test' => 1), $toStart, $toStop);
+    check(isset($toStop['cycle_test']) && !isset($toStart['cycle_test']), 'deploy hold stops cycles without restart');
+    $store->releaseHold();
+    check(!$store->isHeld() && $supervisor->shouldStartAtBoot('cycle_test'), 'release hold restores normal startup');
+
     foreach (array('cycle_websockets') as $name) {
         check($supervisor->shouldStartAtBoot($name), $name . ' starts without a feature toggle');
         $state = $manager->state($name);
@@ -163,6 +173,7 @@ try {
     }
     @unlink($root . '/cms/cycles/state.json');
     @unlink($root . '/cms/cycles/state.lock');
+    @unlink($root . '/cms/cycles/deploy.hold');
     @rmdir($root . '/cms/cycles');
     if (is_file($root . '/cms/cached/config.php')) unlink($root . '/cms/cached/config.php');
     if (is_dir($root . '/cms/cached')) rmdir($root . '/cms/cached');

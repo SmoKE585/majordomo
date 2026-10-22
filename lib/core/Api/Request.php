@@ -2,13 +2,27 @@
 
 namespace MajorDoMo\Core\Api;
 
+/**
+ * Разобранный запрос API.
+ * Изменения: 2026-10-22 — actor (session/token/local) для служебных маршрутов.
+ */
 final class Request
 {
     public readonly bool $legacy;
     public readonly array $segments;
 
-    public function __construct(public readonly string $method, string $uri, public readonly array $query = array(), public readonly array $body = array(), string $root = '/')
-    {
+    /**
+     * $actor — кем пройдена HTTP-проверка: session, token или local.
+     * Служебные маршруты панели принимают только session.
+     */
+    public function __construct(
+        public readonly string $method,
+        string $uri,
+        public readonly array $query = array(),
+        public readonly array $body = array(),
+        string $root = '/',
+        public readonly string $actor = 'local'
+    ) {
         $path = (string)parse_url($uri, PHP_URL_PATH);
         $prefix = rtrim($root, '/') . '/';
         if (!str_starts_with($path, $prefix)) throw new ApiException(404, 'not_found', 'Маршрут не найден.');

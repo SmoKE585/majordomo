@@ -64,6 +64,17 @@ final class ConfigSchema
             'PROJECT_COMMIT_URL' => array('type' => 'string', 'computed' => true, 'optional' => true),
             'ADITIONAL_GIT_URLS' => array('type' => 'json', 'default' => array(), 'constant' => false),
 
+            // Deployment -----------------------------------------------------
+            'DEPLOY_COMPOSER' => array('type' => 'string', 'default' => 'composer', 'constant' => false),
+            'DEPLOY_NODE' => array('type' => 'string', 'default' => 'node', 'constant' => false),
+            'DEPLOY_NPM' => array('type' => 'string', 'default' => 'npm', 'constant' => false),
+            // always — собирать при каждом обновлении; auto — только при
+            // изменённом lock/отсутствии node_modules; never — не собирать.
+            'DEPLOY_ASSETS' => array('type' => 'string', 'default' => 'always', 'constant' => false),
+            'DEPLOY_SERVICE' => array('type' => 'string', 'optional' => true, 'constant' => false),
+            'DEPLOY_RESTART' => array('type' => 'boolean', 'default' => true, 'constant' => false),
+            'DEPLOY_TIMEOUT' => array('type' => 'integer', 'default' => 900, 'constant' => false),
+
             // Background cycles ---------------------------------------------
             'RESTART_THREADS' => array('type' => 'list', 'default' => array(), 'constant' => false),
             'CYCLE_HEARTBEAT_TIMEOUT' => array('type' => 'integer', 'default' => 120, 'constant' => false),

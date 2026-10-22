@@ -15,41 +15,6 @@
         loadFailed: false
     };
 
-    function rootHtml() {
-        var root = window.ROOTHTML || '/';
-        return root.charAt(root.length - 1) === '/' ? root : root + '/';
-    }
-
-    function urls() {
-        var root = rootHtml();
-        return {
-            dashboard: root + 'admin.php?ajax_panel=1&op=dashboard',
-            scripts: root + 'admin.php?action=xray&md=xray&inst=adm&view_mode=scripts&ajax=1&op=getcontent',
-            properties: root + 'admin.php?action=xray&md=xray&inst=adm&view_mode=properties&ajax=1&op=getcontent',
-            updates: root + 'ajax/saverestore.html?op=check_updates'
-        };
-    }
-
-    async function fetchJson(url) {
-        var response = await fetch(url, {
-            cache: 'no-store',
-            credentials: 'same-origin',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        if (!response.ok) {
-            throw new Error('HTTP ' + response.status);
-        }
-        var text = await response.text();
-        if (!text) {
-            return null;
-        }
-        try {
-            return JSON.parse(text);
-        } catch (error) {
-            return null;
-        }
-    }
-
     function text(value, fallback) {
         if (value === null || typeof value === 'undefined' || value === '') {
             return typeof fallback === 'undefined' ? '—' : fallback;
@@ -1009,7 +974,7 @@
 
     async function loadUpdates() {
         try {
-            var data = await fetchJson(urls().updates);
+            var data = await window.MDJAdminApi.updates(false);
             if (data && String(data.needUpdate) === '1') {
                 runtime.updateAlert = {
                     tone: 'info',
@@ -1065,8 +1030,7 @@
 
     async function loadDashboard(manual) {
         try {
-            var url = urls().dashboard + (manual ? '&fresh=1' : '') + '&_=' + Date.now();
-            var data = await fetchJson(url);
+            var data = await window.MDJAdminApi.dashboard(manual);
             if (data && data.generated_ts) {
                 applyDashboard(data);
             } else {
@@ -1083,8 +1047,8 @@
 
     async function loadActivity() {
         var results = await Promise.allSettled([
-            fetchJson(urls().scripts),
-            fetchJson(urls().properties)
+            window.MDJAdminApi.xray.content({view: 'scripts'}),
+            window.MDJAdminApi.xray.content({view: 'properties'})
         ]);
         var scripts = results[0].status === 'fulfilled' ? results[0].value : null;
         var properties = results[1].status === 'fulfilled' ? results[1].value : null;

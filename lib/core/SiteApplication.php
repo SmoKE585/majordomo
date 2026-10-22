@@ -11,6 +11,9 @@ final class SiteApplication extends Application
     {
         $this->bootConfiguration();
         Install\InstallGate::redirectIfRequired($this->root);
+        // Режим обслуживания важнее входа: посетитель должен увидеть 503, а не
+        // форму логина. Админка идёт через AdminApplication и остаётся открытой.
+        Maintenance\MaintenanceGate::enforce($this->root, 'site');
         Auth\AuthGate::enforce($this->root);
         $path = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
         if (empty($_GET) && empty($_POST) && in_array($path, array(Http\Session::cookiePath(), Http\Session::cookiePath() . 'index.php'), true)) {

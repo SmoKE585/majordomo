@@ -16,7 +16,8 @@ final class Context
         private ?\Closure $usersFactory = null,
         private ?TerminalInput $terminal = null,
         private ?\Closure $modesFactory = null,
-        private ?\Closure $apiTokensFactory = null
+        private ?\Closure $apiTokensFactory = null,
+        private ?\Closure $migrationsFactory = null
     ) {}
 
     public function terminalInput(): TerminalInput { return $this->terminal ??= new TerminalInput(); }
@@ -34,6 +35,21 @@ final class Context
     }
 
     public function config(): void { Config::boot($this->root); }
+
+    /**
+     * Миграции требуют БД, поэтому CLI поднимает штатный config/loader.
+     * Фабрика нужна изолированным тестам и встраиваемым вызовам.
+     */
+    public function migrations(): \MajorDoMo\Core\Migrations
+    {
+        if ($this->migrationsFactory !== null) return ($this->migrationsFactory)();
+        if (!isset($GLOBALS['db'])) {
+            chdir($this->root);
+            require_once $this->root . '/config.php';
+            require_once $this->root . '/lib/loader.php';
+        }
+        return \MajorDoMo\Core\Core::migrations();
+    }
 
     public function modes(): \MajorDoMo\Core\Modes\ModeManager
     {

@@ -8,7 +8,12 @@ Wants=network-online.target mysql.service
 
 [Service]
 Type=simple
+# Служба не должна работать от root: это пользователь сайта FastPanel.
+User=www-data
+Group=www-data
 WorkingDirectory=/var/www/majordomo
+# Необязательная пауза на старте, если MySQL поднимается одновременно.
+# ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do mysqladmin ping -h 127.0.0.1 --silent && exit 0; sleep 2; done; exit 1'
 ExecStart=/usr/bin/php /var/www/majordomo/cycle.php
 Restart=always
 RestartSec=5

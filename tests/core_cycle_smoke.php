@@ -7,7 +7,7 @@ mkdir($fixture);
 mkdir($fixture . '/scripts');
 mkdir($fixture . '/lib');
 copy(dirname(__DIR__) . '/scripts/cycle_core.php', $fixture . '/scripts/cycle_core.php');
-file_put_contents($fixture . '/config.php', "<?php \$_GET['onetime'] = 1;\n");
+file_put_contents($fixture . '/config.php', "<?php define('ROOT', __DIR__ . '/');\n\$_GET['onetime'] = 1;\n");
 file_put_contents($fixture . '/load_settings.php', "<?php\n");
 $bootstrap = <<<'PHP'
 <?php
@@ -22,6 +22,12 @@ namespace MajorDoMo\Core {
                 }
             };
         }
+    }
+}
+namespace MajorDoMo\Core\Events {
+    class EventBus {
+        public static function flushDeferred($root, $limit = 20) {}
+        public static function drain($limit = 20) {}
     }
 }
 namespace {
@@ -52,7 +58,7 @@ try {
         $exitCode = proc_close($process);
         if (!str_contains($output, 'cycle_core starting') || !str_contains($output, 'cycle_core stopped')) throw new RuntimeException("Missing lifecycle output ($scenario): $output $errors");
         if ($scenario === 'normal') {
-            if ($exitCode !== 0 || !str_contains($output, 'FIXTURE heartbeat') || !str_contains($output, 'cycle_core running') || !str_contains($output, 'FIXTURE processed')) throw new RuntimeException('Cycle did not become ready');
+            if ($exitCode !== 0 || !str_contains($output, 'FIXTURE heartbeat') || !str_contains($output, 'cycle_core running') || !str_contains($output, 'FIXTURE processed')) throw new RuntimeException('Cycle did not become ready: ' . $output . ' ERR: ' . $errors);
         } elseif ($scenario === 'boot') {
             if ($exitCode === 0 || !str_contains($output, 'fatal=') || !str_contains($output, 'fixture boot failure')) throw new RuntimeException('Bootstrap failure is not visible');
         } else {

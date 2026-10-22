@@ -79,7 +79,7 @@ try {
     check(!SQLSelectOne("SELECT ID FROM project_modules WHERE NAME='connect'"), 'Connect module registration removed');
     check(!isset(json_decode(SQLSelectOne("SELECT VALUE FROM settings WHERE NAME='HOOK_EVENT_TEST'")['VALUE'], true)['connect']), 'Connect hook removed structurally');
     Core::migrations()->run();
-    check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_migrations')['C'] === 3, 'migration is idempotent');
+    check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_migrations')['C'] === 5, 'migration is idempotent');
     check(SQLSelectOne("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pvalues'")['ENGINE'] === 'InnoDB', 'hot tables migrated to InnoDB');
 
     sg('Lamp.status', 0);

@@ -8,6 +8,7 @@ use MajorDoMo\Core\Install\{InstallGate, InstallState};
 /**
  * HTTP-граница API ядра.
  * Изменения: 2026-10-22 — отдельная ветка публичных /api/hooks/<secret>.
+ * Изменения: 2026-10-22 — результат AccessPolicy передаётся в Request как actor.
  */
 final class ApiApplication extends Application
 {
@@ -51,6 +52,10 @@ final class ApiApplication extends Application
             $legacy = $probe->legacy;
             if (!InstallState::isComplete($this->root)) throw new ApiException(503, 'install_required', 'Система ещё не настроена.', array('install_url' => InstallGate::installUrl()), array('Retry-After' => '30'));
 
+            // API и публичные webhook закрываются на время обслуживания. Ответ
+            // JSON, чтобы клиенты не пытались разобрать HTML-страницу.
+            Maintenance\MaintenanceGate::enforce($this->root, 'api');
+
             // Публичные webhook проверяют только собственный секрет и никогда
             // не используют общий API-токен, правило локальной сети или сессию
             // администратора. Ветка идёт до JSON-парсера, AccessPolicy и loader.
@@ -84,7 +89,7 @@ final class ApiApplication extends Application
 
             $policy = new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), Config::string('TRUSTED_PROXIES'));
             $gate = new Auth\AuthGate($this->root, $this->usersFactory);
-            $policy->authorize($_SERVER, $this->tokenVerifier ?? static fn($token) => preg_match('/^mdm_[a-f0-9]{64}$/D', $token) === 1 && TokenStore::connect()->verify($token), fn() => $gate->authorizeApi());
+            $actor = $policy->authorize($_SERVER, $this->tokenVerifier ?? static fn($token) => preg_match('/^mdm_[a-f0-9]{64}$/D', $token) === 1 && TokenStore::connect()->verify($token), fn() => $gate->authorizeApi());
             $stream = fopen('php://input', 'rb');
             if ($stream === false) throw new ApiException(400, 'invalid_json', 'Не удалось прочитать тело запроса.');
             try { $raw = stream_get_contents($stream, 1048577); } finally { fclose($stream); }
@@ -98,7 +103,7 @@ final class ApiApplication extends Application
             $query = $_GET;
             // Credentials and runtime trace flags are never accepted as user parameters.
             foreach (array('token', 'api_key', 'authorization', '_trace', '_chain') as $key) { unset($query[$key], $body[$key]); }
-            $request = new Request($method, $uri, $query, $body, Config::string('ROOTHTML'));
+            $request = new Request($method, $uri, $query, $body, Config::string('ROOTHTML'), $actor);
             if (!$legacy) Contract::match($request);
             // The specification is available without booting the legacy runtime.
             if (!$legacy && $request->segments === array('openapi.json')) $data = Contract::openApi(Config::string('ROOTHTML'));

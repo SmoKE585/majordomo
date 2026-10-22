@@ -35,7 +35,8 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - ядро и циклы стабилизированы под PHP 8;
 - админ-оболочка переведена на Bootstrap 5;
 - главная страница переделана: KPI, активность, циклы, БД, система, быстрый доступ;
-- дашборд v2: живые KPI (объекты, устройства, циклы, БД), полоса важных предупреждений, график активности за 24 часа, ресурсы сервера (CPU/память/диск), донат циклов, ошибки системы и системные параметры; данные собирает `lib/dashboard_data.php` через `admin.php?ajax_panel=1&op=dashboard`;
+- дашборд v2: живые KPI (объекты, устройства, циклы, БД), полоса важных предупреждений, график активности за 24 часа, ресурсы сервера (CPU/память/диск), донат циклов, ошибки системы и системные параметры; данные собирает `lib/dashboard_data.php` через `GET /api/v1/panel/dashboard` (legacy `admin.php?ajax_panel=1&op=dashboard` оставлен адаптером);
+- служебный AJAX панели переведён на `/api/v1/panel/*`: дашборд, проверка обновлений, поиск, консоль, уведомления, билет WebSocket, история/цепочка свойства и X-Ray идут через `window.MDJAdminApi` (`resources/js/modules/admin_panel/07_api.js`) и `lib/core/Api/Panel.php`; маршруты панели не входят в OpenAPI и требуют сеанс администратора, а старые `ajax_panel`/`action=xray`/`check_updates` URL остались тонкими адаптерами без дублирования логики;
 - ApexCharts подключён как отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css`, основной бандл не растёт;
 - добавлены компоненты `MDJUI::meter()` и `MDJUI::chartCard()` с демо в UI Kit;
 - верхняя панель и левое меню обновлены;
@@ -94,6 +95,7 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - логотипы приведены в порядок: `MDJUI::logo()` — одна разметка для всех страниц, оба варианта переключаются по `data-bs-theme`, ширина задаётся токеном `--md-logo-width`; в шапках используется вордмарк без мелкой подписи «…твой лучший умный дом» (`logo-*-clean-*.png`), которая в интерфейсе сжималась в нечитаемую полосу; заодно исправлены двойные логотипы на входе/мастере/404 — правила `md-logo` не попадали в бандл без сборки;
 - профиль перенесён вниз левого меню: карточка `.md-admin-sidebar__profile` с инициалами, именем, ролью и отдельной кнопкой выхода, не прокручивается вместе с меню и остаётся видимой на телефоне; выход из шапки убран и возвращается только при `HIDE_LEFT_PANEL=1`;
 - исправлена прокрутка мобильного меню: полноэкранная панель больше не опирается на `100vh` (на телефоне это «большой» вьюпорт, из-за чего низ списка уходил под адресную строку и не доскролливался), высота берётся из `top/bottom`, добавлен отступ `env(safe-area-inset-bottom)`.
+- деплой переработан: файловые миграции с автообнаружением (`lib/core/Migrations/`), `deploy/removals.json` с защитой пользовательских папок, режим обслуживания `cms/maintenance.json` (сайт/API 503, админка открыта), пайплайн `lib/core/Deploy/` (preflight, Composer, npm, health-check, перезапуск systemd) и команды `systemd:set`/`systemd:give-permissions`; при сбое после замены файлов циклы удерживаются `cms/cycles/deploy.hold`; документация — [deployment.md](deployment.md) и [systemd-sudo.md](../deploy/systemd-sudo.md).
 
 Следующий этап — **полировка мобильных деталей объектов** (длинные значения в редакторах, компактные формы), затем остальные модули.
 
@@ -136,6 +138,7 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
 13. `docs/agents/code-comments.md` — **обязательно** при правке кода: комментарии по-русски и дата изменения класса.
 14. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
 15. Этот файл — текущее состояние и ограничения.
+16. `docs/agents/deployment.md` — пайплайн деплоя, миграции, removals, maintenance и systemd; пользовательская инструкция — `docs/deploy/systemd-sudo.md`.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 
@@ -180,7 +183,7 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
 | `public/404.php` | Публичная точка входа для nginx `error_page 404` |
 | `modules/panel.class.php` | Сборка shell: меню, иконки, уведомления, данные панели, 404 для модулей |
 | `lib/dashboard_data.php` | Сбор данных дашборда: ресурсы, БД, счётчики, циклы, ошибки, активность |
-| `modules/inc_panel_ajax.php` | AJAX панели; `op=dashboard` отдаёт JSON дашборда |
+| `modules/inc_panel_ajax.php` | Тонкий адаптер старого AJAX панели над `lib/core/Api/Panel*` |
 | `templates/panel.html` | Каркас страницы: topbar, sidebar, контент, drawers |
 | `templates/panel_default.html` | Главная страница (dashboard v2) |
 | `templates/panel_nav_left.html` | Левое меню |
@@ -236,7 +239,7 @@ npm run watch:highlight # подсветка примеров кода (втор
 
 - Не редактируйте `public/assets/admin/*` вручную.
 - После `npm run build` при необходимости поднимите версию в `templates/common_header_admin.html` (`?v=...`), `window.MDCodeEditorConfig`, `window.MDChartsConfig` и `window.MDCodeHighlightConfig`.
-- Бандл коммитится; на продакшене Node.js не нужен.
+- Бандл коммитится как fallback, но системное обновление собирает его на сервере (`DEPLOY_ASSETS=always` по умолчанию) при наличии Node.js 24+. `DEPLOY_ASSETS=never` оставляет только готовый бандл.
 - Редактор кода — отдельный lazy-chunk `public/assets/admin/codeeditor.js/css`; его собирает `vite.codeeditor.config.js`.
 - Графики — отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css` (ApexCharts); его собирает `vite.charts.config.js`, загрузка идёт из общего `100_chart_runtime.js` (дашборд и история).
 - Подсветка read-only примеров — отдельный lazy-chunk `public/assets/admin/codehighlight.js` + `codehighlight.css` (highlight.js); собирает `vite.codehighlight.config.js`, загружает `123_code_sample.js` только при наличии `[data-md-code-sample]`.
@@ -382,7 +385,9 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `php tests/config_smoke.php` — парсер `.env`, типы, кеш и легаси-мост.
 - `composer validate --strict`, `composer dump-autoload --optimize --strict-psr`, `php tests/composer_smoke.php` — при изменениях PHP-зависимостей или автозагрузки. PHPMailer и локальный MQTT загружаются только Composer.
 - `php tests/install_smoke.php` — `.env`-писатель, маркер установки, схема, gate и рендер мастера.
-- `php tests/settings_cycles_smoke.php` — схема «Общих настроек», персистентные состояния и reconcile циклов.
+- `php tests/settings_cycles_smoke.php` — схема «Общих настроек», персистентные состояния, hold и reconcile циклов.
+- `php tests/migrations_smoke.php`, `php tests/file_removals_smoke.php` — файловые миграции и безопасное удаление по `deploy/removals.json`.
+- `php tests/maintenance_smoke.php`, `php tests/deploy_smoke.php`, `php tests/systemd_smoke.php` — режим 503, preflight/health-check, unit/wrapper/sudoers без root и рабочей БД.
 - `php tests/property_audit_smoke.php` — журнал изменений свойств: trace id, шаги, параметры входа/выхода, старое/новое значение и продолжение запуска.
 - `php tests/script_safe_path_smoke.php` — сообщения, сценарии и подписки ставятся прямо в очередь ядра без HTTP/API; исходные имена сохраняются.
 - `php tests/pagination_smoke.php`, `php tests/private_paths_smoke.php` — границы SQL-пагинации и закрытие системных путей.

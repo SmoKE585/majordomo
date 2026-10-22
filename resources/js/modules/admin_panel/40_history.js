@@ -630,6 +630,33 @@
             return;
         }
 
+        var objectId = state.trigger.getAttribute('data-history-object-id');
+        var propertyId = state.trigger.getAttribute('data-history-property-id');
+        if (!state.trigger.getAttribute('data-history-url') && objectId && propertyId && window.MDJAdminApi) {
+            var apiController = new AbortController();
+            state.request = apiController;
+            window.MDJAdminApi.propertyHistory(objectId, propertyId, state.range, state.page, apiController.signal)
+                .then(function (payload) {
+                    if (token !== state.token) {
+                        return;
+                    }
+                    state.request = null;
+                    if (!payload || payload.status !== 'ok') {
+                        showError('История недоступна', requestErrorMessage(null, payload));
+                        return;
+                    }
+                    render(payload);
+                })
+                .catch(function (error) {
+                    if (error.name === 'AbortError' || token !== state.token) {
+                        return;
+                    }
+                    state.request = null;
+                    showError('История недоступна', requestErrorMessage(error));
+                });
+            return;
+        }
+
         var url = buildHistoryUrl(state.trigger);
         if (!url) {
             showError('История недоступна', 'Не удалось определить адрес загрузки истории.');

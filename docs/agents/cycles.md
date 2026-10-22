@@ -244,6 +244,18 @@ php tests/settings_cycles_smoke.php
   `stopped` не сбрасываются автоматически: их нельзя надёжно отличить от
   намеренной остановки администратором.
 
+### Hold после неудачного деплоя
+
+- Если замена файлов уже произошла, а Composer/npm/миграция упали, updater
+  пишет `cms/cycles/deploy.hold`. Это не меняет `desired`: пользовательские
+  `running`/`stopped`/`disabled` сохраняются.
+- `CycleSupervisor::reconcile()` при активном hold останавливает запущенные
+  процессы и не запускает новые; `shouldStartAtBoot()` возвращает `false`.
+- Снять hold можно `maintenance:off` (он же выключает режим обслуживания) или
+  явным `cycles:start`/`cycles:restart`/`cycles:enable`.
+- Успешное обновление снимает hold до `CycleMaintenance::finish()`, после чего
+  супервизор штатно поднимает циклы.
+
 Проверки без рабочей БД и внешних сервисов:
 
 ```bash

@@ -82,13 +82,15 @@ function saverestoreFrameChecklist($title, $checks)
     $items = array();
     foreach ($checks as $check) {
         $ok = !empty($check['ok']);
-        if (!$ok) {
+        $fatal = $check['fatal'] ?? true;
+        if (!$ok && $fatal) {
             $has_errors = true;
         }
         $items[] = array(
             'title' => saverestoreFramePlainText(isset($check['title']) ? $check['title'] : ''),
             'details' => saverestoreFramePlainText(isset($check['details']) ? $check['details'] : ''),
             'ok' => $ok,
+            'fatal' => (bool)$fatal,
         );
     }
     saverestoreFrameEmit('checks', array(
@@ -149,7 +151,7 @@ function saverestoreFrameFinishError($message)
 
 function saverestoreFrameBuildUpdateChecks($sv)
 {
-    return array(
+    $checks = array(
         array(
             'title' => 'URL архива обновления',
             'details' => $sv->getUpdateURL() != '' ? $sv->getUpdateURL() : 'Не задан',
@@ -191,11 +193,36 @@ function saverestoreFrameBuildUpdateChecks($sv)
             'ok' => $sv->canWritePath(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/cycles')
         ),
         array(
+            'title' => 'Каталог cms/deploy',
+            'details' => 'Хранит состояние последнего деплоя и кэш Composer',
+            'ok' => $sv->canWritePath(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/deploy')
+        ),
+        array(
             'title' => 'Резервная копия базы',
             'details' => 'database_backup должен быть доступен для записи',
             'ok' => $sv->canWritePath(DOC_ROOT . DIRECTORY_SEPARATOR . 'database_backup')
         ),
     );
+
+    try {
+        $deployment = new \MajorDoMo\Core\Deploy\Deployment(DOC_ROOT);
+        foreach ($deployment->preflight() as $check) {
+            $checks[] = array(
+                'title' => 'Деплой: ' . $check['title'],
+                'details' => $check['details'],
+                'ok' => $check['ok'],
+                'fatal' => !empty($check['fatal']),
+            );
+        }
+    } catch (\Throwable $error) {
+        $checks[] = array(
+            'title' => 'Деплой: проверка окружения',
+            'details' => $error->getMessage(),
+            'ok' => false,
+        );
+    }
+
+    return $checks;
 }
 
 function saverestoreFrameBuildBackupChecks($sv)
@@ -467,7 +494,8 @@ if ($backup) {
             } else {
                 saverestoreFrameParentStatus('Запрашиваю перезагрузку системы...', 'active', 94, 'finish');
                 saverestoreFrameLog(LANG_UPDATEBACKUP_REQUEST_REBOOT, 'muted');
-                setRebootRequired('system_update_iframe');
+                // Перезапуск службы выполняет Deployment после успешных
+                // composer/npm/миграций; отдельный reboot-флаг здесь не нужен.
                 saverestoreFrameLog(LANG_UPDATEBACKUP_REBOOT_WELL_DONE, 'success');
                 sleep(2);
                 saverestoreFrameRedirect(LANG_UPDATEBACKUP_UPDATE_GET_DONE);

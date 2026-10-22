@@ -83,6 +83,28 @@ legacy API модуля, поведение которого определяе�
 для прежних ошибок поиска/валидации; v1 различает 404/405/422. Исправлены периоды
 month/year (30 и 365 дней, без лишнего множителя 7).
 
+## Служебный API панели
+
+`/api/v1/panel/*` — внутренние операции админки: дашборд, поиск, консоль
+X-Ray, уведомления, билет WebSocket и данные X-Ray. Маршруты объявлены в
+`Contract::panelOperations()` и **не попадают** в OpenAPI и раздел API панели.
+`Dispatcher` пускает сюда только `actor === 'session'`: API-токен и правило
+локальной сети доступа не дают. Запись требует `X-CSRF-Token`, который
+добавляет общий `fetch`-обёртчик `resources/js/modules/admin_panel/05_auth.js`.
+
+Клиент — `resources/js/modules/admin_panel/07_api.js` (`window.MDJAdminApi`):
+`dashboard()`, `updates()`, `search()`, `console()`, `dismissModuleNotifications()`,
+`propertyHistory()`, `propertyTrace()`, `xray.content()`, `xray.service()`,
+`xray.command()`, `xray.cycleLog()`, `xray.clearLogs()`, `xray.database()`,
+`xray.stopTimer()` и другие методы. История и цепочка свойства объекта
+(`/panel/objects/{object}/properties/{property}/history|trace`) делегируют
+готовым сборщикам модуля «Объекты», поэтому формат ответа не меняется.
+Старые `admin.php?ajax_panel=1&op=...`, `admin.php?action=xray...&ajax=1`,
+`ajax/xray.html?action=service` и `ajax/saverestore.html?op=check_updates`
+сохранены как тонкие адаптеры над `lib/core/Api/Panel.php`, `PanelSearch.php` и
+`PanelConsole.php`; их логика больше не дублируется. X-Ray отдаёт данные теми же методами `admin()` и
+`service_control()`, переключаясь в режим возврата массива.
+
 ## Входящие webhook
 
 Вкладка «Входящие webhook» в разделе API (`/panel/api.html?tab=hooks`) создаёт

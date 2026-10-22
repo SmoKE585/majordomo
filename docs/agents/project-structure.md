@@ -57,8 +57,12 @@ order: 10
 ├── lib/                        # ядро, include-only PHP
 │   ├── core/Install/           # мастер: состояние, gate, .env, схема, schema.sql
 │   ├── core/Settings/          # общие настройки: схема, manager, presenter
-│   ├── core/Cycles/            # состояние, супервизор и публичный API циклов
+│   ├── core/Cycles/            # состояние, супервизор, hold и публичный API циклов
+│   ├── core/Deploy/            # preflight, Composer/npm, systemd, removals
+│   ├── core/Maintenance/       # режим обслуживания и HTTP-gate
+│   ├── core/Migrations/        # файловые миграции БД
 │   └── core/Filesystem/        # folder browser для выбора путей в настройках
+├── deploy/                     # манифест удаляемых файлов (removals.json)
 ├── languages/                  # переводы интерфейса
 ├── cms/                        # рантайм-данные и медиа (/cms/...)
 ├── backup/                     # резервные копии saverestore (runtime, gitignored)
@@ -66,7 +70,7 @@ order: 10
 ├── vendor/                     # Composer-зависимости, без HTTP-доступа
 ├── scripts/                    # CLI-циклы и служебные скрипты, без HTTP-доступа
 ├── tools/                      # dev-инструменты (скриншоты, иконки, config, install)
-├── tests/                      # smoke/regression: routing, config, install, settings/cycles, core runtime
+├── tests/                      # smoke/regression: routing, config, deploy, maintenance, migrations
 ├── package.json / vite.*.js    # сборка статики
 └── AGENTS.md  README.md        # короткие указатели в корне
 ```

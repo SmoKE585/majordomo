@@ -15,7 +15,8 @@ final class Application
         private ?\Closure $usersFactory = null,
         private ?TerminalInput $terminalInput = null,
         private ?\Closure $modesFactory = null,
-        private ?\Closure $apiTokensFactory = null
+        private ?\Closure $apiTokensFactory = null,
+        private ?\Closure $migrationsFactory = null
     )
     {
         foreach (array(
@@ -23,6 +24,9 @@ final class Application
             new Commands\DoctorCommand(), new Commands\CyclesStatusCommand(),
             new Commands\CyclesStartCommand(), new Commands\CyclesStopCommand(), new Commands\CyclesRestartCommand(),
             new Commands\CyclesDisableCommand(), new Commands\CyclesEnableCommand(), new Commands\SystemReloadCommand(),
+            new Commands\MigrationsStatusCommand(), new Commands\MigrationsRunCommand(),
+            new Commands\MaintenanceOnCommand(), new Commands\MaintenanceOffCommand(), new Commands\MaintenanceStatusCommand(),
+            new Commands\SystemdSetCommand(), new Commands\SystemdGivePermissionsCommand(),
             new Commands\LogsTailCommand(),
             new Commands\ConfigDoctorCommand(), new Commands\ConfigCacheCommand(), new Commands\ConfigClearCommand(),
             new Commands\ConfigSnapshotCommand(), new Commands\ConfigAuditCommand(), new Commands\ConfigMigrateCommand(),
@@ -73,7 +77,7 @@ final class Application
                 $this->describe($command, $output);
                 return $output->finish(0);
             }
-            $context = new Context($this->root, $this, $this->runtimeReader, $this->usersFactory, $this->terminalInput, $this->modesFactory, $this->apiTokensFactory);
+            $context = new Context($this->root, $this, $this->runtimeReader, $this->usersFactory, $this->terminalInput, $this->modesFactory, $this->apiTokensFactory, $this->migrationsFactory);
             return $output->finish($command->execute($input, $output, $context));
         } catch (\InvalidArgumentException $error) {
             $output->error($error->getMessage());

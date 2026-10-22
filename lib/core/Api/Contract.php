@@ -5,6 +5,7 @@ namespace MajorDoMo\Core\Api;
 /**
  * Общий каталог маршрутов, валидации и OpenAPI.
  * Изменения: 2026-10-22 — внешние операции сообщений и подписок вместо /objects/.
+ * Изменения: 2026-10-22 — служебные маршруты панели /api/v1/panel/*.
  */
 final class Contract
 {
@@ -51,10 +52,43 @@ final class Contract
         }, $definitions);
     }
 
+    /**
+     * Служебные маршруты панели администрирования.
+     *
+     * Они не входят в публичную спецификацию и OpenAPI: Dispatcher пускает
+     * сюда только сеанс администратора, а не токен или локальную сеть.
+     * 2026-10-22 — замена admin.php?ajax_panel=1 и X-Ray AJAX на /api/v1/panel.
+     */
+    public static function panelOperations(): array
+    {
+        $definitions = array(
+            array('GET', '/panel/dashboard', 'panelDashboard', 'Данные дашборда', true),
+            array('GET', '/panel/search', 'panelSearch', 'Поиск по панели', true),
+            array('GET', '/panel/websocket-ticket', 'panelWebsocket', 'Билет WebSocket панели', true),
+            array('POST', '/panel/console', 'panelConsole', 'Выполнить код в консоли X-Ray', true),
+            array('POST', '/panel/notifications/dismiss', 'panelNotifications', 'Отметить уведомления прочитанными', true),
+            array('GET', '/panel/xray/content', 'panelXrayContent', 'Данные режима X-Ray', true),
+            array('GET', '/panel/xray/services', 'panelXrayServices', 'Список циклов X-Ray', true),
+            array('POST', '/panel/xray/services/{cycle}/{command}', 'panelXrayCommand', 'Команда цикла X-Ray', true),
+            array('GET', '/panel/xray/services/{cycle}', 'panelXrayService', 'Состояние цикла X-Ray', true),
+            array('GET', '/panel/xray/services/{cycle}/log', 'panelXrayCycleLog', 'Журнал цикла X-Ray', true),
+            array('DELETE', '/panel/xray/services/{cycle}/log', 'panelXrayClearCycleLog', 'Очистить журнал цикла X-Ray', true),
+            array('POST', '/panel/xray/logs/clear', 'panelXrayClearLogs', 'Очистить файлы логов X-Ray', true),
+            array('POST', '/panel/xray/database/{table}/{action}', 'panelXrayDatabase', 'Обслуживание таблицы X-Ray', true),
+            array('DELETE', '/panel/xray/timers/{timer}', 'panelXrayStopTimer', 'Остановить таймер X-Ray', true),
+            array('GET', '/panel/objects/{object}/properties/{property}/history', 'panelPropertyHistory', 'История свойства объекта', true),
+            array('GET', '/panel/objects/{object}/properties/{property}/trace', 'panelPropertyTrace', 'Цепочка изменения свойства', true),
+            array('GET', '/panel/updates', 'panelUpdates', 'Проверка обновлений системы', true),
+        );
+        return array_map(static function ($definition) {
+            return array_combine(array('method', 'path', 'action', 'summary', 'admin'), $definition);
+        }, $definitions);
+    }
+
     public static function match(Request $request): array
     {
         $candidates = array(); $best = -1;
-        foreach (self::operations() as $operation) {
+        foreach (array_merge(self::operations(), self::panelOperations()) as $operation) {
             $pattern = explode('/', trim($operation['path'], '/'));
             $segments = $request->segments;
             if ($operation['action'] !== 'module' && count($pattern) !== count($segments)) continue;

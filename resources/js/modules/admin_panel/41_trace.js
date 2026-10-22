@@ -548,6 +548,28 @@
             }, 120);
             return;
         }
+        var objectId = state.trigger.getAttribute('data-trace-object-id');
+        var propertyId = state.trigger.getAttribute('data-trace-property-id');
+        if (!state.trigger.getAttribute('data-trace-url') && objectId && propertyId && window.MDJAdminApi) {
+            var apiController = new AbortController();
+            state.request = apiController;
+            window.MDJAdminApi.propertyTrace(objectId, propertyId, state.range, state.page, apiController.signal)
+                .then(function (payload) {
+                    if (token !== state.token) {
+                        return;
+                    }
+                    state.request = null;
+                    render(payload);
+                })
+                .catch(function (error) {
+                    if (error.name === 'AbortError' || token !== state.token) {
+                        return;
+                    }
+                    state.request = null;
+                    showError('Журнал недоступен', requestErrorMessage(error));
+                });
+            return;
+        }
         var url = buildTraceUrl(state.trigger);
         if (!url) {
             showError('Журнал недоступен', 'Не удалось определить адрес загрузки журнала.');

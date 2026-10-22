@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Обновление и восстановление системы.
+ * 2026-10-22 — getUpdateStatus() для дашборда и /api/v1/panel/updates.
+ */
 class saverestore extends module
 {
     var $mode;
@@ -384,6 +388,7 @@ class saverestore extends module
             DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore' => 'Каталог cms/saverestore недоступен для записи.',
             DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' => 'Временный каталог cms/saverestore/temp недоступен для создания или записи.',
             DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/modules_installed' => 'Каталог cms/modules_installed недоступен для записи.',
+            DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/deploy' => 'Каталог cms/deploy недоступен для записи.',
             DOC_ROOT . DIRECTORY_SEPARATOR . 'database_backup' => 'Каталог database_backup недоступен для записи.',
         );
 
@@ -391,6 +396,17 @@ class saverestore extends module
             if (!$this->canWritePath($path)) {
                 $issues[] = $message . ' [' . $this->getRelativeDocRootPath($path) . ']';
             }
+        }
+
+        try {
+            $deployment = new \MajorDoMo\Core\Deploy\Deployment(DOC_ROOT);
+            foreach ($deployment->preflight() as $check) {
+                if (!empty($check['fatal']) && empty($check['ok'])) {
+                    $issues[] = 'Деплой: ' . $check['title'] . ' — ' . $check['details'];
+                }
+            }
+        } catch (\Throwable $error) {
+            $issues[] = 'Деплой: не удалось проверить окружение — ' . $error->getMessage();
         }
 
         return $issues;
@@ -525,70 +541,29 @@ class saverestore extends module
         if (preg_match('#^cms(/|$)#i', $relative_path)) {
             return true;
         }
-        if (preg_match('#^(backup|database_backup)(/|$)#i', $relative_path)) {
+        if (preg_match('#^(backup|database_backup|vendor|node_modules)(/|$)#i', $relative_path)) {
+            return true;
+        }
+        if (preg_match('#^\.git(/|$)#i', $relative_path)) {
             return true;
         }
         return false;
     }
 
-    function getObsoleteSystemUpdatePaths()
+    function removeObsoleteSystemUpdatePaths($iframe = 0)
     {
-        return array(
-            'directories' => array(
-                'modules/connect',
-                'templates/connect',
-                'modules/dashboard',
-                'modules/dateselect',
-                'modules/layouts',
-                'modules/myblocks',
-                'modules/security_rules',
-                'modules/shoutrooms',
-                'modules/soundfiles',
-                'modules/terminals',
-                'modules/textfiles',
-                'modules/thumb',
-                'templates/dashboard',
-                'modules/commands',
-                'modules/patterns',
-                'modules/plans',
-                'modules/scenes',
-                'modules/devices',
-                'templates/dateselect',
-                'templates/layouts',
-                'templates/myblocks',
-                'templates/security_rules',
-                'templates/shoutrooms',
-                'templates/soundfiles',
-                'templates/terminals',
-                'templates/textfiles',
-                'templates/thumb',
-                'templates/commands',
-                'templates/patterns',
-                'templates/plans',
-                'templates/scenes',
-                'templates/devices',
-                'cms/scenes',
-            ),
-            'files' => array(
-                'scripts/cycle_connect.php',
-                'img/connect_back_block.png',
-                'img/modules/connect.png',
-                'templates/scenes.html',
-                'css/devices.css',
-                'js/easySlider1.7.js',
-                'img/modules/commands.png',
-                'img/modules/patterns.png',
-                'img/modules/plans.png',
-                'img/modules/scenes.png',
-                'img/modules/devices.png',
-                'img/modules/layouts.png',
-                'img/modules/terminals.png',
-                'img/modules/textfiles.png',
-            ),
-            'patterns' => array(
-                'templates/classes/views/S*.html',
-            ),
-        );
+        // Пути выведенных из проекта файлов и каталогов живут в
+        // deploy/removals.json: их можно review'ить и они не зависят от того,
+        // что сейчас лежит у пользователя в кастомных папках.
+        $removals = new \MajorDoMo\Core\Deploy\FileRemovals(DOC_ROOT);
+        $result = $removals->apply(function (string $kind, string $path) use ($iframe): void {
+            DebMes('Removed obsolete system ' . $kind . ': ' . $path, 'restore');
+            if ($iframe) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed obsolete system ' . htmlspecialchars($kind) . ' ' . htmlspecialchars($path) . '</div>');
+            }
+        });
+        DebMes('System update removals: ' . json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'restore');
+        return $result;
     }
 
     function getObsoleteSystemModules()
@@ -628,59 +603,6 @@ class saverestore extends module
         }
 
         return $real_target;
-    }
-
-    function removeObsoleteSystemUpdatePaths($iframe = 0)
-    {
-        $paths = $this->getObsoleteSystemUpdatePaths();
-
-        foreach ($paths['files'] as $relative_path) {
-            $real_target = $this->getSafeSystemUpdateTargetPath($relative_path);
-            if ($real_target === false || !is_file($real_target)) {
-                continue;
-            }
-            @unlink($real_target);
-            DebMes('Removed obsolete system file: ' . $relative_path, 'restore');
-            if ($iframe) {
-                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed obsolete system file ' . htmlspecialchars($relative_path) . '</div>');
-            }
-        }
-
-        foreach ($paths['patterns'] as $relative_pattern) {
-            $relative_pattern = $this->normalizeManifestPath($relative_pattern);
-            if ($relative_pattern == '' || preg_match('#(^|/)\.\.(/|$)#', $relative_pattern)) {
-                continue;
-            }
-            $pattern = DOC_ROOT . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_pattern);
-            $files = glob($pattern);
-            if (!is_array($files)) {
-                continue;
-            }
-            foreach ($files as $file) {
-                $relative_path = str_replace('\\', '/', substr($file, strlen(DOC_ROOT) + 1));
-                $real_target = $this->getSafeSystemUpdateTargetPath($relative_path);
-                if ($real_target === false || !is_file($real_target)) {
-                    continue;
-                }
-                @unlink($real_target);
-                DebMes('Removed obsolete system file: ' . $relative_path, 'restore');
-                if ($iframe) {
-                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed obsolete system file ' . htmlspecialchars($relative_path) . '</div>');
-                }
-            }
-        }
-
-        foreach ($paths['directories'] as $relative_path) {
-            $real_target = $this->getSafeSystemUpdateTargetPath($relative_path);
-            if ($real_target === false || !is_dir($real_target)) {
-                continue;
-            }
-            removeTree($real_target);
-            DebMes('Removed obsolete system directory: ' . $relative_path, 'restore');
-            if ($iframe) {
-                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed obsolete system directory ' . htmlspecialchars($relative_path) . '</div>');
-            }
-        }
     }
 
     function buildSystemUpdateManifest($root_path, $base_path = '', &$result = array())
@@ -740,6 +662,7 @@ class saverestore extends module
             return;
         }
 
+        $removals = new \MajorDoMo\Core\Deploy\FileRemovals(DOC_ROOT);
         $new_lookup = array_fill_keys($new_manifest, 1);
         foreach ($old_manifest as $relative_path) {
             $relative_path = $this->normalizeManifestPath($relative_path);
@@ -747,17 +670,21 @@ class saverestore extends module
                 continue;
             }
 
-            $target = DOC_ROOT . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative_path);
-            $real_target = realpath($target);
-            $real_root = realpath(DOC_ROOT);
-            if ($real_target === false || $real_root === false || strpos($real_target, $real_root) !== 0 || !is_file($real_target)) {
+            try {
+                $removed = $removals->removePath($relative_path, false, function (string $kind, string $path) use ($iframe): void {
+                    DebMes('Removed file deleted from system update: ' . $path, 'restore');
+                    if ($iframe) {
+                        echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed deleted system file ' . htmlspecialchars($path) . '</div>');
+                    }
+                });
+            } catch (\Throwable $error) {
+                // Повреждённая запись манифеста не должна мешать обновлению
+                // остальных файлов, но обязана попасть в журнал.
+                DebMes('Cannot remove file deleted from system update ' . $relative_path . ': ' . $error->getMessage(), 'restore', 'warning');
                 continue;
             }
-
-            @unlink($real_target);
-            DebMes('Removed file deleted from system update: ' . $relative_path, 'restore');
-            if ($iframe) {
-                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Removed deleted system file ' . htmlspecialchars($relative_path) . '</div>');
+            if (!$removed) {
+                DebMes('File deleted from system update is already absent: ' . $relative_path, 'restore');
             }
         }
     }
@@ -801,7 +728,8 @@ class saverestore extends module
     {
         $this->removeObsoleteModuleInstallMarkers($iframe);
         $this->cleanupObsoleteModuleDatabaseRows($iframe);
-        \MajorDoMo\Core\Core::migrations()->run();
+        // Миграции выполняет Deployment после composer/npm, чтобы новый код и
+        // зависимости уже были на диске.
     }
 
     function backupDatabaseBeforeSystemUpdate($iframe = 0)
@@ -869,6 +797,18 @@ class saverestore extends module
     }
 
     /**
+     * Автообновление выполняется внутри дочернего процесса cycle.php. Ему
+     * нельзя вызывать systemctl restart: systemd остановит всю cgroup вместе с
+     * самим updater'ом. Такой процесс завершает паузу и просит reload.
+     */
+    function isCycleProcess()
+    {
+        if (PHP_SAPI !== 'cli') return false;
+        $script = basename((string)($_SERVER['SCRIPT_FILENAME'] ?? ($GLOBALS['argv'][0] ?? '')));
+        return (bool)preg_match('/^cycle_[A-Za-z0-9_]+\.php$/D', $script) || $script === 'core_worker.php';
+    }
+
+    /**
      * BackEnd
      *
      * Module backend
@@ -877,7 +817,13 @@ class saverestore extends module
      */
     function admin(&$out)
     {
-
+        // Дашборд проверяет обновления отдельным AJAX; страница здесь не нужна.
+        if (gr('ajax') && gr('op') === 'check_updates') {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            echo json_encode($this->getUpdateStatus((int)gr('check_now') === 1));
+            exit;
+        }
 
         $err_msg = gr('err_msg');
         if ($err_msg) {
@@ -1285,11 +1231,69 @@ class saverestore extends module
     }
 
 
+    /**
+     * Проверка обновлений для дашборда и служебного API панели.
+     * 2026-10-22 — один расчёт вместо echo+exit в admin(); legacy AJAX
+     * check_updates теперь тоже вызывает этот метод.
+     */
+    function getUpdateStatus($force = false)
+    {
+        $this->getConfig();
+        $update_url = $this->getUpdateURL();
+        $commit_url = defined('PROJECT_COMMIT_URL') ? PROJECT_COMMIT_URL : '';
+        $current_branch = $this->normalizeUpdateBranch($this->config['LATEST_CURR_BRANCH'] ?? '');
+        $update_branch = $this->normalizeUpdateBranch($this->getUpdateBranch($update_url));
+        $current_version = $this->normalizeCommitId($this->config['LATEST_UPDATED_ID'] ?? '');
+        $result = array(
+            'needUpdate' => '0',
+            'currBranch' => $current_branch,
+            'current_version' => $current_version,
+            'latest_version' => '',
+            'commitUrl' => $commit_url,
+        );
+        if ($update_url === '') {
+            return $result;
+        }
+        $feed_url = $this->getUpdateFeedURL($update_url);
+        if ($feed_url === '') {
+            return $result;
+        }
+        $options = array(CURLOPT_HTTPHEADER => array('Accept: application/xml'));
+        $feed = getURL($feed_url, $force ? 0 : 3 * 24 * 60 * 60, '', '', false, $options);
+        if ($feed === '') {
+            return $result;
+        }
+        $tree = GetXMLTree($feed);
+        if (!is_array($tree)) {
+            return $result;
+        }
+        $data = XMLTreeToArray($tree);
+        $entries = $data['feed']['entry'] ?? array();
+        if (isset($entries['id'])) {
+            $entries = array($entries);
+        }
+        if (!is_array($entries) || $entries === array()) {
+            return $result;
+        }
+        $latest = reset($entries);
+        $latest_version = $this->normalizeCommitId($latest['id']['textvalue'] ?? '');
+        if ($latest_version === '') {
+            return $result;
+        }
+        if ($current_branch === '' && $current_version !== '') {
+            $current_branch = $update_branch;
+        }
+        $result['currBranch'] = $current_branch;
+        $result['latest_version'] = $latest_version;
+        $result['needUpdate'] = ($latest_version === $current_version && $current_branch === $update_branch) ? '0' : '1';
+        return $result;
+    }
+
     function getUpdateURL($link = '')
     {
         $this->getConfig();
 
-        if ($this->config['MASTER_UPDATE_URL'] != '') {
+        if (($this->config['MASTER_UPDATE_URL'] ?? '') != '') {
             $update_url = $this->config['MASTER_UPDATE_URL'];
         } elseif (defined('MASTER_UPDATE_URL') && MASTER_UPDATE_URL != '') {
             $update_url = MASTER_UPDATE_URL;
@@ -2357,6 +2361,44 @@ class saverestore extends module
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_APPLY_CHANGES . ' ' . DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder . " to " . DOC_ROOT . DIRECTORY_SEPARATOR . '</div>');
             }
 
+            $is_cycle_update = $this->isCycleProcess();
+            $deployment = null;
+            $maintenance = null;
+            $cycleManager = null;
+            $deployLog = function (string $message, string $kind = 'info') use ($iframe): void {
+                $channel = $kind === 'error' ? 'error' : ($kind === 'warning' ? 'warning' : '');
+                DebMes('System update: ' . $message, 'restore', $channel);
+                if ($iframe) {
+                    $color = $kind === 'error' ? 'red' : ($kind === 'success' ? 'green' : ($kind === 'warning' ? 'orange' : ''));
+                    echonow('<div' . ($color !== '' ? ' style="color:' . $color . '"' : '') . '><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</div>');
+                }
+            };
+
+            if ($is_system_update) {
+                $deployment = new \MajorDoMo\Core\Deploy\Deployment(DOC_ROOT);
+                $preflight_failed = array();
+                foreach ($deployment->preflight() as $check) {
+                    if (!empty($check['fatal']) && empty($check['ok'])) $preflight_failed[] = $check['title'] . ': ' . $check['details'];
+                }
+                if ($preflight_failed !== array()) {
+                    foreach ($preflight_failed as $issue) $deployLog('Проверка деплоя не пройдена — ' . $issue, 'error');
+                    if ($iframe) echonow('<div class="text-danger">Обновление не начато: зависимости не установятся.</div>');
+                    return false;
+                }
+                $maintenance = new \MajorDoMo\Core\Maintenance\MaintenanceMode(DOC_ROOT);
+                try {
+                    $maintenance->enable('system_update', 3600, $is_cycle_update ? 'cycle' : 'web', array(
+                        'message' => 'Идёт обновление системы. Сайт скоро вернётся.',
+                        'deploy_id' => bin2hex(random_bytes(8)),
+                    ));
+                } catch (\Throwable $error) {
+                    $deployLog('Не удалось включить режим обслуживания: ' . $error->getMessage(), 'error');
+                    return false;
+                }
+                $cycleManager = new \MajorDoMo\Core\Cycles\CycleManager(DOC_ROOT);
+                $deployLog('Режим обслуживания включён', 'info');
+            }
+
             $update_from = '';
             $update_to = '';
             if ($is_system_update) {
@@ -2373,6 +2415,7 @@ class saverestore extends module
                 $cycleUpdate = $this->stopCyclesBeforeSystemUpdate($iframe);
             } catch (\Throwable $error) {
                 DebMes('System update pause failed: ' . $error->getMessage(), 'restore', 'error');
+                if ($maintenance !== null) $maintenance->disable();
                 if ($iframe) echonow(htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'), 'red');
                 if ($is_system_update) {
                     try {
@@ -2392,6 +2435,12 @@ class saverestore extends module
 
                 copyTree($update_root, DOC_ROOT, 1);
                 if ($is_system_update) {
+                    // Файлы уже новые: зависимости и миграции обязательны до
+                    // снятия паузы, иначе циклы стартуют со старым vendor.
+                    $deployment->composerInstall($deployLog);
+                    $deployment->verifyAutoload($deployLog);
+                    $deployment->buildAssets($deployLog);
+                    $deployment->runMigrations($deployLog);
                     $this->cleanupObsoleteSystemModules($iframe);
                     $this->saveSystemUpdateManifest($new_manifest);
                 }
@@ -2438,6 +2487,16 @@ class saverestore extends module
                     } catch (\Throwable $error) {
                         DebMes('Cannot emit system updated event: ' . $error->getMessage(), 'restore', 'warning');
                     }
+                    try {
+                        $deployment->writeState(array(
+                            'status' => 'success',
+                            'from' => $update_from,
+                            'to' => $latest_id !== '' ? $latest_id : $update_to,
+                            'branch' => $update_branch,
+                        ));
+                    } catch (\Throwable $error) {
+                        DebMes('Cannot write deploy state: ' . $error->getMessage(), 'restore', 'warning');
+                    }
                 }
 
                 if ($iframe) {
@@ -2446,6 +2505,13 @@ class saverestore extends module
             } catch (\Throwable $error) {
                 $updateError = $error;
                 DebMes('System update apply failed: ' . $error->getMessage(), 'restore', 'error');
+                if ($is_system_update && $deployment !== null) {
+                    try {
+                        $deployment->writeState(array('status' => 'failed', 'error' => $error->getMessage(), 'from' => $update_from, 'to' => $update_to));
+                    } catch (\Throwable $stateError) {
+                        DebMes('Cannot write deploy state: ' . $stateError->getMessage(), 'restore', 'warning');
+                    }
+                }
                 if ($iframe) echonow(htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'), 'red');
                 if ($is_system_update) {
                     try {
@@ -2457,17 +2523,39 @@ class saverestore extends module
                 return false;
             } finally {
                 if ($updateError !== null) {
-                    // Files were not replaced: release the pause and restart only
-                    // the cycles that the pause stopped on purpose.
+                    if ($is_system_update) {
+                        if ($maintenance !== null) {
+                            try { $maintenance->markFailed($updateError->getMessage()); }
+                            catch (\Throwable $maintenanceError) { DebMes('Cannot keep maintenance mode: ' . $maintenanceError->getMessage(), 'restore', 'error'); }
+                        }
+                        if ($cycleManager !== null) {
+                            try { $cycleManager->hold('deploy_failed'); }
+                            catch (\Throwable $holdError) { DebMes('Cannot hold cycles after failed deploy: ' . $holdError->getMessage(), 'restore', 'error'); }
+                        }
+                    }
+                    // Files may already be replaced: release the pause, but the
+                    // hold marker prevents cycles from starting on broken code.
                     $cycleUpdate->abort($updateError->getMessage());
                 } else {
+                    if ($is_system_update && $cycleManager !== null) $cycleManager->releaseHold();
                     $cycleUpdate->finish();
+                }
+            }
+
+            if ($is_system_update) {
+                if ($is_cycle_update) {
+                    // Внутри cycle.php нельзя restart'ить свою cgroup.
+                    if ($cycleManager !== null) $cycleManager->requestReload();
+                    if ($maintenance !== null) $maintenance->disable();
+                } else {
+                    $deployment->restartService($deployLog);
+                    if ($maintenance !== null) $maintenance->disable();
                 }
             }
             if ($iframe) {
                 return 1;
             } else {
-                setRebootRequired('updated');
+                if (!$is_system_update) setRebootRequired('updated');
                 $this->redirect("?mode=clear&ok_msg=" . urlencode("Updates Installed!") . "&with_extensions=" . $with_extensions . "&with_backup=" . $with_backup);
             }
 
@@ -2839,7 +2927,8 @@ class saverestore extends module
                     }
                 }
                 DebMes("Update installed, need to reboot", 'auto_update');
-                setRebootRequired('auto_update');
+                // Перезапуск/reload выполняет upload(): система уже знает,
+                // запущен ли updater внутри cycle.php или в веб-запросе.
             }
         }
     }

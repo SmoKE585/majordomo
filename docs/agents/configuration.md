@@ -105,6 +105,21 @@ Config::safeAll();                   // массив без secret-ключей
 - Пароль с `#`, пробелом или `$` — в кавычках: `DB_PASSWORD="p#ss word"`.
 - Подстановка `${VAR}` не поддерживается.
 
+Ключи деплоя (`DEPLOY_*`) читаются в `lib/core/Deploy/`:
+
+| Ключ | По умолчанию | Смысл |
+| --- | --- | --- |
+| `DEPLOY_COMPOSER` | `composer` | путь к Composer или `.phar` |
+| `DEPLOY_NODE` | `node` | Node.js 24+ |
+| `DEPLOY_NPM` | `npm` | npm |
+| `DEPLOY_ASSETS` | `always` | `always` / `auto` / `never` |
+| `DEPLOY_SERVICE` | `majordomo-<user>` | имя systemd-службы |
+| `DEPLOY_RESTART` | `1` | перезапускать службу после обновления |
+| `DEPLOY_TIMEOUT` | `900` | таймаут composer/npm, секунд |
+
+Это машинные настройки, а не параметры модуля: держите их в `.env`, а не в
+`project_modules.DATA`.
+
 ## 5. Как добавить новый ключ
 
 1. Добавьте запись в `ConfigSchema::all()`:

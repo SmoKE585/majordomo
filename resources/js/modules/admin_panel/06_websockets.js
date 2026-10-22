@@ -39,7 +39,10 @@
                 if (response.status === 401 || response.status === 403) stopped = true;
                 throw new Error('WebSocket authentication failed');
             }
-            const auth = await response.json();
+            const payload = await response.json();
+            // Служебный API v1 отдаёт данные в конверте {ok,data}; старый
+            // admin.php?op=websocket возвращал ticket на верхнем уровне.
+            const auth = payload && payload.data ? payload.data : payload;
             if (typeof auth.ticket !== 'string' || !/^[a-f0-9]{64}$/.test(auth.ticket)) throw new Error('Invalid WebSocket ticket');
             if (stopped) return;
             const url = new URL(config.url, window.location.href);

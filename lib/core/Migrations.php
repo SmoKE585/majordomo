@@ -2,18 +2,25 @@
 
 namespace MajorDoMo\Core;
 
+use MajorDoMo\Core\Migrations\Migration;
 use \Throwable;
 use \RuntimeException;
 
 final class Migrations
 {
+    /** @var string Каталог файловых миграций; тесты подменяют его на временный. */
+    private string $migrationPath;
+
     public function __construct(
         private Database $db,
         private Cache $cache,
         private OperationsQueue $queue,
         private HistoryStorage $historyStorage,
-        private WebSocketQueue $websockets
-    ) {}
+        private WebSocketQueue $websockets,
+        ?string $migrationPath = null
+    ) {
+        $this->migrationPath = rtrim($migrationPath ?? __DIR__ . '/Migrations', '/\\');
+    }
 
     public function ensureOperationsSchema()
     {
@@ -174,32 +181,170 @@ final class Migrations
         return (int)($candidate['ID'] ?? 0) > (int)($current['ID'] ?? 0);
     }
 
-    public function run()
+    /**
+     * Применяет все миграции, которых ещё нет в `core_migrations`.
+     *
+     * Список не задаётся вручную: каталог сканируется, версии сортируются,
+     * поэтому пропущенная установкой версия будет применена при следующем
+     * запуске, даже если более новые уже стоят. Порядок — по строке версии,
+     * старые файлы переименовывать нельзя.
+     *
+     * @param callable|null $onProgress function(string $version, string $description, int $index, int $total): void
+     * @return array{applied:string[],batch:int,total:int,orphaned:string[]}
+     */
+    public function run(?callable $onProgress = null): array
     {
         $lock = $this->db->one("SELECT GET_LOCK('mjd:core-migrations',30) AS OK");
         if ((int)($lock['OK'] ?? 0) !== 1) throw new RuntimeException('Core migration is already running');
         try {
-            $this->db->requireExec("CREATE TABLE IF NOT EXISTS core_migrations (VERSION varchar(100) NOT NULL PRIMARY KEY, APPLIED datetime NOT NULL) ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8");
-            $this->apply('20261021_core_runtime_v1', fn() => $this->upgradeRuntime());
-            $this->apply('20261022_system_events_v1', fn() => $this->ensureSystemEventsSchema());
-            $this->apply('20261023_property_audit_v1', fn() => $this->ensurePropertyAuditSchema());
-            $this->apply('20261024_core_api_v1', function () {
-                Api\Schema::install($this->db);
-                $table = $this->db->one("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='locations'");
-                if ($table && strcasecmp($table['ENGINE'], 'InnoDB') !== 0) $this->db->requireExec('ALTER TABLE locations ENGINE=InnoDB');
-            });
-            $this->apply('20261025_api_hooks_v1', fn() => Api\Schema::installHooks($this->db));
+            $this->ensureRepository();
+            $migrations = $this->discover();
+            $applied = $this->appliedMigrations();
+            $orphaned = array_keys(array_diff_key($applied, $migrations));
+            $pending = array_diff_key($migrations, $applied);
+            $batch = $this->nextBatch();
+            $appliedNow = array();
+            $total = count($pending);
+            $index = 0;
+            foreach ($pending as $version => $migration) {
+                $index++;
+                if ($onProgress !== null) {
+                    $onProgress($version, $migration->description(), $index, $total);
+                }
+                $started = microtime(true);
+                try {
+                    $migration->up($this);
+                } catch (Throwable $error) {
+                    throw new RuntimeException('Миграция ' . $version . ' не выполнена: ' . $error->getMessage(), 0, $error);
+                }
+                $duration = (int)round((microtime(true) - $started) * 1000);
+                $this->record($version, $batch, $duration);
+                $appliedNow[] = $version;
+            }
+            return array('applied' => $appliedNow, 'batch' => $batch, 'total' => $total, 'orphaned' => $orphaned);
         } finally {
             $this->db->one("SELECT RELEASE_LOCK('mjd:core-migrations')");
         }
     }
 
-    /** Runs one versioned migration exactly once. */
-    private function apply(string $version, callable $migration): void
+    /**
+     * Состояние миграций для CLI, панели и preflight деплоя.
+     *
+     * Записи без файла не удаляются и не считаются применёнными к текущему
+     * коду: это признак отката файлов или ручного удаления миграции.
+     *
+     * @return array<int,array{version:string,description:string,source:string,applied:bool,batch:int,applied_at:string,duration_ms:int,missing_file:bool}>
+     */
+    public function status(): array
     {
-        if ($this->db->one("SELECT VERSION FROM core_migrations WHERE VERSION='" . $this->db->escape($version) . "'")) return;
-        $migration();
-        $this->db->requireExec("INSERT INTO core_migrations (VERSION,APPLIED) VALUES ('" . $this->db->escape($version) . "',NOW())");
+        $this->ensureRepository();
+        $migrations = $this->discover();
+        $applied = $this->appliedMigrations();
+        $rows = array();
+        foreach ($migrations as $version => $migration) {
+            $record = $applied[$version] ?? array();
+            $rows[] = array(
+                'version' => $version,
+                'description' => $migration->description(),
+                'source' => $migration->sourceFile,
+                'applied' => $record !== array(),
+                'batch' => (int)($record['BATCH'] ?? 0),
+                'applied_at' => (string)($record['APPLIED'] ?? ''),
+                'duration_ms' => (int)($record['DURATION_MS'] ?? 0),
+                'missing_file' => false,
+            );
+        }
+        foreach ($applied as $version => $record) {
+            if (isset($migrations[$version])) continue;
+            $rows[] = array(
+                'version' => $version,
+                'description' => '',
+                'source' => '',
+                'applied' => true,
+                'batch' => (int)($record['BATCH'] ?? 0),
+                'applied_at' => (string)($record['APPLIED'] ?? ''),
+                'duration_ms' => (int)($record['DURATION_MS'] ?? 0),
+                'missing_file' => true,
+            );
+        }
+        return $rows;
+    }
+
+    /** @return array<string,Migration> */
+    public function discover(): array
+    {
+        $files = glob($this->migrationPath . '/*.php');
+        if (!is_array($files)) return array();
+        sort($files, SORT_STRING);
+        $migrations = array();
+        foreach ($files as $file) {
+            // Базовый класс лежит в том же каталоге и не является миграцией.
+            if (basename($file) === 'Migration.php') continue;
+            $migration = require $file;
+            if (!$migration instanceof Migration) {
+                throw new RuntimeException('Файл миграции должен вернуть MajorDoMo\\Core\\Migrations\\Migration: ' . basename($file));
+            }
+            $version = $migration->version();
+            if (!preg_match('/^[A-Za-z0-9_.-]{1,100}$/D', $version)) {
+                throw new RuntimeException('Недопустимая версия миграции в ' . basename($file) . ': ' . $version);
+            }
+            if (isset($migrations[$version])) {
+                throw new RuntimeException('Версия миграции повторяется: ' . $version);
+            }
+            $migration->sourceFile = basename($file);
+            $migrations[$version] = $migration;
+        }
+        uksort($migrations, 'strcmp');
+        return $migrations;
+    }
+
+    public function migrationPath(): string
+    {
+        return $this->migrationPath;
+    }
+
+    public function database(): Database
+    {
+        return $this->db;
+    }
+
+    /** Таблица репозитория и её новые колонки для старых установок. */
+    private function ensureRepository(): void
+    {
+        $this->db->requireExec("CREATE TABLE IF NOT EXISTS core_migrations (VERSION varchar(100) NOT NULL PRIMARY KEY, APPLIED datetime NOT NULL, BATCH int unsigned NOT NULL DEFAULT 1, DURATION_MS int unsigned NOT NULL DEFAULT 0) ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8");
+        $columns = array_column($this->db->select('SHOW COLUMNS FROM core_migrations'), 'Field');
+        if (!in_array('BATCH', $columns, true)) {
+            $this->db->requireExec('ALTER TABLE core_migrations ADD BATCH int unsigned NOT NULL DEFAULT 1');
+        }
+        if (!in_array('DURATION_MS', $columns, true)) {
+            $this->db->requireExec('ALTER TABLE core_migrations ADD DURATION_MS int unsigned NOT NULL DEFAULT 0');
+        }
+    }
+
+    /** @return array<string,array<string,mixed>> */
+    private function appliedMigrations(): array
+    {
+        $rows = $this->db->select('SELECT VERSION,BATCH,APPLIED,DURATION_MS FROM core_migrations ORDER BY VERSION');
+        $applied = array();
+        foreach ($rows as $row) {
+            $version = (string)($row['VERSION'] ?? '');
+            if ($version !== '') $applied[$version] = $row;
+        }
+        return $applied;
+    }
+
+    private function nextBatch(): int
+    {
+        $row = $this->db->one('SELECT COALESCE(MAX(BATCH),0)+1 AS NEXT_BATCH FROM core_migrations');
+        return max(1, (int)($row['NEXT_BATCH'] ?? 1));
+    }
+
+    private function record(string $version, int $batch, int $duration): void
+    {
+        $this->db->requireExec(
+            "INSERT INTO core_migrations (VERSION,APPLIED,BATCH,DURATION_MS) VALUES ('"
+            . $this->db->escape($version) . "',NOW()," . $batch . ',' . $duration . ')'
+        );
     }
 
     /**
@@ -296,7 +441,12 @@ final class Migrations
         );
     }
 
-    private function upgradeRuntime(): void
+    /**
+     * Базовая миграция runtime-схемы. Публичная, потому что вызывается из
+     * файла миграции; новый код должен добавлять отдельные миграции, а не
+     * расширять этот метод.
+     */
+    public function upgradeRuntime(): void
     {
         $this->ensureOperationsSchema();
         $tables = array('objects', 'classes', 'properties', 'methods', 'pvalues', 'phistory', 'phistory_queue', 'history', 'jobs', 'operations_queue');

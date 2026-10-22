@@ -107,10 +107,6 @@
 		return 'md-btn md-btn--secondary md-btn--sm';
 	}
 
-	function createButton(href, label, klass) {
-		return '<a href="' + escapeHtml(href) + '" class="' + buttonClass(klass) + '">' + escapeHtml(label) + '</a>';
-	}
-
 	function createActionButton(type, label, klass, attrs) {
 		var extra = String(klass || '').split(/\s+/).filter(function (name) {
 			return name.indexOf('js-') === 0;
@@ -233,11 +229,12 @@
 	function renderTimers(list) {
 		var rows = '';
 		for (var i = 0; i < list.length; i++) {
+			var timer = escapeHtml(list[i].TITLE || '');
 			rows += '<tr>' +
 				'<td>' + escapeHtml(list[i].TITLE || '') + '</td>' +
 				'<td><code>' + escapeHtml(list[i].COMMAND || '') + '</code></td>' +
 				'<td>' + escapeHtml(list[i].SCHEDULED || '') + '</td>' +
-				'<td class="text-end">' + createButton(list[i].STOP_LINK || '#', config.langCancel || 'Cancel', 'btn-outline-danger') + '</td>' +
+				'<td class="text-end">' + createActionButton('stop', config.langCancel || 'Cancel', 'js-xray-stop-timer', 'data-timer="' + timer + '"') + '</td>' +
 			'</tr>';
 		}
 		return createTable('<thead><tr><th style="width:24%">Title</th><th>Command</th><th style="width:20%">Scheduled</th><th style="width:1%"></th></tr></thead>', rows);
@@ -271,10 +268,11 @@
 	function renderDatabase(list) {
 		var rows = '';
 		for (var i = 0; i < list.length; i++) {
+			var table = escapeHtml(list[i].NAME || '');
 			var actions = '<div class="xray-table-actions">' +
-				createButton(list[i].BTN_ANALYZE || '#', 'Analyze', 'btn-default') +
-				createButton(list[i].BTN_OPTIMIZE || '#', 'Optimize', 'btn-default') +
-				createButton(list[i].BTN_REPAIR || '#', 'Repair', 'btn-default') +
+				createActionButton('analyze', 'Analyze', 'js-xray-db-action', 'data-table="' + table + '" data-action="analyze"') +
+				createActionButton('optimize', 'Optimize', 'js-xray-db-action', 'data-table="' + table + '" data-action="optimize"') +
+				createActionButton('repair', 'Repair', 'js-xray-db-action', 'data-table="' + table + '" data-action="repair"') +
 			'</div>';
 			rows += '<tr>' +
 				'<td>' + escapeHtml(list[i].NAME || '') + '</td>' +
@@ -357,7 +355,6 @@
 		var alive = item.ALIVE == 1;
 		var disabled = item.DISABLED == 1 || view.state === 'disabled';
 		var title = item.TITLE || '';
-		var endpoint = (window.XRayConfig && window.XRayConfig.rootHtml ? window.XRayConfig.rootHtml : '/') + 'ajax/xray.html?action=service';
 		var badges = '<span class="md-badge' + (view.tone !== 'neutral' ? ' md-badge--' + view.tone : '') + '" data-md-cycle-status>' + escapeHtml(view.text) + '</span>' +
 			'<span class="md-cycle-card__link ' + (alive ? 'is-online' : 'is-offline') + '" data-md-cycle-online>' + (alive ? 'ONLINE' : 'OFFLINE') + '</span>';
 		if (item.WAIT == 1) {
@@ -375,7 +372,6 @@
 		return '<div class="md-cycle-table__row is-' + view.state + '"' +
 			' data-md-cycle data-md-cycle-name="' + escapeHtml(title) + '"' +
 			' data-md-cycle-state="' + view.state + '"' +
-			' data-md-cycle-endpoint="' + escapeHtml(endpoint) + '"' +
 			' data-md-cycle-poll="0" role="row">' +
 			'<div class="md-cycle-table__cell md-cycle-table__identity" role="cell">' +
 				'<span class="md-cycle-card__signal" aria-hidden="true"></span>' +
@@ -523,11 +519,14 @@
 		return url;
 	}
 
-	function buildFetchUrl() {
+	function contentParams() {
 		var url = buildPageUrlFromToolbar();
-		url.searchParams.set('ajax', '1');
-		url.searchParams.set('op', 'getcontent');
-		return url;
+		return {
+			view: url.searchParams.get('view_mode') || '',
+			filter: url.searchParams.get('filter') || '',
+			limit: url.searchParams.get('limit') || '',
+			files: getSelectedFiles()
+		};
 	}
 
 	function fetchContent(continueLoop) {
@@ -538,16 +537,8 @@
 		updateProgressBar();
 		clearTimeout(state.checkTimer);
 
-		return fetch(buildFetchUrl().toString(), {
-			credentials: 'same-origin',
-			cache: 'no-store'
-		}).then(function (response) {
-			return response.text();
-		}).then(function (text) {
-			var data;
-			try {
-				data = JSON.parse(text);
-			} catch (error) {
+		return window.MDJAdminApi.xray.content(contentParams()).then(function (data) {
+			if (!data) {
 				setHtml(el('xrayContent'), createEmptyState(config.invalidResponseTitle || 'Invalid response', config.invalidResponseText || 'The server returned malformed JSON.'));
 				if (loopEnabled && state.playing) {
 					state.checkTimer = window.setTimeout(fetchContent, state.checkTimeout);
@@ -611,14 +602,6 @@
 		fetchContent();
 	}
 
-	function postForm(url, data) {
-		return fetch(url, {
-			method: 'POST',
-			credentials: 'same-origin',
-			body: data
-		});
-	}
-
 	function submitToolbarForm() {
 		var pageUrl = buildPageUrlFromToolbar();
 		window.history.replaceState({}, '', pageUrl.toString());
@@ -636,28 +619,11 @@
 			return false;
 		}
 
-		var url = buildPageUrlFromToolbar();
-		url.searchParams.set('ajax', '1');
-		url.searchParams.set('op', 'clearlog');
-
-		var formData = new FormData();
-		selectedFiles.forEach(function (file) {
-			formData.append('files[]', file);
-		});
-
-		postForm(url.toString(), formData).then(function (response) {
-			return response.text();
-		}).then(function (text) {
-			var data;
-			try {
-				data = JSON.parse(text);
-			} catch (error) {
-				data = {};
-			}
-			if (data.STATUS === 'OK') {
+		window.MDJAdminApi.xray.clearLogs(selectedFiles).then(function (data) {
+			if (data && data.STATUS === 'OK') {
 				fetchContent(state.playing);
 			} else {
-				alert(data.MESSAGE || config.clearLogFailed || 'Не удалось очистить лог.');
+				alert((data && data.MESSAGE) || config.clearLogFailed || 'Не удалось очистить лог.');
 			}
 		}).catch(function () {
 			alert(config.clearLogRequestFailed || 'Ошибка запроса при очистке лога.');
@@ -674,19 +640,9 @@
 			return false;
 		}
 
-		var url = new URL((config.rootHtml || '') + 'panel/xray.html', window.location.origin);
-		url.searchParams.set('view_mode', 'services');
-		url.searchParams.set('ajax', '1');
-		url.searchParams.set('op', 'clearcyclelog');
-		url.searchParams.set('cycle', state.cycleLogCurrent);
-
-		fetch(url.toString(), {
-			credentials: 'same-origin'
-		}).then(function (response) {
-			return response.json();
-		}).then(function (data) {
+		window.MDJAdminApi.xray.clearCycleLog(state.cycleLogCurrent).then(function (data) {
 			var list = el('xrayCycleLogList');
-			if (data.STATUS === 'OK') {
+			if (data && data.STATUS === 'OK') {
 				state.cycleLogLines = [];
 				state.cycleLogResponse = {STATUS: 'OK', LINES: []};
 				if (list) {
@@ -694,7 +650,7 @@
 				}
 				setText(el('xrayCycleCount'), '0 записей');
 			} else if (list) {
-				list.innerHTML = cycleLogEmpty('ti-alert-triangle', 'Не удалось очистить лог', data.MESSAGE || config.cycleLogClearFailed || 'Не удалось очистить лог цикла.');
+				list.innerHTML = cycleLogEmpty('ti-alert-triangle', 'Не удалось очистить лог', (data && data.MESSAGE) || config.cycleLogClearFailed || 'Не удалось очистить лог цикла.');
 			}
 		}).catch(function () {
 			var list = el('xrayCycleLogList');
@@ -976,17 +932,7 @@
 			return false;
 		}
 
-		var url = new URL((config.rootHtml || '') + 'panel/xray.html', window.location.origin);
-		url.searchParams.set('view_mode', 'services');
-		url.searchParams.set('ajax', '1');
-		url.searchParams.set('op', 'cyclelog');
-		url.searchParams.set('cycle', state.cycleLogCurrent);
-
-		fetch(url.toString(), {
-			credentials: 'same-origin'
-		}).then(function (response) {
-			return response.json();
-		}).then(function (data) {
+		window.MDJAdminApi.xray.cycleLog(state.cycleLogCurrent).then(function (data) {
 			renderCycleLog(data);
 			scheduleCycleLog();
 		}).catch(function (error) {
@@ -1041,6 +987,37 @@
 		if (logButton) {
 			event.preventDefault();
 			showCycleLog(logButton.getAttribute('data-cycle'));
+			return;
+		}
+
+		var dbButton = target.closest('.js-xray-db-action');
+		if (dbButton) {
+			event.preventDefault();
+			var table = dbButton.getAttribute('data-table') || '';
+			var action = dbButton.getAttribute('data-action') || '';
+			dbButton.disabled = true;
+			window.MDJAdminApi.xray.database(table, action).then(function () {
+				fetchContent(state.playing);
+			}).catch(function (error) {
+				alert((error && error.message) || config.requestFailedText || 'Не удалось выполнить операцию с таблицей.');
+			}).finally(function () {
+				dbButton.disabled = false;
+			});
+			return;
+		}
+
+		var stopTimerButton = target.closest('.js-xray-stop-timer');
+		if (stopTimerButton) {
+			event.preventDefault();
+			var timer = stopTimerButton.getAttribute('data-timer') || '';
+			stopTimerButton.disabled = true;
+			window.MDJAdminApi.xray.stopTimer(timer).then(function () {
+				fetchContent(state.playing);
+			}).catch(function (error) {
+				alert((error && error.message) || config.requestFailedText || 'Не удалось остановить таймер.');
+			}).finally(function () {
+				stopTimerButton.disabled = false;
+			});
 			return;
 		}
 
