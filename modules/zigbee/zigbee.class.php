@@ -100,6 +100,7 @@ class zigbee extends module
         $id = (int)$this->id;
         $bridgeId = max(0, (int)self::request('bridge_id'));
         $search = mb_substr(self::request('q'), 0, 100);
+        $errorsOnly = self::request('errors') === '1';
         $page = max(1, (int)self::request('page'));
         $bridges = $repo->bridges();
         $locations = $repo->db->select('SELECT ID,TITLE FROM locations ORDER BY TITLE');
@@ -136,7 +137,7 @@ class zigbee extends module
             }
         }
         $properties = $device ? $repo->properties((int)$device['ID']) : array();
-        $where = $this->devicesWhere($view === 'discovered', $bridgeId, $search);
+        $where = $this->devicesWhere($view === 'discovered', $bridgeId, $search, $errorsOnly);
         $count = (int)($repo->db->one('SELECT COUNT(*) AS CNT FROM zigbee_devices d WHERE ' . $where)['CNT'] ?? 0);
         $pages = max(1, (int)ceil($count / 40)); $page = min($page, $pages);
         $devices = $repo->db->select('SELECT d.*,b.TITLE AS BRIDGE_TITLE,b.ENABLED AS BRIDGE_ENABLED,b.STATE AS BRIDGE_STATE,l.TITLE AS LOCATION_TITLE FROM zigbee_devices d JOIN zigbee_bridges b ON b.ID=d.BRIDGE_ID LEFT JOIN locations l ON l.ID=d.LOCATION_ID WHERE ' . $where . ' ORDER BY d.ID DESC LIMIT 40 OFFSET ' . (($page - 1) * 40));
@@ -161,11 +162,15 @@ class zigbee extends module
         $this->result = $this->parseLinks(ob_get_clean());
     }
 
-    private function devicesWhere(bool $discovered, int $bridgeId, string $search): string
+    private function devicesWhere(bool $discovered, int $bridgeId, string $search, bool $errorsOnly = false): string
     {
         $repo = $this->service()->repository;
         $where = "d.STATUS='" . ($discovered ? 'discovered' : 'added') . "'";
         if ($bridgeId) $where .= ' AND d.BRIDGE_ID=' . $bridgeId;
+        if ($errorsOnly) {
+            $where .= ' AND EXISTS (SELECT 1 FROM zigbee_bindings eb JOIN zigbee_properties ep ON ep.ID=eb.PROPERTY_ID'
+                . ' WHERE ep.DEVICE_ID=d.ID AND eb.LAST_ERROR IS NOT NULL)';
+        }
         if ($search !== '') {
             $like = $repo->quote('%' . strtr($search, array('=' => '==', '%' => '=%', '_' => '=_')) . '%');
             $where .= " AND (d.FRIENDLY_NAME LIKE $like ESCAPE '=' OR d.TITLE LIKE $like ESCAPE '=' OR d.IEEE_ADDRESS LIKE $like ESCAPE '=' OR d.MODEL LIKE $like ESCAPE '=')";

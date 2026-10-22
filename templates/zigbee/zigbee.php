@@ -180,7 +180,7 @@ $locationOptions = array(0 => 'Без комнаты') + array_column($locations
             <?php foreach ($properties as $row): ?><tr data-md-row data-row-id="<?= (int)$row['ID'] ?>" data-sort-name="<?= $e($row['LABEL'] ?: $row['PATH']) ?>" data-search="<?= $e(($row['LABEL'] ?: '') . ' ' . $row['PATH'] . ' ' . ($row['LINKED_OBJECT'] ?? '') . ' ' . ($row['LINKED_PROPERTY'] ?? '') . ' ' . ($row['LINKED_METHOD'] ?? '')) ?>">
                 <td><div class="md-table__name"><span class="md-table__icon"><?= MDJUI::icon('adjustments-horizontal') ?></span><div><a href="<?= $e($url('/property/' . $row['ID'])) ?>"><strong><?= $e($row['LABEL'] ?: $row['PATH']) ?></strong></a><small><?= $e($row['PATH']) ?></small></div></div></td>
                 <td class="md-zigbee-value"><?= $e($showValue($row['RAW_VALUE'])) ?> → <?= $e($showValue($row['VALUE'])) ?></td>
-                <td><?php if (!empty($row['LINKED_OBJECT'])): ?><?= MDJUI::badge($row['LINKED_OBJECT'] . (($row['LINKED_PROPERTY'] ?? '') !== '' ? '.' . $row['LINKED_PROPERTY'] : ''), 'outline') ?><?php else: ?><span class="md-table__signal">—</span><?php endif; ?><?php if ($row['LAST_ERROR']): ?> <?= MDJUI::badge('Ошибка', 'danger') ?><?php endif; ?></td>
+                <td><?php if (!empty($row['LINKED_OBJECT'])): ?><?= MDJUI::badge($row['LINKED_OBJECT'] . (($row['LINKED_PROPERTY'] ?? '') !== '' ? '.' . $row['LINKED_PROPERTY'] : ''), 'outline') ?><?php else: ?><span class="md-table__signal">—</span><?php endif; ?><?php if ($row['LAST_ERROR']): ?> <?= MDJUI::badge('Ошибка', 'danger', array('attrs' => array('title' => (string)$row['LAST_ERROR']))) ?><?php endif; ?></td>
                 <td><span class="md-table__signal"><?= $e($row['UPDATED'] ?: '—') ?></span></td>
                 <td><div class="md-table__actions"><?= MDJUI::iconButton('pencil', array('label' => 'Настроить ' . ($row['LABEL'] ?: $row['PATH']), 'size' => 'sm', 'href' => $url('/property/' . $row['ID']))) ?></div></td>
             </tr><?php endforeach; ?></tbody></table></div>
@@ -218,9 +218,12 @@ $locationOptions = array(0 => 'Без комнаты') + array_column($locations
             <?= MDJUI::kpi(array('label' => 'Устройства', 'value' => $stats['devices'], 'icon' => 'devices')) ?>
             <?= MDJUI::kpi(array('label' => 'Обнаруженные', 'value' => $stats['discovered'], 'icon' => 'radar')) ?>
             <?= MDJUI::kpi(array('label' => 'Привязки', 'value' => $stats['bindings'], 'icon' => 'link')) ?>
-            <?= MDJUI::kpi(array('label' => 'Ошибки привязок', 'value' => $stats['errors'], 'icon' => 'alert-triangle', 'tone' => $stats['errors'] ? 'danger' : 'success')) ?>
+            <?= MDJUI::kpi(array('label' => 'Ошибки привязок', 'value' => $stats['errors'], 'icon' => 'alert-triangle', 'tone' => $stats['errors'] ? 'danger' : 'success', 'href' => $stats['errors'] && !$isDiscovery ? $listUrl . '?errors=1' : '', 'meta' => $stats['errors'] && !$isDiscovery ? 'Показать устройства' : '')) ?>
         </div>
         <?php if ($isDiscovery) echo MDJUI::alert('info', 'Устройства найдены через MQTT', 'Список заполняется автоматически из bridge/devices и сообщений устройств в настроенных корневых топиках. Выберите комнату и добавьте одно, несколько или все найденные устройства. До добавления их привязки не выполняются.'); ?>
+        <?php if ($errorsOnly && !$isDiscovery): ?>
+            <?= MDJUI::alert('warning', 'Только устройства с ошибками привязок', 'Откройте устройство: у проблемного свойства будет отметка «Ошибка», а на странице свойства — текст ошибки. <a href="' . $e($listUrl) . '">Показать все устройства</a>.') ?>
+        <?php endif; ?>
         <section class="md-table-wrap" aria-label="<?= $isDiscovery ? 'Обнаруженные устройства Zigbee' : 'Устройства Zigbee' ?>">
         <form method="get" action="<?= $e($listUrl) ?>" class="md-table__toolbar">
             <div class="md-table__search"><?= MDJUI::icon('search') ?><input type="search" name="q" value="<?= $e($search) ?>" placeholder="Название, IEEE или модель" aria-label="Поиск устройств" autocomplete="off"></div>
@@ -228,8 +231,9 @@ $locationOptions = array(0 => 'Без комнаты') + array_column($locations
                 <option value="0">Все экземпляры</option>
                 <?php foreach ($bridges as $bridge): ?><option value="<?= (int)$bridge['ID'] ?>" <?= $bridgeId === (int)$bridge['ID'] ? 'selected' : '' ?>><?= $e($bridge['TITLE']) ?></option><?php endforeach; ?>
             </select>
+            <?php if ($errorsOnly): ?><input type="hidden" name="errors" value="1"><?php endif; ?>
             <?= MDJUI::button('Найти', array('type' => 'submit', 'variant' => 'secondary', 'size' => 'sm', 'icon' => 'search')) ?>
-            <?php if ($search !== '' || $bridgeId): ?><?= MDJUI::button('Сбросить', array('href' => $listUrl, 'variant' => 'ghost', 'size' => 'sm')) ?><?php endif; ?>
+            <?php if ($search !== '' || $bridgeId || $errorsOnly): ?><?= MDJUI::button('Сбросить', array('href' => $listUrl, 'variant' => 'ghost', 'size' => 'sm')) ?><?php endif; ?>
             <span class="md-table__meta">Устройств: <?= $count ?></span>
         </form>
         <?php if (!$devices): echo MDJUI::emptyState(array('icon' => 'access-point', 'title' => $search !== '' || $bridgeId ? 'Устройства не найдены' : ($isDiscovery ? 'Новых устройств пока нет' : 'Добавленных устройств пока нет'), 'text' => $search !== '' || $bridgeId ? 'Измените поиск или фильтр.' : ($isDiscovery ? 'Проверьте корневые топики и цикл MQTT. Устройства появятся после получения списка или первого сообщения.' : 'Откройте «Обнаруженные», чтобы выбрать устройства из MQTT.'), 'action' => MDJUI::button($isDiscovery ? 'Экземпляры Zigbee2MQTT' : 'Обнаруженные устройства', array('href' => $url($isDiscovery ? '/bridges' : '/discovered'), 'icon' => 'plus'))));
@@ -257,9 +261,9 @@ $locationOptions = array(0 => 'Без комнаты') + array_column($locations
         <div class="md-table__footer">
             <span>Показано <?= $count ? (($page - 1) * 40 + 1) : 0 ?>–<?= min($count, $page * 40) ?> из <?= $count ?></span>
             <?php if ($pages > 1): ?><nav aria-label="Страницы устройств"><ul class="pagination md-pagination mb-0">
-                <li class="page-item <?= $page === 1 ? 'disabled' : '' ?>"><?php if ($page > 1): ?><a class="page-link" aria-label="Предыдущая страница" href="<?= $e($listUrl . '?' . http_build_query(array('q' => $search, 'bridge_id' => $bridgeId, 'page' => $page - 1))) ?>"><?= MDJUI::icon('chevron-left') ?></a><?php else: ?><span class="page-link"><?= MDJUI::icon('chevron-left') ?></span><?php endif; ?></li>
+                <li class="page-item <?= $page === 1 ? 'disabled' : '' ?>"><?php if ($page > 1): ?><a class="page-link" aria-label="Предыдущая страница" href="<?= $e($listUrl . '?' . http_build_query(array('q' => $search, 'bridge_id' => $bridgeId, 'errors' => $errorsOnly ? 1 : 0, 'page' => $page - 1))) ?>"><?= MDJUI::icon('chevron-left') ?></a><?php else: ?><span class="page-link"><?= MDJUI::icon('chevron-left') ?></span><?php endif; ?></li>
                 <li class="page-item active"><span class="page-link" aria-current="page"><?= $page ?></span></li>
-                <li class="page-item <?= $page === $pages ? 'disabled' : '' ?>"><?php if ($page < $pages): ?><a class="page-link" aria-label="Следующая страница" href="<?= $e($listUrl . '?' . http_build_query(array('q' => $search, 'bridge_id' => $bridgeId, 'page' => $page + 1))) ?>"><?= MDJUI::icon('chevron-right') ?></a><?php else: ?><span class="page-link"><?= MDJUI::icon('chevron-right') ?></span><?php endif; ?></li>
+                <li class="page-item <?= $page === $pages ? 'disabled' : '' ?>"><?php if ($page < $pages): ?><a class="page-link" aria-label="Следующая страница" href="<?= $e($listUrl . '?' . http_build_query(array('q' => $search, 'bridge_id' => $bridgeId, 'errors' => $errorsOnly ? 1 : 0, 'page' => $page + 1))) ?>"><?= MDJUI::icon('chevron-right') ?></a><?php else: ?><span class="page-link"><?= MDJUI::icon('chevron-right') ?></span><?php endif; ?></li>
             </ul></nav><?php endif; ?>
         </div>
         </section>
