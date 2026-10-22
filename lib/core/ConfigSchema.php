@@ -72,6 +72,7 @@ final class ConfigSchema
             'WAIT_FOR_MAIN_CYCLE' => array('type' => 'boolean', 'optional' => true),
             'LOWER_BACKGROUND_PROCESSES' => array('type' => 'boolean', 'optional' => true),
             'ENABLE_PANEL_ACCELERATION' => array('type' => 'boolean', 'optional' => true),
+            'PROPERTY_DELIVERY_STRICT' => array('type' => 'boolean', 'default' => false, 'constant' => false),
 
             // Logging --------------------------------------------------------
             'LOG_DIRECTORY' => array('type' => 'string', 'optional' => true),

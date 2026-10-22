@@ -23,7 +23,8 @@ final class OperationWorker
             $data = json_decode($item['DATAVALUE'], true, 512, JSON_THROW_ON_ERROR);
             $params = $data['params'];
             $chain = is_array($params['_chain'] ?? null) ? $params['_chain'] : array();
-            $delivery_source = $item['DATANAME'] === 'modulepropertyset' ? (string)($data['target'] ?? '') : '';
+            $delivery_source = in_array($item['DATANAME'], array('modulepropertyset', 'moduleevent'), true)
+                ? (string)($data['target'] ?? '') : '';
             PropertyChain::enter($chain, $delivery_source);
             $_GET = $params;
             $_GET['r_s_m'] = 1;

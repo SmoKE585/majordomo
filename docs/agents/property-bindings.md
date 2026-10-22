@@ -77,8 +77,8 @@ setGlobal('Lamp.status', 1, array('mqtt' => 0), 'zigbee')
 ## 3. Доставка привязанному модулю
 
 `OperationsQueue` хранит операцию `modulepropertyset` с параметрами
-`object/property/value`. `cycle_core` забирает её, запускает `core_worker.php`
-в отдельном PHP-процессе и загружает
+`object/property/value` и служебной цепочкой `_chain`. `cycle_core` забирает её,
+запускает `core_worker.php` в отдельном PHP-процессе и загружает
 `modules/<module>/<module>.class.php`.
 
 Контракт модуля:
@@ -92,7 +92,8 @@ public function propertySetHandle($object, $property, $value): void
 - обработчик должен быть идемпотентным: при потере подтверждения операция
   повторится;
 - возврат `false`, исключение или таймаут — временная ошибка, привязка
-  сохраняется, операция повторяется (до 3 попыток, затем `operations_failed`);
+  сохраняется, операция повторяется (до 3 попыток с задержкой 5/10 секунд,
+  затем `operations_failed`);
 - обработчик не должен рассчитывать на HTTP-сессию или `$_SERVER` web-запроса;
 - если файл модуля отсутствует, но модуль зарегистрирован
   (`cms/modules_installed/<module>.installed` или `project_modules`), привязка
