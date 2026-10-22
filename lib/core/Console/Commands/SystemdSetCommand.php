@@ -44,6 +44,9 @@ final class SystemdSetCommand extends Command
             $this->optionString($input, 'user'),
             $this->optionString($input, 'php')
         );
+        if (DIRECTORY_SEPARATOR === '/' && !is_executable($manager->phpBinary())) {
+            throw new \RuntimeException('PHP для службы не найден или не исполняется: ' . $manager->phpBinary() . '. Укажите --php=/usr/bin/php.');
+        }
         $setup = new SystemdSetup($manager);
         $inheritFrom = $this->optionString($input, 'inherit-from') ?: 'majordomo.service';
         $plan = $setup->plan($inheritFrom);

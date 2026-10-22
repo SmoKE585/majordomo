@@ -121,14 +121,14 @@ final class Deployment
                     ? 'Wrapper готов: ' . $wrapper
                     : 'Нет wrapper. Выполните sudo php majordomo systemd:give-permissions',
                 'ok' => is_file($wrapper) && is_executable($wrapper),
-                'fatal' => false,
+                'fatal' => Config::bool('DEPLOY_RESTART', true),
             );
         } catch (\Throwable $error) {
             $checks[] = array(
                 'title' => 'Управление службой',
                 'details' => $error->getMessage(),
                 'ok' => false,
-                'fatal' => false,
+                'fatal' => Config::bool('DEPLOY_RESTART', true),
             );
         }
         $free = @disk_free_space($this->root);

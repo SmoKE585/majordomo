@@ -44,6 +44,7 @@ try {
     file_put_contents($root . '/vendor/autoload.php', "<?php\nnamespace Bluerhinos { class phpMQTT {} }\nnamespace PHPMailer\\PHPMailer { class PHPMailer {} }\n");
 
     putenv('DEPLOY_ASSETS=never');
+    putenv('DEPLOY_RESTART=0');
     putenv('DEPLOY_COMPOSER=' . PHP_BINARY);
     Config::boot($root);
 

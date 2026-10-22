@@ -2548,7 +2548,29 @@ class saverestore extends module
                     if ($cycleManager !== null) $cycleManager->requestReload();
                     if ($maintenance !== null) $maintenance->disable();
                 } else {
-                    $deployment->restartService($deployLog);
+                    $restart = $deployment->restartService($deployLog);
+                    if (!$restart['ok']) {
+                        $message = 'Система обновлена, но служба не перезапустилась: '
+                            . trim((string)($restart['err'] ?: $restart['out']));
+                        if ($maintenance !== null) {
+                            try { $maintenance->markFailed($message); }
+                            catch (\Throwable $error) { DebMes('Cannot keep maintenance mode: ' . $error->getMessage(), 'restore', 'error'); }
+                        }
+                        if ($cycleManager !== null) {
+                            try { $cycleManager->hold('deploy_failed'); }
+                            catch (\Throwable $error) { DebMes('Cannot hold cycles: ' . $error->getMessage(), 'restore', 'error'); }
+                        }
+                        try {
+                            \MajorDoMo\Core\Events\SystemEvents::systemUpdateFailed($message);
+                        } catch (\Throwable $error) {
+                            DebMes('Cannot emit system update failure: ' . $error->getMessage(), 'restore', 'warning');
+                        }
+                        if ($iframe) {
+                            echonow(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'), 'red');
+                            return false;
+                        }
+                        $this->redirect("?err_msg=" . urlencode($message));
+                    }
                     if ($maintenance !== null) $maintenance->disable();
                 }
             }

@@ -201,7 +201,27 @@ sudo systemctl enable --now majordomo.service
 Не запускайте два юнита одновременно: оба будут держать `cycle.php` и создадут
 дубли WebSocket/MQTT-подключений.
 
-## 9. Безопасность
+## 9. Удаление старого юнита
+
+Только после того, как новый юнит стабильно работает:
+
+```bash
+systemctl is-active majordomo-mjdm_smart15_usr.service
+systemctl status majordomo.service --no-pager
+
+systemctl disable --now majordomo.service
+ls -l /etc/systemd/system/majordomo.service
+rm -f /etc/systemd/system/majordomo.service
+rm -f /etc/systemd/system/multi-user.target.wants/majordomo.service
+systemctl daemon-reload
+systemctl reset-failed majordomo.service 2>/dev/null || true
+systemctl list-unit-files | grep majordomo
+```
+
+Если новый юнит не запускается, старый пока не удаляй: это единственный
+рабочий способ поднять циклы.
+
+## 10. Безопасность
 
 - `sudoers` содержит только wrapper, а не `systemctl` целиком;
 - wrapper принадлежит `root:root`, режим `0755`;

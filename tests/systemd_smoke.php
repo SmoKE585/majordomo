@@ -66,7 +66,7 @@ try {
 
     $parsed = SystemdUnit::parseExisting("[Service]\nUser=site\nGroup=site\nExecStartPre=/bin/true\n");
     check($parsed['user'] === 'site' && $parsed['group'] === 'site' && $parsed['execStartPre'] === '/bin/true', 'parseExisting читает User/Group/ExecStartPre');
-    check(str_contains(SystemdUnit::defaultExecStartPre('localhost'), 'mysqladmin ping -h 127.0.0.1'), 'localhost заменяется на 127.0.0.1');
+    check(str_contains(SystemdUnit::defaultExecStartPre('localhost'), 'systemctl is-active --quiet mysql'), 'ExecStartPre проверяет БД без MySQL-авторизации');
 
     $failed = false;
     try {
