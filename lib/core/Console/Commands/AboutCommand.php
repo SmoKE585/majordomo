@@ -18,7 +18,9 @@ final class AboutCommand extends Command
             'installed' => InstallState::isComplete($context->root),
         );
         $rows = array();
-        foreach ($data as $key => $value) $rows[] = array($key, is_bool($value) ? ($value ? 'yes' : 'no') : $value);
+        $labels = array('project' => 'Проект', 'php' => 'Версия PHP', 'php_binary' => 'PHP', 'os' => 'Система', 'root' => 'Каталог', 'env_exists' => '.env', 'installed' => 'Установлен');
+        foreach ($data as $key => $value) $rows[] = array($labels[$key], is_bool($value) ? ($value ? 'yes' : 'no') : $value);
+        $output->title('О системе');
         $output->table(array('Параметр', 'Значение'), $rows);
         $output->result($data);
         return 0;

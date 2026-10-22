@@ -43,7 +43,8 @@ final class PropertyBindings
             $current = (string)($row['LINKED_MODULES'] ?? '');
             $modules = self::normalize($current);
             $canonical = implode(',', $modules);
-            if (in_array($module, $modules, true)) {
+            $added = !in_array($module, $modules, true);
+            if (!$added) {
                 // Repair duplicates/whitespace only when the list is actually different.
                 if ($canonical === $current) return $id;
             } else {
@@ -54,7 +55,10 @@ final class PropertyBindings
                 throw new RuntimeException('Too many linked modules for ' . $object . '.' . $property
                     . '; shorten the subscriber list before adding ' . $module);
             }
-            if ($this->compareAndSet($id, $row['LINKED_MODULES'], $canonical)) return $id;
+            if ($this->compareAndSet($id, $row['LINKED_MODULES'], $canonical)) {
+                if ($added) $this->log('Added module binding', $object, $property, $module);
+                return $id;
+            }
         }
         throw new RuntimeException('Property module bindings changed concurrently; retry later');
     }
@@ -85,6 +89,7 @@ final class PropertyBindings
             $remaining = array_values(array_filter($modules, static fn($linked) => $linked !== $module));
             if (count($remaining) === count($modules)) return false;
             if (!$this->compareAndSet($id, $row['LINKED_MODULES'], implode(',', $remaining))) continue;
+            $this->log('Removed module binding', $object, $property, $module);
             return true;
         }
         throw new RuntimeException('Property module bindings changed concurrently; retry later');
@@ -184,6 +189,16 @@ final class PropertyBindings
     {
         if (!preg_match(self::TABLE_PATTERN, $table)) {
             throw new InvalidArgumentException('Invalid owner table name: ' . $table);
+        }
+    }
+
+    private function log(string $message, string $object, string $property, string $module): void
+    {
+        if (!function_exists('DebMes')) return;
+        try {
+            DebMes($message . ': ' . $object . '.' . $property . ' -> ' . $module, 'property_bindings');
+        } catch (\Throwable $e) {
+            // Diagnostics must never break a subscription change.
         }
     }
 

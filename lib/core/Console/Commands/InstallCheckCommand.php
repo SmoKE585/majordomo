@@ -15,14 +15,18 @@ final class InstallCheckCommand extends Command
         $environment = new InstallEnvironment($context->root);
         $checks = $environment->checks();
         $summary = $environment->summary();
+        $output->title('Диагностика системы');
         foreach ($checks as $group) {
-            $output->line($group['title']);
+            $output->section($group['title']);
             foreach ($group['items'] as $item) {
-                $output->line('[' . strtoupper($item['status'] ?? 'info') . '] ' . $item['label'] . ': ' . ($item['value'] ?? ''));
-                if (!empty($item['hint'])) $output->line('  ' . $item['hint']);
+                $status = $item['status'] ?? 'info';
+                $output->status($status, $item['label'] . ': ' . ($item['value'] ?? ''));
+                if (!empty($item['hint']) && ($input->option('verbose') || in_array($status, array('fail', 'warn'), true))) $output->muted('    ' . $item['hint']);
             }
         }
-        $output->line('Ошибок: ' . $summary['fail'] . '; предупреждений: ' . $summary['warn'] . '.');
+        $output->line();
+        $output->status($summary['fail'] > 0 ? 'ERROR' : ($summary['warn'] > 0 ? 'WARN' : 'OK'), 'Ошибок: ' . $summary['fail'] . ' · Предупреждений: ' . $summary['warn'] . ' · Успешно: ' . $summary['ok']);
+        if (!$input->option('verbose')) $output->muted('Все подсказки: добавьте --verbose');
         $output->result(array('checks' => $checks, 'summary' => $summary));
         return $summary['blocking'] > 0 || $summary['fail'] > 0 ? 1 : 0;
     }

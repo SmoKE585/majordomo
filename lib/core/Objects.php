@@ -143,6 +143,63 @@ final class Objects
     }
 
     /**
+     * Keeps every reference to an object in sync when its title changes.
+     *
+     * A rename previously left LINKED_OBJECT in mqtt/scripts/zigbee/events (and
+     * pvalues.PROPERTY_NAME) pointing at the old title. The subscription in
+     * pvalues.LINKED_MODULES was still there, but the module handler searched
+     * for the old object name and silently did nothing: the binding looked like
+     * it had fallen off. Call this after updating objects.TITLE.
+     */
+    public function renameReferences(int $objectId, string $oldTitle, string $newTitle): void
+    {
+        $oldTitle = trim($oldTitle);
+        $newTitle = trim($newTitle);
+        if ($objectId < 1 || $oldTitle === '' || $newTitle === '' || $oldTitle === $newTitle) return;
+        if (strlen($newTitle) > 255) throw new \InvalidArgumentException('Object title is too long');
+
+        $tables = $this->db->select("SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS"
+            . " WHERE COLUMN_NAME='LINKED_OBJECT' AND TABLE_SCHEMA=DATABASE()");
+        $rows = $this->db->select('SELECT pvalues.ID,pvalues.PROPERTY_NAME,properties.TITLE AS PROPERTY_TITLE'
+            . ' FROM pvalues LEFT JOIN properties ON properties.ID=pvalues.PROPERTY_ID'
+            . ' WHERE pvalues.OBJECT_ID=' . $objectId);
+
+        $this->db->requireExec('START TRANSACTION');
+        try {
+            foreach ($tables as $table) {
+                $name = (string)($table['TABLE_NAME'] ?? '');
+                if (!preg_match('/^[A-Za-z0-9_]+$/D', $name)) continue;
+                $this->db->requireExec('UPDATE `' . $name . "` SET LINKED_OBJECT='" . $this->db->escape($newTitle)
+                    . "' WHERE LINKED_OBJECT='" . $this->db->escape($oldTitle) . "'");
+            }
+            foreach ($rows as $row) {
+                $propertyTitle = (string)($row['PROPERTY_TITLE'] ?? '');
+                if ($propertyTitle !== '') {
+                    $propertyName = $newTitle . '.' . $propertyTitle;
+                } else {
+                    $oldName = (string)($row['PROPERTY_NAME'] ?? '');
+                    if (!str_starts_with($oldName, $oldTitle . '.')) continue;
+                    $propertyName = $newTitle . substr($oldName, strlen($oldTitle));
+                }
+                if ($propertyName !== (string)($row['PROPERTY_NAME'] ?? '')) {
+                    $this->db->requireExec('UPDATE pvalues SET PROPERTY_NAME='
+                        . "'" . $this->db->escape($propertyName) . "' WHERE ID=" . (int)$row['ID']);
+                }
+            }
+            $this->db->requireExec('COMMIT');
+        } catch (\Throwable $e) {
+            $this->db->exec('ROLLBACK', true);
+            throw $e;
+        }
+
+        $this->cache->clear('mjd:');
+        $this->metadata->invalidate();
+        if (function_exists('DebMes')) {
+            DebMes('Renamed object references: ' . $oldTitle . ' -> ' . $newTitle, 'property_bindings');
+        }
+    }
+
+    /**
      * Resolves the value row for the *currently active* property.
      *
      * PROPERTY_NAME is only a denormalized label: an old row of an overridden

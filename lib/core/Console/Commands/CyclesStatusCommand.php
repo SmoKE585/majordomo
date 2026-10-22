@@ -28,7 +28,8 @@ final class CyclesStatusCommand extends Command
                 : $manager->state($name);
             $states[] = $state;
         }
-        $output->line('Супервизор: ' . ($alive ? 'работает' : 'нет свежего heartbeat'));
+        $output->title('Фоновые циклы');
+        $output->status($alive ? 'OK' : 'WARN', 'Супервизор: ' . ($alive ? 'работает' : 'нет свежего heartbeat'));
         $output->table(array('Цикл', 'Желаемое', 'Фактическое', 'Heartbeat', 'Поколение'), array_map(static fn(array $state) => array(
             $state['name'], $state['desired'], $state['status'],
             empty($state['updated']) ? '—' : date('Y-m-d H:i:s', $state['updated']), $state['generation'],

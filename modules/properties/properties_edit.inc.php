@@ -7,7 +7,8 @@
    $out['CONTROLPANEL']=1;
   }
   $table_name='properties';
-  $rec=SQLSelectOne("SELECT * FROM $table_name WHERE ID='$id'");
+  $rec=SQLSelectOne("SELECT * FROM $table_name WHERE ID='" . (int)$id . "'");
+  $old_property_title = isset($rec['TITLE']) ? (string)$rec['TITLE'] : '';
   if ($this->mode=='update') {
    $ok=1;
   //updating 'Class ID' (int, required)
@@ -91,6 +92,10 @@
    if ($ok) {
     if ($rec['ID']) {
      SQLUpdate($table_name, $rec); // update
+     if ($old_property_title !== '' && $old_property_title !== $rec['TITLE']) {
+      // LINKED_PROPERTY in module tables is a title, not an id.
+      \MajorDoMo\Core\Core::properties()->renameReferences((int)$rec['ID'], $old_property_title, $rec['TITLE']);
+     }
      cleanUpPropertyHistory($rec['ID'], $rec['KEEP_HISTORY']);
     } else {
      $new_rec=1;
@@ -103,15 +108,25 @@
      $total=count($objects);
      $replaces=array();
      for($i=0;$i<$total;$i++) {
-      $property=SQLSelectOne("SELECT ID FROM properties WHERE TITLE LIKE '".DBSafe($rec['TITLE'])."' AND OBJECT_ID=".(int)$objects[$i]['ID']." AND CLASS_ID!=".(int)$rec['CLASS_ID']);
+      $property=SQLSelectOne("SELECT ID FROM properties WHERE TITLE='".DBSafe($rec['TITLE'])."' AND OBJECT_ID=".(int)$objects[$i]['ID']." AND CLASS_ID!=".(int)$rec['CLASS_ID']);
       if (isset($property['ID'])) {
-       $replaces[]=$property['ID'];
+       $replaces[]=array('property'=>(int)$property['ID'], 'object'=>(int)$objects[$i]['ID']);
       }
      }
      $total=count($replaces);
      for($i=0;$i<$total;$i++) {
-      SQLExec("UPDATE pvalues SET PROPERTY_ID=".(int)$rec['ID']." WHERE PROPERTY_ID=".(int)$replaces[$i]);
-      SQLExec("DELETE FROM properties WHERE ID=".(int)$replaces[$i]);
+      $objectId=(int)$replaces[$i]['object'];
+      $sourceProperty=(int)$replaces[$i]['property'];
+      $targetPvalue=SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID=".(int)$rec['ID']." AND OBJECT_ID=".$objectId);
+      $sourcePvalue=SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID=".$sourceProperty." AND OBJECT_ID=".$objectId);
+      if (!empty($targetPvalue['ID']) && !empty($sourcePvalue['ID'])) {
+       // Both rows exist: keep the newest value, union LINKED_MODULES and
+       // move history instead of deleting the object-specific subscription.
+       \MajorDoMo\Core\Core::migrations()->mergeRows($targetPvalue, array($sourcePvalue));
+      } elseif (!empty($sourcePvalue['ID'])) {
+       SQLExec("UPDATE pvalues SET PROPERTY_ID=".(int)$rec['ID']." WHERE ID=".(int)$sourcePvalue['ID']);
+      }
+      SQLExec("DELETE FROM properties WHERE ID=".$sourceProperty);
      }
 
     }

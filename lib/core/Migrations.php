@@ -92,31 +92,86 @@ final class Migrations
         foreach ($duplicates as $duplicate) {
             $rows = $this->db->select('SELECT * FROM pvalues WHERE PROPERTY_ID=' . (int)$duplicate['PROPERTY_ID'] . ' AND OBJECT_ID=' . (int)$duplicate['OBJECT_ID'] . ' ORDER BY UPDATED DESC,ID DESC');
             $keep = array_shift($rows);
-            $modules = array_filter(explode(',', $keep['LINKED_MODULES']));
-            foreach ($rows as $row) if ($this->db->tableExists('phistory_value_' . (int)$row['ID'])) $this->historyStorage->table((int)$keep['ID']);
-            $this->db->requireExec('START TRANSACTION');
-            try {
-                foreach ($rows as $row) {
-                    $old = (int)$row['ID'];
-                    $target = (int)$keep['ID'];
-                    $modules = array_merge($modules, array_filter(explode(',', $row['LINKED_MODULES'])));
-                    foreach (array('phistory', 'phistory_queue', 'history') as $table) $this->db->requireExec("UPDATE `$table` SET VALUE_ID=$target WHERE VALUE_ID=$old");
-                    // Preserve separate history too. Old tables stay as a recovery archive;
-                    // a migration must not silently destroy the only copy of historic data.
-                    if ($this->db->tableExists('phistory_value_' . $old)) {
-                        $target_table = 'phistory_value_' . $target;
-                        $this->db->requireExec("INSERT INTO `$target_table` (VALUE_ID,ADDED,VALUE,SOURCE) SELECT $target,ADDED,VALUE,SOURCE FROM `phistory_value_$old`");
-                    }
-                    $this->db->requireExec('DELETE FROM pvalues WHERE ID=' . $old);
-                }
-                $record = array('ID' => $keep['ID'], 'LINKED_MODULES' => implode(',', array_unique($modules)));
-                if (!$this->db->update('pvalues', $record)) throw new RuntimeException('Cannot consolidate property bindings');
-                $this->db->requireExec('COMMIT');
-            } catch (Throwable $e) {
-                $this->db->exec('ROLLBACK', true);
-                throw $e;
-            }
+            $this->mergeRows($keep, $rows);
         }
+    }
+
+    /**
+     * Consolidates one or more pvalues rows into $keep.
+     *
+     * Used by duplicate cleanup and by startup maintenance when an
+     * object-specific property becomes a class property. The newest value wins,
+     * LINKED_MODULES is unioned (a subscription must never disappear on a
+     * property move) and history rows are retargeted instead of deleted.
+     */
+    public function mergeRows(array $keep, array $rows): void
+    {
+        $keepId = (int)($keep['ID'] ?? 0);
+        if ($keepId < 1) throw new RuntimeException('Cannot merge property values without a target');
+        $rows = array_values(array_filter($rows, static fn($row) => (int)($row['ID'] ?? 0) > 0 && (int)($row['ID'] ?? 0) !== $keepId));
+        if (!$rows) return;
+
+        $newest = $keep;
+        $modules = $this->moduleTokens($keep);
+        foreach ($rows as $row) {
+            $modules = array_merge($modules, $this->moduleTokens($row));
+            if ($this->newerValueRow($row, $newest)) $newest = $row;
+        }
+
+        // CREATE TABLE is DDL and implicitly commits; prepare it before the batch.
+        foreach ($rows as $row) {
+            if ($this->db->tableExists('phistory_value_' . (int)$row['ID'])) $this->historyStorage->table($keepId);
+        }
+
+        $this->db->requireExec('START TRANSACTION');
+        try {
+            foreach ($rows as $row) {
+                $old = (int)$row['ID'];
+                foreach (array('phistory', 'phistory_queue', 'history') as $table) {
+                    if ($this->db->tableExists($table)) {
+                        $this->db->requireExec("UPDATE `$table` SET VALUE_ID=$keepId WHERE VALUE_ID=$old");
+                    }
+                }
+                // Preserve separate history too. Old tables stay as a recovery archive;
+                // a merge must not silently destroy the only copy of historic data.
+                if ($this->db->tableExists('phistory_value_' . $old)) {
+                    $target_table = 'phistory_value_' . $keepId;
+                    $this->db->requireExec("INSERT INTO `$target_table` (VALUE_ID,ADDED,VALUE,SOURCE) SELECT $keepId,ADDED,VALUE,SOURCE FROM `phistory_value_$old`");
+                }
+                $this->db->requireExec('DELETE FROM pvalues WHERE ID=' . $old);
+            }
+            $record = array('ID' => $keepId,
+                'LINKED_MODULES' => implode(',', array_values(array_unique($modules))));
+            if ((int)($newest['ID'] ?? 0) !== $keepId) {
+                $record['VALUE'] = (string)($newest['VALUE'] ?? '');
+                $record['SOURCE'] = (string)($newest['SOURCE'] ?? '');
+                $record['UPDATED'] = $newest['UPDATED'] ?? date('Y-m-d H:i:s');
+            }
+            if (!$this->db->update('pvalues', $record)) throw new RuntimeException('Cannot consolidate property values and bindings');
+            $this->db->requireExec('COMMIT');
+        } catch (Throwable $e) {
+            $this->db->exec('ROLLBACK', true);
+            throw $e;
+        }
+    }
+
+    /** @return string[] */
+    private function moduleTokens(array $row): array
+    {
+        $tokens = array();
+        foreach (explode(',', (string)($row['LINKED_MODULES'] ?? '')) as $token) {
+            $token = trim($token);
+            if ($token !== '' && !in_array($token, $tokens, true)) $tokens[] = $token;
+        }
+        return $tokens;
+    }
+
+    private function newerValueRow(array $candidate, array $current): bool
+    {
+        $candidateTime = !empty($candidate['UPDATED']) ? (int)strtotime((string)$candidate['UPDATED']) : 0;
+        $currentTime = !empty($current['UPDATED']) ? (int)strtotime((string)$current['UPDATED']) : 0;
+        if ($candidateTime !== $currentTime) return $candidateTime > $currentTime;
+        return (int)($candidate['ID'] ?? 0) > (int)($current['ID'] ?? 0);
     }
 
     public function run()

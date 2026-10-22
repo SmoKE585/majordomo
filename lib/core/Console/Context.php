@@ -4,11 +4,26 @@ namespace MajorDoMo\Core\Console;
 
 use MajorDoMo\Core\Config;
 use MajorDoMo\Core\Cycles\CycleManager;
+use MajorDoMo\Core\Users\UserAccounts;
 
 final class Context
 {
     /** Optional reader is for isolated CLI tests and embedded callers. */
-    public function __construct(public readonly string $root, public readonly Application $application, private ?\Closure $runtimeReader = null) {}
+    public function __construct(
+        public readonly string $root,
+        public readonly Application $application,
+        private ?\Closure $runtimeReader = null,
+        private ?\Closure $usersFactory = null,
+        private ?TerminalInput $terminal = null
+    ) {}
+
+    public function terminalInput(): TerminalInput { return $this->terminal ??= new TerminalInput(); }
+
+    public function users(): UserAccounts
+    {
+        $this->config();
+        return $this->usersFactory !== null ? ($this->usersFactory)() : UserAccounts::connect();
+    }
 
     public function config(): void { Config::boot($this->root); }
 

@@ -12,7 +12,8 @@ if ($this->owner->name == 'panel') {
 }
 
 $table_name = 'objects';
-$rec = SQLSelectOne("SELECT * FROM $table_name WHERE ID='$id'");
+$rec = SQLSelectOne("SELECT * FROM $table_name WHERE ID='" . (int)$id . "'");
+$old_object_title = isset($rec['TITLE']) ? (string)$rec['TITLE'] : '';
 
 if (isset($rec['TITLE'])) {
 }
@@ -71,6 +72,12 @@ if ($this->mode == 'update') {
     if ($ok) {
         if ($rec['ID']) {
             SQLUpdate($table_name, $rec); // update
+
+            if ($old_object_title !== '' && $old_object_title !== $rec['TITLE']) {
+                // Without this, module rows keep LINKED_OBJECT=old title and
+                // their propertySetHandle stops matching after a rename.
+                \MajorDoMo\Core\Core::objects()->renameReferences((int)$rec['ID'], $old_object_title, $rec['TITLE']);
+            }
 
             if ($class_changed_from) {
                 objectClassChanged($rec['ID']);

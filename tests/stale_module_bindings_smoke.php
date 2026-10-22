@@ -49,7 +49,18 @@ class StaleBindingsTestDatabase
     public function __construct(public PDO $pdo) {}
     public function DbSafe1($value) { return str_replace("'", "''", (string)$value); }
     public function DbSafe($value) { return $this->DbSafe1($value); }
-    public function Select($sql) { return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC); }
+    public function Select($sql)
+    {
+        if (stripos($sql, 'INFORMATION_SCHEMA.COLUMNS') !== false) {
+            $tables = array();
+            foreach ($this->pdo->query("SELECT name FROM sqlite_master WHERE type='table'") as $table) {
+                $columns = $this->pdo->query("PRAGMA table_info(`" . str_replace('`', '', $table['name']) . "`)")->fetchAll(PDO::FETCH_ASSOC);
+                if (in_array('LINKED_OBJECT', array_column($columns, 'name'), true)) $tables[] = array('TABLE_NAME' => $table['name']);
+            }
+            return $tables;
+        }
+        return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
     public function SelectOne($sql)
     {
         if (str_contains($sql, 'information_schema.TABLES')) {
@@ -65,6 +76,8 @@ class StaleBindingsTestDatabase
             if ($this->failRemoval) { $this->error = 'simulated write failure'; return false; }
         }
         $sql = preg_replace('/\bBINARY\s+/', '', $sql); // SQLite text equality is binary by default.
+        $sql = preg_replace('/^INSERT IGNORE INTO/i', 'INSERT OR IGNORE INTO', $sql);
+        $sql = preg_replace('/^START TRANSACTION$/i', 'BEGIN', $sql);
         if (preg_match('/^(UPDATE operations_queue SET .+?) WHERE (.+) ORDER BY ID LIMIT (\d+)$/s', $sql, $match)) {
             $sql = $match[1] . ' WHERE ID IN (SELECT ID FROM operations_queue WHERE ' . $match[2] . ' ORDER BY ID LIMIT ' . $match[3] . ')';
         } elseif (preg_match('/^DELETE FROM operations_queue WHERE (.+) LIMIT (\d+)$/s', $sql, $match)) {
@@ -160,9 +173,12 @@ $value = $pdo->query('SELECT VALUE,UPDATED FROM pvalues WHERE ID=1')->fetch(PDO:
 check($value === array('VALUE' => 'current value', 'UPDATED' => '2026-10-21 19:00:00'), 'Cleanup must preserve value and update time');
 check($pdo->query('SELECT LINKED_MODULES FROM pvalues WHERE ID=2')->fetchColumn() === 'badsubscriber'
     && $pdo->query('SELECT LINKED_MODULES FROM pvalues WHERE ID=3')->fetchColumn() === 'badsubscriber', 'Other objects and properties must retain their bindings');
-check(count($logs) === 1 && str_contains($logs[0], 'badsubscriber') && str_contains($logs[0], 'Lamp') && str_contains($logs[0], 'status') && !str_contains($logs[0], 'private value'), 'Cleanup log must identify the binding without exposing the value');
+$cleanupLog = implode("\n", $logs);
+check(count($logs) === 2 && str_contains($cleanupLog, 'badsubscriber') && str_contains($cleanupLog, 'Lamp')
+    && str_contains($cleanupLog, 'status') && !str_contains($cleanupLog, 'private value'),
+    'Cleanup logs must identify the binding without exposing the value');
 runModule('badsubscriber');
-check(count($logs) === 1, 'Already removed subscriber must not cause repeated cleanup logs');
+check(count($logs) === 2, 'Already removed subscriber must not cause repeated cleanup logs');
 
 setLinks('goodsubscriber,inheritedsubscriber');
 $before = count($calls);
@@ -234,6 +250,7 @@ Core::properties()->set($object, 'status', 'next sensor value');
 check((int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 0, 'Subsequent property writes must stop queuing the removed subscriber');
 
 // --- subscription registration must be surgical and concurrency-safe ---
+require_once dirname(__DIR__) . '/lib/objects.class.php';
 $bindings = Core::bindings();
 $connection->beforeRemoval = null;
 setLinks('goodsubscriber');
@@ -290,12 +307,48 @@ check($bindings->attach('InheritedLamp', 'status', 'newsub') === 5
     && $pdo->query('SELECT LINKED_MODULES FROM pvalues WHERE ID=5')->fetchColumn() === 'oldsub,newsub'
     && $pdo->query('SELECT LINKED_MODULES FROM pvalues WHERE ID=4')->fetchColumn() === 'oldsub',
     'Attach must use the active inherited property, not an obsolete same-name row');
+check(Core::properties()->get((object)array('id' => 3, 'class_id' => 2, 'object_title' => 'InheritedLamp'), 'status')
+    === 'active inherited value',
+    'Property read must use the active inherited row, not an obsolete same-name row');
 
 $pdo->exec("INSERT INTO properties(ID,TITLE,OBJECT_ID,CLASS_ID) VALUES (5,'level',1,0)");
 $created = $bindings->attach('Lamp', 'level', 'newsub');
 $createdRow = $pdo->query('SELECT VALUE,LINKED_MODULES FROM pvalues WHERE ID=' . (int)$created)->fetch(PDO::FETCH_ASSOC);
 check($created > 0 && $createdRow === array('VALUE' => '', 'LINKED_MODULES' => 'newsub'),
     'Attach must create the missing value row for an existing property');
+
+// Moving an object property into a class property must keep bindings and history.
+$pdo->exec("CREATE TABLE phistory (ID INTEGER PRIMARY KEY AUTOINCREMENT, VALUE_ID INTEGER, ADDED TEXT, VALUE TEXT, SOURCE TEXT)");
+$pdo->exec("INSERT INTO properties(ID,TITLE,OBJECT_ID,CLASS_ID) VALUES (20,'mode',1,0),(21,'mode',0,1)");
+$pdo->exec("INSERT INTO pvalues(ID,OBJECT_ID,PROPERTY_ID,PROPERTY_NAME,VALUE,UPDATED,SOURCE,LINKED_MODULES) VALUES
+    (20,1,20,'Lamp.mode','object value','2026-10-21 20:00:00','object','mqtt,scripts'),
+    (21,1,21,'Lamp.mode','class value','2026-10-21 19:00:00','class','zigbee')");
+$pdo->exec("INSERT INTO phistory(VALUE_ID,ADDED,VALUE,SOURCE) VALUES (20,'2026-10-21 20:00:00','object value','object')");
+$classPvalue = $pdo->query('SELECT * FROM pvalues WHERE ID=21')->fetch(PDO::FETCH_ASSOC);
+$objectPvalue = $pdo->query('SELECT * FROM pvalues WHERE ID=20')->fetch(PDO::FETCH_ASSOC);
+Core::migrations()->mergeRows($classPvalue, array($objectPvalue));
+$merged = $pdo->query('SELECT VALUE,LINKED_MODULES FROM pvalues WHERE ID=21')->fetch(PDO::FETCH_ASSOC);
+check((int)$pdo->query('SELECT COUNT(*) FROM pvalues WHERE ID=20')->fetchColumn() === 0
+    && $merged === array('VALUE' => 'object value', 'LINKED_MODULES' => 'zigbee,mqtt,scripts'),
+    'Property merge keeps the newest value and unions module bindings');
+check((int)$pdo->query('SELECT COUNT(*) FROM phistory WHERE VALUE_ID=21')->fetchColumn() === 1,
+    'Property merge moves history instead of deleting it');
+
+// A rename must update both the label and every LINKED_OBJECT owner row.
+setLinks('goodsubscriber');
+$pdo->exec("INSERT INTO mqtt VALUES (2,'Lamp','status')");
+Core::objects()->renameReferences(1, 'Lamp', 'Lamp2');
+check($pdo->query('SELECT PROPERTY_NAME FROM pvalues WHERE ID=1')->fetchColumn() === 'Lamp2.status'
+    && $pdo->query('SELECT LINKED_OBJECT FROM mqtt WHERE ID=2')->fetchColumn() === 'Lamp2'
+    && links() === 'goodsubscriber',
+    'Object rename keeps module owner rows and pvalue labels in sync');
+
+$pdo->exec("UPDATE objects SET TITLE='Lamp2' WHERE ID=1");
+Core::properties()->renameReferences(1, 'status', 'state');
+check($pdo->query('SELECT PROPERTY_NAME FROM pvalues WHERE ID=1')->fetchColumn() === 'Lamp2.state'
+    && $pdo->query('SELECT LINKED_PROPERTY FROM mqtt WHERE ID=2')->fetchColumn() === 'state'
+    && links() === 'goodsubscriber',
+    'Property rename keeps module owner rows and pvalue labels in sync');
 
 $before = (int)$pdo->query('SELECT COUNT(*) FROM pvalues')->fetchColumn();
 check($bindings->attach('UnknownObject', 'status', 'newsub') === 0
@@ -306,10 +359,10 @@ check($bindings->attach('UnknownObject', 'status', 'newsub') === 0
 require_once dirname(__DIR__) . '/lib/objects.class.php';
 $pdo->exec("UPDATE pvalues SET VALUE='next sensor value' WHERE ID=1");
 setLinks('badsubscriber,goodsubscriber');
-removeLinkedProperty('Lamp', 'status', 'badsubscriber');
+removeLinkedProperty('Lamp2', 'status', 'badsubscriber');
 check(links() === 'goodsubscriber' && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === 'next sensor value', 'Legacy unlink must use the same selective cleanup without overwriting values');
 setLinks('goodsubscriber');
-check(addLinkedProperty('Lamp', 'status', 'legacymodule') === 1 && links() === 'goodsubscriber,legacymodule',
+check(addLinkedProperty('Lamp2', 'status', 'legacymodule') === 1 && links() === 'goodsubscriber,legacymodule',
     'Legacy addLinkedProperty must use the atomic implementation');
 
 echo 'Stale module binding smoke tests passed: ' . $checks . ' checks (SQLite :memory:, no external services).' . PHP_EOL;

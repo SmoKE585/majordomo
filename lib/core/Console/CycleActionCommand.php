@@ -21,8 +21,9 @@ abstract class CycleActionCommand extends Command
         $result = $manager->$action($name);
         if (!$result['ok']) throw new \RuntimeException('Команда не принята');
         $alive = $manager->isSupervisorRunning();
-        $output->line('Запрос ' . $action . ' сохранён для ' . $name . '. ' . ($alive ? 'Ожидается применение супервизором.' : 'Ожидается запуск супервизора cycle.php.'));
-        $output->line('Проверка: php majordomo cycles:status ' . $name);
+        $output->success('Запрос ' . $action . ' сохранён для ' . $name . '.');
+        $output->info($alive ? 'Ожидается применение супервизором.' : 'Ожидается запуск супервизора cycle.php.');
+        $output->muted('Проверка: php majordomo cycles:status ' . $name);
         $output->result(array('accepted' => true, 'applied' => false, 'name' => $name, 'command' => $action, 'desired' => $manager->store()->desired($name), 'generation' => $manager->store()->generation($name), 'supervisor_running' => $alive));
         return 0;
     }

@@ -26,7 +26,8 @@ final class ConfigDoctorCommand extends Command
         $environment = new \MajorDoMo\Core\Install\InstallEnvironment($context->root);
         $database = $environment->databaseStatus();
         $checks[] = array('status' => $database['ok'] ? 'ok' : 'fail', 'message' => $database['ok'] ? 'Подключение к БД работает' : 'Не удалось подключиться к БД; проверьте DB_* и mysqli');
-        foreach ($checks as $check) $output->line('[' . strtoupper($check['status']) . '] ' . $check['message']);
+        $output->title('Конфигурация');
+        foreach ($checks as $check) $output->status($check['status'], $check['message']);
         $output->result(array('checks' => $checks));
         return count(array_filter($checks, static fn(array $check) => $check['status'] === 'fail')) > 0 ? 1 : 0;
     }

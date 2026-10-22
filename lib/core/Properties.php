@@ -13,7 +13,8 @@ final class Properties
         private MetadataCache $metadata,
         private PropertyLock $locks,
         private WebSocketQueue $websockets,
-        private CodeExecutor $code
+        private CodeExecutor $code,
+        private ?ErrorReporter $errors = null
     ) {}
 
     /**
@@ -23,6 +24,63 @@ final class Properties
     public function removeLinkedModule(string $object, string $property, string $module): bool
     {
         return Core::bindings()->removeLinkedModule($object, $property, $module);
+    }
+
+    /**
+     * Keeps module owner rows and pvalue labels in sync after a property rename.
+     *
+     * LINKED_PROPERTY in mqtt/scripts/zigbee/events is the property title, not
+     * its id. Without this update the subscription stays in LINKED_MODULES but
+     * every propertySetHandle() searches for the old title and does nothing.
+     */
+    public function renameReferences(int $propertyId, string $oldTitle, string $newTitle): void
+    {
+        $oldTitle = trim($oldTitle);
+        $newTitle = trim($newTitle);
+        if ($propertyId < 1 || $oldTitle === '' || $newTitle === '' || $oldTitle === $newTitle) return;
+        if (strlen($newTitle) > 255) throw new \InvalidArgumentException('Property title is too long');
+
+        $rows = $this->db->select('SELECT pvalues.ID,pvalues.OBJECT_ID,objects.TITLE AS OBJECT_TITLE'
+            . ' FROM pvalues JOIN objects ON objects.ID=pvalues.OBJECT_ID'
+            . ' WHERE pvalues.PROPERTY_ID=' . $propertyId);
+        if (!$rows) return;
+        $targets = array();
+        foreach ($rows as $row) {
+            $title = (string)($row['OBJECT_TITLE'] ?? '');
+            if ($title !== '') $targets[$title] = true;
+        }
+        $tables = $this->db->select("SELECT DISTINCT c.TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS c"
+            . " JOIN INFORMATION_SCHEMA.COLUMNS o ON o.TABLE_SCHEMA=c.TABLE_SCHEMA"
+            . " AND o.TABLE_NAME=c.TABLE_NAME AND o.COLUMN_NAME='LINKED_OBJECT'"
+            . " WHERE c.COLUMN_NAME='LINKED_PROPERTY' AND c.TABLE_SCHEMA=DATABASE()");
+
+        $this->db->requireExec('START TRANSACTION');
+        try {
+            foreach ($tables as $table) {
+                $name = (string)($table['TABLE_NAME'] ?? '');
+                if (!preg_match('/^[A-Za-z0-9_]+$/D', $name)) continue;
+                foreach (array_keys($targets) as $objectTitle) {
+                    $this->db->requireExec('UPDATE `' . $name . "` SET LINKED_PROPERTY='" . $this->db->escape($newTitle)
+                        . "' WHERE LINKED_OBJECT='" . $this->db->escape($objectTitle)
+                        . "' AND LINKED_PROPERTY='" . $this->db->escape($oldTitle) . "'");
+                }
+            }
+            foreach ($rows as $row) {
+                $propertyName = (string)($row['OBJECT_TITLE'] ?? '') . '.' . $newTitle;
+                $this->db->requireExec('UPDATE pvalues SET PROPERTY_NAME='
+                    . "'" . $this->db->escape($propertyName) . "' WHERE ID=" . (int)$row['ID']);
+            }
+            $this->db->requireExec('COMMIT');
+        } catch (\Throwable $e) {
+            $this->db->exec('ROLLBACK', true);
+            throw $e;
+        }
+
+        $this->cache->clear('mjd:');
+        $this->metadata->invalidate();
+        if (function_exists('DebMes')) {
+            DebMes('Renamed property references: ' . $oldTitle . ' -> ' . $newTitle, 'property_bindings');
+        }
     }
 
     public function get($object, $property, $cache_checked = false)
@@ -49,39 +107,43 @@ final class Properties
             }
         }
 
-        $value = $this->db->one("SELECT VALUE FROM pvalues WHERE PROPERTY_NAME = '" . $this->db->escapeLike($object->object_title . '.' . $property) . "'");
-        if (isset($value['VALUE'])) {
-            startMeasure('getPropertyCached2');
-            endMeasure('getPropertyCached2', 1);
-            endMeasure('$this->get(' . $property . ')', 1);
-            endMeasure('getProperty', 1);
-            $this->cache->set($cached_name, $value['VALUE'], true);
-            return $value['VALUE'];
-        }
-
-        if ($property == 'location_title') {
-            $value = current($this->db->one("SELECT TITLE FROM locations WHERE ID=" . (int)$object->location_id));
-            $this->cache->set($cached_name, $value, true);
-            return $value;
-        }
-
         $id = $this->resolve($object, $property, $object->class_id, $object->id);
         startMeasure('getPropertyAll');
         startMeasure('$this->get(' . $property . ')');
 
+        $value = null;
         if ($id) {
-            $value = $this->db->one("SELECT * FROM pvalues WHERE PROPERTY_ID='" . (int)$id . "' AND OBJECT_ID='" . (int)$object->id . "'");
-            if (isset($value['ID']) && !$value['PROPERTY_NAME'] && isset($object->object_title)) {
+            // Read the same row the writer updates: an overridden inherited
+            // property may leave an obsolete row with the same PROPERTY_NAME.
+            $value = $this->db->one("SELECT * FROM pvalues WHERE PROPERTY_ID='" . (int)$id
+                . "' AND OBJECT_ID='" . (int)$object->id . "'");
+            if (isset($value['ID']) && empty($value['PROPERTY_NAME']) && isset($object->object_title)) {
+                $this->db->update('pvalues', array('ID' => (int)$value['ID'],
+                    'PROPERTY_NAME' => $object->object_title . '.' . $property));
                 $value['PROPERTY_NAME'] = $object->object_title . '.' . $property;
-                $this->db->update('pvalues', $value);
             }
-        } else {
-            $value['VALUE'] = false;
         }
+
+        if (!isset($value['VALUE']) && $property == 'location_title') {
+            $value = array('VALUE' => current($this->db->one("SELECT TITLE FROM locations WHERE ID=" . (int)$object->location_id)));
+        }
+
+        if (!isset($value['VALUE'])) {
+            // Legacy rows without a resolvable property (renamed/deleted class)
+            // remain readable, but they never win over an existing active row.
+            $legacy = $this->db->one("SELECT VALUE FROM pvalues WHERE PROPERTY_NAME = '"
+                . $this->db->escape($object->object_title . '.' . $property) . "'");
+            if (isset($legacy['VALUE'])) {
+                startMeasure('getPropertyCached2');
+                endMeasure('getPropertyCached2', 1);
+                $value = $legacy;
+            }
+        }
+
         endMeasure('$this->get(' . $property . ')', 1);
         endMeasure('getPropertyAll', 1);
         if (!isset($value['VALUE'])) {
-            $value['VALUE'] = false;
+            $value = array('VALUE' => false);
         }
         $this->cache->set($cached_name, $value['VALUE'], true);
         return returnTypedValue($value['VALUE']);
@@ -288,6 +350,14 @@ final class Properties
             endMeasure('setproperty_update');
 
             $this->cache->set($cached_name, $value);
+
+            $chain = PropertyChain::current();
+            $chain_token = PropertyChain::token($object->object_title, $property);
+            $chain_stopped = count($chain) >= PropertyChain::MAX_LENGTH || in_array($chain_token, $chain, true);
+            $next_chain = PropertyChain::append($chain, $chain_token);
+            if ($chain_stopped) {
+                $this->reportChainStop($object->object_title, $property, $chain);
+            }
 
             $skip_notifications = !empty($v['LINKED_MODULES']) && !is_array($no_linked) && $no_linked;
             if (!$skip_notifications && function_exists('postToWebSocketQueue')) {

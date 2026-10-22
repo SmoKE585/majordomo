@@ -9,7 +9,12 @@ final class Application
     /** @var array<string,Command> */
     private array $commands = array();
 
-    public function __construct(private string $root, private ?\Closure $runtimeReader = null)
+    public function __construct(
+        private string $root,
+        private ?\Closure $runtimeReader = null,
+        private ?\Closure $usersFactory = null,
+        private ?TerminalInput $terminalInput = null
+    )
     {
         foreach (array(
             new Commands\ListCommand(), new Commands\HelpCommand(), new Commands\AboutCommand(),
@@ -21,6 +26,7 @@ final class Application
             new Commands\ConfigSnapshotCommand(), new Commands\ConfigAuditCommand(), new Commands\ConfigMigrateCommand(),
             new Commands\InstallStatusCommand(), new Commands\InstallCheckCommand(), new Commands\InstallTestDbCommand(),
             new Commands\InstallResetCommand(), new Commands\InstallCompleteCommand(),
+            new Commands\UsersListCommand(), new Commands\UsersPasswordCommand(),
         ) as $command) $this->register($command);
     }
 
@@ -55,11 +61,13 @@ final class Application
             $command = $this->command($name);
             $input = new Input($arguments, $command);
             $output->setJson((bool)$input->option('json'));
+            if ($input->option('ansi') && $input->option('no-ansi')) throw new \InvalidArgumentException('Выберите либо --ansi, либо --no-ansi');
+            $output->setAnsi($input->option('ansi') ? true : ($input->option('no-ansi') ? false : null));
             if ($input->option('help')) {
                 $this->describe($command, $output);
                 return $output->finish(0);
             }
-            $context = new Context($this->root, $this, $this->runtimeReader);
+            $context = new Context($this->root, $this, $this->runtimeReader, $this->usersFactory, $this->terminalInput);
             return $output->finish($command->execute($input, $output, $context));
         } catch (\InvalidArgumentException $error) {
             $output->error($error->getMessage());
@@ -76,14 +84,24 @@ final class Application
     {
         $usage = 'php majordomo ' . $command->name();
         foreach (array_keys($command->arguments()) as $name) $usage .= str_ends_with($name, '?') ? ' [' . rtrim($name, '?') . ']' : ' <' . $name . '>';
-        $output->line($command->description());
-        $output->line('Вызов: ' . $usage . ' [опции]');
+        $output->title($command->name());
+        $output->muted($command->description());
+        $output->section('Использование');
+        $output->line('  ' . $usage . ' [опции]');
+        $options = $command->options() + array('help' => 'Справка без выполнения команды', 'json' => 'Вывод JSON', 'ansi' => 'Включить цвета принудительно', 'no-ansi' => 'Выключить цвета', 'verbose' => 'Подробные подсказки диагностики');
         $rows = array();
         foreach ($command->arguments() as $name => $description) $rows[] = array(rtrim($name, '?'), $description);
-        foreach ($command->options() + array('help' => 'Справка без выполнения команды', 'json' => 'Вывод JSON') as $name => $description) {
+        if ($rows !== array()) {
+            $output->section('Аргументы');
+            $output->table(array('Аргумент', 'Описание'), $rows, false);
+        }
+        $rows = array();
+        foreach ($options as $name => $description) {
             $rows[] = array('--' . $name, $description);
         }
-        $output->table(array('Аргумент / опция', 'Описание'), $rows);
-        $output->result(array('name' => $command->name(), 'description' => $command->description(), 'usage' => $usage, 'arguments' => $command->arguments(), 'options' => $command->options() + array('help' => 'Справка', 'json' => 'JSON')));
+        $output->section('Опции');
+        $output->table(array('Опция', 'Описание'), $rows, false);
+        $output->line();
+        $output->result(array('name' => $command->name(), 'description' => $command->description(), 'usage' => $usage, 'arguments' => $command->arguments(), 'options' => $options));
     }
 }

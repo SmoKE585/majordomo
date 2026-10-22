@@ -296,13 +296,9 @@ for ($i = 0; $i < $total; $i++) {
         DebMes("Missing: " . $objectProperty, 'maintenance');
     }
 
-    $sqlQuery = "SELECT *
-                  FROM pvalues
-                 WHERE ID = '" . $data[$i]['ID'] . "'";
-
-    $rec = SQLSelectOne($sqlQuery);
-    $rec['PROPERTY_NAME'] = $data[$i]['OBJECT_TITLE'] . "." . $data[$i]['PROPERTY_TITLE'];
-    SQLUpdate('pvalues', $rec);
+    // Update the denormalized label only: a full-row write can overwrite a
+    // concurrent value and LINKED_MODULES.
+    SQLExec("UPDATE pvalues SET PROPERTY_NAME='" . DBSafe($data[$i]['OBJECT_TITLE'] . "." . $data[$i]['PROPERTY_TITLE']) . "' WHERE ID=" . (int)$data[$i]['ID']);
 }
 
 // Removing incorrect history for images
@@ -378,20 +374,20 @@ for ($i = 0; $i < $total; $i++) {
         }
         if (isset($class_property['ID'])) {
             DebMes('Fixing ' . json_encode($properties[$i]), 'maintenance');
-            $object_pvalue = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID=" . $properties[$i]['ID'] . " AND OBJECT_ID=" . $properties[$i]['OBJECT_ID']);
-            $class_pvalue = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID=" . $class_property['ID'] . " AND OBJECT_ID=" . $properties[$i]['OBJECT_ID']);
+            $object_pvalue = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID=" . (int)$properties[$i]['ID'] . " AND OBJECT_ID=" . (int)$properties[$i]['OBJECT_ID']);
+            $class_pvalue = SQLSelectOne("SELECT * FROM pvalues WHERE PROPERTY_ID=" . (int)$class_property['ID'] . " AND OBJECT_ID=" . (int)$properties[$i]['OBJECT_ID']);
             if (empty($class_pvalue['ID'])) {
                 if (!empty($object_pvalue['ID'])) {
-                    $object_pvalue['PROPERTY_ID'] = $class_property['ID'];
-                    SQLUpdate('pvalues', $object_pvalue);
+                    // Retarget only the key: VALUE, SOURCE and LINKED_MODULES stay.
+                    SQLExec("UPDATE pvalues SET PROPERTY_ID=" . (int)$class_property['ID'] . " WHERE ID=" . (int)$object_pvalue['ID']);
                 }
-            } else {
-                if (!empty($object_pvalue['ID'])) {
-                    SQLExec("DELETE FROM phistory WHERE VALUE_ID=" . $object_pvalue['ID']);
-                    SQLExec("DELETE FROM pvalues WHERE ID=" . $object_pvalue['ID']);
-                }
+            } elseif (!empty($object_pvalue['ID'])) {
+                // The object-specific row and the class row both exist. Merge
+                // them instead of deleting the first one with its subscriptions
+                // and history: newest value wins, LINKED_MODULES is unioned.
+                \MajorDoMo\Core\Core::migrations()->mergeRows($class_pvalue, array($object_pvalue));
             }
-            SQLExec("DELETE FROM properties WHERE ID=" . $properties[$i]['ID']);
+            SQLExec("DELETE FROM properties WHERE ID=" . (int)$properties[$i]['ID']);
             $problems_found++;
         }
     }

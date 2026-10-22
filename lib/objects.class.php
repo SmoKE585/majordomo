@@ -1441,9 +1441,9 @@ function objectClassChanged($object_id)
         $new_property['OBJECT_ID'] = $rec['ID'];
         //$new_property['VALUE']='';
         $new_property['ID'] = SQLInsert('properties', $new_property);
-        $pvalues[$i]['PROPERTY_ID'] = $new_property['ID'];
-        unset($pvalues[$i]['PROPERTY_TITLE']);
-        SQLUpdate('pvalues', $pvalues[$i]);
+        // Retarget the key only: a full-row write would overwrite VALUE and
+        // LINKED_MODULES changed since the SELECT above.
+        SQLExec("UPDATE pvalues SET PROPERTY_ID=" . (int)$new_property['ID'] . " WHERE ID=" . (int)$pvalues[$i]['ID']);
     }
     // step 2. apply matched properties of new class
     $properties = $obj->getParentProperties($rec['CLASS_ID'], '', 1);
@@ -1477,10 +1477,8 @@ function objectClassChanged($object_id)
         if (isset($pvalues_by_title[$properties[$i]['TITLE']]['ID'])) {
             $pvalue = $pvalues_by_title[$properties[$i]['TITLE']];
             $old_prop = $pvalue['PROPERTY_ID'];
-            $pvalue['PROPERTY_ID'] = $properties[$i]['ID'];
-            unset($pvalue['PROPERTY_TITLE']);
-            SQLUpdate('pvalues', $pvalue);
-            SQLExec("DELETE FROM properties WHERE ID='" . $old_prop . "'");
+            SQLExec("UPDATE pvalues SET PROPERTY_ID=" . (int)$properties[$i]['ID'] . " WHERE ID=" . (int)$pvalue['ID']);
+            SQLExec("DELETE FROM properties WHERE ID='" . (int)$old_prop . "'");
         }
     }
 }

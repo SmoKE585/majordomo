@@ -9,7 +9,7 @@ final class Input
 
     public function __construct(array $tokens, Command $command)
     {
-        $definitions = array('help' => false, 'json' => false);
+        $definitions = array('help' => false, 'json' => false, 'ansi' => false, 'no-ansi' => false, 'verbose' => false);
         foreach ($command->options() as $name => $description) {
             $definitions[rtrim($name, '=')] = str_ends_with($name, '=');
         }
