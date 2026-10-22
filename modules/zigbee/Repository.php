@@ -138,8 +138,9 @@ final class Repository
         } elseif ($this->db->one('SELECT ID FROM zigbee_health_settings WHERE ID=1')) {
             if (!$this->db->update('zigbee_health_settings', array('ID' => 1, 'CONFIG' => $config))) throw new RuntimeException('Не удалось сохранить мониторинг.');
         } else {
-            $record = array('ID' => 1, 'CONFIG' => $config);
-            if (!$this->db->insert('zigbee_health_settings', $record)) throw new RuntimeException('Не удалось сохранить мониторинг.');
+            // A fixed singleton key has no AUTO_INCREMENT insert id. The legacy
+            // Insert() return value would report 0 after a successful insert.
+            $this->db->requireExec('INSERT INTO zigbee_health_settings (ID,CONFIG) VALUES (1,' . $this->quote($config) . ')');
         }
     }
     public function property(int $device, string $path, ?array $expose = null): array
