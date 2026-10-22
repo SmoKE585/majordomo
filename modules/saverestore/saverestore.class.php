@@ -835,14 +835,38 @@ class saverestore extends module
             ? basename($script, '.php') : '';
         if (PHP_SAPI === 'cli' && $script === 'core_worker.php') $ownerCycle = 'cycle_core';
         $maintenance->begin($ownerCycle);
-        if ($iframe) {
-            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Waiting for cycles to stop...</div>');
-        }
         try {
-            $maintenance->waitUntilReady();
+            if (!$maintenance->supervisorRunning()) {
+                // No supervisor means no child processes to quiesce. Waiting for
+                // an acknowledgement here would block every update on an
+                // installation where cycle.php is managed manually or is stopped.
+                DebMes('System update: cycle supervisor is not running, no pause needed', 'restore');
+                if ($iframe) {
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Фоновые процессы не запущены (cycle.php offline) — останавливать нечего.</div>');
+                }
+                return $maintenance;
+            }
+            if ($iframe) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Останавливаю циклы перед заменой файлов...</div>');
+            }
+            $maintenance->waitUntilReady(
+                \MajorDoMo\Core\Cycles\CycleMaintenance::READY_TIMEOUT,
+                function (int $elapsed, array $blocked) use ($iframe) {
+                    if (!$iframe) return;
+                    $message = 'Ждём остановки фоновых процессов: ' . $elapsed . ' с';
+                    if ($blocked !== array()) {
+                        $message .= '. Не завершаются: ' . implode(', ', $blocked);
+                    }
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '...</div>');
+                }
+            );
+            DebMes('System update: cycles stopped, applying update files', 'restore');
+            if ($iframe) {
+                echonow('<div>Циклы остановлены. Применяю файлы обновления...</div>');
+            }
             return $maintenance;
         } catch (\Throwable $error) {
-            $maintenance->finish();
+            $maintenance->abort($error->getMessage());
             throw $error;
         }
     }
@@ -2343,6 +2367,7 @@ class saverestore extends module
                 if ($iframe) echonow(htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'), 'red');
                 return false;
             }
+            $updateError = null;
             try {
                 if ($is_system_update) {
                     $this->removeFilesDeletedFromSystemUpdate($old_manifest, $new_manifest, $iframe);
@@ -2398,11 +2423,18 @@ class saverestore extends module
                     echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
                 }
             } catch (\Throwable $error) {
+                $updateError = $error;
                 DebMes('System update apply failed: ' . $error->getMessage(), 'restore', 'error');
                 if ($iframe) echonow(htmlspecialchars($error->getMessage(), ENT_QUOTES, 'UTF-8'), 'red');
                 return false;
             } finally {
-                $cycleUpdate->finish();
+                if ($updateError !== null) {
+                    // Files were not replaced: release the pause and restart only
+                    // the cycles that the pause stopped on purpose.
+                    $cycleUpdate->abort($updateError->getMessage());
+                } else {
+                    $cycleUpdate->finish();
+                }
             }
             if ($iframe) {
                 return 1;

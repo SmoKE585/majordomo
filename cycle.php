@@ -602,6 +602,9 @@ $cycleReloadStarted = 0;
 $last_no_threads_log = 0;
 $last_cache_failure = 0;
 
+$pauseStartedAt = 0;
+$pauseReportedAt = 0;
+
 $thisComputerObject = getObject('Computer.ThisComputer');
 $supervisorFailures = 0;
 $cycleMaintenance->endStartup();
@@ -611,10 +614,78 @@ while (true) {
     $cycleUpdate = $cycleMaintenance->active();
     if ($cycleUpdate !== null) {
         $to_start = array();
-        foreach ($is_running as $pauseTitle => $pauseId) {
-            // Auto-update can run inside a cycle or its operation worker.
-            if ($pauseTitle !== ($cycleUpdate['owner_cycle'] ?? '')) $to_stop[$pauseTitle] = time();
+        if (!$pauseStartedAt) {
+            $pauseStartedAt = time();
+            $pauseReportedAt = 0;
+            DebMes('System update pause started', 'boot');
+            addCycleRuntimeLog('cycle_controller', 'System update pause started');
         }
+        // Quiesce before any DB/cache operation: schema changes or an unavailable
+        // store must not block termination and the update acknowledgement.
+        $ownerCycle = (string)($cycleUpdate['owner_cycle'] ?? '');
+        $unpaused = $threads->commandLines;
+        $blocked = array();
+        foreach ($threads->commandLines as $pauseId => $pauseCommand) {
+            if (!preg_match('/(cycle_.+?)\.php/is', $pauseCommand, $pauseMatch)) {
+                // Not a supervised cycle: nothing this pause can wait for.
+                unset($unpaused[$pauseId]);
+                continue;
+            }
+            $pauseTitle = $pauseMatch[1];
+            if ($ownerCycle !== '' && $pauseTitle === $ownerCycle) {
+                // The updater itself keeps running until the file replacement ends.
+                unset($unpaused[$pauseId]);
+                continue;
+            }
+            if (($to_stop[$pauseTitle] ?? 0) > time()) {
+                $blocked[$pauseTitle] = $pauseTitle;
+                continue;
+            }
+            if (!$threads->closeThread($pauseId)) {
+                $to_stop[$pauseTitle] = time() + 5;
+                $blocked[$pauseTitle] = $pauseTitle;
+                echo date('Y-m-d H:i:s') . ' CRITICAL: update pause cannot terminate ' . $pauseTitle . PHP_EOL;
+                continue;
+            }
+            unset($unpaused[$pauseId], $is_running[$pauseTitle], $started_when[$pauseTitle], $to_stop[$pauseTitle]);
+            setCycleRuntimeStatus($pauseTitle, 'stopping', 'Stopped for a system update');
+            addCycleRuntimeLog($pauseTitle, 'Stopped for a system update');
+            echo date('Y-m-d H:i:s') . ' Update pause: stopped ' . $pauseTitle . PHP_EOL;
+        }
+        // Drain close notifications without treating this intentional pause as a crash.
+        $threads->iteration();
+        if ($blocked !== array()) {
+            $cycleMaintenance->publishBlocked($cycleUpdate, array_values($blocked));
+            if ((time() - $pauseReportedAt) >= 30) {
+                $pauseReportedAt = time();
+                $message = 'System update pause is waiting for: ' . implode(', ', $blocked);
+                echo date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
+                DebMes($message, 'boot', 'warning');
+            }
+        }
+        if ($unpaused === array()) $cycleMaintenance->acknowledge($cycleUpdate);
+        $cycleSupervisor->touch();
+        $supervisorFailures = 0;
+        sleep(1);
+        continue;
+    }
+    if ($pauseStartedAt) {
+        $pauseStartedAt = 0;
+        // The pause stopped the children on purpose. A reboot flag drives the
+        // normal restart after a successful update; without one (aborted update)
+        // bring the enabled cycles back here, so they are not reported as crashes.
+        if (!isRebootRequired()) {
+            $to_start = $to_stop = array();
+            foreach ($cycleTitles as $resumeTitle) {
+                if (!$cycleSupervisor->isDesiredRunning($resumeTitle) || isset($is_running[$resumeTitle])) {
+                    continue;
+                }
+                $to_start[$resumeTitle] = time() + 2;
+                setCycleRuntimeStatus($resumeTitle, 'starting', 'Restarting after a system update pause');
+            }
+        }
+        DebMes('System update pause finished', 'boot');
+        addCycleRuntimeLog('cycle_controller', 'System update pause finished');
     }
     $result = $threads->iteration();
     if ($result === false) {
@@ -809,8 +880,6 @@ while (true) {
 
     foreach ($to_stop as $title => $tm) {
 
-        // A restart/disable requested during the copy must wait for its writer.
-        if ($cycleUpdate !== null && $title === ($cycleUpdate['owner_cycle'] ?? '')) continue;
         if ($tm <= time()) {
             if (isset($is_running[$title])) {
                 $id = $is_running[$title];
@@ -828,13 +897,6 @@ while (true) {
             }
             unset($to_stop[$title]);
         }
-    }
-
-    if ($cycleUpdate !== null) {
-        $unpaused = $threads->commandLines;
-        $updaterId = $is_running[$cycleUpdate['owner_cycle'] ?? ''] ?? null;
-        if ($updaterId !== null) unset($unpaused[$updaterId]);
-        if ($unpaused === array()) $cycleMaintenance->acknowledge($cycleUpdate);
     }
 
     foreach ($to_start as $title => $tm) {
