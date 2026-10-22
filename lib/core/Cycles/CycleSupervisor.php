@@ -29,6 +29,9 @@ final class CycleSupervisor
     public function bootstrap(array $names): void
     {
         $this->store->clearReload();
+        // A cycle file removed together with its module must also leave the
+        // desired-state file, otherwise the supervisor keeps trying to start it.
+        $this->store->prune($names);
         $this->store->mergeDefaults($names);
         $this->store->setSupervisorPid(getmypid());
 

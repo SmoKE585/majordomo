@@ -717,6 +717,42 @@ while (true) {
     if ((time() - $last_cycles_control_check) >= 5) {
 
         $last_cycles_control_check = time();
+        // Keep the supervised set in sync with the scripts directory: a module
+        // removed with its cycle file must not be restarted or reported forever.
+        $discovered_cycles = $discovered_titles = array();
+        if ($cycles_dir = @opendir(ROOT . 'scripts')) {
+            while (($cycle_file = readdir($cycles_dir)) !== false) {
+                if (!preg_match('/^cycle_.+?\.php$/D', $cycle_file)) {
+                    continue;
+                }
+                $discovered_cycles[] = './scripts/' . $cycle_file;
+                $discovered_titles[] = substr($cycle_file, 0, -4);
+            }
+            closedir($cycles_dir);
+        }
+        if ($discovered_titles !== array()) {
+            foreach ($discovered_titles as $discovered_title) {
+                if (in_array($discovered_title, $cycleTitles, true)) {
+                    continue;
+                }
+                $to_start[$discovered_title] = time() + 2;
+                setCycleRuntimeStatus($discovered_title, 'starting', 'Cycle script discovered');
+                addCycleRuntimeLog($discovered_title, 'Cycle script discovered; starting');
+                DebMes('Cycle ' . $discovered_title . ' script discovered; starting', 'boot');
+            }
+            foreach ($cycleTitles as $removed_title) {
+                if (in_array($removed_title, $discovered_titles, true)) {
+                    continue;
+                }
+                unset($to_start[$removed_title], $to_stop[$removed_title], $missingSince[$removed_title], $started_when[$removed_title]);
+                $message = 'Cycle ' . $removed_title . ' script was removed; supervision stopped';
+                DebMes($message, 'boot', 'warning');
+                addCycleRuntimeLog('cycle_controller', $message);
+                echo date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
+            }
+            $cycleTitles = $discovered_titles;
+            $cycles = $discovered_cycles;
+        }
         $cyclesControls = $cyclesTimestamps = array();
         $cycle_cache_available = true;
         try {
@@ -969,6 +1005,12 @@ while (true) {
                 $stop_requested = false;
                 if (preg_match('/(cycle_.+?)\.php/is', $closed_thread, $m)) {
                     $cycle_title = $m[1];
+                    if (!in_array($cycle_title, $cycleTitles, true)) {
+                        // The script was removed (e.g. with its module): do not
+                        // treat the leftover process as a crash and restart it.
+                        unset($is_running[$cycle_title], $to_start[$cycle_title], $to_stop[$cycle_title], $started_when[$cycle_title]);
+                        continue;
+                    }
                     try { $last_error = checkCycleFromCache($cycle_title . 'LastError'); }
                     catch (Throwable $error) {
                         $last_error = '';

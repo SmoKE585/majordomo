@@ -117,6 +117,12 @@ namespace {
             $GLOBALS['cycleStateStore']->setMany(array('cycle_wscache','cycle_websockets'), 'running', true);
         }
         if (in_array($GLOBALS['scenario'], array('disabled','stopped'), true) && $GLOBALS['fixtureIteration'] === 5) $GLOBALS['cycleStateStore']->set('cycle_market',$GLOBALS['scenario']);
+        if ($GLOBALS['scenario'] === 'removed' && $GLOBALS['fixtureIteration'] === 5) {
+            // Windows keeps a deleted script in the directory while its process holds
+            // the file open, so the module is removed together with its process.
+            foreach ($GLOBALS['threads']->commandLines as $removedId => $removedCommand) { if (str_contains($removedCommand, 'cycle_market')) $GLOBALS['threads']->closeThread($removedId); }
+            $GLOBALS['fixtureRemoved'] = @unlink(ROOT . 'scripts/cycle_market.php');
+        }
         if ($GLOBALS['scenario'] === 'restart' && $GLOBALS['fixtureIteration'] === 5) {
             $GLOBALS['cycleStateStore']->set('cycle_market','running',true);
         }
@@ -150,7 +156,7 @@ namespace {
 PHP;
 
 try {
-    foreach (array('crash','cleanexit','silent','hung','disabled','stopped','restart','storage','missing','spawnfail','filelog','controller','wsdisabled','wsstop','wsenable','update','updateabort','updatecrash','updatestop','updatedisable','updateowner') as $scenario) {
+    foreach (array('crash','cleanexit','silent','hung','disabled','stopped','removed','restart','storage','missing','spawnfail','filelog','controller','wsdisabled','wsstop','wsenable','update','updateabort','updatecrash','updatestop','updatedisable','updateowner') as $scenario) {
         if (isset($argv[1]) && $argv[1] !== $scenario) continue;
         $directory = $fixture . '/' . $scenario;
         mkdir($directory . '/scripts', 0777, true);
@@ -241,9 +247,16 @@ try {
             check($result['desired'] === $scenario && !$result['errors'], 'Administrator-stopped cycle must stay off without false alarms');
             check(substr_count($output, 'Starting thread:') === 2, 'Disabled cycle must not be respawned');
             check(!str_contains(json_encode($result['active']), 'cycle_market.php'), 'Stopped cycle process must actually be gone');
+        } elseif ($scenario === 'removed') {
+            check(!$result['errors'], 'A removed cycle script must not be reported as a crash: ' . json_encode($result['errors']));
+            check(substr_count($output, 'Starting thread:') === 2, 'A removed cycle must not be restarted');
+            check(str_contains($output, 'script was removed; supervision stopped'), 'A removed cycle must be retired explicitly: ' . substr($output, -1500));
         } elseif ($scenario === 'restart') {
             check(!$result['errors'] && substr_count($output, 'Starting thread:') === 3, 'Explicit restart must start exactly one replacement without false crash errors: ' . json_encode($result['errors']) . "\n" . $output);
             check(!empty($result['beats']['cycle_marketRun']), 'Delayed close notification must not clear the replacement heartbeat');
+        } elseif ($scenario === 'missing') {
+            check(count($result['errors']) >= 1 && str_contains(json_encode($result['errors']), 'Process start failed'), 'A missing cycle script must be reported');
+            check(str_contains($output, 'script was removed; supervision stopped'), 'A missing script must stop being supervised instead of retrying forever');
         } else {
             check(count($result['errors']) >= 3 && str_contains(json_encode($result['errors']), 'CRITICAL'), 'Repeated failure must escalate in ' . $scenario);
             check(substr_count($output, 'Starting thread:') > 2 || in_array($scenario, array('missing','spawnfail'), true), 'Cycle must restart even while another cycle stays healthy: ' . $scenario);

@@ -214,6 +214,34 @@ final class CycleStateStore
     }
 
     /**
+     * Drops entries whose script no longer exists. Called at supervisor startup,
+     * where the scripts directory is consistent (an update holds the maintenance
+     * lock), so removing a module does not leave dead cycles in the state file.
+     *
+     * @param string[] $names
+     * @return string[] removed cycle names
+     */
+    public function prune(array $names): array
+    {
+        $names = $this->normalizeNames($names);
+        $known = array_fill_keys($names, true);
+        $removed = array();
+        $this->mutate(function (array $state) use ($known, &$removed): array {
+            $cycles = isset($state['cycles']) && is_array($state['cycles']) ? $state['cycles'] : array();
+            foreach (array_keys($cycles) as $name) {
+                if (isset($known[$name])) {
+                    continue;
+                }
+                unset($cycles[$name]);
+                $removed[] = $name;
+            }
+            $state['cycles'] = $cycles;
+            return $state;
+        });
+        return $removed;
+    }
+
+    /**
      * @param string[] $names
      * @return string[]
      */
