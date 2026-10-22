@@ -48,6 +48,23 @@ health-check, а не копия `vendor`.
 9. `CycleMaintenance::finish()`, перезапуск службы (веб) или reload (авто).
 10. Снятие режима обслуживания, `cms/deploy/last.json`.
 
+Версия (`LATEST_UPDATED_ID`, ветка, `LatestUpdate*`, событие `system_updated`)
+фиксируется только после успешного перезапуска/reload. Если служба не поднялась,
+версия не записывается, а обновление считается неуспешным.
+
+## Composer и IPv4
+
+На хостингах, где IPv6 до Packagist/GitHub не отвечает, `composer install`
+может надолго зависнуть на проверке lock-файла. Пайплайн запускает Composer с
+`COMPOSER_IPRESOLVE=4`. Для ручного запуска:
+
+```bash
+COMPOSER_IPRESOLVE=4 composer install \
+  --no-dev --prefer-dist --no-interaction --optimize-autoloader -vvv
+```
+
+Переменная действует только на Composer; системный IPv4/IPv6 не меняется.
+
 ## Ошибки
 
 - До замены файлов: циклы не трогали, режим обслуживания выключается.

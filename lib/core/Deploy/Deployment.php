@@ -362,6 +362,9 @@ final class Deployment
             'COMPOSER_HOME' => $home,
             'COMPOSER_CACHE_DIR' => $home . '/cache',
             'COMPOSER_NO_INTERACTION' => '1',
+            // На некоторых хостингах IPv6 до Packagist/GitHub висит без ответа;
+            // Composer поддерживает принудительный IPv4 через эту переменную.
+            'COMPOSER_IPRESOLVE' => '4',
         );
         if (function_exists('posix_geteuid') && posix_geteuid() === 0) $environment['COMPOSER_ALLOW_SUPERUSER'] = '1';
         return $environment;

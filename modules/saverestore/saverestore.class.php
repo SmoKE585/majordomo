@@ -797,6 +797,59 @@ class saverestore extends module
     }
 
     /**
+     * Зафиксировать версию только после успешной установки и перезапуска.
+     * Вызывается из upload() после restart/reload, а не в середине пайплайна.
+     */
+    function commitSystemUpdate(&$out, $update_from, $update_to, $deployment)
+    {
+        $latest_id = isset($out['LATEST_ID']) ? $this->normalizeCommitId($out['LATEST_ID']) : '';
+        $update_branch = isset($out['UPDATE_CURR_BRANCH']) ? $this->normalizeUpdateBranch($out['UPDATE_CURR_BRANCH']) : '';
+        if ($latest_id == '' || $update_branch == '') {
+            $update_info = $this->readLatestUpdateInfo(isset($this->url) ? $this->url : $this->getUpdateURL());
+            if ($latest_id == '' && $update_info['LATEST_ID'] != '') {
+                $latest_id = $update_info['LATEST_ID'];
+            }
+            if ($update_branch == '' && $update_info['UPDATE_CURR_BRANCH'] != '') {
+                $update_branch = $update_info['UPDATE_CURR_BRANCH'];
+            }
+        }
+
+        if ($latest_id != '') {
+            try {
+                $this->config['LATEST_UPDATED_ID'] = $latest_id;
+                $this->config['LATEST_CURR_BRANCH'] = $update_branch;
+                $this->saveConfig();
+                setGlobal('LatestUpdateId', $latest_id);
+                setGlobal('LatestUpdateBranch', $update_branch);
+                setGlobal('LatestUpdateTimestamp', date('d.m.Y H:i:s'));
+            } catch (\Throwable $error) {
+                DebMes('Cannot save latest update version: ' . $error->getMessage(), 'restore', 'error');
+            }
+        } else {
+            DebMes('Cannot detect latest update commit after applying archive.', 'restore', 'warning');
+        }
+
+        try {
+            \MajorDoMo\Core\Events\SystemEvents::systemUpdated($update_from, $latest_id !== '' ? $latest_id : $update_to, $update_branch);
+        } catch (\Throwable $error) {
+            DebMes('Cannot emit system updated event: ' . $error->getMessage(), 'restore', 'warning');
+        }
+
+        if ($deployment !== null) {
+            try {
+                $deployment->writeState(array(
+                    'status' => 'success',
+                    'from' => $update_from,
+                    'to' => $latest_id !== '' ? $latest_id : $update_to,
+                    'branch' => $update_branch,
+                ));
+            } catch (\Throwable $error) {
+                DebMes('Cannot write deploy state: ' . $error->getMessage(), 'restore', 'warning');
+            }
+        }
+    }
+
+    /**
      * Автообновление выполняется внутри дочернего процесса cycle.php. Ему
      * нельзя вызывать systemctl restart: systemd остановит всю cgroup вместе с
      * самим updater'ом. Такой процесс завершает паузу и просит reload.
@@ -2459,46 +2512,6 @@ class saverestore extends module
                     }
                 }
 
-                if ($is_system_update) {
-                    $latest_id = isset($out['LATEST_ID']) ? $this->normalizeCommitId($out['LATEST_ID']) : '';
-                    $update_branch = isset($out['UPDATE_CURR_BRANCH']) ? $this->normalizeUpdateBranch($out['UPDATE_CURR_BRANCH']) : '';
-                    if ($latest_id == '' || $update_branch == '') {
-                        $update_info = $this->readLatestUpdateInfo(isset($this->url) ? $this->url : $this->getUpdateURL());
-                        if ($latest_id == '' && $update_info['LATEST_ID'] != '') {
-                            $latest_id = $update_info['LATEST_ID'];
-                        }
-                        if ($update_branch == '' && $update_info['UPDATE_CURR_BRANCH'] != '') {
-                            $update_branch = $update_info['UPDATE_CURR_BRANCH'];
-                        }
-                    }
-
-                    if ($latest_id != '') {
-                        $this->config['LATEST_UPDATED_ID'] = $latest_id;
-                        $this->config['LATEST_CURR_BRANCH'] = $update_branch;
-                        $this->saveConfig();
-                        setGlobal('LatestUpdateId', $latest_id);
-                        setGlobal('LatestUpdateBranch', $update_branch);
-                        setGlobal('LatestUpdateTimestamp', date('d.m.Y H:i:s'));
-                    } else {
-                        DebMes('Cannot detect latest update commit after applying archive.', 'restore', 'warning');
-                    }
-                    try {
-                        \MajorDoMo\Core\Events\SystemEvents::systemUpdated($update_from, $latest_id !== '' ? $latest_id : $update_to, $update_branch);
-                    } catch (\Throwable $error) {
-                        DebMes('Cannot emit system updated event: ' . $error->getMessage(), 'restore', 'warning');
-                    }
-                    try {
-                        $deployment->writeState(array(
-                            'status' => 'success',
-                            'from' => $update_from,
-                            'to' => $latest_id !== '' ? $latest_id : $update_to,
-                            'branch' => $update_branch,
-                        ));
-                    } catch (\Throwable $error) {
-                        DebMes('Cannot write deploy state: ' . $error->getMessage(), 'restore', 'warning');
-                    }
-                }
-
                 if ($iframe) {
                     echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
                 }
@@ -2545,6 +2558,9 @@ class saverestore extends module
             if ($is_system_update) {
                 if ($is_cycle_update) {
                     // Внутри cycle.php нельзя restart'ить свою cgroup.
+                    // Версию фиксируем только после установки зависимостей,
+                    // миграций и подготовки reload — не в середине процесса.
+                    $this->commitSystemUpdate($out, $update_from, $update_to, $deployment);
                     if ($cycleManager !== null) $cycleManager->requestReload();
                     if ($maintenance !== null) $maintenance->disable();
                 } else {
@@ -2571,6 +2587,8 @@ class saverestore extends module
                         }
                         $this->redirect("?err_msg=" . urlencode($message));
                     }
+                    // Служба уже перезапущена: только теперь фиксируем версию.
+                    $this->commitSystemUpdate($out, $update_from, $update_to, $deployment);
                     if ($maintenance !== null) $maintenance->disable();
                 }
             }
