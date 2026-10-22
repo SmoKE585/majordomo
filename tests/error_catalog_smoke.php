@@ -13,7 +13,7 @@ function check($condition, $message)
     $checks++;
 }
 
-$required = array('property_chain', 'property_delivery', 'property_audit', 'method', 'geturl');
+$required = array('property_chain', 'property_delivery', 'property_audit', 'method', 'geturl', 'api_exception', 'api_unavailable');
 $codes = ErrorCatalog::codes();
 foreach ($required as $code) {
     check(in_array($code, $codes, true), 'Catalogue must describe the core code ' . $code);

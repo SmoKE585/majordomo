@@ -2,13 +2,15 @@
 
 namespace MajorDoMo\Core;
 
-use MajorDoMo\Core\Api\{AccessPolicy, ApiException, Contract, HookRateLimiter, HookStore, Request, Response, TokenStore, WebhookRunner};
+use MajorDoMo\Core\Api\{AccessPolicy, ApiException, Contract, FailureLog, HookRateLimiter, HookStore, Request, Response, TokenStore, WebhookRunner};
 use MajorDoMo\Core\Install\{InstallGate, InstallState};
 
 /**
  * HTTP-граница API ядра.
  * Изменения: 2026-10-22 — отдельная ветка публичных /api/hooks/<secret>.
  * Изменения: 2026-10-22 — результат AccessPolicy передаётся в Request как actor.
+ * Изменения: 2026-10-23 — сбои API (5xx и прерванный запрос) регистрируются в
+ * «Ошибках системы» с request_id, маршрутом и стеком, а не только в error_log.
  */
 final class ApiApplication extends Application
 {
@@ -27,11 +29,11 @@ final class ApiApplication extends Application
     {
         $response = new Response(bin2hex(random_bytes(16)), microtime(true));
         $level = ob_get_level(); ob_start();
-        $finished = false; $legacy = false; $webhook = null;
+        $finished = false; $legacy = false; $webhook = null; $actor = '';
         ini_set('display_errors', '0');
         // Легаси-настройки и модули могут завершиться через exit. HTML и
         // частичный вывод не должны попасть клиенту.
-        register_shutdown_function(static function () use (&$finished, &$legacy, &$webhook, $response, $level): void {
+        register_shutdown_function(static function () use (&$finished, &$legacy, &$webhook, &$actor, $response, $level): void {
             if ($finished) return;
             // Проверенный webhook может завершиться внутри обработчика. Его
             // вывод уже является ответом: обновляем только диагностику и
@@ -42,6 +44,7 @@ final class ApiApplication extends Application
             }
             while (ob_get_level() > $level) ob_end_clean();
             error_log('MajorDoMo API interrupted; request_id=' . $response->requestId);
+            FailureLog::report(self::interrupted(), $response->requestId, $actor);
             $response->emit($response->failure(new ApiException(503, 'unavailable', 'Выполнение API прервано. Проверьте журнал системы.'), $legacy), 503, array('Retry-After' => '30'));
         });
         try {
@@ -120,14 +123,35 @@ final class ApiApplication extends Application
             $payload = $response->failure($error, $legacy);
             $status = $legacy && in_array($error->status, array(404, 405, 422), true) ? 400 : $error->status;
             $headers = $error->headers;
+            // Осознанный 5xx (например, не выдан билет WebSocket) — тоже сбой:
+            // он должен попасть в журнал с причиной, а не только в ответ.
+            FailureLog::report($error, $response->requestId, $actor);
         } catch (\Throwable $error) {
             // Exception messages and input may contain secrets; correlate by ID only.
             error_log('MajorDoMo API ' . get_class($error) . '; request_id=' . $response->requestId);
             $payload = $response->failure(new ApiException(500, 'internal_error', 'Внутренняя ошибка API. Передайте request_id администратору.'), $legacy);
             $status = 500; $headers = array();
+            // Подробности (маршрут, класс, сообщение, файл, стек) уходят в
+            // «Ошибки системы» и errors.log — без них журнал молчал.
+            FailureLog::report($error, $response->requestId, $actor);
         }
         while (ob_get_level() > $level) ob_end_clean();
         $finished = true;
         $response->emit($payload, $status, $headers);
+    }
+
+    /**
+     * Причина прерванного запроса: последняя фатальная ошибка PHP, если она
+     * есть. Нужна, чтобы в журнале был файл и строка, а не только факт обрыва.
+     * 2026-10-23 — добавлено вместе с регистрацией сбоев API.
+     */
+    private static function interrupted(): \Throwable
+    {
+        $error = error_get_last();
+        $fatal = array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR);
+        if (is_array($error) && in_array($error['type'] ?? 0, $fatal, true)) {
+            return new \ErrorException((string)($error['message'] ?? ''), 0, (int)$error['type'], (string)($error['file'] ?? ''), (int)($error['line'] ?? 0));
+        }
+        return new \RuntimeException('Выполнение API прервано: обработчик завершил запрос без ответа (exit или фатальная ошибка).');
     }
 }

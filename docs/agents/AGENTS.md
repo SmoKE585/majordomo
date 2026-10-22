@@ -394,6 +394,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `php tests/script_safe_path_smoke.php` — сообщения, сценарии и подписки ставятся прямо в очередь ядра без HTTP/API; исходные имена сохраняются.
 - `php tests/pagination_smoke.php`, `php tests/private_paths_smoke.php` — границы SQL-пагинации и закрытие системных путей.
 - `php tests/error_catalog_smoke.php` — каталог ошибок: у каждого кода есть название и блоки «что это / что произошло / почему / чем грозит / что делать».
+- `php tests/api_failure_log_smoke.php` — сбой API попадает в «Ошибки системы» с маршрутом, request_id, классом, сообщением и стеком; 4xx и режим обслуживания журнал не засоряют.
 - `php tests/docs_quality_smoke.php` — документация: front matter, известные категории, рабочие относительные ссылки и русский язык.
 - `php tests/folder_picker_smoke.php` — границы folder picker: обход `..`, абсолютные пути вне проекта, скрытые каталоги, fallback на корень.
 - `php tests/knowledge_base_smoke.php` — сканирование `docs/`, front matter, безопасный Markdown, ссылки и категории базы знаний.
