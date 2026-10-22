@@ -105,12 +105,21 @@ final class Contract
         foreach (self::operations() as $operation) {
             $parameters = array();
             preg_match_all('/\{(\w+)\}/', $operation['path'], $matches);
-            foreach ($matches[1] as $name) $parameters[] = array('name' => $name, 'in' => 'path', 'required' => true, 'schema' => $name === 'id' ? array('type' => 'integer', 'minimum' => 1) : array('type' => 'string', 'minLength' => 1));
+            $pathDescriptions = array(
+                'class' => 'Класс объекта.',
+                'target' => 'Объект или объект.свойство.',
+                'property' => 'Объект.свойство.',
+                'script' => 'ID или название сценария.',
+                'event' => 'Имя события.',
+                'id' => 'ID записи.',
+                'module' => 'Имя установленного модуля.',
+            );
+            foreach ($matches[1] as $name) $parameters[] = array('name' => $name, 'in' => 'path', 'required' => true, 'description' => $pathDescriptions[$name] ?? 'Сегмент пути.', 'schema' => $name === 'id' ? array('type' => 'integer', 'minimum' => 1) : array('type' => 'string', 'minLength' => 1));
             if ($operation['action'] === 'history') {
                 $parameters[] = array('name' => 'period', 'in' => 'query', 'schema' => array('type' => 'string', 'default' => 'day'), 'description' => 'Часы числом либо day, 7day, week, 2week, month, year. Максимум 10 лет.');
                 $parameters[] = array('name' => 'aggregate', 'in' => 'query', 'schema' => array('type' => 'string', 'enum' => array('max', 'min', 'count', 'sum', 'avg')));
             }
-            if ($operation['action'] === 'messages') $parameters[] = array('name' => 'limit', 'in' => 'query', 'schema' => array('type' => 'integer', 'minimum' => 1, 'maximum' => 1000, 'default' => 50));
+            if ($operation['action'] === 'messages' && $operation['method'] === 'GET') $parameters[] = array('name' => 'limit', 'in' => 'query', 'description' => 'Сколько последних сообщений вернуть.', 'schema' => array('type' => 'integer', 'minimum' => 1, 'maximum' => 1000, 'default' => 50));
             $dataSchema = self::responseSchema($operation['action']);
             $entry = array('operationId' => $operation['action'] . '_' . strtolower($operation['method']) . '_' . substr(sha1($operation['path']), 0, 6), 'summary' => $operation['summary'], 'tags' => array($operation['tag']), 'parameters' => $parameters,
                 'responses' => array('200' => array('description' => 'Успех. Полезная нагрузка находится в data; meta содержит request_id, timestamp и duration_ms.', 'content' => array('application/json' => array('schema' => array('type' => 'object', 'required' => array('ok', 'data', 'meta'), 'properties' => array('ok' => array('type' => 'boolean', 'enum' => array(true)), 'data' => $dataSchema, 'meta' => array('type' => 'object'))))))));

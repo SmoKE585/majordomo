@@ -1,0 +1,294 @@
+/* API page: documentation index, operation bodies and token workspace. */
+
+body.md-admin-shell .md-api-tabs {
+    align-self: flex-start;
+    max-width: 100%;
+}
+
+body.md-admin-shell .md-api-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+}
+
+body.md-admin-shell .md-api-toolbar__search {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+body.md-admin-shell .md-api-result {
+    flex: 0 0 auto;
+    padding-bottom: 9px;
+    color: var(--md-ui-muted);
+    font-size: var(--md-ui-fs-xs);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+body.md-admin-shell .md-api-layout {
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+body.md-admin-shell .md-api-index {
+    position: sticky;
+    top: 88px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+body.md-admin-shell .md-api-index .md-sidenav {
+    padding: 6px;
+}
+
+body.md-admin-shell .md-api-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 2px;
+}
+
+body.md-admin-shell .md-api-legend__badge {
+    font-variant-numeric: tabular-nums;
+}
+
+body.md-admin-shell .md-api-content {
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+    min-width: 0;
+}
+
+body.md-admin-shell .md-api-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-margin-top: 92px;
+}
+
+body.md-admin-shell .md-api-group__head {
+    margin: 0;
+}
+
+body.md-admin-shell .md-api-ops {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+body.md-admin-shell .md-api-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+body.md-admin-shell .md-api-block__label {
+    color: var(--md-ui-muted-2);
+    font-size: var(--md-ui-fs-caption);
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+body.md-admin-shell .md-api-summary {
+    margin: 0;
+    color: var(--md-ui-text-soft);
+}
+
+body.md-admin-shell .md-api-note {
+    margin: 0;
+    color: var(--md-ui-muted);
+    font-size: var(--md-ui-fs-xs);
+    line-height: 1.5;
+}
+
+body.md-admin-shell .md-api-block .md-api-table {
+    min-width: 680px;
+}
+
+body.md-admin-shell .md-api-table td {
+    vertical-align: top;
+}
+
+body.md-admin-shell .md-api-table code {
+    overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-api-table code,
+body.md-admin-shell .md-api-tokens code,
+body.md-admin-shell .md-api-summary code,
+body.md-admin-shell .md-api-list code {
+    padding: 1px 5px;
+    color: var(--md-ui-text-soft);
+    background: var(--md-ui-surface-2);
+    border: 1px solid var(--md-ui-border);
+    border-radius: 4px;
+    font-size: .92em;
+}
+
+body.md-admin-shell .md-api-tokens code {
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--md-ui-muted);
+    font-size: inherit;
+}
+
+body.md-admin-shell .md-api-list {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--md-ui-text-soft);
+    font-size: var(--md-ui-fs-sm);
+    line-height: 1.6;
+}
+
+body.md-admin-shell .md-api-list li + li {
+    margin-top: 7px;
+}
+
+body.md-admin-shell .md-api-list code {
+    overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-api-feedback {
+    align-items: center;
+}
+
+body.md-admin-shell .md-api-feedback[hidden],
+body.md-admin-shell .md-api-tabs [data-api-tab-count][hidden],
+body.md-admin-shell [data-api-empty][hidden],
+body.md-admin-shell .md-api-group[hidden],
+body.md-admin-shell .md-api-index .md-sidenav__item[hidden] {
+    display: none !important;
+}
+
+body.md-admin-shell [data-api-secret],
+body.md-admin-shell .md-api-token-list {
+    scroll-margin-top: 92px;
+}
+
+body.md-admin-shell [data-api-secret]:focus,
+body.md-admin-shell .md-api-token-list:focus {
+    outline: none;
+}
+
+body.md-admin-shell [data-api-secret]:focus-visible,
+body.md-admin-shell .md-api-token-list:focus-visible {
+    outline: 2px solid var(--md-ui-primary);
+    outline-offset: 3px;
+    border-radius: var(--md-ui-radius-md);
+}
+
+body.md-admin-shell .md-api-token-list[aria-busy="true"] {
+    opacity: .55;
+}
+
+body.md-admin-shell .md-api-token-name {
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-api-tokens td {
+    vertical-align: top;
+}
+
+body.md-admin-shell .md-api-tokens th:first-child {
+    min-width: 180px;
+}
+
+body.md-admin-shell .md-api-token-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+body.md-admin-shell .md-api-tokens__actions {
+    text-align: right;
+}
+
+body.md-admin-shell .md-api-muted {
+    color: var(--md-ui-muted);
+}
+
+@media (max-width: 991.98px) {
+    body.md-admin-shell .md-api-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    body.md-admin-shell .md-api-index {
+        position: static;
+        gap: 8px;
+    }
+
+    body.md-admin-shell .md-api-index .md-sidenav {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 2px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 4px;
+        scrollbar-width: none;
+    }
+
+    body.md-admin-shell .md-api-index .md-sidenav::-webkit-scrollbar {
+        display: none;
+    }
+
+    body.md-admin-shell .md-api-index .md-sidenav__label {
+        display: none;
+    }
+
+    body.md-admin-shell .md-api-index .md-sidenav__item {
+        flex: 0 0 auto;
+        min-height: 30px;
+        padding: 4px 9px;
+        white-space: nowrap;
+    }
+
+    body.md-admin-shell .md-api-index .md-sidenav__item .md-badge {
+        margin-left: 2px;
+    }
+
+    body.md-admin-shell .md-api-legend {
+        display: none;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.md-admin-shell .md-api-tabs {
+        align-self: stretch;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.md-admin-shell .md-api-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    body.md-admin-shell .md-api-toolbar__search {
+        flex: 0 0 auto;
+    }
+
+    body.md-admin-shell .md-api-result {
+        padding-bottom: 0;
+    }
+
+    body.md-admin-shell .md-api-tabs .nav-link {
+        gap: 4px;
+        padding: 0 8px;
+        font-size: var(--md-ui-fs-caption);
+    }
+
+    body.md-admin-shell .md-api-tabs .nav-link .md-badge {
+        display: none;
+    }
+}
