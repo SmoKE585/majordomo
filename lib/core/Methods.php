@@ -92,14 +92,15 @@ final class Methods
             $auditOwned = false;
             $auditError = null;
             if ($this->audit) {
+                $auditParams = $this->auditParams($params);
                 $trigger = (PHP_SAPI === 'cli' && preg_match('/^onNew(Minute|Hour|Day)$/i', $name)) ? 'timer' : 'method';
-                $auditOwned = $this->audit->beginIfMissing($trigger, $object->object_title . '.' . $name, $params);
+                $auditOwned = $this->audit->beginIfMissing($trigger, $object->object_title . '.' . $name, $auditParams);
                 $auditStep = $this->audit->stepStart('method', $object->object_title . '.' . $name, array(
                     'subtitle' => (string)($method['DESCRIPTION'] ?? ''),
                     'object_id' => (int)($method['OBJECT_ID'] ?? 0),
                     'class_id' => (int)($method['CLASS_ID'] ?? 0),
                     'method_id' => (int)($method['ID'] ?? 0),
-                    'params' => $this->auditParams($params),
+                    'params' => $auditParams,
                     'source' => $source,
                 ));
             } else {
@@ -196,9 +197,16 @@ final class Methods
 
     }
 
-    /** Removes queue/internal plumbing from params shown in the audit UI. */
-    private function auditParams(array $params): array
+    /**
+     * Removes queue/internal plumbing from params shown in the audit UI.
+     *
+     * Legacy callers pass 0 (the default), a string or another scalar as the
+     * whole params argument; the journal only stores arrays, so such values
+     * must not reach the array-typed audit API.
+     */
+    private function auditParams(mixed $params): array
     {
+        if (!is_array($params)) return array();
         foreach (array('m_c_s', 'r_s_m', 'r_s_s', 'raiseEvent', '_trace', '_chain') as $key) {
             unset($params[$key]);
         }
