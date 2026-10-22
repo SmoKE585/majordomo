@@ -124,6 +124,8 @@ try {
     [$stream, $response] = handshake($address, '', array('X-Forwarded-For' => '192.168.1.5', 'Origin' => 'https://home.test'), '127.0.0.1:8001');
     check(str_contains($response, '403'), 'handshake without the original host is rejected');
     fclose($stream);
+    $rejections = (string)@file_get_contents($fixture . '/stderr') . (string)@file_get_contents($fixture . '/worker.log');
+    check(str_contains($rejections, 'handshake rejected') && str_contains($rejections, 'cross_origin_denied'), 'rejection reason is written to the log');
     $rows = snapshot($local);
     check(count($rows) === 2 && $rows[0]['VALUE'] === '21' && $rows[1]['VALUE'] === null, 'actual default snapshot, including null');
     sendRequest($local, 'SetGlobal');
