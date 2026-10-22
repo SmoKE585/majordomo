@@ -70,7 +70,7 @@ class modes extends module
             $form = $draft ?? ($record ? $record + array() : array('NAME' => '', 'TITLE' => '', 'DESCRIPTION' => '', 'ENABLED' => 1, 'RULES' => array(), 'ON_ACTION' => array('type' => 'none', 'value' => ''), 'OFF_ACTION' => array('type' => 'none', 'value' => '')));
             foreach (array('RULES', 'ON_ACTION', 'OFF_ACTION') as $field) if (is_string($form[$field])) $form[$field] = json_decode($form[$field], true, 64, JSON_THROW_ON_ERROR);
         }
-        $history = $manager->history($editing ? $id : 0);
+        $history = $editing && !$id ? array() : $manager->history($editing ? $id : 0);
         $modeOptions = array('' => 'Выберите режим');
         foreach ($all as $mode) if (!$editing || (int)$mode['ID'] !== $id) $modeOptions[$mode['NAME']] = $mode['TITLE'];
         $scripts = Core::database()->select('SELECT ID,TITLE FROM scripts ORDER BY TITLE');

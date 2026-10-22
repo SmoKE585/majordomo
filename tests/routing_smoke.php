@@ -104,6 +104,12 @@ $cases = [
     '/panel/pinghosts/add.html' => ['module' => 'pinghosts', 'params' => ['view_mode' => 'edit_pinghosts']],
     '/panel/pinghosts/5.html' => ['module' => 'pinghosts', 'params' => ['id' => '5', 'view_mode' => 'edit_pinghosts']],
     '/panel/pinghosts/5/delete.html' => ['module' => 'pinghosts', 'params' => ['id' => '5', 'view_mode' => 'delete_pinghosts']],
+    '/panel/yandexhome.html' => ['module' => 'yandexhome', 'params' => []],
+    '/panel/yandexhome/add.html' => ['module' => 'yandexhome', 'params' => ['view_mode' => 'edit_yandexhome_devices']],
+    '/panel/yandexhome/5.html' => ['module' => 'yandexhome', 'params' => ['id' => '5', 'view_mode' => 'edit_yandexhome_devices']],
+    '/panel/yandexhome/5/delete.html' => ['module' => 'yandexhome', 'params' => ['id' => '5', 'view_mode' => 'delete_yandexhome_devices']],
+    '/panel/yandexhome/settings.html' => ['module' => 'yandexhome', 'params' => ['view_mode' => 'settings']],
+    '/panel/yandexhome/about.html' => ['module' => 'yandexhome', 'params' => ['view_mode' => 'about']],
     '/panel/locations.html' => ['module' => 'locations', 'params' => []],
     '/panel/locations/add.html' => ['module' => 'locations', 'params' => ['view_mode' => 'edit_locations']],
     '/panel/locations/5.html' => ['module' => 'locations', 'params' => ['id' => '5', 'view_mode' => 'edit_locations']],
@@ -127,6 +133,7 @@ $cases = [
     '/panel/mqtt/optimize.html' => ['module' => 'mqtt', 'params' => ['view_mode' => 'optimize']],
     '/panel/knowledge_base.html' => ['module' => 'knowledge_base', 'params' => []],
     '/panel/knowledge_base/user/commands.html' => ['module' => 'knowledge_base', 'params' => ['view_mode' => 'view_doc', 'doc' => 'user/commands']],
+    '/panel/knowledge_base/module/yandexhome/setup.html' => ['module' => 'knowledge_base', 'params' => ['view_mode' => 'view_doc', 'doc' => 'module/yandexhome/setup']],
 ];
 
 foreach ($cases as $path => $expected) {
@@ -206,6 +213,34 @@ routingCheck(
 routingCheck(
     mdj_admin_pretty_url('/admin.php?action=pinghosts&view_mode=delete_pinghosts&id=5') === '/panel/pinghosts/5/delete.html',
     '[PRETTY] pinghosts delete'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yandexhome') === '/panel/yandexhome.html',
+    '[PRETTY] yandexhome list'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yandexhome&view_mode=edit_yandexhome_devices') === '/panel/yandexhome/add.html',
+    '[PRETTY] yandexhome add'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yandexhome&view_mode=addnew_yandexhome_devices') === '/panel/yandexhome/add.html',
+    '[PRETTY] yandexhome legacy add'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yandexhome&view_mode=edit_yandexhome_devices&id=5') === '/panel/yandexhome/5.html',
+    '[PRETTY] yandexhome edit'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yandexhome&view_mode=delete_yandexhome_devices&id=5') === '/panel/yandexhome/5/delete.html',
+    '[PRETTY] yandexhome delete'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yandexhome&view_mode=settings') === '/panel/yandexhome/settings.html',
+    '[PRETTY] yandexhome settings'
+);
+routingCheck(
+    mdj_admin_pretty_url('/admin.php?action=yandexhome&view_mode=about') === '/panel/yandexhome/about.html',
+    '[PRETTY] yandexhome about'
 );
 routingCheck(
     mdj_admin_pretty_url('/admin.php?action=locations') === '/panel/locations.html',
@@ -311,7 +346,7 @@ $printUrl = '/admin.php?pd=cGFuZWw6e2FjdGlvbj1jbGFzc2VzfQ%3D%3Dpz_&md=classes&vi
 routingCheck(mdj_admin_pretty_url($printUrl) === $printUrl, '[FALLBACK] print URL must stay legacy');
 
 // Every pretty URL we emit must resolve back to the same state.
-foreach (array($objectPath, '/panel/class/10/objects.html', '/panel/class/10/methods/45.html', '/panel/script/10.html', '/panel/users/5.html', '/panel/users/add.html', '/panel/users/5/delete.html', '/panel/pinghosts/5.html', '/panel/pinghosts/add.html', '/panel/pinghosts/5/delete.html', '/panel/locations/5.html', '/panel/locations/5/logic.html', '/panel/locations/add.html', '/panel/locations/5/up.html', '/panel/system_errors/10.html', '/panel/system_errors/10/history.html', '/panel/system_errors/readall.html', '/panel/system_errors/test.html', '/panel/mqtt/10.html', '/panel/mqtt/add.html', '/panel/mqtt/10/delete.html', '/panel/mqtt/settings.html', '/panel/mqtt/clear-trash.html', '/panel/mqtt/optimize.html', '/panel/knowledge_base.html', '/panel/knowledge_base/user/commands.html') as $pretty) {
+foreach (array($objectPath, '/panel/class/10/objects.html', '/panel/class/10/methods/45.html', '/panel/script/10.html', '/panel/users/5.html', '/panel/users/add.html', '/panel/users/5/delete.html', '/panel/pinghosts/5.html', '/panel/pinghosts/add.html', '/panel/pinghosts/5/delete.html', '/panel/yandexhome.html', '/panel/yandexhome/5.html', '/panel/yandexhome/add.html', '/panel/yandexhome/5/delete.html', '/panel/yandexhome/settings.html', '/panel/yandexhome/about.html', '/panel/locations/5.html', '/panel/locations/5/logic.html', '/panel/locations/add.html', '/panel/locations/5/up.html', '/panel/system_errors/10.html', '/panel/system_errors/10/history.html', '/panel/system_errors/readall.html', '/panel/system_errors/test.html', '/panel/mqtt/10.html', '/panel/mqtt/add.html', '/panel/mqtt/10/delete.html', '/panel/mqtt/settings.html', '/panel/mqtt/clear-trash.html', '/panel/mqtt/optimize.html', '/panel/knowledge_base.html', '/panel/knowledge_base/user/commands.html', '/panel/knowledge_base/module/yandexhome/setup.html') as $pretty) {
     $query = routingResolve($pretty);
     routingCheck($query !== null, "[ROUNDTRIP] {$pretty} did not resolve");
     if ($query !== null) {

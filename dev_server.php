@@ -143,6 +143,21 @@ function devServerRoute($projectRoot)
 
     // Legacy application directories live outside public/ and are served from
     // the project root (mirrors the nginx `root` overrides).
+    if (preg_match('#^/(modules|objects|scripts|3rdparty|cms|docs)/(.+?\.php)(/.+)$#i', $path, $pathInfoMatch)) {
+        // Mirror nginx's nested `location ~ [^/]\.php(/|$)`: execute the PHP
+        // file and expose the remainder as PATH_INFO. Module webhooks rely on
+        // this (for example /modules/yandexhome/smarthome.php/v1.0/...).
+        $scriptRelative = $pathInfoMatch[1] . '/' . $pathInfoMatch[2];
+        $legacyScript = realpath($projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rawurldecode($scriptRelative)));
+        if ($legacyScript !== false
+            && strpos($legacyScript, $projectRoot) === 0
+            && is_file($legacyScript)
+            && strtolower(pathinfo($legacyScript, PATHINFO_EXTENSION)) === 'php') {
+            $_SERVER['PATH_INFO'] = $pathInfoMatch[3];
+            return devSetScript($legacyScript, '/' . $scriptRelative);
+        }
+    }
+
     if (preg_match('#^/(modules|objects|scripts|3rdparty|cms|docs)/#i', $path)) {
         $legacyFile = realpath($projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim(rawurldecode($path), '/\\')));
         if ($legacyFile !== false && strpos($legacyFile, $projectRoot) === 0) {

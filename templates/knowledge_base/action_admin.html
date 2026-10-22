@@ -6,11 +6,12 @@
         <div>
             <div class="md-ui-hero__eyebrow"><i class="ti ti-book" aria-hidden="true"></i>База знаний</div>
             <h1 class="md-ui-hero__title">База знаний</h1>
-            <p class="md-ui-hero__lede">Инструкции для пользователя и техническая документация для агентов. Материалы читаются прямо из папки <code>docs/</code>: новый Markdown-файл появляется здесь автоматически.</p>
+            <p class="md-ui-hero__lede">Инструкции для пользователя и техническая документация для агентов. Материалы читаются из папки <code>docs/</code> и из <code>docs/</code> установленных модулей: новый Markdown-файл появляется здесь автоматически.</p>
             <div class="md-ui-hero__meta">
                 <span class="md-ui-hero__meta-item"><i class="ti ti-files" aria-hidden="true"></i>Материалов: <strong>[#KB_TOTAL#]</strong></span>
                 <span class="md-ui-hero__meta-item"><i class="ti ti-user" aria-hidden="true"></i>Для пользователя: <strong>[#KB_USER_TOTAL#]</strong></span>
                 <span class="md-ui-hero__meta-item"><i class="ti ti-robot" aria-hidden="true"></i>Для агентов: <strong>[#KB_AGENT_TOTAL#]</strong></span>
+                <span class="md-ui-hero__meta-item"><i class="ti ti-package" aria-hidden="true"></i>Из модулей: <strong>[#KB_MODULE_TOTAL#]</strong></span>
                 <span class="md-ui-hero__meta-item"><i class="ti ti-category" aria-hidden="true"></i>Категорий: <strong>[#KB_CATEGORY_TOTAL#]</strong></span>
             </div>
         </div>
@@ -59,7 +60,7 @@
                 <span class="md-kpi__label">Категории</span>
             </div>
             <div class="md-kpi__value">[#KB_CATEGORY_TOTAL#]</div>
-            <div class="md-kpi__meta">Разделы документации</div>
+            <div class="md-kpi__meta">Разделы, включая модули: [#KB_MODULE_TOTAL#] материалов</div>
         </div>
     </div>
 
@@ -113,7 +114,7 @@
             </div>
             <div class="md-kb-side__note">
                 <i class="ti ti-folder" aria-hidden="true"></i>
-                <span>Источник: <code>docs/</code></span>
+                <span>Источники: <code>docs/</code> и <code>modules/*/docs/</code> установленных модулей</span>
             </div>
         </aside>
 
@@ -137,6 +138,7 @@
                         <span class="md-kb-card__top">
                             <span class="md-kb-card__icon"><i class="ti ti-[#ICON#]" aria-hidden="true"></i></span>
                             <span class="md-kb-card__badges">
+                                [#if IS_MODULE="1"#]<span class="md-badge md-badge--outline" title="Документация модуля [#MODULE_TITLE#]"><i class="ti ti-package" aria-hidden="true"></i>[#MODULE_TITLE#]</span>[#endif#]
                                 [#if AUDIENCE_USER="1"#]<span class="md-badge md-badge--primary">Пользователю</span>[#endif#]
                                 [#if AUDIENCE_AGENT="1"#]<span class="md-badge md-badge--info">Агентам</span>[#endif#]
                             </span>

@@ -18,6 +18,7 @@
             <p class="md-ui-hero__lede">[#DOC_DESCRIPTION#]</p>
             [#endif#]
             <div class="md-ui-hero__meta">
+                [#if DOC_IS_MODULE="1"#]<span class="md-badge md-badge--outline"><i class="ti ti-package" aria-hidden="true"></i>Модуль [#DOC_MODULE_TITLE#]</span>[#endif#]
                 [#if DOC_AUDIENCE_USER="1"#]<span class="md-badge md-badge--primary"><i class="ti ti-user" aria-hidden="true"></i>Пользователю</span>[#endif#]
                 [#if DOC_AUDIENCE_AGENT="1"#]<span class="md-badge md-badge--info"><i class="ti ti-robot" aria-hidden="true"></i>Агентам</span>[#endif#]
                 <span class="md-ui-hero__meta-item"><i class="ti ti-clock" aria-hidden="true"></i>Чтение: <strong>[#DOC_READING#] мин</strong></span>

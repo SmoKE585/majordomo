@@ -52,18 +52,46 @@ final class MDMarkdownRenderer
     /** @var array<int,string> Shared inline token storage (nested labels). */
     private $inlineTokens = array();
 
+    /** @var array<int,array{prefix:string,root:string,public:string}> */
+    private $sources = array();
+
     /**
      * @param string $docId Current document id.
      * @param array<string,array<string,mixed>> $documents Known documents.
      * @param string $docsRoot Absolute docs directory.
      * @param string $rootHtml Project root URL.
+     * @param array<int,array<string,mixed>> $sources Additional source roots
+     *        (installed module docs), each with prefix/root/public.
      */
-    public function __construct($docId, array $documents = array(), $docsRoot = '', $rootHtml = '/')
+    public function __construct($docId, array $documents = array(), $docsRoot = '', $rootHtml = '/', array $sources = array())
     {
         $this->docId = str_replace('\\', '/', trim((string)$docId));
         $this->documents = $documents;
         $this->docsRoot = $docsRoot !== '' ? rtrim(str_replace('\\', '/', (string)$docsRoot), '/') : '';
         $this->rootHtml = $rootHtml !== '' ? (string)$rootHtml : '/';
+
+        $normalized = array();
+        if ($this->docsRoot !== '') {
+            $normalized[] = array('prefix' => '', 'root' => $this->docsRoot, 'public' => 'docs');
+        }
+        foreach ($sources as $source) {
+            if (!is_array($source)) {
+                continue;
+            }
+            $root = isset($source['root']) ? rtrim(str_replace('\\', '/', (string)$source['root']), '/') : '';
+            $public = isset($source['public']) ? trim(str_replace('\\', '/', (string)$source['public']), '/') : '';
+            $prefix = isset($source['prefix']) ? trim(str_replace('\\', '/', (string)$source['prefix']), '/') : '';
+            if ($root === '' || $public === '') {
+                continue;
+            }
+            $normalized[] = array('prefix' => $prefix, 'root' => $root, 'public' => $public);
+        }
+
+        // Longest prefix first: module sources must win over the docs root.
+        usort($normalized, static function (array $left, array $right): int {
+            return strlen($right['prefix']) <=> strlen($left['prefix']);
+        });
+        $this->sources = $normalized;
     }
 
     /**
@@ -914,13 +942,16 @@ final class MDMarkdownRenderer
 
         // Directory links to known documentation sections open the matching
         // knowledge-base category instead of a raw file listing.
-        if ($hasTrailingSlash || ($this->docsRoot !== '' && is_dir($this->docsRoot . '/' . $bare))) {
+        if ($hasTrailingSlash || $this->isSourceDirectory($bare)) {
             $section = strtok($bare, '/');
             if (in_array($section, array('user', 'agents', 'deploy', 'dev', 'archive'), true)) {
                 return rtrim($this->rootHtml, '/') . '/panel/knowledge_base.html?cat='
                     . rawurlencode($section) . $fragment;
             }
-            return rtrim($this->rootHtml, '/') . '/docs/' . $this->encodePath($bare) . '/' . $fragment;
+            $directoryUrl = $this->publicFileUrl($bare, $query, $fragment, false);
+            if ($directoryUrl !== null) {
+                return $directoryUrl;
+            }
         }
 
         if (preg_match('/\.md$/i', $bare)) {
@@ -930,22 +961,100 @@ final class MDMarkdownRenderer
                 return rtrim($this->rootHtml, '/') . '/panel/knowledge_base/'
                     . $this->encodePath($resolvedId) . '.html' . $fragment;
             }
-            return rtrim($this->rootHtml, '/') . '/docs/' . $this->encodePath($bare) . $fragment;
-        }
-
-        if ($isImage) {
-            if ($this->docsRoot !== '' && !is_file($this->docsRoot . '/' . $bare)) {
-                return null;
+            // Fall back to the public source file only when it is reachable.
+            $sourceUrl = $this->publicFileUrl($bare, $query, $fragment, true);
+            if ($sourceUrl !== null) {
+                return $sourceUrl;
             }
-            return rtrim($this->rootHtml, '/') . '/docs/' . $this->encodePath($bare) . $query . $fragment;
+            return null;
         }
 
-        if ($this->docsRoot !== '' && is_file($this->docsRoot . '/' . $bare)) {
-            return rtrim($this->rootHtml, '/') . '/docs/' . $this->encodePath($bare) . $query . $fragment;
+        $fileUrl = $this->publicFileUrl($bare, $query, $fragment, $isImage);
+        if ($fileUrl !== null) {
+            return $fileUrl;
         }
 
         // Keep unknown relative links from resolving against the admin pretty
         // URL, which would be wrong for every reader.
+        return null;
+    }
+
+    /**
+     * Whether a global documentation path is a directory in any source.
+     *
+     * @param string $globalPath
+     * @return bool
+     */
+    private function isSourceDirectory($globalPath)
+    {
+        $globalPath = trim(str_replace('\\', '/', (string)$globalPath), '/');
+        if ($globalPath === '') {
+            return false;
+        }
+
+        foreach ($this->sources as $source) {
+            $prefix = $source['prefix'];
+            if ($prefix !== '') {
+                if (strncmp($globalPath, $prefix . '/', strlen($prefix) + 1) !== 0) {
+                    continue;
+                }
+                $relative = substr($globalPath, strlen($prefix) + 1);
+            } else {
+                $relative = $globalPath;
+            }
+            if ($relative !== '' && strpos($relative, '..') === false
+                && is_dir($source['root'] . '/' . $relative)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Public URL of a file inside the docs root or an installed module.
+     *
+     * @param string $globalPath Path relative to the documentation universe
+     *        (for example `user/commands.md` or `module/yandexhome/img/a.png`).
+     * @param string $query
+     * @param string $fragment
+     * @param bool $requireFile When true the file must exist; when false a
+     *        directory is accepted too.
+     * @return string|null
+     */
+    private function publicFileUrl($globalPath, $query, $fragment, $requireFile = true)
+    {
+        $globalPath = trim(str_replace('\\', '/', (string)$globalPath), '/');
+        if ($globalPath === '' || strpos($globalPath, '..') !== false) {
+            return null;
+        }
+
+        foreach ($this->sources as $source) {
+            $prefix = $source['prefix'];
+            if ($prefix !== '') {
+                if (strncmp($globalPath, $prefix . '/', strlen($prefix) + 1) !== 0) {
+                    continue;
+                }
+                $relative = substr($globalPath, strlen($prefix) + 1);
+            } else {
+                $relative = $globalPath;
+            }
+            if ($relative === '' || strpos($relative, '..') !== false) {
+                continue;
+            }
+
+            $absolute = $source['root'] . '/' . $relative;
+            if ($requireFile && !is_file($absolute)) {
+                continue;
+            }
+            if (!$requireFile && !is_file($absolute) && !is_dir($absolute)) {
+                continue;
+            }
+
+            return rtrim($this->rootHtml, '/') . '/' . $source['public'] . '/'
+                . $this->encodePath($relative) . $query . $fragment;
+        }
+
         return null;
     }
 

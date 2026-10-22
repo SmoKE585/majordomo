@@ -80,6 +80,16 @@ function mdj_admin_route_table($rootHtml = null)
             => '?(panel:{action=pinghosts})&md=pinghosts&view_mode=delete_pinghosts&id=\1',
         '/^' . $root . 'panel\/pinghosts\/(\d+)\.html/is'
             => '?(panel:{action=pinghosts})&md=pinghosts&view_mode=edit_pinghosts&id=\1',
+        '/^' . $root . 'panel\/yandexhome\/settings\.html/is'
+            => '?(panel:{action=yandexhome})&md=yandexhome&view_mode=settings',
+        '/^' . $root . 'panel\/yandexhome\/about\.html/is'
+            => '?(panel:{action=yandexhome})&md=yandexhome&view_mode=about',
+        '/^' . $root . 'panel\/yandexhome\/add\.html/is'
+            => '?(panel:{action=yandexhome})&md=yandexhome&view_mode=edit_yandexhome_devices',
+        '/^' . $root . 'panel\/yandexhome\/(\d+)\/delete\.html/is'
+            => '?(panel:{action=yandexhome})&md=yandexhome&view_mode=delete_yandexhome_devices&id=\1',
+        '/^' . $root . 'panel\/yandexhome\/(\d+)\.html/is'
+            => '?(panel:{action=yandexhome})&md=yandexhome&view_mode=edit_yandexhome_devices&id=\1',
         '/^' . $root . 'panel\/locations\/add\.html/is'
             => '?(panel:{action=locations})&md=locations&view_mode=edit_locations',
         '/^' . $root . 'panel\/locations\/(\d+)\/delete\.html/is'
@@ -481,6 +491,10 @@ function mdj_admin_normalize_params($module, $params)
         }
         if ($key === 'view_mode' && $value === 'search_' . $module) {
             continue;
+        }
+        // The Yandex Home add screen and the edit screen are the same form.
+        if ($module === 'yandexhome' && $key === 'view_mode' && $value === 'addnew_yandexhome_devices') {
+            $value = 'edit_yandexhome_devices';
         }
         $result[$key] = $value;
     }
@@ -898,6 +912,55 @@ function mdj_admin_build_pretty($state)
             $dropView = true;
             return array(
                 'path' => '/panel/pinghosts.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        return null;
+    }
+
+    if ($module === 'yandexhome') {
+        if ($parents) {
+            return null;
+        }
+        if ($id > 0 && $tab === '' && $view === 'edit_yandexhome_devices') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yandexhome/' . $id . '.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id > 0 && $tab === '' && $view === 'delete_yandexhome_devices') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yandexhome/' . $id . '/delete.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && ($view === 'edit_yandexhome_devices' || $view === 'addnew_yandexhome_devices')) {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yandexhome/add.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && ($view === 'settings' || $view === 'update_settings')) {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yandexhome/settings.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && $view === 'about') {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yandexhome/about.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
+            );
+        }
+        if ($id <= 0 && $tab === '' && ($view === '' || $view === 'search_yandexhome_devices')) {
+            $dropView = true;
+            return array(
+                'path' => '/panel/yandexhome.html',
                 'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
             );
         }

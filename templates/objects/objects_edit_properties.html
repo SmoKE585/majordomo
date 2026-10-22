@@ -113,7 +113,7 @@
              data-md-prop-has-history="[#if KEEP_HISTORY!="0"#]1[#else#]0[#endif#]"
              data-md-prop-has-source="[#if SOURCE!=""#]1[#else#]0[#endif#]"
              data-md-prop-has-onchange="[#if ONCHANGE!=""#]1[#else#]0[#endif#]"
-             data-search="[#FULL_NAME#] [#DESCRIPTION#] [#SOURCE_TEXT#] [#ONCHANGE#]">
+             data-search="[#FULL_NAME#] [#DESCRIPTION#] [#SOURCE_TEXT#] [#SOURCE_LABEL#] [#ONCHANGE#]">
             <article class="md-admin-record-card md-object-property-card [#if CLASS_ID!="0"#]md-object-property-card--class[#endif#]">
                 <div class="md-admin-record-card__main">
                     <div class="md-admin-record-card__content">
@@ -143,7 +143,7 @@
                             [#endif#]
                         </div>
                         [#if DESCRIPTION!=""#]<div class="md-object-property-card__description">[#DESCRIPTION#]</div>[#endif#]
-                        [#if LINKED_MODULES!=""#]<div class="md-object-property-card__links">[#LINKED_MODULES#]</div>[#endif#]
+                        [#if LINKED_MODULES!=""#]<div class="md-object-property-card__links"><span class="md-object-property-card__links-label"><i class="ti ti-plug" aria-hidden="true"></i>Связанные модули:</span>[#LINKED_MODULES#]</div>[#endif#]
                     </div>
                 </div>
                 <div class="md-admin-record-card__meta">
@@ -154,19 +154,31 @@
                         <a href="<#ROOTHTML#>cms/images/[#VALUE#]" target="_blank" data-md-prop-image-link>[full size]</a>
                         [#endif#]
                         [#endif#]
-                        [#if DATA_TYPE="0"#]<pre class="md-admin-code-sample [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]" data-md-prop-display>[#if VALUE == ''#]Значение не задано[#else#][#VALUE_HTML#][#endif#]</pre>[#endif#]
-                        [#if DATA_TYPE!="0" && DATA_TYPE!="5"#]<div class="md-admin-record-card__field [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-edit="[#ID#]" data-md-prop-display>[#if VALUE == ''#]Значение не задано[#else#][#VALUE_HTML#][#endif#]</div>[#endif#]
+                        [#if DATA_TYPE="0"#]
+                        <div class="md-object-property-card__value-box" data-md-prop-edit="[#ID#]" role="button" tabindex="0" title="Изменить значение" aria-label="Изменить значение [#FULL_NAME_ATTR#]">
+                            <pre class="md-admin-code-sample [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-display>[#if VALUE == ''#]Значение не задано[#else#][#VALUE_HTML#][#endif#]</pre>
+                            <i class="ti ti-pencil md-object-property-card__value-edit" aria-hidden="true"></i>
+                        </div>
+                        [#endif#]
+                        [#if DATA_TYPE!="0" && DATA_TYPE!="5"#]
+                        <div class="md-object-property-card__value-box" data-md-prop-edit="[#ID#]" role="button" tabindex="0" title="Изменить значение" aria-label="Изменить значение [#FULL_NAME_ATTR#]">
+                            <div class="md-admin-record-card__field [#if VALUE == ''#]is-empty[#endif#]" data-md-prop-display>[#if VALUE == ''#]Значение не задано[#else#][#VALUE_HTML#][#endif#]</div>
+                            <i class="ti ti-pencil md-object-property-card__value-edit" aria-hidden="true"></i>
+                        </div>
+                        [#endif#]
                         <div class="md-object-property-card__source">
-                            <span class="md-object-property-card__source-author">
+                            <div class="md-object-property-card__source-row md-object-property-card__source-author">
                                 <i class="ti ti-arrow-down-left" aria-hidden="true"></i>
                                 <span class="md-object-property-card__source-label">Меняет:</span>
                                 [#if SOURCE!=""#]
-                                <span data-md-prop-source>[#SOURCE_HTML#]</span>
+                                <span class="md-object-property-card__source-value" data-md-prop-source data-md-source-kind="[#SOURCE_KIND#]" title="[#SOURCE_TEXT#]">
+                                    <i class="ti ti-[#SOURCE_ICON#]" aria-hidden="true"></i><span class="md-object-property-card__source-text">[#SOURCE_LABEL#]</span>
+                                </span>
                                 [#else#]
-                                <span data-md-prop-source class="is-empty">не указан</span>
+                                <span class="md-object-property-card__source-value is-empty" data-md-prop-source><span class="md-object-property-card__source-text">не указан</span></span>
                                 [#endif#]
-                            </span>
-                            <span class="md-object-property-card__source-time">
+                            </div>
+                            <div class="md-object-property-card__source-row md-object-property-card__source-time">
                                 <i class="ti ti-clock" aria-hidden="true"></i>
                                 <span class="md-object-property-card__source-label">Обновлено:</span>
                                 [#if UPDATED!=""#]
@@ -174,7 +186,7 @@
                                 [#else#]
                                 <span data-md-prop-updated class="is-empty">ещё не обновлялось</span>
                                 [#endif#]
-                            </span>
+                            </div>
                         </div>
                     </div>
                     <div class="md-object-property-card__value-editor" data-md-prop-editor="[#ID#]" hidden>
@@ -424,7 +436,12 @@ function initObjectPropertiesPage() {
     }
 
     function formatWsDate() {
-        return new Date().toLocaleString('ru-RU');
+        var date = new Date();
+        var pad = function (value) {
+            return String(value).padStart(2, '0');
+        };
+        return pad(date.getDate()) + '.' + pad(date.getMonth() + 1) + '.' + date.getFullYear()
+            + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
     }
 
     function flashPropertyUpdate(card) {
@@ -457,7 +474,6 @@ function initObjectPropertiesPage() {
         var current = card.querySelector('[data-md-prop-current]');
         var editor = card.querySelector('[data-md-prop-editor]');
         var display = current ? current.querySelector('[data-md-prop-display]') : null;
-        var sourceMeta = current ? current.querySelector('.md-object-property-card__source') : null;
         var source = current ? current.querySelector('[data-md-prop-source]') : null;
         var updated = current ? current.querySelector('[data-md-prop-updated]') : null;
         var imageWrap = current ? current.querySelector('[data-md-prop-image-wrap]') : null;
@@ -490,22 +506,11 @@ function initObjectPropertiesPage() {
             editorInput.value = textValue;
         }
 
-        if (sourceMeta && !source) {
-            source = document.createElement('span');
-            source.className = 'md-object-property-card__source-author';
-            source.setAttribute('data-md-prop-source', '1');
-            sourceMeta.appendChild(source);
-        }
-        if (sourceMeta && !updated) {
-            updated = document.createElement('span');
-            updated.className = 'md-object-property-card__source-time';
-            updated.setAttribute('data-md-prop-updated', '1');
-            sourceMeta.appendChild(updated);
-        }
-
         if (source) {
-            source.innerHTML = 'WS';
+            source.innerHTML = '<i class="ti ti-broadcast" aria-hidden="true"></i><span class="md-object-property-card__source-text">Реалтайм</span>';
             source.classList.remove('is-empty');
+            source.setAttribute('data-md-source-kind', 'realtime');
+            source.title = 'Значение обновлено по WebSocket';
         }
         if (updated) {
             updated.textContent = formatWsDate();
@@ -644,19 +649,29 @@ function initObjectPropertiesPage() {
     }
     applyPropertyFilter();
 
-    document.querySelectorAll('[data-md-prop-edit]').forEach(function (button) {
-        button.addEventListener('click', function () {
-            var id = button.getAttribute('data-md-prop-edit');
-            var current = document.querySelector('[data-md-prop-current="' + id + '"]');
-            var editor = document.querySelector('[data-md-prop-editor="' + id + '"]');
-            if (current && editor) {
-                current.hidden = true;
-                editor.hidden = false;
-                var input = editor.querySelector('input[name="value[' + id + ']"]');
-                if (input) {
-                    input.focus();
-                    input.select();
-                }
+    function openValueEditor(trigger) {
+        var id = trigger.getAttribute('data-md-prop-edit');
+        var current = document.querySelector('[data-md-prop-current="' + id + '"]');
+        var editor = document.querySelector('[data-md-prop-editor="' + id + '"]');
+        if (current && editor) {
+            current.hidden = true;
+            editor.hidden = false;
+            var input = editor.querySelector('input[name="value[' + id + ']"]');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }
+    }
+
+    document.querySelectorAll('[data-md-prop-edit]').forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+            openValueEditor(trigger);
+        });
+        trigger.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openValueEditor(trigger);
             }
         });
     });

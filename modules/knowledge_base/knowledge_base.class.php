@@ -99,13 +99,18 @@ class knowledge_base extends module
      */
     public function admin(&$out)
     {
-        $kb = new MDKnowledgeBase(ROOT . 'docs', ROOTHTML);
+        $kb = new MDKnowledgeBase(
+            ROOT . 'docs',
+            ROOTHTML,
+            MDKnowledgeBase::moduleSources(ROOT . 'modules', 'isModuleInstalled', $this->moduleTitles())
+        );
         $stats = $kb->stats();
 
         $out['KB_TOTAL'] = $stats['total'];
         $out['KB_USER_TOTAL'] = $stats['user'];
         $out['KB_AGENT_TOTAL'] = $stats['agent'];
         $out['KB_CATEGORY_TOTAL'] = $stats['categories'];
+        $out['KB_MODULE_TOTAL'] = isset($stats['modules']) ? (int)$stats['modules'] : 0;
         $documents = $kb->documents();
         $out['KB_HAS_README'] = isset($documents['README']);
         $out['KB_HAS_COMMANDS'] = isset($documents['user/commands']);
@@ -130,6 +135,32 @@ class knowledge_base extends module
 
         $out['KB_MODE'] = 'list';
         $out['GROUPS'] = $this->buildGroups($kb);
+    }
+
+    /**
+     * Titles of installed modules, used as knowledge-base category labels.
+     *
+     * @return array<string,string>
+     */
+    private function moduleTitles()
+    {
+        $titles = array();
+        if (!function_exists('SQLSelect')) {
+            return $titles;
+        }
+        $rows = SQLSelect("SELECT NAME, TITLE FROM project_modules");
+        if (!is_array($rows)) {
+            return $titles;
+        }
+        foreach ($rows as $row) {
+            $name = isset($row['NAME']) ? trim((string)$row['NAME']) : '';
+            $title = isset($row['TITLE']) ? trim((string)$row['TITLE']) : '';
+            if ($name !== '' && $title !== '') {
+                $titles[$name] = $title;
+            }
+        }
+
+        return $titles;
     }
 
     /**
@@ -163,8 +194,10 @@ class knowledge_base extends module
         $out['DOC_CATEGORY_QUERY'] = rawurlencode($document['category_key']);
         $out['DOC_CATEGORY_LABEL'] = $this->e($document['category_label']);
         $out['DOC_CATEGORY_ICON'] = $this->e($document['category_icon']);
-        $out['DOC_SOURCE_URL'] = $this->e($kb->sourceUrl($document['relative_path']));
-        $out['DOC_SOURCE_LABEL'] = $this->e('docs/' . $document['relative_path']);
+        $out['DOC_SOURCE_URL'] = $this->e(isset($document['source_url']) ? $document['source_url'] : $kb->sourceUrl($document['relative_path']));
+        $out['DOC_SOURCE_LABEL'] = $this->e(isset($document['source_label']) ? $document['source_label'] : 'docs/' . $document['relative_path']);
+        $out['DOC_IS_MODULE'] = !empty($document['is_module']) ? 1 : 0;
+        $out['DOC_MODULE_TITLE'] = $this->e(isset($document['module_title']) ? $document['module_title'] : '');
         $out['DOC_AUDIENCE_USER'] = in_array('user', $document['audience'], true) ? 1 : 0;
         $out['DOC_AUDIENCE_AGENT'] = in_array('agent', $document['audience'], true) ? 1 : 0;
         $out['DOC_AUDIENCE_LABEL'] = $this->audienceLabel($document['audience']);
@@ -256,6 +289,8 @@ class knowledge_base extends module
             'SEARCH' => $this->e($document['search']),
             'TAG_TEXT' => $this->e(implode(' · ', $document['tags'])),
             'TAGS' => $tags,
+            'IS_MODULE' => !empty($document['is_module']) ? 1 : 0,
+            'MODULE_TITLE' => $this->e(isset($document['module_title']) ? $document['module_title'] : ''),
         );
     }
 

@@ -55,7 +55,42 @@ mkdir($root, 0777, true);
 mkdir($root . '/user', 0777, true);
 mkdir($root . '/agents', 0777, true);
 
+$modulesRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'mjd-kb-modules-' . bin2hex(random_bytes(6));
+mkdir($modulesRoot . '/demo/docs/img', 0777, true);
+mkdir($modulesRoot . '/plain', 0777, true);
+mkdir($modulesRoot . '/hidden/docs', 0777, true);
+
 file_put_contents($root . '/README.md', "# Документация\n\nОбщий указатель по всем материалам.\n");
+
+file_put_contents($modulesRoot . '/demo/docs/README.md', <<<'MD'
+---
+title: Demo setup
+audience: user
+description: Module documentation.
+---
+
+# Demo setup
+
+Open the [guide](guide.md).
+MD
+);
+
+file_put_contents($modulesRoot . '/demo/docs/guide.md', <<<'MD'
+---
+title: Demo guide
+---
+
+# Demo guide
+
+Read the [readme](README.md) or return to [commands](../../docs/user/commands.md).
+
+![Screenshot](img/pic.png)
+MD
+);
+
+file_put_contents($modulesRoot . '/demo/docs/img/pic.png', 'png');
+file_put_contents($modulesRoot . '/plain/README.md', "# Plain module\n\nOnly the root README is shipped.\n");
+file_put_contents($modulesRoot . '/hidden/docs/secret.md', "# Hidden module\n\nMust not be visible.\n");
 
 file_put_contents($root . '/user/commands.md', <<<'MD'
 ---
@@ -127,8 +162,57 @@ try {
         $kb->sourceUrl('user/commands.md') === '/docs/user/commands.md',
         'source URL points to the original Markdown file'
     );
+
+    // --- Installed module documentation --------------------------------
+    $moduleSources = MDKnowledgeBase::moduleSources(
+        $modulesRoot,
+        static function (string $name): bool {
+            return $name !== 'hidden';
+        },
+        array('demo' => 'Demo Module')
+    );
+    kbCheck(count($moduleSources) === 2, 'only installed modules with Markdown are discovered');
+
+    $moduleKb = new MDKnowledgeBase($root, '/', $moduleSources);
+    $moduleDocuments = $moduleKb->documents();
+    kbCheck(isset($moduleDocuments['module/demo/README']), 'module docs are scanned with a module prefix');
+    kbCheck(isset($moduleDocuments['module/demo/guide']), 'nested module docs are scanned');
+    kbCheck(isset($moduleDocuments['module/plain/README']), 'a module root README is used without docs/');
+    kbCheck(!isset($moduleDocuments['module/hidden/secret']), 'docs of a non-installed module are not scanned');
+
+    $moduleStats = $moduleKb->stats();
+    kbCheck($moduleStats['modules'] === 3, 'stats count module documents');
+
+    $moduleGuide = $moduleKb->document('module/demo/guide');
+    kbCheck(is_array($moduleGuide), 'module document renders');
+    if (is_array($moduleGuide)) {
+        kbCheck($moduleGuide['category_key'] === 'module-demo', 'module docs get their own category');
+        kbCheck($moduleGuide['category_label'] === 'Demo Module', 'module title is used as category label');
+        kbCheck($moduleGuide['is_module'] === 1, 'module document is flagged');
+        kbCheck(
+            $moduleGuide['source_url'] === '/modules/demo/docs/guide.md',
+            'module source URL points to the module file'
+        );
+        kbCheck(
+            $moduleGuide['source_label'] === 'modules/demo/docs/guide.md',
+            'module source label uses modules/ prefix'
+        );
+        kbCheck(
+            strpos($moduleGuide['html'], '/panel/knowledge_base/module/demo/README.html') !== false,
+            'relative links inside module docs stay inside the knowledge base'
+        );
+        kbCheck(
+            strpos($moduleGuide['html'], '/panel/knowledge_base/user/commands.html') !== false,
+            'module docs can link back to core docs'
+        );
+        kbCheck(
+            strpos($moduleGuide['html'], '/modules/demo/docs/img/pic.png') !== false,
+            'module doc images resolve against the module folder'
+        );
+    }
 } finally {
     kbRemoveDirectory($root);
+    kbRemoveDirectory($modulesRoot);
 }
 
 if ($failures > 0) {

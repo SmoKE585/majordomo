@@ -301,6 +301,54 @@ class objects extends module
     }
 
     /**
+     * Readable label for pvalues.SOURCE.
+     *
+     * Properties::set() stores "CALL_SOURCE <request URI>", so the raw value is
+     * usually a long URL. Printing it as-is broke the card layout, and making it
+     * a link could repeat the request that changed the value.
+     */
+    private static function describePropertySource($source): array
+    {
+        $source = trim((string)preg_replace('/\s+/u', ' ', (string)$source));
+        if ($source === '') {
+            return array('label' => '', 'icon' => 'help-circle', 'kind' => '');
+        }
+        if (preg_match('/^Job:\s*(.+)$/u', $source, $match)) {
+            $job = preg_split('/\s+(?:https?:\/\/|\/)/', $match[1]);
+            $job = is_array($job) ? trim((string)$job[0]) : $match[1];
+            return array('label' => 'Задание · ' . self::shortenSourceLabel($job), 'icon' => 'calendar-check', 'kind' => 'job');
+        }
+        if (preg_match('~(?:https?://|/)\S*~u', $source, $match)) {
+            $url = $match[0];
+            $path = (string)parse_url($url, PHP_URL_PATH);
+            $host = (string)parse_url($url, PHP_URL_HOST);
+            if ($path === '') {
+                $path = '/';
+            }
+            if ($host !== '') {
+                $path = $host . $path;
+            }
+            if (str_starts_with($path, '/panel/')) {
+                return array('label' => 'Панель', 'icon' => 'layout-dashboard', 'kind' => 'panel');
+            }
+            if (str_starts_with($path, '/api/')) {
+                return array('label' => 'API · ' . self::shortenSourceLabel($path), 'icon' => 'plug-connected', 'kind' => 'api');
+            }
+            if (str_contains($path, 'scripts')) {
+                return array('label' => 'Сценарий · ' . self::shortenSourceLabel(basename($path)), 'icon' => 'code', 'kind' => 'script');
+            }
+            return array('label' => 'HTTP · ' . self::shortenSourceLabel($path), 'icon' => 'world', 'kind' => 'http');
+        }
+        return array('label' => self::shortenSourceLabel($source), 'icon' => 'info-circle', 'kind' => 'other');
+    }
+
+    private static function shortenSourceLabel($value): string
+    {
+        $value = trim((string)$value);
+        return mb_strimwidth($value, 0, 56, '…', 'UTF-8');
+    }
+
+    /**
      * objects edit/add
      *
      * @access public

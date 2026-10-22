@@ -231,6 +231,7 @@ class panel extends module
             'mqtt' => 'ti-broadcast',
             'zigbee' => 'ti-access-point',
             'pinghosts' => 'ti-server',
+            'yandexhome' => 'ti-home-bolt',
             'duration_input' => 'ti-hourglass',
             'blockly_code' => 'ti-puzzle',
             'shoutbox' => 'ti-messages',

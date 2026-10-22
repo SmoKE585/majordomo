@@ -219,18 +219,22 @@ if ($this->tab == 'properties') {
         $props[$i]['VALUE_HTML'] = htmlspecialchars($props[$i]['VALUE']);
         $props[$i]['SOURCE'] = isset($value['SOURCE']) ? $value['SOURCE'] : '';
         $props[$i]['SOURCE_TEXT'] = htmlspecialchars($props[$i]['SOURCE']);
-        $props[$i]['SOURCE_HTML'] = $props[$i]['SOURCE_TEXT'];
-        if ($props[$i]['SOURCE'] !== '' && (preg_match('~^https?://~i', $props[$i]['SOURCE']) || str_starts_with($props[$i]['SOURCE'], '/'))) {
-            $props[$i]['SOURCE_HTML'] = '<a href="' . htmlspecialchars($props[$i]['SOURCE'], ENT_QUOTES) . '" target="_blank" rel="noopener">' . $props[$i]['SOURCE_TEXT'] . '</a>';
-        }
+        $sourceInfo = self::describePropertySource($props[$i]['SOURCE']);
+        $props[$i]['SOURCE_LABEL'] = htmlspecialchars($sourceInfo['label']);
+        $props[$i]['SOURCE_ICON'] = $sourceInfo['icon'];
+        $props[$i]['SOURCE_KIND'] = $sourceInfo['kind'];
+        $props[$i]['SOURCE_HTML'] = $props[$i]['SOURCE_LABEL'];
         $props[$i]['UPDATED'] = isset($value['UPDATED']) ? date('d.m.Y H:i:s', strtotime($value['UPDATED'])) : '';
 
         $value['LINKED_MODULES'] = isset($value['LINKED_MODULES']) ? explode(',', $value['LINKED_MODULES']) : false;
         $props[$i]['LINKED_MODULES'] = '';
         if (is_array($value['LINKED_MODULES'])) {
             foreach ($value['LINKED_MODULES'] as $prop_link) {
-                if (!$prop_link) break;
-                $props[$i]['LINKED_MODULES'] .= '<a class="md-object-property-card__linked-module" href="?(panel:{action=' . $prop_link . '})&md=' . $prop_link . '&go_linked_object=' . urlencode($rec['TITLE']) . '&go_linked_property=' . urlencode($props[$i]['TITLE']) . '">' . $prop_link . '</a>';
+                $prop_link = trim((string)$prop_link);
+                if ($prop_link === '') continue;
+                $props[$i]['LINKED_MODULES'] .= '<a class="md-object-property-card__linked-module" href="?(panel:{action=' . htmlspecialchars($prop_link) . '})&md=' . htmlspecialchars($prop_link) . '&go_linked_object=' . urlencode($rec['TITLE']) . '&go_linked_property=' . urlencode($props[$i]['TITLE']) . '" title="Открыть модуль ' . htmlspecialchars($prop_link) . '">'
+                    . MDJUI::badge($prop_link, 'outline')
+                    . '</a>';
             }
         }
 		

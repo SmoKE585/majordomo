@@ -24,6 +24,13 @@
  *   docs/archive/**-> audience agent, category archive
  *   docs/*.md      -> audience user + agent, category general
  *
+ * Installed modules may ship their own documentation. Those files are scanned
+ * from `modules/<name>/docs/**` (or a root `modules/<name>/README.md` when the
+ * module has no docs directory) and only when the module is installed:
+ *
+ *   modules/yandexhome/docs/setup.md -> id module/yandexhome/setup,
+ *                                       category module-yandexhome
+ *
  * @package MajorDoMo
  */
 
@@ -41,13 +48,172 @@ final class MDKnowledgeBase
     private $documents = null;
 
     /**
+     * Additional documentation sources (installed modules).
+     *
+     * @var array<int,array<string,mixed>>
+     */
+    private $sources = array();
+
+    /**
+     * Category defaults declared by module sources, keyed by category key.
+     *
+     * @var array<string,array{label:string,icon:string,order:int}>
+     */
+    private $sourceCategoryDefaults = array();
+
+    /**
      * @param string $root Absolute docs directory.
      * @param string $rootHtml Project root URL (`ROOTHTML`).
+     * @param array<int,array<string,mixed>> $moduleSources Sources returned by
+     *        {@see moduleSources()}; only callers that verified installation
+     *        should pass them.
      */
-    public function __construct($root, $rootHtml = '/')
+    public function __construct($root, $rootHtml = '/', array $moduleSources = array())
     {
         $this->root = rtrim(str_replace('\\', '/', (string)$root), '/');
         $this->rootHtml = $rootHtml !== '' ? (string)$rootHtml : '/';
+
+        $this->sources[] = array(
+            'key' => 'docs',
+            'prefix' => '',
+            'root' => $this->root,
+            'public' => 'docs',
+            'recursive' => true,
+            'category' => '',
+            'category_label' => '',
+            'category_icon' => '',
+            'category_order' => null,
+            'audience' => array(),
+            'title' => '',
+            'module' => '',
+        );
+
+        foreach ($moduleSources as $source) {
+            $normalized = $this->normalizeSource($source);
+            if ($normalized === null) {
+                continue;
+            }
+            $this->sources[] = $normalized;
+        }
+    }
+
+    /**
+     * Discover documentation shipped by installed modules.
+     *
+     * A module participates when it has `docs/` (recursive scan) or a root
+     * `README.md`. Directories without Markdown are ignored. The installation
+     * check is injected so this registry stays usable without a database in
+     * tests and CLI tools.
+     *
+     * @param string $modulesRoot Absolute `modules/` directory.
+     * @param callable|null $isInstalled `function(string $module): bool`.
+     * @param array<string,string> $titles Optional module title map (from
+     *        `project_modules.TITLE`), used for category labels.
+     * @return array<int,array<string,mixed>>
+     */
+    public static function moduleSources($modulesRoot, $isInstalled = null, array $titles = array())
+    {
+        $modulesRoot = rtrim(str_replace('\\', '/', (string)$modulesRoot), '/');
+        if ($modulesRoot === '' || !is_dir($modulesRoot)) {
+            return array();
+        }
+
+        $sources = array();
+        foreach (scandir($modulesRoot) as $entry) {
+            if ($entry === '' || $entry[0] === '.' || !is_dir($modulesRoot . '/' . $entry)) {
+                continue;
+            }
+            if (!preg_match('/^[A-Za-z0-9_]+$/', $entry)) {
+                continue;
+            }
+            if (is_callable($isInstalled) && !$isInstalled($entry)) {
+                continue;
+            }
+
+            $docsRoot = $modulesRoot . '/' . $entry . '/docs';
+            $readme = $modulesRoot . '/' . $entry . '/README.md';
+            $hasDocs = is_dir($docsRoot);
+            if (!$hasDocs && !is_file($readme)) {
+                continue;
+            }
+
+            $title = isset($titles[$entry]) && trim((string)$titles[$entry]) !== ''
+                ? trim((string)$titles[$entry])
+                : $entry;
+
+            $sources[] = array(
+                'key' => $entry,
+                'prefix' => 'module/' . $entry,
+                'root' => $hasDocs ? $docsRoot : $modulesRoot . '/' . $entry,
+                'public' => 'modules/' . $entry . '/' . ($hasDocs ? 'docs/' : ''),
+                'recursive' => $hasDocs,
+                'category' => 'module-' . $entry,
+                'category_label' => $title,
+                'category_icon' => 'package',
+                'category_order' => 60,
+                'audience' => array('user', 'agent'),
+                'title' => $title,
+                'module' => $entry,
+            );
+        }
+
+        return $sources;
+    }
+
+    /**
+     * Validate and normalize one module source descriptor.
+     *
+     * @param mixed $source
+     * @return array<string,mixed>|null
+     */
+    private function normalizeSource($source)
+    {
+        if (!is_array($source)) {
+            return null;
+        }
+
+        $root = isset($source['root']) ? rtrim(str_replace('\\', '/', (string)$source['root']), '/') : '';
+        $prefix = isset($source['prefix']) ? trim(str_replace('\\', '/', (string)$source['prefix']), '/') : '';
+        if ($root === '' || $prefix === '' || strpos($prefix, '..') !== false || !is_dir($root)) {
+            return null;
+        }
+
+        $public = isset($source['public']) ? trim(str_replace('\\', '/', (string)$source['public']), '/') : '';
+        if ($public === '' || strpos($public, '..') !== false) {
+            return null;
+        }
+
+        $category = isset($source['category']) ? $this->normalizeKey($source['category']) : '';
+        if ($category === '') {
+            $category = 'module-' . $prefix;
+        }
+
+        $source['key'] = isset($source['key']) && $source['key'] !== ''
+            ? (string)$source['key']
+            : $prefix;
+        $source['prefix'] = $prefix;
+        $source['root'] = $root;
+        $source['public'] = $public;
+        $source['recursive'] = !empty($source['recursive']);
+        $source['category'] = $category;
+        $source['category_label'] = isset($source['category_label']) ? (string)$source['category_label'] : '';
+        $source['category_icon'] = isset($source['category_icon']) ? (string)$source['category_icon'] : '';
+        $source['category_order'] = isset($source['category_order']) && is_numeric($source['category_order'])
+            ? (int)$source['category_order']
+            : 60;
+        $source['audience'] = isset($source['audience']) && is_array($source['audience'])
+            ? array_values(array_intersect(array('user', 'agent'), $source['audience']))
+            : array();
+        $source['title'] = isset($source['title']) ? (string)$source['title'] : '';
+        $source['module'] = isset($source['module']) ? (string)$source['module'] : '';
+
+        $this->sourceCategoryDefaults[$category] = array(
+            'label' => $source['category_label'] !== '' ? $source['category_label'] : $this->humanize($source['module'] !== '' ? $source['module'] : $prefix),
+            'icon' => $source['category_icon'] !== '' ? $source['category_icon'] : 'package',
+            'order' => $source['category_order'],
+        );
+
+        return $source;
     }
 
     /**
@@ -72,39 +238,20 @@ final class MDKnowledgeBase
         }
 
         $documents = array();
-        if (is_dir($this->root)) {
-            try {
-                $directory = new RecursiveDirectoryIterator($this->root, FilesystemIterator::SKIP_DOTS);
-                $filter = new RecursiveCallbackFilterIterator(
-                    $directory,
-                    function (SplFileInfo $file) {
-                        if ($file->isDir()) {
-                            $name = $file->getFilename();
-                            return $name === '' || $name[0] !== '.';
-                        }
-                        return strtolower($file->getExtension()) === 'md';
-                    }
-                );
-
-                foreach (new RecursiveIteratorIterator($filter) as $file) {
-                    if (!$file->isFile() || strtolower($file->getExtension()) !== 'md') {
-                        continue;
-                    }
-                    $path = str_replace('\\', '/', $file->getPathname());
-                    if (strncmp($path, $this->root . '/', strlen($this->root) + 1) !== 0) {
-                        continue;
-                    }
-                    $relative = substr($path, strlen($this->root) + 1);
-                    $id = substr($relative, 0, -3);
-                    $document = $this->readDocument($relative, $id, $path);
-                    if ($document !== null) {
+        foreach ($this->sources as $source) {
+            foreach ($this->scanSource($source) as $relative => $absolutePath) {
+                $id = substr($relative, 0, -3);
+                if ($source['prefix'] !== '') {
+                    $id = $source['prefix'] . '/' . $id;
+                }
+                $document = $this->readDocument($relative, $id, $absolutePath, $source);
+                if ($document !== null) {
+                    // A module source must never silently replace a manual
+                    // `docs/` article with the same id.
+                    if (!isset($documents[$id])) {
                         $documents[$id] = $document;
                     }
                 }
-            } catch (Exception $e) {
-                $documents = array();
-            } catch (Throwable $e) {
-                $documents = array();
             }
         }
 
@@ -144,12 +291,31 @@ final class MDKnowledgeBase
         }
 
         $document = $documents[$id];
-        $renderer = new MDMarkdownRenderer($id, $documents, $this->root, $this->rootHtml);
+        $renderer = new MDMarkdownRenderer($id, $documents, $this->root, $this->rootHtml, $this->rendererSources());
         $rendered = $renderer->render($document['body']);
         $document['html'] = $rendered['html'];
         $document['toc'] = $rendered['toc'];
 
         return $document;
+    }
+
+    /**
+     * Sources in the shape expected by the Markdown renderer.
+     *
+     * @return array<int,array{prefix:string,root:string,public:string}>
+     */
+    private function rendererSources()
+    {
+        $sources = array();
+        foreach ($this->sources as $source) {
+            $sources[] = array(
+                'prefix' => (string)$source['prefix'],
+                'root' => (string)$source['root'],
+                'public' => trim((string)$source['public'], '/'),
+            );
+        }
+
+        return $sources;
     }
 
     /**
@@ -219,11 +385,11 @@ final class MDKnowledgeBase
     /**
      * Aggregate counters for the page hero/KPI.
      *
-     * @return array{total:int,user:int,agent:int,categories:int}
+     * @return array{total:int,user:int,agent:int,categories:int,modules:int}
      */
     public function stats()
     {
-        $stats = array('total' => 0, 'user' => 0, 'agent' => 0, 'categories' => 0);
+        $stats = array('total' => 0, 'user' => 0, 'agent' => 0, 'categories' => 0, 'modules' => 0);
         $categories = array();
         foreach ($this->documents() as $document) {
             $stats['total']++;
@@ -232,6 +398,9 @@ final class MDKnowledgeBase
             }
             if (in_array('agent', $document['audience'], true)) {
                 $stats['agent']++;
+            }
+            if (!empty($document['is_module'])) {
+                $stats['modules']++;
             }
             $categories[$document['category_key']] = true;
         }
@@ -302,6 +471,66 @@ final class MDKnowledgeBase
     }
 
     /**
+     * Scan one source directory for Markdown files.
+     *
+     * @param array<string,mixed> $source
+     * @return array<string,string> Relative path (with `.md`) => absolute path.
+     */
+    private function scanSource(array $source)
+    {
+        $root = $source['root'];
+        $files = array();
+        if (!is_dir($root)) {
+            return $files;
+        }
+
+        try {
+            if ($source['recursive']) {
+                $directory = new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS);
+                $filter = new RecursiveCallbackFilterIterator(
+                    $directory,
+                    function (SplFileInfo $file) {
+                        if ($file->isDir()) {
+                            $name = $file->getFilename();
+                            return $name === '' || $name[0] !== '.';
+                        }
+                        return strtolower($file->getExtension()) === 'md';
+                    }
+                );
+                $iterator = new RecursiveIteratorIterator($filter);
+            } else {
+                $iterator = new DirectoryIterator($root);
+            }
+
+            foreach ($iterator as $file) {
+                if (!$file->isFile() || strtolower($file->getExtension()) !== 'md') {
+                    continue;
+                }
+                if (!$source['recursive'] && $file->getFilename() !== 'README.md') {
+                    continue;
+                }
+                $path = str_replace('\\', '/', $file->getPathname());
+                if (strncmp($path, $root . '/', strlen($root) + 1) !== 0) {
+                    continue;
+                }
+                $relative = substr($path, strlen($root) + 1);
+                if (strpos($relative, '..') !== false) {
+                    continue;
+                }
+                $files[$relative] = $path;
+            }
+        } catch (Exception $e) {
+            return array();
+        } catch (Throwable $e) {
+            return array();
+        }
+
+        ksort($files);
+
+        return $files;
+    }
+
+    /**
      * Read and normalise one Markdown file.
      *
      * @param string $relative
@@ -309,7 +538,7 @@ final class MDKnowledgeBase
      * @param string $absolutePath
      * @return array<string,mixed>|null
      */
-    private function readDocument($relative, $id, $absolutePath)
+    private function readDocument($relative, $id, $absolutePath, array $source = array())
     {
         $raw = @file_get_contents($absolutePath);
         if (!is_string($raw)) {
@@ -318,12 +547,18 @@ final class MDKnowledgeBase
 
         list($meta, $body) = $this->splitFrontMatter($raw);
 
+        $sourcePrefix = isset($source['prefix']) ? (string)$source['prefix'] : '';
+        $sourceCategory = isset($source['category']) ? (string)$source['category'] : '';
         $top = strtok($relative, '/');
         $isRootDocument = ($top === $relative);
         $metaCategory = isset($meta['category']) && is_string($meta['category']) ? trim($meta['category']) : '';
-        $categoryKey = $metaCategory !== ''
-            ? $this->normalizeKey($metaCategory)
-            : ($isRootDocument ? 'general' : $this->normalizeKey((string)$top));
+        if ($metaCategory !== '') {
+            $categoryKey = $this->normalizeKey($metaCategory);
+        } elseif ($sourceCategory !== '') {
+            $categoryKey = $sourceCategory;
+        } else {
+            $categoryKey = $isRootDocument ? 'general' : $this->normalizeKey((string)$top);
+        }
         if ($categoryKey === '') {
             $categoryKey = 'general';
         }
@@ -346,8 +581,8 @@ final class MDKnowledgeBase
             : '';
         $description = $metaDescription !== '' ? $metaDescription : $this->extractDescription($body);
 
-        $audience = $this->resolveAudience($meta, $relative, $isRootDocument);
-        $tags = $this->resolveTags($meta, $relative, $isRootDocument);
+        $audience = $this->resolveAudience($meta, $relative, $isRootDocument, $source);
+        $tags = $this->resolveTags($meta, $relative, $isRootDocument, $source);
 
         $plainText = $this->plainText($body);
         $words = $this->wordCount($plainText);
@@ -361,12 +596,14 @@ final class MDKnowledgeBase
         $search = mb_strtolower(
             $title . ' ' . $description . ' ' . $category['label'] . ' '
             . implode(' ', $tags) . ' ' . implode(' ', $headings) . ' '
+            . (isset($source['title']) ? (string)$source['title'] . ' ' : '')
             . mb_substr($body, 0, 2000, 'UTF-8'),
             'UTF-8'
         );
         $search = preg_replace('/\s+/u', ' ', $search);
 
         $updated = @filemtime($absolutePath);
+        $isModule = $sourcePrefix !== '';
 
         return array(
             'id' => $id,
@@ -393,7 +630,47 @@ final class MDKnowledgeBase
             'icon' => isset($meta['icon']) && is_string($meta['icon']) && $meta['icon'] !== ''
                 ? $meta['icon']
                 : $category['icon'],
+            'source_key' => isset($source['key']) ? (string)$source['key'] : 'docs',
+            'source_prefix' => $sourcePrefix,
+            'source_root' => isset($source['root']) ? (string)$source['root'] : $this->root,
+            'source_public' => isset($source['public']) ? trim((string)$source['public'], '/') : 'docs',
+            'source_label' => $this->sourceLabel($source, $relative),
+            'source_url' => $this->buildSourceUrl($source, $relative),
+            'is_module' => $isModule ? 1 : 0,
+            'module' => isset($source['module']) ? (string)$source['module'] : '',
+            'module_title' => isset($source['title']) ? (string)$source['title'] : '',
         );
+    }
+
+    /**
+     * Public URL of a source file.
+     *
+     * @param array<string,mixed> $source
+     * @param string $relative
+     * @return string
+     */
+    private function buildSourceUrl(array $source, $relative)
+    {
+        $public = isset($source['public']) ? trim(str_replace('\\', '/', (string)$source['public']), '/') : 'docs';
+        if ($public === '') {
+            $public = 'docs';
+        }
+
+        return rtrim($this->rootHtml, '/') . '/' . $public . '/' . $this->encodePath($relative);
+    }
+
+    /**
+     * Human-readable source label ("docs/..." or "modules/<name>/docs/...").
+     *
+     * @param array<string,mixed> $source
+     * @param string $relative
+     * @return string
+     */
+    private function sourceLabel(array $source, $relative)
+    {
+        $public = isset($source['public']) ? trim(str_replace('\\', '/', (string)$source['public']), '/') : 'docs';
+
+        return ($public !== '' ? $public : 'docs') . '/' . $relative;
     }
 
     /**
@@ -465,9 +742,10 @@ final class MDKnowledgeBase
      * @param array<string,mixed> $meta
      * @param string $relative
      * @param bool $isRootDocument
+     * @param array<string,mixed> $source
      * @return array<int,string>
      */
-    private function resolveAudience(array $meta, $relative, $isRootDocument)
+    private function resolveAudience(array $meta, $relative, $isRootDocument, array $source = array())
     {
         $raw = array();
         if (isset($meta['audience'])) {
@@ -490,7 +768,9 @@ final class MDKnowledgeBase
         }
 
         if ($audience === array()) {
-            if ($isRootDocument) {
+            if (isset($source['audience']) && is_array($source['audience']) && $source['audience'] !== array()) {
+                $audience = $source['audience'];
+            } elseif ($isRootDocument) {
                 $audience = array('user', 'agent');
             } else {
                 $top = strtok($relative, '/');
@@ -522,9 +802,10 @@ final class MDKnowledgeBase
      * @param array<string,mixed> $meta
      * @param string $relative
      * @param bool $isRootDocument
+     * @param array<string,mixed> $source
      * @return array<int,string>
      */
-    private function resolveTags(array $meta, $relative, $isRootDocument)
+    private function resolveTags(array $meta, $relative, $isRootDocument, array $source = array())
     {
         $tags = array();
         $raw = array();
@@ -549,6 +830,11 @@ final class MDKnowledgeBase
                     $tags[] = $segments[$i];
                 }
             }
+        }
+
+        if (isset($source['module']) && $source['module'] !== '') {
+            $tags[] = 'модуль';
+            $tags[] = (string)$source['module'];
         }
 
         $unique = array();
@@ -597,6 +883,10 @@ final class MDKnowledgeBase
      */
     private function categoryDefaults($key)
     {
+        if (isset($this->sourceCategoryDefaults[$key])) {
+            return $this->sourceCategoryDefaults[$key];
+        }
+
         $defaults = array(
             'general' => array('label' => 'Общие материалы', 'icon' => 'book', 'order' => 0),
             'user' => array('label' => 'Для пользователя', 'icon' => 'user', 'order' => 10),

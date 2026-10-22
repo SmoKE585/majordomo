@@ -12,7 +12,17 @@ description: Как устроен раздел «База знаний», от�
 
 ## 1. Что попадёт в раздел
 
-В раздел попадают все файлы `docs/**/*.md`. Служебные каталоги и картинки игнорируются. Новый файл появляется в списке на следующем запросе, пересобирать ничего не нужно.
+В раздел попадают все файлы `docs/**/*.md` и документация **установленных** модулей:
+
+| Источник | Что сканируется | Идентификатор | URL |
+| --- | --- | --- | --- |
+| Ядро | `docs/**/*.md` | путь без `.md` | `/panel/knowledge_base/<path>.html` |
+| Модуль | `modules/<name>/docs/**/*.md` | `module/<name>/<path>` | `/panel/knowledge_base/module/<name>/<path>.html` |
+| Модуль без `docs/` | `modules/<name>/README.md` | `module/<name>/README` | `/panel/knowledge_base/module/<name>/README.html` |
+
+Служебные каталоги и картинки игнорируются. Новый файл появляется в списке на следующем запросе, пересобирать ничего не нужно.
+
+Документация модуля видна **только пока модуль установлен** (`cms/modules_installed/<name>.installed`). После удаления модуля его материалы исчезают из раздела автоматически. Это позволяет каждому модулю поставлять собственную инструкцию рядом с кодом, не дублируя её в `docs/`.
 
 Путь файла одновременно является идентификатором материала:
 
@@ -21,6 +31,7 @@ description: Как устроен раздел «База знаний», от�
 | `docs/README.md` | `README` | `/panel/knowledge_base/README.html` |
 | `docs/user/commands.md` | `user/commands` | `/panel/knowledge_base/user/commands.html` |
 | `docs/agents/AGENTS.md` | `agents/AGENTS` | `/panel/knowledge_base/agents/AGENTS.html` |
+| `modules/yandexhome/docs/setup.md` | `module/yandexhome/setup` | `/panel/knowledge_base/module/yandexhome/setup.html` |
 
 ## 2. Метки и аудитория
 
@@ -34,6 +45,7 @@ description: Как устроен раздел «База знаний», от�
 | `docs/dev/**` | агент |
 | `docs/archive/**` | агент |
 | `docs/*.md` | пользователь и агент |
+| `modules/<name>/**` | пользователь и агент |
 
 Пример front matter:
 
@@ -68,6 +80,17 @@ description: Короткое описание для карточки в спи
 
 Стандартные категории: `general`, `user`, `agents`, `deploy`, `dev`, `archive`. Для новой категории достаточно указать её ключ и, при желании, `category_label`/`category_icon` в одном из файлов.
 
+Документы модулей по умолчанию попадают в отдельную категорию `module-<name>` с названием модуля и иконкой `package`. Название можно переопределить во front matter:
+
+```markdown
+---
+title: Настройка Yandex Home
+category_label: Yandex Home
+category_icon: home-bolt
+order: 10
+---
+```
+
 ## 3. Разметка
 
 Рендерер поддерживает безопасное подмножество GitHub-flavoured Markdown:
@@ -86,7 +109,7 @@ description: Короткое описание для карточки в спи
 
 | Файл | Назначение |
 | --- | --- |
-| `lib/knowledge_base.php` | Реестр документов, front matter, категории, аудитория, поиск. |
+| `lib/knowledge_base.php` | Реестр документов, front matter, категории, аудитория, поиск, источники установленных модулей. |
 | `lib/markdown.php` | Безопасный рендерер Markdown. |
 | `modules/knowledge_base/knowledge_base.class.php` | Модуль админки, данные для шаблонов. |
 | `templates/knowledge_base/` | Список, статья и состояние «не найдено». |
@@ -97,6 +120,7 @@ description: Короткое описание для карточки в спи
 ## 5. Правила
 
 - Не дублируйте текст инструкции в шаблоне: пишите Markdown в `docs/`.
+- Документацию конкретного модуля держите в `modules/<name>/docs/` — она появится в базе знаний только у установленного модуля. Не копируйте её в `docs/`.
 - Для пользовательских инструкций используйте `audience: user`, для технических — `agent`.
 - Не добавляйте сырой HTML и `<script>`: рендерер всё экранирует.
 - Не подключайте сторонние библиотеки для разметки: используется собственный безопасный рендерер.

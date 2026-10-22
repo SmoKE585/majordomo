@@ -1,5 +1,7 @@
 (() => {
     'use strict';
+    const MAX_RULES = 32;
+    const MAX_CONDITIONS = 16;
     const init = (root = document) => {
         const pages = [...root.querySelectorAll('[data-md-modes]')];
         if (root.matches?.('[data-md-modes]')) pages.unshift(root);
@@ -16,14 +18,34 @@
             };
             const updateCondition = condition => showFields(condition, '[data-condition-fields]', condition.querySelector('[data-condition-type]').value);
             const updateRule = rule => {
-                showFields(rule, '[data-trigger-fields]', rule.querySelector('[data-rule-trigger]').value);
+                const trigger = rule.querySelector('[data-rule-trigger]');
+                if (trigger.value === 'time') {
+                    const at = rule.querySelector('[name$="[at]"]');
+                    if (at && !at.value) at.value = '23:00';
+                }
+                showFields(rule, '[data-trigger-fields]', trigger.value);
                 rule.querySelectorAll('[data-mode-condition]').forEach(updateCondition);
             };
+            const ruleItems = () => rules ? [...rules.querySelectorAll('[data-mode-rule]')] : [];
+            const syncLimits = () => {
+                const items = ruleItems();
+                const addRule = page.querySelector('[data-add-rule]');
+                if (addRule) addRule.disabled = items.length >= MAX_RULES;
+                items.forEach(rule => {
+                    const addCondition = rule.querySelector('[data-add-condition]');
+                    if (addCondition) addCondition.disabled = rule.querySelectorAll('[data-mode-condition]').length >= MAX_CONDITIONS;
+                });
+            };
             const refresh = () => {
-                const items = rules ? [...rules.querySelectorAll('[data-mode-rule]')] : [];
-                items.forEach((rule, index) => { rule.querySelector('[data-rule-number]').textContent = String(index + 1); updateRule(rule); });
+                const items = ruleItems();
+                items.forEach((rule, index) => {
+                    const number = rule.querySelector('[data-rule-number]');
+                    if (number) number.textContent = String(index + 1);
+                    updateRule(rule);
+                });
                 const empty = page.querySelector('[data-rules-empty]');
                 if (empty) empty.hidden = items.length > 0;
+                syncLimits();
             };
             const clone = (selector, substitutions) => {
                 const fragment = page.querySelector(selector).content.cloneNode(true);
@@ -36,6 +58,7 @@
                 });
                 return fragment;
             };
+            const bootWidgets = element => window.MDJAdminUI?.initBootstrapWidgets?.(element);
             page.querySelectorAll('[data-mode-action]').forEach(action => showFields(action, '[data-action-fields]', action.querySelector('[data-action-type]').value));
             page.addEventListener('change', event => {
                 if (event.target.matches('[data-rule-trigger]')) updateRule(event.target.closest('[data-mode-rule]'));
@@ -47,29 +70,37 @@
                 }
             });
             page.addEventListener('click', event => {
-                if (event.target.closest('[data-add-rule]') && rules && rules.children.length < 32) {
+                if (event.target.closest('[data-add-rule]') && rules && ruleItems().length < MAX_RULES) {
                     const index = String(++sequence);
                     rules.append(clone('[data-rule-template]', { '__R__': index }));
                     rules.lastElementChild.dataset.ruleIndex = index;
                     refresh();
+                    bootWidgets(rules.lastElementChild);
                     rules.lastElementChild.querySelector('select')?.focus();
                 }
                 const addCondition = event.target.closest('[data-add-condition]');
                 if (addCondition) {
                     const rule = addCondition.closest('[data-mode-rule]');
                     const list = rule.querySelector('[data-mode-conditions]');
-                    if (list.children.length >= 16) return;
+                    if (list.children.length >= MAX_CONDITIONS) return;
                     const ruleIndex = rule.dataset.ruleIndex || rule.querySelector('[data-rule-trigger]').name.match(/^rules\[([^\]]+)\]/)[1];
                     list.append(clone('[data-condition-template]', { '__R__': ruleIndex, '__C__': String(++sequence) }));
                     updateCondition(list.lastElementChild);
+                    syncLimits();
+                    bootWidgets(list.lastElementChild);
                     list.lastElementChild.querySelector('select')?.focus();
                 }
                 const removeRule = event.target.closest('[data-remove-rule]');
-                if (removeRule) { removeRule.closest('[data-mode-rule]').remove(); refresh(); page.querySelector('[data-add-rule]')?.focus(); }
+                if (removeRule) {
+                    removeRule.closest('[data-mode-rule]').remove();
+                    refresh();
+                    page.querySelector('[data-add-rule]')?.focus();
+                }
                 const removeCondition = event.target.closest('[data-remove-condition]');
                 if (removeCondition) {
                     const rule = removeCondition.closest('[data-mode-rule]');
                     removeCondition.closest('[data-mode-condition]').remove();
+                    syncLimits();
                     rule.querySelector('[data-add-condition]')?.focus();
                 }
             });
