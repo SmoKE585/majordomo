@@ -82,7 +82,11 @@ final class CycleManager
         $watchdog = new CycleWatchdog(Config::int('CYCLE_HEARTBEAT_TIMEOUT', 120), Config::int('CYCLE_STARTUP_TIMEOUT', 180), Config::arrayValue('CYCLE_TIMEOUTS'), defined('JOBS_EXECUTION_TIMEOUT') ? (int)JOBS_EXECUTION_TIMEOUT : 300);
         $online = $updated > 0 && $updated <= time() + 5 && (time() - $updated) < $watchdog->timeout($name);
 
-        if ($desired === CycleStateStore::DISABLED) {
+        if (CycleSupervisor::configurationDisabled($name)) {
+            $runtimeStatus = 'disabled';
+            $online = false;
+            $details = 'WebSockets disabled by configuration';
+        } elseif ($desired === CycleStateStore::DISABLED) {
             $runtimeStatus = 'disabled';
         } elseif ($desired === CycleStateStore::STOPPED) {
             $runtimeStatus = $online ? 'stopping' : 'stopped';

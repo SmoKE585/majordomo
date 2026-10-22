@@ -3,6 +3,7 @@
 namespace MajorDoMo\Core\Cycles;
 
 use MajorDoMo\Core\Core;
+use MajorDoMo\Core\Config;
 
 /**
  * Supervisor-side reconciler.
@@ -59,12 +60,17 @@ final class CycleSupervisor
 
     public function isDesiredRunning(string $name): bool
     {
-        return $this->store->desired($name) === CycleStateStore::RUNNING;
+        return $this->store->desired($name) === CycleStateStore::RUNNING && !self::configurationDisabled($name);
+    }
+
+    public static function configurationDisabled(string $name): bool
+    {
+        return in_array($name, array('cycle_websockets', 'cycle_wscache'), true) && Config::bool('DISABLE_WEBSOCKETS');
     }
 
     public function isDisabled(string $name): bool
     {
-        return $this->store->desired($name) === CycleStateStore::DISABLED;
+        return $this->store->desired($name) === CycleStateStore::DISABLED || self::configurationDisabled($name);
     }
 
     public function isStoppedByUser(string $name): bool
@@ -91,7 +97,8 @@ final class CycleSupervisor
     public function reconcile(array $names, array $isRunning, array &$toStart, array &$toStop): void
     {
         foreach ($names as $name) {
-            $desired = $this->store->desired($name);
+            $configurationDisabled = self::configurationDisabled($name);
+            $desired = $configurationDisabled ? CycleStateStore::DISABLED : $this->store->desired($name);
             $generation = $this->store->generation($name);
             $seen = $this->seenGenerations[$name] ?? 0;
 
@@ -99,7 +106,7 @@ final class CycleSupervisor
                 unset($toStart[$name]);
                 if (isset($isRunning[$name]) && !isset($toStop[$name])) {
                     $toStop[$name] = time();
-                    $this->setStatus($name, 'stopping', $desired === CycleStateStore::DISABLED ? 'Disabled by administrator' : 'Stopped by administrator');
+                    $this->setStatus($name, 'stopping', $configurationDisabled ? 'WebSockets disabled by configuration' : ($desired === CycleStateStore::DISABLED ? 'Disabled by administrator' : 'Stopped by administrator'));
                 }
                 continue;
             }

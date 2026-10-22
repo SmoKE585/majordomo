@@ -539,7 +539,7 @@ foreach ($cycles as $path) {
                 $reason = $cycleSupervisor->isDisabled($title) ? 'disabled' : 'stopped';
                 DebMes("Cycle " . $title . " " . $reason . ". Skipping.", 'boot');
                 setCycleRuntimeStatus($title, $cycleSupervisor->isDisabled($title) ? 'disabled' : 'stopped', 'Not started by supervisor: ' . $reason);
-                if ($cycleSupervisor->isDisabled($title)) {
+                if ($cycleSupervisor->isDisabled($title) && !\MajorDoMo\Core\Cycles\CycleSupervisor::configurationDisabled($title)) {
                     setGlobal($title . 'Disabled', 1);
                 }
                 continue;
@@ -895,13 +895,15 @@ while (true) {
                         // Intentional stop/disable: this is not a crash and must
                         // not create system errors or trigger auto-recovery.
                         unset($to_start[$cycle_title], $to_stop[$cycle_title], $started_when[$cycle_title]);
-                        $desired = $cycleSupervisor->desired($cycle_title);
+                        $configurationDisabled = \MajorDoMo\Core\Cycles\CycleSupervisor::configurationDisabled($cycle_title);
+                        $disabled = $cycleSupervisor->isDisabled($cycle_title);
+                        $details = $configurationDisabled ? 'WebSockets disabled by configuration' : ($disabled ? 'Disabled by administrator' : 'Stopped by administrator');
                         setCycleRuntimeStatus(
                             $cycle_title,
-                            $desired === \MajorDoMo\Core\Cycles\CycleStateStore::DISABLED ? 'disabled' : 'stopped',
-                            $desired === \MajorDoMo\Core\Cycles\CycleStateStore::DISABLED ? 'Disabled by administrator' : 'Stopped by administrator'
+                            $disabled ? 'disabled' : 'stopped',
+                            $details
                         );
-                        addCycleRuntimeLog($cycle_title, 'Process stopped by administrator');
+                        addCycleRuntimeLog($cycle_title, $details);
                         continue;
                     }
                     $need_restart = !$stop_requested && !$new_process_running;

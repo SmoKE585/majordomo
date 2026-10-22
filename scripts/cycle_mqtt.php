@@ -17,6 +17,7 @@ set_time_limit(0);
 
 include_once(ROOT . "3rdparty/phpmqtt/phpMQTT.php");
 include_once(DIR_MODULES . "mqtt/mqtt.class.php");
+require_once DIR_MODULES . 'mqtt/MqttIntegrations.php';
 
 $latest_data_received = time();
 $max_no_data_timeout = 5 * 60; // 5 minutes
@@ -61,6 +62,9 @@ function procmsg($topic, $msg)
     global $mqtt_delay;
     global $mqtt_repeating_cache;
     global $mqtt_linked_paths;
+    global $mqtt_integrations;
+    // Subscribers receive the original event before MQTT strip/dedup filters.
+    if ($mqtt_integrations) $mqtt_integrations->receive($topic, $msg);
 
     if ($stripmode) {
         if (!$mqtt->hasLinkedPathWithPrefixInList($topic, $mqtt_linked_paths)) {
@@ -126,6 +130,7 @@ function mqttRunOnce()
     global $max_no_data_timeout;
     global $mqtt_linked_paths;
     global $mqtt_repeating_cache;
+    global $mqtt_integrations;
 
     $mqtt = new mqtt();
     $mqtt->getConfig();
@@ -146,6 +151,7 @@ function mqttRunOnce()
     $stripmode = !empty($mqtt->config['MQTT_STRIPMODE']) ? (int)$mqtt->config['MQTT_STRIPMODE'] : 0;
     $mqtt_delay = isset($mqtt->config['MQTT_DELAY']) ? (int)$mqtt->config['MQTT_DELAY'] : 5;
     $mqtt_linked_paths = $mqtt->getLinkedPathsSnapshot(true);
+    $mqtt_integrations = new MqttIntegrations();
 
     $mqtt_client = new Bluerhinos\phpMQTT($host, $port, $client_name);
     $mqtt_client->setReadLimits(\MajorDoMo\Core\Config::int('MQTT_MAX_PACKET_BYTES'), \MajorDoMo\Core\Config::float('MQTT_PACKET_TIMEOUT'));
@@ -161,6 +167,8 @@ function mqttRunOnce()
 
     $topics = array();
     $query_list = explode(',', $query);
+    $integration_topics = $mqtt_integrations->subscriptions();
+    $query_list = array_values(array_unique(array_merge($query_list, $integration_topics)));
     $total = count($query_list);
     echo date('H:i:s') . " Topics to watch: $query (Total: $total)\n";
     for ($i = 0; $i < $total; $i++) {
@@ -182,8 +190,9 @@ function mqttRunOnce()
         if ((time() - $latest_data_received) > $max_no_data_timeout) {
             setGlobal('cycle_mqttControl', 'restart');
         }
-        if (!empty($mqtt->config['MQTT_WRITE_METHOD']) && (int)$mqtt->config['MQTT_WRITE_METHOD'] == 2) {
-            try {
+        // Shared transport also sends commands from built-in integrations.
+        if ($integration_topics || (!empty($mqtt->config['MQTT_WRITE_METHOD']) && (int)$mqtt->config['MQTT_WRITE_METHOD'] === 2)) {
+        try {
             $queue = \MajorDoMo\Core\Core::queue()->claim('mqtt_queue', 100, 60);
             foreach ($queue as $mqtt_data) {
                 $topic = $mqtt_data['DATANAME'];
@@ -206,9 +215,9 @@ function mqttRunOnce()
                     \MajorDoMo\Core\Core::queue()->acknowledge($mqtt_data);
                 }
             }
-            } catch (Throwable $e) {
-                DebMes("Error in MQTT queue processing: " . $e->getMessage(), 'mqtt_error');
-            }
+        } catch (Throwable $e) {
+            DebMes("Error in MQTT queue processing: " . $e->getMessage(), 'mqtt_error');
+        }
         }
 
         if ((time() - $previous_heartbeat) >= 1) {

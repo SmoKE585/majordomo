@@ -7,6 +7,7 @@
 
 putenv('APP_ENV=testing');
 putenv('USE_REDIS=false');
+putenv('DISABLE_WEBSOCKETS=' . (($argv[1] ?? '') === 'websockets-disabled' ? '1' : '0'));
 require_once dirname(__DIR__) . '/lib/core.class.php';
 
 use MajorDoMo\Core\ConfigSchema;
@@ -119,6 +120,18 @@ try {
     $toStop = array();
     $supervisor->reconcile(array('cycle_test'), array('cycle_test' => 1), $toStart, $toStop);
     check(isset($toStop['cycle_test']) && isset($toStart['cycle_test']), 'supervisor restarts a running cycle on a new generation');
+
+    $websocketsDisabled = Config::bool('DISABLE_WEBSOCKETS');
+    foreach (array('cycle_wscache', 'cycle_websockets') as $name) {
+        check($supervisor->shouldStartAtBoot($name) === !$websocketsDisabled, $name . ' boot respects WebSocket configuration');
+        $state = $manager->state($name);
+        check(($state['status'] === 'disabled') === $websocketsDisabled && !$state['online'], $name . ' status respects WebSocket configuration');
+        check($state['desired'] === 'running', $name . ' configuration does not overwrite persistent preferences');
+        $toStart = array($name => time() + 2);
+        $toStop = array();
+        $supervisor->reconcile(array($name), array($name => 1), $toStart, $toStop);
+        check(isset($toStop[$name]) === $websocketsDisabled && isset($toStart[$name]) === !$websocketsDisabled, $name . ' recovery respects WebSocket configuration');
+    }
 } finally {
     foreach (glob($root . '/scripts/*.php') ?: array() as $file) {
         unlink($file);

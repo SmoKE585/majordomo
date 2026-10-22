@@ -9,12 +9,18 @@
 | --- | --- | --- | --- | --- |
 | `smarty3/` | 1.1 МБ | Smarty 3, шаблонизатор | `lib/parser.class.php` (`SMARTY_DIR`), `lib/jTemplate.class.php` | `smarty/smarty` |
 | `php-mailer/` | 204 КБ | PHPMailer 6 | `lib/general.class.php` (`sendMail`) | `phpmailer/phpmailer` |
-| `phpmqtt/` | 18 КБ | Минимальный MQTT-клиент | `modules/mqtt/mqtt.class.php`, `scripts/cycle_mqtt.php` | `php-mqtt/client` |
+| `phpmqtt/` | 24 КБ | Минимальный MQTT-клиент | `modules/mqtt/mqtt.class.php`, `scripts/cycle_mqtt.php` | `php-mqtt/client` |
 | `Paginator/` | 9 КБ | Постраничная навигация | `modules/actions_log/actions_log_search.inc.php` | `jasongrimes/paginator` |
 | `fonts/` | 1.2 МБ | Шрифт Rubik (woff2) | импорт Vite: `resources/js/app.js` → `../../3rdparty/fonts/rubik/rubik.css` | `@fontsource/rubik` (npm) |
 
 Итого ~2,5 МБ. Только `smarty3`, `php-mailer`, `phpmqtt` и `Paginator`
 подключаются из PHP; `fonts` — веб-ресурс.
+
+Локальная версия `phpmqtt/phpMQTT.php` содержит ограниченный приёмник пакетов:
+`setReadLimits()`, таймаут незавершённого пакета, ожидание сокета, потоковый
+пропуск слишком больших QoS 0 пакетов и обработку SUBACK в `proc()`.
+Переподключением после ошибки управляет внешний цикл. При замене библиотеки
+сохранить это поведение и прогнать `tests/network_memory_smoke.php`.
 
 ## 2. Что удалено (0 входящих ссылок)
 

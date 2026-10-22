@@ -155,6 +155,11 @@ class panel extends module
             }
         }
 
+        if (!defined('NO_DATABASE_CONNECTION') && !isModuleInstalled('zigbee')) {
+            require_once DIR_MODULES . 'zigbee/zigbee.class.php';
+            new zigbee();
+        }
+
         $requestedAction = isset($this->action) && is_scalar($this->action) ? trim((string)$this->action) : '';
         $requestedModuleValue = gr('md');
         $requestedModule = is_scalar($requestedModuleValue) ? trim((string)$requestedModuleValue) : '';
@@ -218,6 +223,7 @@ class panel extends module
             'jobs' => 'ti-calendar-check',
             'linkedobject' => 'ti-link',
             'mqtt' => 'ti-broadcast',
+            'zigbee' => 'ti-access-point',
             'pinghosts' => 'ti-server',
             'duration_input' => 'ti-hourglass',
             'blockly_code' => 'ti-puzzle',

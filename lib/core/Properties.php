@@ -184,6 +184,7 @@ final class Properties
             }
         }
 
+        $linked_operation_errors = array();
         $property_lock = $this->locks->acquire($object->id, $property);
         try {
             startMeasure('getPropertyByName');
@@ -348,7 +349,13 @@ final class Properties
                     $params['property'] = $property;
                     $params['value'] = $value;
                     $url = '/api/modulePropertySet/' . urlencode($linked_module);
-                    if (!Core::api()->request($url, 'GET', $params)) throw new RuntimeException('Linked operation was not queued');
+                    try {
+                        if (!Core::api()->request($url, 'GET', $params)) throw new RuntimeException('Linked operation was not queued');
+                    } catch (Throwable $e) {
+                        // The value is already saved. A failed notification to
+                        // one module must not suppress the property's ONCHANGE.
+                        $linked_operation_errors[] = $e;
+                    }
                     endMeasure('linkedModule' . $linked_module);
                 }
                 endMeasure('linkedModulesProcessing');
@@ -383,6 +390,10 @@ final class Properties
                     unset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']]);
                 }
             }
+        }
+
+        if ($linked_operation_errors) {
+            throw new RuntimeException(implode('; ', array_map(static fn($e) => $e->getMessage(), $linked_operation_errors)), 0, $linked_operation_errors[0]);
         }
 
         endMeasure('setProperty (' . $property . ')', 1);

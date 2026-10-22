@@ -28,17 +28,25 @@ final class OperationWorker
             $_SERVER['REQUEST_METHOD'] = 'GET';
             if ($item['DATANAME'] === 'method') {
                 $result = Core::objects()->call($data['target'], $params);
-            } elseif ($item['DATANAME'] === 'modulepropertyset') {
+            } elseif (in_array($item['DATANAME'], array('modulepropertyset', 'moduleevent'), true)) {
                 $name = $data['target'];
                 if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/D', $name)) throw new InvalidArgumentException('Invalid module name');
                 $file = DIR_MODULES . $name . '/' . $name . '.class.php';
                 if (!is_file($file)) {
+                    if ($item['DATANAME'] === 'moduleevent') throw new RuntimeException('Subscribed module is not installed');
                     // A deployment can briefly remove the file; confirm through normal retries.
                     if ((int)($item['ATTEMPTS'] ?? 1) < 3) throw new RuntimeException('Linked module is not installed');
                     return $this->removeStaleBinding($name, $params, 'module is not installed');
                 }
                 require_once $file;
                 if (!class_exists($name, false)) throw new RuntimeException('Linked module class was not loaded');
+                if ($item['DATANAME'] === 'moduleevent') {
+                    if (!method_exists($name, 'processSubscription')) throw new RuntimeException('Module has no subscription handler');
+                    $module = new $name();
+                    $details = $params['details'];
+                    if ($module->processSubscription($params['event'], $details) === false) throw new RuntimeException('Subscription handler returned false');
+                    return array('success' => true);
+                }
                 if (!method_exists($name, 'propertySetHandle')) {
                     return $this->removeStaleBinding($name, $params, 'module has no property handler');
                 }

@@ -93,6 +93,13 @@ class phpMQTT
         return false;
     }
 
+    private function checkKeepalive(): bool
+    {
+        if ($this->lastReceivedAt && $this->lastReceivedAt < time() - $this->keepalive * 2) return $this->failRead('MQTT broker keepalive timed out');
+        if ($this->timesinceping < time() - $this->keepalive) return $this->ping();
+        return true;
+    }
+
     private function readAvailable(int $length, float $wait): string|false
     {
         if (!is_resource($this->socket)) return false;
@@ -291,7 +298,7 @@ class phpMQTT
             $head .= chr($encodedByte);
         }
 
-        if ($this->_fwrite($head . $buffer) === false) return $this->failRead('Cannot send MQTT CONNECT');
+        if ($this->_fwrite($head . $buffer) === false) return false;
 
         $string = $this->read(4);
 
@@ -299,14 +306,13 @@ class phpMQTT
         if ($string[0] === chr(0x20) && $string[1] === chr(2) && $string[3] === chr(0)) {
             $this->_debugMessage('Connected to Broker');
         } else {
-            $this->_errorMessage(
+            return $this->failRead(
                 sprintf(
                     "Connection failed! (Error: 0x%02x 0x%02x)\n",
                     ord($string[0]),
                     ord($string[3])
                 )
             );
-            return $this->failRead('Broker rejected MQTT connection');
         }
 
         $this->timesinceping = time();
@@ -477,11 +483,7 @@ class phpMQTT
         $head[0] = chr($cmd);
         $head .= $this->setmsglength($i);
 
-        $header_sent = fwrite($this->socket, $head, strlen($head));
-        if (!$header_sent) {
-            return false;
-        }
-        return $this->_fwrite($buffer);
+        return $this->_fwrite($head . $buffer);
     }
 
     /**
@@ -505,7 +507,7 @@ class phpMQTT
             if ($ready === false) return $this->failRead('Cannot wait for MQTT socket write');
             if ($ready === 0) continue;
             $fwrite = fwrite($this->socket, substr($buffer, $written, 8192));
-            if ($fwrite === false) return $this->failRead('MQTT socket write failed');
+            if ($fwrite === false || $fwrite === 0) return $this->failRead('MQTT socket write failed or made no progress');
             $written += $fwrite;
         }
         return $buffer_length;
@@ -518,33 +520,27 @@ class phpMQTT
      *
      * @retrun bool|string
      */
+    public static function topicMatches(string $filter, string $topic): bool
+    {
+        $levels = explode('/', $filter);
+        $parts = explode('/', $topic);
+        if (str_starts_with($topic, '$') && in_array($levels[0], array('#', '+'), true)) return false;
+        foreach ($levels as $i => $level) {
+            if ($level === '#') return $i === count($levels) - 1;
+            if (!array_key_exists($i, $parts) || ($level !== '+' && $level !== $parts[$i])) return false;
+        }
+        return count($levels) === count($parts);
+    }
+
     public function message($msg)
     {
         $tlen = (ord($msg[0]) << 8) + ord($msg[1]);
         $topic = substr($msg, 2, $tlen);
         $msg = substr($msg, ($tlen + 2));
         $found = false;
+        $dispatched = array();
         foreach ($this->topics as $key => $top) {
-            if (preg_match(
-                '/^' . str_replace(
-                    '#',
-                    '.*',
-                    str_replace(
-                        '+',
-                        "[^\/]*",
-                        str_replace(
-                            '/',
-                            "\/",
-                            str_replace(
-                                '$',
-                                '\$',
-                                $key
-                            )
-                        )
-                    )
-                ) . '$/',
-                $topic
-            )) {
+            if (self::topicMatches($key, $topic)) {
                 $found = true;
 
                 if ($top['function'] === '__direct_return_message__') {
@@ -552,6 +548,11 @@ class phpMQTT
                 }
 
                 if (is_callable($top['function'])) {
+                    // Overlapping subscriptions must not duplicate one physical
+                    // packet for the same callback. Identical later packets
+                    // remain independent events (e.g. repeated motion).
+                    if (in_array($top['function'], $dispatched, true)) continue;
+                    $dispatched[] = $top['function'];
                     call_user_func($top['function'], $topic, $msg);
                 } else {
                     $this->_errorMessage('Message received on topic ' . $topic . ' but function is not callable.');
@@ -626,6 +627,7 @@ class phpMQTT
                 $discarded = $this->discardPacket;
                 $this->resetPacket();
                 $this->lastReceivedAt = time();
+                $result = true;
                 if (!$discarded && ($header >> 4) === 3) {
                     if (strlen($body) < 2) return $this->failRead('Truncated MQTT PUBLISH');
                     $topicLength = (ord($body[0]) << 8) + ord($body[1]);
@@ -635,16 +637,14 @@ class phpMQTT
                     if ($qos) $body = substr($body, 0, 2 + $topicLength) . substr($body, 4 + $topicLength);
                     $return = $this->message($body);
                     if ($qos && $this->_fwrite(chr(0x40) . chr(2) . $packetId) === false) return false;
-                    if (!is_bool($return)) return $return;
+                    if (!is_bool($return)) $result = $return;
                 }
-                return true;
+                return $this->checkKeepalive() ? $result : false;
             }
         } while (!$loop || microtime(true) < $iterationDeadline);
 
         if ($this->packetDeadline > 0 && microtime(true) >= $this->packetDeadline) return $this->failRead('Incomplete MQTT packet timed out');
-        if ($this->lastReceivedAt && $this->lastReceivedAt < time() - $this->keepalive * 2) return $this->failRead('MQTT broker keepalive timed out');
-        if ($this->timesinceping < time() - $this->keepalive && !$this->ping()) return false;
-        return true;
+        return $this->checkKeepalive();
     }
 
     /**

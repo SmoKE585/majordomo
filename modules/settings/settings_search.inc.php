@@ -217,7 +217,7 @@ if ($isSystemSection) {
         if (!empty($saveResult['ok'])) {
             $warnings = !empty($saveResult['warnings']) ? $saveResult['warnings'] : array();
             if (!empty($saveResult['reload'])) {
-                $warnings[] = 'Подключение к базе изменено. Основной цикл завершится, чтобы переподключиться; служба (systemd) должна запустить его снова.';
+                $warnings[] = 'Основной цикл завершится для применения настроек; служба (systemd) должна запустить его снова.';
             }
             if ($warnings !== array()) {
                 $_SESSION['md_settings_warnings'] = $warnings;

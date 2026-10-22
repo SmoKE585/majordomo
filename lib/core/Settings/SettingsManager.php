@@ -229,10 +229,12 @@ final class SettingsManager
         ConfigCache::clear($this->root);
 
         $dbChanged = $this->isDatabaseChanged($dbConfig);
+        $websocketsChanged = Config::bool('DISABLE_WEBSOCKETS') !== (($values['websockets_enabled'] ?? '0') !== '1');
         $manager = new CycleManager($this->root);
         $cycles = array();
         $reload = false;
-        if ($dbChanged) {
+        if ($dbChanged || $websocketsChanged) {
+            // The supervisor also needs the new flag before deciding which cycles to run.
             $manager->requestReload();
             $reload = true;
         } else {

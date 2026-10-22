@@ -114,6 +114,10 @@ function mdj_admin_route_table($rootHtml = null)
             => '?(panel:{action=mqtt})&md=mqtt&view_mode=delete_mqtt&id=\1',
         '/^' . $root . 'panel\/mqtt\/(\d+)\.html/is'
             => '?(panel:{action=mqtt})&md=mqtt&view_mode=edit_mqtt&id=\1',
+        '/^' . $root . 'panel\/zigbee\/(bridges|journal)\.html/is'
+            => '?(panel:{action=zigbee})&md=zigbee&view_mode=\1',
+        '/^' . $root . 'panel\/zigbee\/(device|property)\/(\d+)\.html/is'
+            => '?(panel:{action=zigbee})&md=zigbee&view_mode=\1&id=\2',
         '/^' . $root . 'panel\/popup\/(.+?)\.html/is'
             => '?(panel:{action=\1,print=1})&print=1',
         '/^' . $root . 'panel\/class\/(\d+)\.html/is'
@@ -1041,6 +1045,16 @@ function mdj_admin_build_pretty($state)
             'path' => '/panel/knowledge_base.html',
             'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
         );
+    }
+
+    if ($module === 'zigbee') {
+        if ($parents || $tab !== '') return null;
+        $path = null;
+        if ($id > 0 && in_array($view, array('device', 'property'), true)) $path = '/panel/zigbee/' . $view . '/' . $id . '.html';
+        if ($id <= 0 && in_array($view, array('bridges', 'journal'), true)) $path = '/panel/zigbee/' . $view . '.html';
+        if ($id <= 0 && $view === '') $path = '/panel/zigbee.html';
+        if ($path === null) return null;
+        return array('path' => $path, 'query' => mdj_admin_finish_extra($extra, $view, $module, true, $dropDataSource));
     }
 
     if ($module === 'mqtt') {
