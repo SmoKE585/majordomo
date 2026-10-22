@@ -88,6 +88,9 @@ final class MaintenanceGate
             'failed' => !empty($status['failed']),
             'started_at' => (int)($status['started_at'] ?? 0),
         );
+        if (!class_exists('MDJUI') && is_file($root . '/lib/ui/MDJUI.php')) {
+            require_once $root . '/lib/ui/MDJUI.php';
+        }
         ob_start();
         require $template;
         return (string)ob_get_clean();

@@ -1,122 +1,39 @@
 /*
- * Страница режима обслуживания. Подключается только при 503, поэтому живёт
- * отдельно от админского бандла и не тянет jQuery/Bootstrap.
- * 2026-10-22 — добавлено для деплоя.
+ * 503 — та же композиция, что у страницы входа: логотип, заголовок, карточка.
+ * Базовые токены, форма и кнопки берутся из admin.css/login.css.
+ * 2026-10-23 — переведено на стиль логина.
  */
-:root {
-    color-scheme: light dark;
-    --md-maintenance-bg: #f4f6fb;
-    --md-maintenance-card: #ffffff;
-    --md-maintenance-text: #172033;
-    --md-maintenance-muted: #667085;
-    --md-maintenance-accent: #4f6ef7;
-    --md-maintenance-border: #dfe4ee;
-    --md-maintenance-shadow: 0 24px 70px rgba(23, 32, 51, .12);
+.md-maintenance .md-auth__main {
+    max-width: 460px;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --md-maintenance-bg: #101522;
-        --md-maintenance-card: #171e2e;
-        --md-maintenance-text: #eef2ff;
-        --md-maintenance-muted: #a6b0c5;
-        --md-maintenance-accent: #8aa1ff;
-        --md-maintenance-border: #2a3448;
-        --md-maintenance-shadow: 0 24px 70px rgba(0, 0, 0, .45);
-    }
+.md-maintenance .md-card {
+    text-align: left;
 }
 
-* {
-    box-sizing: border-box;
-}
-
-html,
-body {
-    min-height: 100%;
-}
-
-body.md-maintenance {
-    margin: 0;
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background:
-        radial-gradient(circle at 15% 10%, rgba(79, 110, 247, .16), transparent 38%),
-        radial-gradient(circle at 85% 90%, rgba(79, 110, 247, .10), transparent 34%),
-        var(--md-maintenance-bg);
-    color: var(--md-maintenance-text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    line-height: 1.55;
-}
-
-.md-maintenance__card {
-    width: min(560px, 100%);
-    padding: 40px;
-    border: 1px solid var(--md-maintenance-border);
-    border-radius: 24px;
-    background: var(--md-maintenance-card);
-    box-shadow: var(--md-maintenance-shadow);
-}
-
-.md-maintenance__mark {
-    display: grid;
-    place-items: center;
-    width: 52px;
-    height: 52px;
-    margin-bottom: 22px;
-    border-radius: 16px;
-    background: rgba(79, 110, 247, .12);
-    color: var(--md-maintenance-accent);
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: 1px;
-}
-
-.md-maintenance--failed .md-maintenance__mark {
-    background: rgba(226, 74, 74, .13);
-    color: #e24a4a;
-}
-
-.md-maintenance__eyebrow {
-    margin: 0 0 8px;
-    color: var(--md-maintenance-accent);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-}
-
-.md-maintenance__title {
-    margin: 0 0 14px;
-    font-size: clamp(28px, 5vw, 38px);
-    line-height: 1.15;
-    letter-spacing: -.02em;
-}
-
-.md-maintenance__text {
-    margin: 0 0 18px;
-    font-size: 17px;
-}
-
-.md-maintenance__hint,
 .md-maintenance__meta {
-    margin: 8px 0 0;
-    color: var(--md-maintenance-muted);
+    margin: 0;
+    color: var(--md-ui-muted);
     font-size: 14px;
+    line-height: 1.55;
+    text-align: center;
 }
 
 .md-maintenance__meta a {
-    color: var(--md-maintenance-accent);
+    color: var(--md-ui-primary);
+}
+
+.md-maintenance__admin {
+    margin-top: 2px;
+    font-size: 13px;
+}
+
+.md-maintenance--failed .md-auth__title {
+    color: var(--md-ui-danger);
 }
 
 @media (max-width: 480px) {
-    body.md-maintenance {
-        padding: 16px;
-    }
-
-    .md-maintenance__card {
-        padding: 28px 22px;
-        border-radius: 20px;
+    .md-maintenance .md-auth__main {
+        max-width: none;
     }
 }
