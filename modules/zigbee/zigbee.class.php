@@ -115,7 +115,7 @@ class zigbee extends module
         if ($healthDeviceId && !$healthDevice) { http_response_code(404); $error = 'Устройство не найдено.'; }
         $healthSettings = $view === 'monitoring' ? $repo->healthSettings($healthDevice) : array();
         $healthInherit = $healthDevice && empty($healthDevice['HEALTH_CONFIG']);
-        if ($view === 'monitoring' && ($_POST['operation'] ?? '') === 'health_settings') {
+        if ($view === 'monitoring' && $error !== '' && ($_POST['operation'] ?? '') === 'health_settings') {
             try { $healthSettings = self::healthFromPost(); $healthInherit = self::posted('health_inherit') === '1'; }
             catch (Throwable $e) { if ($error === '') $error = $e->getMessage(); }
         }

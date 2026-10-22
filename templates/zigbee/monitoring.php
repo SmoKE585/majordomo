@@ -18,7 +18,7 @@ $scopeName = $healthDevice ? ($healthDevice['TITLE'] ?: $healthDevice['FRIENDLY_
     <?php if ($healthDevice): ?>
         <?= MDJUI::checkbox(array('name' => 'health_inherit', 'value' => '1', 'label' => 'Использовать общие настройки', 'checked' => (bool)$healthInherit, 'attrs' => array('x-model' => 'inherit'))) ?>
     <?php endif; ?>
-    <div class="md-ui-form-stack" x-show="!inherit">
+    <fieldset class="md-ui-form-stack" x-show="!inherit" :disabled="inherit" aria-label="Настройки мониторинга">
     <?php $card('Контроль состояния', static function () use ($s, $number): void { ?>
         <div class="md-ui-form-stack">
             <?= MDJUI::checkbox(array('name' => 'health_enabled', 'label' => 'Мониторинг включён', 'value' => '1', 'checked' => (bool)$s['enabled'])) ?>
@@ -79,7 +79,7 @@ $scopeName = $healthDevice ? ($healthDevice['TITLE'] ?: $healthDevice['FRIENDLY_
                 </div>
             </div>
         <?php }); endforeach; ?>
-    </div>
+    </fieldset>
     <div class="md-ui-form-actions">
         <?= MDJUI::button('Сохранить мониторинг', array('type' => 'submit', 'icon' => 'check')) ?>
         <?= MDJUI::button('Журнал событий', array('href' => $url('/journal'), 'variant' => 'ghost', 'icon' => 'list-details')) ?>

@@ -209,7 +209,7 @@ namespace {
     check(!MqttIntegrations::matches('root[v2].house/#', 'rootv2xhouse/device'), 'Regex-like roots do not match other topics');
 
     require ROOT . 'lib/admin_router.php';
-    foreach (array('/panel/zigbee/discovered.html', '/panel/zigbee/bridges.html', '/panel/zigbee/journal.html', '/panel/zigbee/device/3.html', '/panel/zigbee/property/7.html') as $path) {
+    foreach (array('/panel/zigbee/discovered.html', '/panel/zigbee/bridges.html', '/panel/zigbee/journal.html', '/panel/zigbee/monitoring.html', '/panel/zigbee/device/3.html', '/panel/zigbee/property/7.html') as $path) {
         $resolved = mdj_admin_resolve_path($path);
         check($resolved !== false && mdj_admin_pretty_url('/admin.php?' . http_build_query($resolved['query'])) === $path, 'Zigbee route round-trip: ' . $path);
     }
@@ -262,6 +262,9 @@ namespace {
     check($repo->binding((int)$motion['ID'])['LAST_DELIVERED'] === '0' && $repo->binding((int)$motion['ID'])['LAST_ERROR'] === null, 'Room retry completes and clears binding error');
 
     $health = HealthSettings::defaults();
+    check(Service::deviceImageUrl('MW783Z') === 'https://www.zigbee2mqtt.io/images/devices/MW783Z.png', 'Device photo comes from the official model catalogue');
+    check(Service::deviceImageUrl('A: B/C') === 'https://www.zigbee2mqtt.io/images/devices/A--B-C.png' && Service::deviceImageUrl('') === null, 'Model names follow frontend normalization and unknown models have no image request');
+    check(str_starts_with(Service::deviceImageUrl('https://evil.test/a?x="'), 'https://www.zigbee2mqtt.io/images/devices/') && !str_contains(Service::deviceImageUrl('https://evil.test/a?x="'), '?'), 'A model cannot choose an image host or inject URL parameters');
     check(!$health['events']['offline']['say'] && $health['timeout_battery'] === 0, 'Monitoring starts without unsolicited voice or sleep timeout assumptions');
     rejects(fn() => HealthSettings::validate(array('critical' => 30)), 'Invalid battery threshold ordering rejected');
     rejects(fn() => HealthSettings::validate(array('events' => array('offline' => array('code' => 'if (')))), 'PHP syntax checked without executing code');

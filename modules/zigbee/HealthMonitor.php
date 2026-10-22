@@ -125,6 +125,7 @@ final class HealthMonitor
             $state['current'] = $value; $state['previous'] = null; $state['revision'] = 1;
             $state['say'] = $state['code'] = array('revision' => 1, 'time' => $now);
             $state['journal'] = 1;
+            $state['reading'] = $reading;
             $this->persist($subject, $state); return; // first healthy state is silent
         }
         if ($previous !== $value) {
