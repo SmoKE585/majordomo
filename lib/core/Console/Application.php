@@ -33,7 +33,7 @@ final class Application
             new Commands\InstallStatusCommand(), new Commands\InstallCheckCommand(), new Commands\InstallTestDbCommand(),
             new Commands\InstallResetCommand(), new Commands\InstallCompleteCommand(),
             new Commands\UsersListCommand(), new Commands\UsersPasswordCommand(),
-            new Commands\AuthUnblockCommand(),
+            new Commands\AuthUnblockCommand(), new Commands\AuthResetCommand(),
             new Commands\ModesListCommand(), new Commands\ModesSetCommand(),
             new Commands\ApiTokensCommand(), new Commands\ApiRevokeCommand(), new Commands\ApiSpecCommand(),
             new Commands\WebSocketsServeCommand(),

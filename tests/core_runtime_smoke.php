@@ -270,6 +270,7 @@ try {
     check($network->inNetworks('192.168.1.5','192.168.1.0/24') && $network->inNetworks('::1','::1/128'), 'IPv4 and IPv6 CIDR matching');
     check($network->clientIp('203.0.113.1','192.168.1.1','') === '203.0.113.1', 'untrusted forwarded address cannot bypass access control');
     check($network->clientIp('127.0.0.1','not-an-ip','127.0.0.1/32') === '', 'invalid forwarded address cannot fall back to trusted loopback');
+    check($network->clientIp('127.0.0.1','','127.0.0.1/32') === '127.0.0.1', 'direct loopback request keeps its own address');
     check($network->clientIp('127.0.0.1','192.168.1.1','127.0.0.1/32') === '192.168.1.1', 'explicit trusted proxy works');
     $record = array('ID'=>"1' OR '1'='1",'VALUE'=>'injected'); SQLUpdate('settings',$record);
     check((int)SQLSelectOne("SELECT COUNT(*) AS C FROM settings WHERE VALUE='injected'")['C'] === 0, 'SQLUpdate quotes its condition value');

@@ -1,14 +1,30 @@
 <?php
 namespace MajorDoMo\Core\Auth;
-use MajorDoMo\Core\Config;
+use MajorDoMo\Core\{Config, NetworkAccess};
 
-/** One locked, bounded file makes the limit independent of cookies and workers. */
+/**
+ * Общая защита входа от перебора: счётчик попыток в одном файле под flock.
+ *
+ * Изменения: 2026-10-23 — попытка без определимого адреса клиента больше не
+ * попадает в общую запись. Раньше неизвестный адрес давал один ключ на всех,
+ * и три ошибки одного устройства (например, планшета за локальным прокси без
+ * X-Forwarded-For) блокировали вход всему дому. Теперь такие попытки
+ * проверяются как обычно, но в счётчик блокировки не идут и видны в auth.log.
+ */
 final class LoginAttempts
 {
     public function __construct(private string $root) {}
     public function attempt(string $ip, string $username, callable $verify, ?int $now = null): array
     {
         $now ??= time();
+        // Адрес не отличает одного гостя от другого: пустой (сервер не знает
+        // клиента) или адрес самого доверенного прокси. Блокировка по такому
+        // ключу заперла бы всех сразу, поэтому пароль проверяем, но не баним.
+        if ($this->unattributable($ip)) {
+            $verified = (bool)$verify();
+            $this->record($verified ? 'success_unattributed' : 'failure_unattributed', $ip, $username);
+            return array('ok' => $verified, 'retry' => 0);
+        }
         return $this->locked(function (array &$state) use ($ip, $username, $verify, $now): array {
             foreach ($state as $key => $entry) if (($entry['until'] ?? 0) <= $now && ($entry['since'] ?? 0) <= $now - 900) unset($state[$key]);
             $key = hash('sha256', $ip);
@@ -41,6 +57,38 @@ final class LoginAttempts
         if (filter_var($ip, FILTER_VALIDATE_IP) === false) throw new \InvalidArgumentException('Укажите IP-адрес.');
         $this->locked(static function (array &$state) use ($ip) { unset($state[hash('sha256', $ip)]); });
         $this->record('unblocked_cli', $ip, '');
+    }
+
+    /**
+     * Полный сброс счётчиков и блокировок (CLI `auth:reset`).
+     * Нужен, когда ключ блокировки не IP: например, пока адрес клиента не
+     * определялся, все записи шли под пустым ключом, и `auth:unblock` по IP
+     * такую блокировку снять не может.
+     *
+     * @return int сколько записей было в хранилище до сброса
+     */
+    public function reset(): int
+    {
+        $cleared = 0;
+        $this->locked(static function (array &$state) use (&$cleared): void {
+            $cleared = count($state);
+            $state = array();
+        });
+        $this->record('reset_cli', '', '');
+        return $cleared;
+    }
+
+    /**
+     * Адрес, по которому нельзя вести личный счёт попыток: он либо неизвестен
+     * (пустой), либо принадлежит доверенному прокси — тогда за ним стоит
+     * произвольное число разных клиентов. Loopback входит в список прокси
+     * всегда, поэтому «nginx на этом же хосте без X-Forwarded-For» тоже
+     * не становится общим ключом блокировки.
+     */
+    private function unattributable(string $ip): bool
+    {
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) return true;
+        return (new NetworkAccess())->inNetworks($ip, NetworkAccess::trustedProxies(Config::string('TRUSTED_PROXIES')));
     }
     public function record(string $event, string $ip, string $username): void
     {

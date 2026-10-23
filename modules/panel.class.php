@@ -227,6 +227,8 @@ class panel extends module
             'linkedobject' => 'ti-link',
             'mqtt' => 'ti-broadcast',
             'zigbee' => 'ti-access-point',
+            // 2026-10-23 — Tuya больше не показывает PNG-логотип в меню.
+            'tuya' => 'ti-plug-connected',
             'pinghosts' => 'ti-server',
             'yadevices' => 'ti-device-speaker',
             'yandexhome' => 'ti-home-bolt',

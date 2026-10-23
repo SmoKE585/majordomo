@@ -102,6 +102,18 @@ try {
     check(count(glob($root . '/var/events/*.json')) === 1, 'Repeated blocked requests do not duplicate event');
     check($attempts->attempt('203.0.113.2', 'admin', fn() => true, 1902)['ok'], 'Ban expires');
     for ($i = 0; $i < 3; $i++) $attempts->attempt('203.0.113.2', 'admin', $wrong, 2000 + $i);
+    // Планшет за локальным прокси без X-Forwarded-For не должен запирать всех:
+    // неизвестный адрес и адрес самого прокси не становятся общим ключом.
+    for ($i = 0; $i < 3; $i++) check($attempts->attempt('', 'tablet', $wrong, 2100 + $i)['retry'] === 0, 'Unknown client is never banned for everyone');
+    for ($i = 0; $i < 3; $i++) check($attempts->attempt('127.0.0.1', 'tablet', $wrong, 2200 + $i)['retry'] === 0, 'Loopback proxy address is not a shared ban key');
+    check(count(glob($root . '/var/events/*.json')) === 2, 'Unattributed failures create no brute-force event');
+    check($attempts->attempt('203.0.113.30', 'admin', fn() => true, 2300)['ok'], 'Other clients stay unaffected by unattributed failures');
+    $network = new NetworkAccess();
+    check($network->clientIp('127.0.0.1', '') === '127.0.0.1', 'Direct loopback request keeps its own address');
+    check($network->clientIp('', '') === '', 'Missing peer stays unknown');
+    check($network->clientIp('::ffff:192.0.2.5', '') === '192.0.2.5', 'IPv4-mapped address is normalized');
+    check($network->clientIp('127.0.0.1', '192.0.2.7') === '192.0.2.7' && $network->clientIp('127.0.0.1', '192.0.2.7,127.0.0.1') === '192.0.2.7', 'Loopback proxy forwards the client address');
+    check($network->clientIp('127.0.0.1', 'garbage') === '', 'Unreadable chain is unknown, not the proxy address');
     $db->exec('CREATE TABLE system_events (ID INTEGER PRIMARY KEY AUTOINCREMENT,NAME TEXT,PAYLOAD TEXT,SOURCE TEXT,CREATED TEXT,PROCESSED INTEGER)');
     $eventDatabase = new AuthEventFixture($db);
     EventBus::useDatabase(new \MajorDoMo\Core\Database($eventDatabase));
@@ -120,9 +132,13 @@ try {
     $cli = new \MajorDoMo\Core\Console\Application($root);
     check($cli->run(array('auth:unblock', '203.0.113.2', '--json'), $out, $err) === 0 && $attempts->attempt('203.0.113.2', 'admin', fn() => true, 2003)['ok'], 'CLI unblocks same state store');
     check($cli->run(array('auth:unblock', 'not-an-ip', '--json'), $out, $err) === 2, 'CLI validates IP');
+    for ($i = 0; $i < 3; $i++) $attempts->attempt('203.0.113.5', 'admin', $wrong, 3000 + $i);
+    check($attempts->attempt('203.0.113.5', 'admin', $wrong, 3100)['retry'] > 0, 'IP is banned before reset');
+    check($cli->run(array('auth:reset', '--json'), $out, $err) === 0, 'CLI resets all login counters');
+    check($attempts->attempt('203.0.113.5', 'admin', fn() => true, 3200)['ok'], 'Reset clears the active ban');
     fclose($out); fclose($err);
     $log = file_get_contents(glob($root . '/cms/debmes/*/auth.log')[0]);
-    check(str_contains($log, 'failure') && str_contains($log, 'banned') && str_contains($log, 'success') && !str_contains($log, 'old-secret'), 'Audit records attempts without passwords');
+    check(str_contains($log, 'failure') && str_contains($log, 'banned') && str_contains($log, 'success') && str_contains($log, 'failure_unattributed') && !str_contains($log, 'old-secret'), 'Audit records attempts without passwords');
     session_write_close();
     echo 'Auth smoke: ' . $checks . " passed (isolated SQLite).\n";
 } finally {

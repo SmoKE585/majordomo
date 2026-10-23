@@ -15,6 +15,8 @@ use \InvalidArgumentException;
  * 2026-10-22 — сценарии, сообщения и подписки вызывают функции ядра напрямую.
  * 2026-10-22 — ошибка внутреннего API показывает путь и причину отказа,
  *              а не только тип операции.
+ * 2026-10-23 — ошибка получения задания из очереди больше не обращается к
+ *              неинициализированному $item и не пишет предупреждение PHP.
  */
 final class OperationWorker
 {
@@ -31,6 +33,7 @@ final class OperationWorker
     {
         $data = array();
         $params = array();
+        $item = null;
         $auditStep = null;
         $auditError = null;
         $result = null;
@@ -154,7 +157,7 @@ final class OperationWorker
             foreach (array('object', 'property') as $key) {
                 if (isset($params[$key]) && is_string($params[$key])) $context[$key] = $params[$key];
             }
-            if ($item['DATANAME'] === 'api' && !empty($data['path'])) {
+            if (($item['DATANAME'] ?? '') === 'api' && !empty($data['path'])) {
                 $context['path'] = rawurldecode((string)$data['path']);
             }
             $result = array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage()

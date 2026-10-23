@@ -530,7 +530,10 @@ class events extends module
     {
         switch ($name) {
             case \MajorDoMo\Core\Events\SystemEvents::AUTH_BRUTE_FORCE:
-                return 'IP ' . (string)($payload['ip'] ?? '') . ': ' . (int)($payload['attempts'] ?? 0)
+                $ip = (string)($payload['ip'] ?? '');
+                // В старых записях адрес мог сохраниться пустым: «IP :» в
+                // журнале выглядит как сбой вёрстки, а не как «неизвестен».
+                return ($ip !== '' ? 'IP ' . $ip : 'IP не определён') . ': ' . (int)($payload['attempts'] ?? 0)
                     . ' неудачных попытки входа. Блокировка на 15 минут. Логин: ' . (string)($payload['login'] ?? '') . '.';
             case \MajorDoMo\Core\Events\SystemEvents::MODULE_INSTALLED:
                 return 'Модуль ' . (string)($payload['module'] ?? '') . ' установлен.';

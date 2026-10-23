@@ -179,6 +179,9 @@ final class SystemEvents
     /** Auth runs before the legacy runtime; publish durably without booting it. */
     public static function authBruteForce(string $root, string $ip, string $login, int $attempts, int $blockedUntil): void
     {
+        // Событие обязано называть конкретный адрес: по пустому IP его нельзя
+        // ни разобрать, ни снять командой auth:unblock.
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) return;
         EventBus::defer($root, self::AUTH_BRUTE_FORCE, array(
             'ip' => $ip, 'login' => mb_substr($login, 0, 255), 'attempts' => $attempts,
             'window_seconds' => 900, 'blocked_seconds' => 900, 'blocked_until' => $blockedUntil,

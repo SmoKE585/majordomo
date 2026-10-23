@@ -8,6 +8,10 @@ namespace MajorDoMo\Core;
  *
  * Изменения: 2026-10-22 — loopback всегда считается доверенным прокси, чтобы
  * схема «nginx → 127.0.0.1:80» работала без дополнительной настройки.
+ * Изменения: 2026-10-23 — clientIp() честно возвращает пустую строку, когда
+ * виден только прокси: такой адрес нельзя превращать в общий ключ блокировки
+ * (из-за него блокировались сразу все клиенты). Прямой loopback-запрос без
+ * X-Forwarded-For остаётся собой, а IPv4-в-IPv6 приводится к IPv4.
  */
 final class NetworkAccess
 {
@@ -51,17 +55,47 @@ final class NetworkAccess
         return false;
     }
 
+    /**
+     * Адрес исходного клиента для журнала, блокировок и аудита.
+     *
+     * Пустая строка означает «источник неизвестен»: запрос пришёл от
+     * доверенного прокси, но тот не передал пригодный X-Forwarded-For.
+     * Это не ошибка вызывающего кода, а сигнал «адрес не определить»:
+     * такой запрос нельзя приравнивать к общему адресу всех остальных.
+     */
     public function clientIp($peer, $forwarded = '', $trusted_proxies = '')
     {
         $trusted_proxies = self::trustedProxies($trusted_proxies);
+        $peer = self::normalizeIp((string)$peer);
+        if ($peer === '') return '';
+        // Заголовок подделывается одним запросом, поэтому адрес соединения
+        // важнее: X-Forwarded-For читаем только от доверенного прокси.
         if (!$this->inNetworks($peer, $trusted_proxies)) return $peer;
-        $chain = array_reverse(explode(',', (string)$forwarded));
-        foreach ($chain as $candidate) {
-            $candidate = trim($candidate);
-            if (filter_var($candidate, FILTER_VALIDATE_IP) === false) return '';
-
+        $forwarded = trim((string)$forwarded);
+        // Прямой loopback-запрос (локальный сервер разработки, CLI-проверка)
+        // сам является клиентом. Внешний доверенный прокси без заголовка —
+        // неоднозначен, и придумывать за него адрес нельзя.
+        if ($forwarded === '') return $this->inNetworks($peer, self::LOOPBACK_PROXIES) ? $peer : '';
+        if (strlen($forwarded) > 4096) return '';
+        foreach (array_reverse(explode(',', $forwarded)) as $candidate) {
+            $candidate = self::normalizeIp($candidate);
+            // Нечитаемое звено делает недостоверной всю цепочку.
+            if ($candidate === '') return '';
             if (!$this->inNetworks($candidate, $trusted_proxies)) return $candidate;
         }
-        return $peer;
+        // В цепочке только прокси: адреса клиента в запросе нет.
+        return '';
+    }
+
+    /** Приводит IPv4-в-IPv6 к IPv4; мусор превращает в пустую строку. */
+    private static function normalizeIp(string $ip): string
+    {
+        $ip = trim($ip);
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) return '';
+        $lower = strtolower($ip);
+        if (str_starts_with($lower, '::ffff:') && filter_var(substr($ip, 7), FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+            return substr($ip, 7);
+        }
+        return $ip;
     }
 }
