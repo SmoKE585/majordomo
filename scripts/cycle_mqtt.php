@@ -36,6 +36,7 @@ echo date("H:i:s") . " running " . basename(__FILE__) . PHP_EOL;
 
 while (1) {
     if (mqttShouldStop()) {
+        mqttLogStop();
         break;
     }
     try {
@@ -45,6 +46,7 @@ while (1) {
         echo date('Y-m-d H:i:s') . " MQTT cycle error: " . $e->getMessage() . PHP_EOL;
     }
     if (mqttShouldStop()) {
+        mqttLogStop();
         break;
     }
     sleep($mqtt_reconnect_delay);
@@ -205,6 +207,31 @@ function mqttShouldStop()
     return file_exists('./reboot');
 }
 
+/**
+ * Причина остановки цикла для журнала.
+ *
+ * Без неё цикл, завершившийся по флагу reboot, выглядит для супервизора как
+ * «неожиданное завершение (exit code 0, вероятна внутренняя ошибка в цикле)»:
+ * сообщение не указывает ни на причину, ни на файл-флаг.
+ */
+function mqttStopReason(): string
+{
+    if (isset($_GET['onetime'])) return 'onetime';
+    if (function_exists('isRebootRequired') && isRebootRequired()) return 'reboot flag';
+    if (file_exists(ROOT . 'reboot')) return 'reboot flag';
+    return 'stop requested';
+}
+
+function mqttLogStop(): void
+{
+    static $logged = false;
+    if ($logged) return;
+    $logged = true;
+    $reason = mqttStopReason();
+    echo date("H:i:s") . " stopping cycle (reason: " . $reason . ")" . PHP_EOL;
+    DebMes('MQTT cycle stopped: ' . $reason, 'mqtt_runtime');
+}
+
 function mqttRunOnce()
 {
     global $mqtt;
@@ -350,6 +377,7 @@ function mqttRunOnce()
             }
             setGlobal(str_replace('.php', '', basename(__FILE__)) . 'Run', time(), 1);
             if (mqttShouldStop()) {
+                mqttLogStop();
                 $mqtt_client->close();
                 return;
             }
