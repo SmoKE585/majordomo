@@ -66,6 +66,7 @@ try {
         'MAX_OUTPUT' => 512, 'ENABLED' => 1));
     $agents = new AgentCatalog($database, $models);
     $agentId = (int)$agents->all()[0]['ID'];
+    check((int)$agents->get($agentId)['MAX_STEPS'] === 0, 'Штатный агент создаётся без лимита вызовов.');
     $record = $agents->get($agentId);
     $record['MODEL_ID'] = $modelId;
     $record['TOOLS'] = array('find_objects', 'read_object');
@@ -134,6 +135,20 @@ try {
     $budget = new MajorDoMo\Modules\AiAssistant\RunBudget($budgetAccess, 30, 0, 120, static function (array $event): void {}, static fn(): float => 97);
     $budget->before(new NeuronAI\Agent\Nodes\ChatNode(), NeuronAI\Agent\Events\AIInferenceEvent::fromRequest($budgetState->request), $budgetState, $budgetResources);
     check($budgetResources->tools->all() === array() && $budgetAccess->calls() === 0, 'Перед таймаутом оставлено время на финальный ответ даже при неиспользованных шагах.');
+
+    $unlimitedAgent = $agents->get($agentId); $unlimitedAgent['MAX_STEPS'] = 0; $agents->save($agentId, $unlimitedAgent);
+    $unlimitedDialog = $chat->createDialog(1, $agentId, 'Без лимита', 'chat', array());
+    $chat->appendMessage($unlimitedDialog, 1, 'user', 'Проверь данные без лимита');
+    $unlimitedRun = $chat->beginRun($unlimitedDialog, 1, $agentId, 'Проверь данные без лимита');
+    $responses = array();
+    for ($step = 0; $step < 70; $step++) $responses[] = new ToolCallMessage(null,
+        array(new ToolCall('find_objects', 'unlimited-' . $step, array('query' => 'Lamp'))));
+    $responses[] = new AssistantMessage('Проверка без лимита завершена.');
+    $unlimitedFake = new FakeAIProvider(...$responses);
+    $unlimitedRunner = new AgentRunner($state, $chat, $agents, $models, $factory, null, static fn(): int => 1, $unlimitedFake);
+    $unlimitedResult = $unlimitedRunner->run($unlimitedRun, 1, static function (array $event): void {});
+    check($unlimitedResult['status'] === 'done' && $unlimitedFake->getCallCount() === 71,
+        'Безлимитный запуск проходит 70 инструментов: ограничения 10, 32 и 64 узла отсутствуют.');
 
     // Второй запуск продолжает историю: два прошлых сообщения и новый вопрос.
     $chat->appendMessage($dialogId, 1, 'user', 'А кто его меняет?');
@@ -262,6 +277,17 @@ try {
         check($httpResult['status'] === 'done', 'Полный цикл из 30 реальных HTTP-вызовов инструментов завершён ответом.');
         check(count(array_filter($httpEvents, static fn(array $event): bool => $event['type'] === 'tool_result')) === 30,
             'В HTTP-цикле выполнены все 30 инструментов без скрытого лимита 10.');
+        $httpModel = $models->saveModel(0, array('PROVIDER_ID' => $httpProvider, 'TITLE' => 'Безлимитный HTTP', 'MODEL' => 'stream-loop-70',
+            'CAPABILITIES' => array('chat', 'tools'), 'PARAMETERS' => array(), 'CONTEXT_WINDOW' => 128000, 'MAX_OUTPUT' => 512, 'ENABLED' => 1));
+        $httpAgent = $agents->get($agentId); $httpAgent['MODEL_ID'] = $httpModel; $httpAgent['MAX_STEPS'] = 0; $agents->save($agentId, $httpAgent);
+        $httpDialog = $chat->createDialog(1, $agentId, 'Безлимитный HTTP', 'chat', array());
+        $httpRun = $chat->beginRun($httpDialog, 1, $agentId, 'Лампа');
+        $chat->appendMessage($httpDialog, 1, 'user', 'Лампа');
+        $httpEvents = array();
+        $httpResult = $httpRunner->run($httpRun, 1, static function (array $event) use (&$httpEvents): void { $httpEvents[] = $event; });
+        check($httpResult['status'] === 'done'
+            && count(array_filter($httpEvents, static fn(array $event): bool => $event['type'] === 'tool_result')) === 70,
+            'Безлимитный агент завершает 70 инструментов через настоящий HTTP-транспорт.');
     }
 
     echo 'ИИ-помощник чат: ' . $checks . ' проверок пройдено (SQLite, FakeAIProvider; HTTP ' . ($httpBase !== '' ? 'локальная Postman simulation' : 'не запускался') . ').' . PHP_EOL;

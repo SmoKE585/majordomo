@@ -86,6 +86,12 @@ try {
     check($tail['total'] === 1 && str_contains($tail['items'][0]['excerpt'], 'УникальныйХвост'), 'Поиск читает и текст после первых 2000 символов статьи.');
     $page = $registry->call('read_knowledge', array('id' => 'user/light', 'limit' => 90));
     check($page['next_offset'] === 90 && $page['kind'] === 'reference_data' && str_contains($page['url'], '/panel/knowledge_base/user/light.html'), 'Чтение выдаёт данные, ссылку и продолжение в символах UTF-8.');
+    $targeted = $registry->call('read_knowledge', array('id' => 'user/light', 'query' => 'lightStatus', 'limit' => 600));
+    check($targeted['found'] && $targeted['offset'] > 2000 && str_contains($targeted['content'], 'lightStatus'), 'Точное имя находит фрагмент в конце длинной статьи без перебора страниц.');
+    $missing = $registry->call('read_knowledge', array('id' => 'user/light', 'query' => 'inventedFunction'));
+    check(!$missing['found'] && $missing['content'] === '' && $missing['next_offset'] === null, 'Отсутствующая функция явно помечается ненайденной.');
+    $beyond = $registry->call('read_knowledge', array('id' => 'user/light', 'query' => 'lightStatus', 'offset' => 999999));
+    check(!$beyond['found'], 'Поиск за концом статьи не вызывает ошибки UTF-8-смещения.');
     check(!str_contains(json_encode($page, JSON_UNESCAPED_UNICODE), 'fixture-secret-1') && str_contains($page['content'], '[скрыто]'), 'Секрет скрыт до передачи модели.');
     check(!array_key_exists('absolute_path', $page) && !str_contains(json_encode($page), str_replace('\\', '/', $fixture)), 'Абсолютный путь и служебные поля реестра не выдаются.');
     $hiddenSearch = $registry->call('search_knowledge', array('query' => 'fixture-secret-1'));

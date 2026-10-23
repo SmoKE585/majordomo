@@ -98,6 +98,14 @@ try {
     check($state->snapshot() === array('installed' => true, 'enabled' => true, 'schema_version' => Schema::VERSION), 'Новая установка сразу доступна и имеет актуальную схему.');
     $state->requireEnabled();
 
+    $pdo->exec("UPDATE ai_assistant_agents SET MAX_STEPS=30,INSTRUCTIONS='Сохранённые инструкции' WHERE PROFILE='assistant'");
+    $pdo->exec('UPDATE ai_assistant_settings SET SCHEMA_VERSION=7 WHERE ID=1');
+    $module = new ai_assistant($database, true);
+    check((int)$pdo->query("SELECT MAX_STEPS FROM ai_assistant_agents WHERE PROFILE='assistant'")->fetchColumn() === 0,
+        'Обновление снимает лимит у существующего штатного агента.');
+    check($pdo->query("SELECT INSTRUCTIONS FROM ai_assistant_agents WHERE PROFILE='assistant'")->fetchColumn() === 'Сохранённые инструкции',
+        'Снятие лимита не меняет пользовательские инструкции.');
+
     $fake = new FakeAIProvider(new AssistantMessage('Проверка Neuron выполнена.'));
     $module->run();
     check(http_response_code() === 403 && $module->result === '', 'Без админской сессии страница закрыта.');
