@@ -1,5 +1,6 @@
 <?php
 
+// 2026-10-23 — проверка стартовой паузы супервизора до загрузки приложения с виртуальным sleep.
 /** Real supervisor runtime and owned child processes, with an isolated bootstrap and virtual time. */
 putenv('APP_ENV=testing');
 putenv('DB_CONNECTION=sqlite');
@@ -37,6 +38,18 @@ check($policy->failure('cycle_flapping', 1605)['count'] === 1, 'Ten healthy minu
 
 $project = str_replace('\\', '/', dirname(__DIR__));
 $source = str_replace("\r\n", "\n", file_get_contents($project . '/cycle.php'));
+$startupEnd = strpos($source, 'require_once __DIR__');
+if ($startupEnd === false) throw new RuntimeException('Не найдена граница загрузки супервизора');
+$startup = substr($source, strlen('<?php'), $startupEnd - strlen('<?php'));
+$startupWaits = array();
+$startupDirectory = getcwd();
+ob_start();
+try {
+    eval('namespace CycleStartupFixture; function sleep($seconds) { $GLOBALS["startupWaits"][] = $seconds; return 0; } ' . $startup);
+    $startupOutput = ob_get_contents();
+} finally { ob_end_clean(); chdir($startupDirectory); }
+check($startupWaits === array(30), 'Supervisor must wait 30 seconds before loading application services');
+check(str_contains($startupOutput, 'Waiting 30 seconds'), 'Startup pause must be visible in the service journal');
 $begin = strpos($source, '$cycleWatchdog = new ');
 $end = strrpos($source, '$mainCycleShutdownExpected = true;');
 if ($begin === false || $end <= $begin) throw new RuntimeException('Supervisor runtime boundaries not found');

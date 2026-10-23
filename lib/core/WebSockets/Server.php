@@ -10,6 +10,8 @@ use Workerman\Protocols\Http\Request;
 /**
  * Transport adapter. No application operation is dispatched from a client name.
  *
+ * 2026-10-23 — очередь и синхронизация обрабатываются раз в секунду, чтобы
+ * не выполнять десять проверок хранилища в секунду без необходимости.
  * 2026-10-23 — отказ рукопожатия пишется в журнал с причиной (status, код,
  * origin, host, forwarded-host): иначе в браузере только «403», а в журнале пусто.
  */
@@ -76,7 +78,7 @@ final class Server
             $this->protocol->disconnect((string)$connection->id);
         };
         $worker->onWorkerStart = function (): void {
-            Timer::add(0.1, function (): void {
+            Timer::add(1, function (): void {
                 try {
                     if ($this->drain !== null) ($this->drain)($this->protocol);
                     $this->protocol->tick();

@@ -140,11 +140,10 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
 11. `docs/agents/legacy-module-migration.md` — **обязательно** перед переписыванием старого модуля: приоритеты, порядок, новый формат, чек-лист.
 12. `docs/agents/errors.md` — как формулировать ошибки (что / почему / чем грозит / что делать) и как разбирать журнал.
 13. `docs/agents/code-comments.md` — **обязательно** при правке кода: комментарии по-русски и дата изменения класса.
-14. `.codex/skills/majordomo-admin-ui-guidelines/SKILL.md` — краткая версия для агента.
-15. Этот файл — текущее состояние и ограничения.
-16. `docs/agents/deployment.md` — пайплайн деплоя, миграции, removals, maintenance и systemd; пошаговое развёртывание — `docs/deploy/server-setup.md`, детали sudo — `docs/deploy/systemd-sudo.md`.
-17. `docs/agents/mqtt-runtime.md` — быстрый путь MQTT, полосы `core_runtime`, проекция состояния, настройки и диагностика.
-18. `docs/agents/http-cache.md` — кэш HTTP-ответов (Redis/файл), условные запросы ETag/Last-Modified и сброс после обновления.
+14. Этот файл — текущее состояние и ограничения.
+15. `docs/agents/deployment.md` — пайплайн деплоя, миграции, removals, maintenance и systemd; пошаговое развёртывание — `docs/deploy/server-setup.md`, детали sudo — `docs/deploy/systemd-sudo.md`.
+16. `docs/agents/mqtt-runtime.md` — быстрый путь MQTT, полосы `core_runtime`, проекция состояния, настройки и диагностика.
+17. `docs/agents/http-cache.md` — кэш HTTP-ответов (Redis/файл), условные запросы ETag/Last-Modified и сброс после обновления.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 

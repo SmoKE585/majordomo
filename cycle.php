@@ -1,6 +1,7 @@
 <?php
 /**
  * Timer Cycle script
+ * 2026-10-23 — пауза 30 секунд перед загрузкой приложения даёт службам время на старт.
  *
  * @package MajorDoMo
  * @author Serge Dzheigalo <sergejey@gmail.com> https://majordomohome.com/
@@ -8,6 +9,11 @@
  */
 
 chdir(dirname(__FILE__));
+
+// БД и MQTT после перезагрузки сервера могут ещё запускаться.
+// Ждём до загрузки приложения; рестарты дочерних циклов этой паузы не касаются.
+echo date('Y-m-d H:i:s') . ' Waiting 30 seconds for system services before startup.' . PHP_EOL;
+sleep(30);
 
 // Wait before loading code/config that an updater may currently be replacing.
 require_once __DIR__ . '/lib/core/Cycles/CycleMaintenance.php';

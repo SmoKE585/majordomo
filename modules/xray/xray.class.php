@@ -1,6 +1,7 @@
 <?php
 /**
- * Blank
+ * Диагностика системы и управление циклами X-Ray.
+ * 2026-10-23 — исправлена очистка через DELETE; удаляются записи БД и содержимое файлов цикла.
  *
  * Blank
  *
@@ -797,6 +798,9 @@ class xray extends module
         $_POST = array();
         $_REQUEST = $query;
         try {
+            // Это внутренний вызов legacy-AJAX с готовыми параметрами.
+            // Иначе gr() на DELETE заменит их сырым телом HTTP-запроса.
+            $_SERVER['REQUEST_METHOD'] = 'GET';
             $out = array();
             $run($out);
         } finally {
@@ -1125,7 +1129,27 @@ class xray extends module
                     }
                 }
                 $this->ensureCycleRuntimeTables();
-                SQLExec("DELETE FROM cached_cycle_logs WHERE CYCLE='" . DBSafe($cycle) . "'");
+                // Drawer объединяет записи БД и файловый хвост: очищаем оба источника.
+                // Файлы обнуляем на месте, чтобы работающий процесс продолжал писать в них.
+                $path = $this->getCycleLogPath();
+                $files = is_dir($path)
+                    ? glob(rtrim($path, '/\\') . DIRECTORY_SEPARATOR . 'log_*-' . $cycle . '.php.txt')
+                    : array();
+                if ($files === false) {
+                    $this->respond(array('STATUS' => 'ERROR', 'MESSAGE' => 'Не удалось найти файлы журнала цикла.'));
+                    return;
+                }
+                foreach ($files as $file) {
+                    if (!$this->isCycleFileLog($file) || is_link($file) || !is_file($file)) {
+                        continue;
+                    }
+                    if (!is_writable($file) || file_put_contents($file, '', LOCK_EX) === false) {
+                        $this->respond(array('STATUS' => 'ERROR', 'MESSAGE' => 'Не удалось очистить файл журнала цикла: ' . basename($file)));
+                        return;
+                    }
+                }
+                $db = \MajorDoMo\Core\Core::database();
+                $db->requireExec("DELETE FROM cached_cycle_logs WHERE CYCLE='" . $db->escape($cycle) . "'", true);
                 $this->respond(array('STATUS' => 'OK', 'CYCLE' => $cycle, 'CLEARED' => 1));
                 return;
             }
