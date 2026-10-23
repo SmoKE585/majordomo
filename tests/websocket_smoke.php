@@ -2,6 +2,7 @@
 
 /** SQLite and temporary sessions only. Never boot the application or its .env. */
 // 2026-10-23 — границы домена BASE_URL, поддомены и защита от подмены Origin.
+// 2026-10-23 — источник и дата WebSocket соответствуют выбранной записи значения.
 putenv('APP_ENV=testing');
 putenv('DB_CONNECTION=sqlite');
 putenv('DB_DATABASE=:memory:');
@@ -146,10 +147,11 @@ try {
     $db->exec('CREATE TABLE classes (ID INTEGER PRIMARY KEY,PARENT_ID INTEGER)');
     $db->exec('CREATE TABLE objects (ID INTEGER PRIMARY KEY,TITLE TEXT COLLATE NOCASE,CLASS_ID INTEGER)');
     $db->exec('CREATE TABLE properties (ID INTEGER PRIMARY KEY,TITLE TEXT,CLASS_ID INTEGER,OBJECT_ID INTEGER)');
-    $db->exec('CREATE TABLE pvalues (ID INTEGER PRIMARY KEY,OBJECT_ID INTEGER,PROPERTY_ID INTEGER,PROPERTY_NAME TEXT,VALUE TEXT)');
+    $db->exec('CREATE TABLE pvalues (ID INTEGER PRIMARY KEY,OBJECT_ID INTEGER,PROPERTY_ID INTEGER,PROPERTY_NAME TEXT,VALUE TEXT,SOURCE TEXT,UPDATED TEXT)');
     $db->exec("INSERT INTO classes VALUES (1,0),(2,1); INSERT INTO objects VALUES (1,'Room',2),(2,'Other',1)");
     $db->exec("INSERT INTO properties VALUES (1,'temp',1,0),(2,'temp',2,0),(3,'empty',1,0),(4,'temp',0,1),(5,'zero',0,1)");
-    $db->exec("INSERT INTO pvalues VALUES (1,1,1,'Room.temp','stale'),(2,1,4,'Room.temp','21'),(3,1,5,'Room.zero','0'),(4,2,1,'Other.temp','17')");
+    $db->exec("INSERT INTO pvalues (ID,OBJECT_ID,PROPERTY_ID,PROPERTY_NAME,VALUE) VALUES (1,1,1,'Room.temp','stale'),(2,1,4,'Room.temp','21'),(3,1,5,'Room.zero','0'),(4,2,1,'Other.temp','17')");
+    $db->exec("UPDATE pvalues SET SOURCE='mqtt',UPDATED='2026-10-22 10:20:30' WHERE ID=2");
     $adapter = new class($db) {
         public function __construct(private PDO $db) {}
         public function Select(string $sql): array { return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC); }
@@ -162,9 +164,15 @@ try {
     check(count($values) === 5 && $values['Room.temp'] === '21', 'snapshot resolves object overrides and both objects');
     check(array_key_exists('Room.empty', $values) && $values['Room.empty'] === null && $values['Room.zero'] === '0', 'unset values and zero preserved');
     check($source->named(array('room.TEMP'))[0]['VALUE'] === '21', 'bulk named read follows resolution');
+    $metadata = $source->named(array('Room.temp'))[0];
+    check($metadata['SOURCE'] === 'mqtt' && $metadata['UPDATED'] === '2026-10-22 10:20:30', 'live values include the saved source and timestamp');
+    $snapshot = array_column($rows, null, 'PROPERTY');
+    check($snapshot['Room.temp']['SOURCE'] === 'mqtt' && $snapshot['Room.temp']['UPDATED'] === $metadata['UPDATED'], 'snapshot includes the same saved metadata');
+    check($snapshot['Room.empty']['SOURCE'] === '' && $snapshot['Room.empty']['UPDATED'] === null, 'unset property has no invented source or update time');
     check(count($source->named(array('Room'))) === 3, 'whole object read');
-    $db->exec("DELETE FROM properties WHERE ID=4; INSERT INTO pvalues VALUES (5,1,2,'Room.temp','child')");
+    $db->exec("DELETE FROM properties WHERE ID=4; INSERT INTO pvalues (ID,OBJECT_ID,PROPERTY_ID,PROPERTY_NAME,VALUE) VALUES (5,1,2,'Room.temp','child')");
     check($source->named(array('Room.temp'))[0]['VALUE'] === 'child', 'child class overrides stale parent/object values');
+    check($source->named(array('Room.temp'))[0]['SOURCE'] === '' && $source->named(array('Room.temp'))[0]['UPDATED'] === null, 'override metadata does not leak from a stale property row');
 
     $db->exec('CREATE TABLE cached_ws (PROPERTY TEXT PRIMARY KEY,DATAVALUE TEXT,POST_ACTION TEXT,ADDED TEXT,REVISION TEXT)');
     $database = new Database($adapter);

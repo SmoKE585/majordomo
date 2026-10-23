@@ -147,7 +147,7 @@
                     </div>
                 </div>
                 <div class="md-admin-record-card__meta">
-                    <div class="md-object-property-card__value" data-md-prop-current="[#ID#]" data-md-prop-current-name="[#FULL_NAME#]" data-md-prop-type="[#DATA_TYPE#]">
+                    <div class="md-object-property-card__value" data-md-prop-current="[#ID#]" data-md-prop-current-name="[#FULL_NAME#]" data-md-prop-type="[#DATA_TYPE#]" data-md-prop-value="[#VALUE_HTML#]">
                         [#if DATA_TYPE="5"#]
                         [#if VALUE!=""#]
                         <div class="md-object-property-card__image" data-md-prop-image-wrap><img src="<#ROOTHTML#>cms/images/[#VALUE#]" alt="[#TITLE#]" data-md-prop-image></div>
@@ -330,6 +330,8 @@
 [#PROPERTY_TRACE_DRAWER#]
 
 <script>
+// 2026-10-23 — снимок WebSocket не считается изменением; источник и время
+// берутся из сохранённой записи, подсветка нужна только новому значению.
 (function () {
 function initObjectPropertiesPage() {
     var filterInput = document.getElementById('filterProp');
@@ -435,13 +437,10 @@ function initObjectPropertiesPage() {
         });
     }
 
-    function formatWsDate() {
-        var date = new Date();
-        var pad = function (value) {
-            return String(value).padStart(2, '0');
-        };
-        return pad(date.getDate()) + '.' + pad(date.getMonth() + 1) + '.' + date.getFullYear()
-            + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+    function formatWsDate(value) {
+        var text = value === null || typeof value === 'undefined' ? '' : String(value);
+        var parts = text.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2}:\d{2})$/);
+        return parts ? parts[3] + '.' + parts[2] + '.' + parts[1] + ' ' + parts[4] : text;
     }
 
     function flashPropertyUpdate(card) {
@@ -466,7 +465,7 @@ function initObjectPropertiesPage() {
         }, 2200);
     }
 
-    function updatePropertyCardValue(card, value) {
+    function updatePropertyCardValue(card, item, isSnapshot) {
         if (!card) {
             return;
         }
@@ -481,8 +480,10 @@ function initObjectPropertiesPage() {
         var imageLink = current ? current.querySelector('[data-md-prop-image-link]') : null;
         var editorInput = editor ? editor.querySelector('input[type="text"], textarea') : null;
         var type = current ? String(current.getAttribute('data-md-prop-type') || '0') : '0';
-        var textValue = value === null || typeof value === 'undefined' ? '' : String(value);
+        var textValue = item.VALUE === null || typeof item.VALUE === 'undefined' ? '' : String(item.VALUE);
         var hasValue = textValue !== '';
+        var changed = current && current.getAttribute('data-md-prop-value') !== textValue;
+        if (current) current.setAttribute('data-md-prop-value', textValue);
 
         if (display) {
             display.textContent = hasValue ? textValue : 'Значение не задано';
@@ -502,22 +503,34 @@ function initObjectPropertiesPage() {
             }
         }
 
-        if (editorInput) {
+        // Синхронизация не должна затирать ещё не сохранённый ввод пользователя.
+        if (editorInput && editor.hidden) {
             editorInput.value = textValue;
         }
 
-        if (source) {
-            source.innerHTML = '<i class="ti ti-broadcast" aria-hidden="true"></i><span class="md-object-property-card__source-text">Реалтайм</span>';
-            source.classList.remove('is-empty');
-            source.setAttribute('data-md-source-kind', 'realtime');
-            source.title = 'Значение обновлено по WebSocket';
+        if (source && Object.prototype.hasOwnProperty.call(item, 'SOURCE')) {
+            var rawSource = item.SOURCE === null ? '' : String(item.SOURCE);
+            var hasSource = rawSource.trim() !== '';
+            // Если источник тот же, сохраняем короткую метку, подготовленную PHP.
+            // Для нового источника показываем его текст с полным значением в title.
+            if (source.title !== rawSource) {
+                var label = Array.from(rawSource.trim());
+                var shortLabel = label.length > 56 ? label.slice(0, 55).join('') + '…' : label.join('');
+                source.innerHTML = (hasSource ? '<i class="ti ti-info-circle" aria-hidden="true"></i>' : '')
+                    + '<span class="md-object-property-card__source-text">' + escapeHtml(hasSource ? shortLabel : 'не указан') + '</span>';
+                source.setAttribute('data-md-source-kind', hasSource ? 'other' : '');
+            }
+            source.classList.toggle('is-empty', !hasSource);
+            source.title = rawSource;
+            card.setAttribute('data-md-prop-has-source', hasSource ? '1' : '0');
         }
-        if (updated) {
-            updated.textContent = formatWsDate();
-            updated.classList.remove('is-empty');
+        if (updated && Object.prototype.hasOwnProperty.call(item, 'UPDATED')) {
+            var updatedText = formatWsDate(item.UPDATED);
+            updated.textContent = updatedText || 'ещё не обновлялось';
+            updated.classList.toggle('is-empty', !updatedText);
         }
 
-        flashPropertyUpdate(card);
+        if (!isSnapshot && changed) flashPropertyUpdate(card);
     }
 
     function subscribeToObjectProperties() {
@@ -731,9 +744,10 @@ function initObjectPropertiesPage() {
                     return (propertyCard.getAttribute('data-md-prop-full-name') || '') === propertyName;
                 });
                 if (card) {
-                    updatePropertyCardValue(card, item.VALUE);
+                    updatePropertyCardValue(card, item, response.snapshot === true);
                 }
             });
+            applyPropertyFilter();
         }, {signal: wsListeners.signal});
 
         document.addEventListener('md:before-part-content-replace', function () {

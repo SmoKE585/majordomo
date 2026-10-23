@@ -2,7 +2,11 @@
 
 namespace MajorDoMo\Core;
 
-/** Bulk, read-only values with the same object/class override order as Properties. */
+/**
+ * Пакетное чтение свойств с тем же порядком наследования, что и в Properties.
+ * 2026-10-23 — источник и время обновления передаются из БД вместе со значением,
+ * чтобы интерфейс не подменял их временем получения пакета WebSocket.
+ */
 final class PropertyValues
 {
     public function __construct(private Database $db) {}
@@ -58,9 +62,9 @@ final class PropertyValues
             else $byClass[(int)$property['CLASS_ID']][$key] ??= $property;
         }
         $values = $legacy = array();
-        foreach ($this->db->select('SELECT ID,OBJECT_ID,PROPERTY_ID,PROPERTY_NAME,VALUE FROM pvalues WHERE OBJECT_ID IN (' . $ids . ') ORDER BY ID') as $value) {
-            $values[(int)$value['OBJECT_ID']][(int)$value['PROPERTY_ID']] ??= $value['VALUE'];
-            $legacy[mb_strtolower((string)$value['PROPERTY_NAME'], 'UTF-8')] ??= $value['VALUE'];
+        foreach ($this->db->select('SELECT ID,OBJECT_ID,PROPERTY_ID,PROPERTY_NAME,VALUE,SOURCE,UPDATED FROM pvalues WHERE OBJECT_ID IN (' . $ids . ') ORDER BY ID') as $value) {
+            $values[(int)$value['OBJECT_ID']][(int)$value['PROPERTY_ID']] ??= $value;
+            $legacy[mb_strtolower((string)$value['PROPERTY_NAME'], 'UTF-8')] ??= $value;
         }
         $result = array();
         foreach ($objects as $object) {
@@ -75,7 +79,13 @@ final class PropertyValues
             foreach ($properties as $property) {
                 $name = $object['TITLE'] . '.' . $property['TITLE'];
                 $value = $values[(int)$object['ID']][(int)$property['ID']] ?? $legacy[mb_strtolower($name, 'UTF-8')] ?? null;
-                $result[] = array('PROPERTY' => $name, 'VALUE' => $value, 'OBJECT_ID' => (int)$object['ID']);
+                $result[] = array(
+                    'PROPERTY' => $name,
+                    'VALUE' => $value['VALUE'] ?? null,
+                    'OBJECT_ID' => (int)$object['ID'],
+                    'SOURCE' => (string)($value['SOURCE'] ?? ''),
+                    'UPDATED' => $value['UPDATED'] ?? null,
+                );
             }
         }
         return $result;
