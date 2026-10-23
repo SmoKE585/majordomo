@@ -319,7 +319,18 @@ final class PropertyAudit
         }
     }
 
-    public function prune(int $days, int $limit = 5000): int
+    /**
+     * Удаляет журнал старше окна хранения.
+     *
+     * Пачки ограничены бюджетом времени, а не числом итераций: после снижения
+     * срока хранения на большой таблице прежние 40 пачек оставляли хвост, и
+     * журнал сокращался только за несколько рестартов `cycle_main`. Заголовки
+     * запусков удаляются отдельно, небольшим фиксированным числом пачек — их
+     * на порядок меньше, чем событий.
+     *
+     * @param int $seconds Бюджет удаления событий, секунд.
+     */
+    public function prune(int $days, int $limit = 5000, int $seconds = 30): int
     {
         $days = max(0, $days);
         $limit = max(100, min(50000, $limit));
@@ -327,12 +338,13 @@ final class PropertyAudit
         $cutoff = date('Y-m-d H:i:s', time() - $days * 86400);
         $total = 0;
         $this->ensureSchema();
-        for ($batch = 0; $batch < 40; $batch++) {
+        $deadline = microtime(true) + max(1, $seconds);
+        do {
             $this->db->exec("DELETE FROM property_audit_events WHERE ADDED<'" . $this->db->escape($cutoff) . "' LIMIT " . $limit);
             $deleted = $this->db->affectedRows();
             $total += max(0, $deleted);
             if ($deleted < $limit) break;
-        }
+        } while (microtime(true) < $deadline);
         for ($batch = 0; $batch < 20; $batch++) {
             $this->db->exec("DELETE FROM property_audit_runs WHERE LAST_SEEN<'" . $this->db->escape($cutoff) . "' LIMIT " . $limit);
             $deleted = $this->db->affectedRows();
