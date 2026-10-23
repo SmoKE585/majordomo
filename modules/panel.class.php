@@ -164,6 +164,29 @@ class panel extends module
             new api();
         }
 
+        // Карточка ИИ-помощника в меню строится по строке project_modules.
+        // После системного обновления новый модуль ещё не установлен, поэтому
+        // без этого блока карточка не появляется, пока вручную не открыть его
+        // URL. Устанавливаем его на первой загрузке панели, как knowledge_base.
+        if (!defined('NO_DATABASE_CONNECTION') && !isModuleInstalled('ai_assistant')) {
+            $aiAssistantModule = DIR_MODULES . 'ai_assistant/ai_assistant.class.php';
+            if (is_file($aiAssistantModule)) {
+                require_once($aiAssistantModule);
+                if (class_exists('ai_assistant', false)) {
+                    try {
+                        new ai_assistant();
+                    } catch (\Throwable $failure) {
+                        // Ошибка схемы модуля не должна ломать оболочку панели.
+                        DebMes(
+                            'Cannot install ai_assistant on panel load: ' . $failure->getMessage(),
+                            'ai_assistant',
+                            'error'
+                        );
+                    }
+                }
+            }
+        }
+
         $requestedAction = isset($this->action) && is_scalar($this->action) ? trim((string)$this->action) : '';
         $requestedModuleValue = gr('md');
         $requestedModule = is_scalar($requestedModuleValue) ? trim((string)$requestedModuleValue) : '';

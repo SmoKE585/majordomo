@@ -19,7 +19,7 @@ require_once __DIR__ . '/fixtures/ai_assistant_database.php';
 
 use MajorDoMo\Core\Config;
 use MajorDoMo\Core\Database;
-use MajorDoMo\Modules\AiAssistant\{AgentCatalog, ChatStore, ModelCatalog, ModuleState, PanelController, Schema, SecretVault};
+use MajorDoMo\Modules\AiAssistant\{AgentCatalog, ChatStore, Dashboard, ModelCatalog, ModuleState, PanelController, Schema, SecretVault};
 
 $checks = 0;
 function check(bool $condition, string $message): void
@@ -142,6 +142,24 @@ try {
     $longDialog = $chat->createDialog(1, $agentId, 'Лимит', 'chat', array());
     $long = str_repeat('я', 200001);
     rejects(fn() => $chat->appendMessage($longDialog, 1, 'user', $long), 'слишком длинное');
+
+    // Проверка дашборда: 3 шага онбординга и статусы
+    $dash = new Dashboard($db);
+    $statusReady = $dash->status();
+    check($statusReady['ready'] === true, 'Дашборд готов, когда есть провайдер, модель и агент.');
+    check(count($statusReady['steps']) === 3, 'Онбординг содержит ровно 3 шага.');
+    check($statusReady['completed_steps'] === 3, 'Все 3 шага выполнены.');
+
+    // Проверка состояния "Требует настройки" (0 провайдеров/моделей)
+    $pdo->exec('DELETE FROM ai_assistant_model_links');
+    $pdo->exec('UPDATE ai_assistant_agents SET MODEL_ID = NULL');
+    $pdo->exec('DELETE FROM ai_assistant_models');
+    $pdo->exec('DELETE FROM ai_assistant_providers');
+    $statusSetup = $dash->status();
+    check($statusSetup['ready'] === false, 'Дашборд требует настройки без провайдера.');
+    check($statusSetup['completed_steps'] < 3, 'Количество завершённых шагов меньше 3.');
+    check($statusSetup['steps'][0]['done'] === false, 'Шаг 1 не выполнен.');
+    check($statusSetup['steps'][0]['current'] === true, 'Шаг 1 текущий.');
 
     echo 'ИИ-помощник UI: ' . $checks . ' проверок пройдено (SQLite, без внешних API).' . PHP_EOL;
 } finally {

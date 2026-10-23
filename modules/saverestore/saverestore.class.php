@@ -1747,6 +1747,13 @@ class saverestore extends module
         $target['download_url'] = $download_url;
         $target['branch'] = $this->normalizeUpdateBranch($target['branch']);
         DebMes('System update: target ' . $target['branch'] . '_' . $target['commit'] . ' (' . $download_url . ')', 'restore');
+        if ($iframe) {
+            // Показываем выбранный коммит в журнале: так сразу видно, что
+            // скачивается именно он, а не «последняя ветка» из кэша.
+            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Коммит: '
+                . htmlspecialchars(substr($target['commit'], 0, 7), ENT_QUOTES, 'UTF-8')
+                . ' · ветка ' . htmlspecialchars($target['branch'], ENT_QUOTES, 'UTF-8') . '</div>');
+        }
 
         if (!$this->backupDatabaseBeforeSystemUpdate($iframe)) {
             if ($iframe) {
