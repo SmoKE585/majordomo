@@ -1,6 +1,7 @@
 <?php
 
 /** Actual Workerman transport over loopback; no application config or live services. */
+// 2026-10-23 — Origin родительского и соседних доменов проверяется в реальном handshake.
 putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('USE_REDIS=false');
 require_once dirname(__DIR__) . '/lib/core.class.php';
 
@@ -23,7 +24,8 @@ if (($argv[1] ?? '') === '--fixture') {
     $protocol = new Protocol($pages, $named);
     $access = new Access(new AccessPolicy(new NetworkAccess(), '', '127.0.0.1/32'), new Tickets($fixture),
         static function ($token) use ($fixture, $secret): bool { clearstatcache(); return is_file($fixture . '/token-valid') && hash_equals($secret, $token); },
-        static fn($id) => $id === 7 && is_file($fixture . '/admin-valid') ? array('id' => 7, 'stamp' => 'stamp') : null);
+        static fn($id) => $id === 7 && is_file($fixture . '/admin-valid') ? array('id' => 7, 'stamp' => 'stamp') : null,
+        'https://admin.home.test');
     $server = new Server($protocol, $access, array('per_ip' => 1), static function (Protocol $protocol) use ($fixture, &$values): void {
         if (!is_file($fixture . '/update.json')) return;
         $updates = json_decode(file_get_contents($fixture . '/update.json'), true, 8, JSON_THROW_ON_ERROR);
@@ -116,14 +118,24 @@ try {
     check(str_contains($response, '403'), 'LAN cross-site handshake denied'); fclose($stream);
     [$local, $response] = handshake($address, '', array('X-Forwarded-For' => '192.168.1.3', 'Origin' => 'https://home.test'));
     check(str_contains($response, '101'), 'LAN upgrades without key');
-    // nginx может оставить в Host адрес апстрима: исходный хост приходит в
-    // X-Forwarded-Host, а без него рукопожатие обязано получить 403.
+    // BASE_URL сохраняет доменную границу даже с адресом апстрима вместо Host.
     [$stream, $response] = handshake($address, '', array('X-Forwarded-For' => '192.168.1.4', 'Origin' => 'https://home.test', 'X-Forwarded-Host' => 'home.test'), '127.0.0.1:8001');
     check(str_contains($response, '101'), 'forwarded host restores the origin behind a proxy');
     fclose($stream);
     [$stream, $response] = handshake($address, '', array('X-Forwarded-For' => '192.168.1.5', 'Origin' => 'https://home.test'), '127.0.0.1:8001');
-    check(str_contains($response, '403'), 'handshake without the original host is rejected');
+    check(str_contains($response, '101'), 'public address accepts the site even without original proxy host');
     fclose($stream);
+    foreach (array('https://home.test', 'https://ui.home.test', 'http://deep.ui.home.test:8080') as $index => $origin) {
+        [$stream, $response] = handshake($address, '?snapshot=0&token=' . $secret,
+            array('X-Forwarded-For' => '203.0.113.' . (20 + $index), 'Origin' => $origin, 'Sec-Fetch-Site' => 'same-site'), '127.0.0.1:8001');
+        check(str_contains($response, '101') && frame($stream)['action'] === 'ready', 'external parent or sibling Origin upgrades with a valid token: ' . $origin);
+        fclose($stream);
+    }
+    [$stream, $response] = handshake($address, '?token=' . $secret,
+        array('X-Forwarded-For' => '203.0.113.25', 'Origin' => 'https://home.test.evil.com', 'X-Forwarded-Host' => 'home.test.evil.com', 'Sec-Fetch-Site' => 'same-site'), 'home.test.evil.com');
+    check(str_contains($response, '403'), 'valid token and forged site headers cannot allow another domain'); fclose($stream);
+    [$stream, $response] = handshake($address, '', array('X-Forwarded-For' => '203.0.113.26', 'Origin' => 'https://ui.home.test'));
+    check(str_contains($response, '401'), 'allowed external Origin still requires credentials'); fclose($stream);
     $rejections = (string)@file_get_contents($fixture . '/stderr') . (string)@file_get_contents($fixture . '/worker.log');
     check(str_contains($rejections, 'handshake rejected') && str_contains($rejections, 'cross_origin_denied'), 'rejection reason is written to the log');
     // Если прокси не передал Host вообще, билет помнит хост, который видел браузер.

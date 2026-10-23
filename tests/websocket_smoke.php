@@ -1,6 +1,7 @@
 <?php
 
 /** SQLite and temporary sessions only. Never boot the application or its .env. */
+// 2026-10-23 — границы домена BASE_URL, поддомены и защита от подмены Origin.
 putenv('APP_ENV=testing');
 putenv('DB_CONNECTION=sqlite');
 putenv('DB_DATABASE=:memory:');
@@ -9,7 +10,7 @@ require_once dirname(__DIR__) . '/lib/core.class.php';
 
 use MajorDoMo\Core\{Database, NetworkAccess, PropertyValues};
 use MajorDoMo\Core\Api\{AccessPolicy, ApiException, TokenStore};
-use MajorDoMo\Core\WebSockets\{Access, Tickets, Protocol};
+use MajorDoMo\Core\WebSockets\{Access, Tickets, Protocol, SiteDomain};
 
 $db = new PDO('sqlite::memory:');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -57,6 +58,41 @@ try {
     check($access->authorize(array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => '127.0.0.1:8001', 'HTTP_ORIGIN' => 'https://home.test'), array())['type'] === 'local', 'public address accepts origin without forwarded host');
     denies(fn() => $access->authorize(array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => '127.0.0.1:8001', 'HTTP_ORIGIN' => 'https://other.test'), array()), 403);
     denies(fn() => $access->authorize(array('REMOTE_ADDR' => '203.0.113.10', 'HTTP_HOST' => '127.0.0.1:8001', 'HTTP_ORIGIN' => 'https://evil.test', 'HTTP_X_FORWARDED_HOST' => 'evil.test'), array('token' => $issued['token'])), 403);
+    $site = static fn(string $url) => new Access(new AccessPolicy(new NetworkAccess()), $ticketStore, fn($token) => $tokens->verify($token), $state, $url);
+    $domainAccess = $site('https://siteA.example.com:443/panel/');
+    foreach (array('https://example.com', 'https://siteA.example.com', 'https://ui.example.com', 'http://deep.ui.example.com:8080', 'https://EXAMPLE.COM.') as $origin) {
+        check($domainAccess->authorize($local + array('HTTP_ORIGIN' => $origin), array())['type'] === 'local', 'BASE_URL site accepts ' . $origin);
+    }
+    check($domainAccess->authorize($local + array('HTTP_ORIGIN' => 'https://example.com', 'HTTP_SEC_FETCH_SITE' => 'cross-site'), array())['type'] === 'local', 'explicit Origin policy also permits a different scheme');
+    foreach (array('https://other.com', 'https://notexample.com', 'https://example.com.evil.test', 'https://evil-example.com', 'https://com', 'https://example.com/path', 'https://example.com@evil.test', 'https://example.com,https://evil.test', 'null') as $origin) {
+        denies(fn() => $domainAccess->authorize($local + array('HTTP_ORIGIN' => $origin), array('token' => $issued['token'])), 403);
+    }
+    denies(fn() => $domainAccess->authorize(array('REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => 'other.com', 'HTTP_X_FORWARDED_HOST' => 'other.com', 'HTTP_ORIGIN' => 'https://other.com', 'HTTP_SEC_FETCH_SITE' => 'same-site'), array('token' => $issued['token'])), 403);
+    denies(fn() => $domainAccess->authorize($remote + array('HTTP_ORIGIN' => 'https://example.com'), array()), 401);
+    check($domainAccess->authorize($remote + array('HTTP_ORIGIN' => 'https://ui.example.com'), array('token' => $issued['token']))['type'] === 'token', 'allowed subdomain still needs a valid external token');
+    denies(fn() => $domainAccess->authorize($local + array('HTTP_ORIGIN' => 'https://example.com'), array('token' => 'invalid')), 401);
+    $uk = $site('https://admin.example.co.uk');
+    check($uk->authorize($local + array('HTTP_ORIGIN' => 'https://example.co.uk'), array())['type'] === 'local', 'multi-label public suffix retains owner boundary');
+    denies(fn() => $uk->authorize($local + array('HTTP_ORIGIN' => 'https://other.co.uk'), array()), 403);
+    denies(fn() => $uk->authorize($local + array('HTTP_ORIGIN' => 'https://co.uk'), array()), 403);
+    $hosting = $site('https://admin.my-home.github.io');
+    check($hosting->authorize($local + array('HTTP_ORIGIN' => 'https://my-home.github.io'), array())['type'] === 'local', 'private suffix retains tenant boundary');
+    denies(fn() => $hosting->authorize($local + array('HTTP_ORIGIN' => 'https://another-home.github.io'), array()), 403);
+    foreach (array('http://192.168.0.200', 'http://[2001:db8::1]:8001', 'http://localhost') as $url) {
+        $exact = $site($url);
+        check($exact->authorize($local + array('HTTP_ORIGIN' => $url), array())['type'] === 'local', 'IP or single-label public address accepts only itself');
+        denies(fn() => $exact->authorize($local + array('HTTP_ORIGIN' => 'https://other.test'), array()), 403);
+    }
+    denies(fn() => $site('http://localhost')->authorize($local + array('HTTP_ORIGIN' => 'http://ui.localhost'), array()), 403);
+    denies(fn() => $site('http://192.168.0.200')->authorize($local + array('HTTP_ORIGIN' => 'http://192.168.0.201'), array()), 403);
+    check(SiteDomain::registered('admin.home.test') === 'home.test', 'unknown or test suffix uses the default PSL rule');
+    check(SiteDomain::registered('admin.home.ck') === 'admin.home.ck', 'PSL wildcard includes an additional suffix label');
+    check(SiteDomain::registered('admin.www.ck') === 'www.ck', 'PSL exception overrides wildcard');
+    check(SiteDomain::registered('co.uk') === null && SiteDomain::registered('github.io') === null, 'public and private suffixes cannot become whole shared sites');
+    check(SiteDomain::normalize('[2001:0db8:0:0:0:0:0:1]') === '2001:db8::1', 'IPv6 is canonicalized');
+    $idn = $site('https://admin.xn--e1afmkfd.xn--p1ai');
+    check($idn->authorize($local + array('HTTP_ORIGIN' => 'https://xn--e1afmkfd.xn--p1ai'), array())['type'] === 'local', 'punycode domain and parent are accepted');
+    if (function_exists('idn_to_ascii')) check($site('https://админ.пример.рф')->authorize($local + array('HTTP_ORIGIN' => 'https://xn--e1afmkfd.xn--p1ai'), array())['type'] === 'local', 'Unicode setting is normalized to browser ASCII Origin');
     check($access->authorize($remote + array('HTTP_AUTHORIZATION' => 'Bearer ' . $issued['token']), array())['type'] === 'token', 'Bearer access');
     check($access->authorize($remote + array('HTTP_X_API_KEY' => $issued['token']), array())['type'] === 'token', 'X-API-Key access');
     $identity = $access->authorize($remote, array('token' => $issued['token']));
@@ -79,6 +115,8 @@ try {
     $identity = $access->authorize($remote, array('ticket' => $ticket));
     check($identity['type'] === 'session' && $access->valid($identity), 'session ticket accepted');
     denies(fn() => $access->authorize($remote, array('ticket' => $ticket)), 401);
+    $foreignTicket = $ticketStore->issue($user, $sid, time(), null, 'other.com');
+    denies(fn() => $domainAccess->authorize($local + array('HTTP_ORIGIN' => 'https://other.com'), array('ticket' => $foreignTicket)), 403);
     $user['stamp'] = 'password-changed';
     check(!$access->valid($identity), 'password change invalidates connected session');
     $user['stamp'] = 'stamp';

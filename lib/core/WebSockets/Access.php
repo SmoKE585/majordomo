@@ -7,6 +7,9 @@ use MajorDoMo\Core\Api\{AccessPolicy, ApiException};
 /**
  * Доступ к WebSocket: Origin, API-токен или одноразовый билет администратора.
  *
+ * 2026-10-23 — домен и поддомены разрешаются по BASE_URL; Host запроса больше
+ * не расширяет доступ при заданном публичном адресе.
+ *
  * 2026-10-23 — Origin сравнивается не только с Host самого handshake, но и с
  * X-Forwarded-Host от доверенного прокси и с публичным адресом проекта. Без
  * этого nginx с настройкой по умолчанию (Host = адрес апстрима) отдавал 403
@@ -14,14 +17,20 @@ use MajorDoMo\Core\Api\{AccessPolicy, ApiException};
  */
 final class Access
 {
+    private ?string $publicDomain;
+
     public function __construct(private AccessPolicy $network, private Tickets $tickets, private \Closure $verifyToken,
-        private \Closure $adminState, private string $publicHost = '') {}
+        private \Closure $adminState, private string $publicHost = '')
+    {
+        $this->publicHost = self::host($publicHost);
+        if ($publicHost !== '' && $this->publicHost === '') throw new \InvalidArgumentException('Некорректный публичный адрес WebSocket.');
+        $this->publicDomain = SiteDomain::registered($this->publicHost);
+    }
 
     public function authorize(array $server, array $query): array
     {
-        // Билет читаем до проверки Origin: он запоминает host, который браузер
-        // видел при его получении. Так проверка не зависит от того, передал ли
-        // nginx исходный Host в WS-соединение.
+        // Без публичного адреса старые установки проверяют точный хост билета:
+        // nginx может не передать исходный Host в WS-соединение.
         $ticketProvided = isset($query['ticket']);
         $ticket = $ticketProvided && is_string($query['ticket']) ? $this->tickets->consume($query['ticket']) : null;
         $this->checkOrigin($server, (string)($ticket['host'] ?? ''));
@@ -54,28 +63,35 @@ final class Access
 
     private function checkOrigin(array $server, string $ticketHost = ''): void
     {
-        if (strtolower((string)($server['HTTP_SEC_FETCH_SITE'] ?? '')) === 'cross-site') throw new ApiException(403, 'cross_origin_denied', 'Межсайтовые подключения запрещены.');
-        if (!isset($server['HTTP_ORIGIN'])) return; // Native integrations do not send Origin.
+        if (!isset($server['HTTP_ORIGIN'])) {
+            if (strtolower((string)($server['HTTP_SEC_FETCH_SITE'] ?? '')) === 'cross-site') throw new ApiException(403, 'cross_origin_denied', 'Межсайтовые подключения запрещены.');
+            return; // Небраузерные интеграции проходят обычную проверку токена или сети.
+        }
         $raw = (string)$server['HTTP_ORIGIN'];
         $origin = parse_url($raw);
         if (!is_array($origin) || !in_array($origin['scheme'] ?? '', array('http', 'https'), true) || isset($origin['user']) || isset($origin['pass'])
             || isset($origin['query']) || isset($origin['fragment']) || !empty($origin['path'])) {
             throw new ApiException(403, 'cross_origin_denied', 'Origin подключения не разрешён.');
         }
-        $originHost = self::host((string)($origin['host'] ?? ''));
-        if ($originHost === '' || !in_array($originHost, $this->allowedHosts($server, $ticketHost), true)) {
+        $originHost = SiteDomain::normalize((string)($origin['host'] ?? ''));
+        // Только настройка владельца задаёт границу сайта. Ни Host, ни билет,
+        // ни заголовок same-site не могут разрешить посторонний домен.
+        $allowed = $this->publicHost !== ''
+            ? $originHost === $this->publicHost || ($this->publicDomain !== null
+                && ($originHost === $this->publicDomain || str_ends_with($originHost, '.' . $this->publicDomain)))
+            : in_array($originHost, $this->allowedHosts($server, $ticketHost), true);
+        if ($originHost === '' || !$allowed) {
             throw new ApiException(403, 'cross_origin_denied', 'Origin подключения не разрешён.');
         }
     }
 
     /**
-     * Хосты, для которых Origin считается своим:
+     * Совместимость без BASE_URL: разрешены только точные имена хостов:
      *  1) Host самого handshake;
      *  2) X-Forwarded-Host от доверенного прокси — nginx может оставить в Host
      *     адрес апстрима (127.0.0.1:8001);
      *  3) host из одноразового билета: его записал веб-процесс, который видел
-     *     настоящий Host браузера;
-     *  4) публичный адрес проекта (BASE_URL).
+     *     настоящий Host браузера.
      *
      * @return string[]
      */
@@ -83,7 +99,7 @@ final class Access
     {
         $forwarded = $this->network->viaTrustedProxy($server) ? (string)($server['HTTP_X_FORWARDED_HOST'] ?? '') : '';
         $hosts = array();
-        foreach (array((string)($server['HTTP_HOST'] ?? ''), $forwarded, $ticketHost, $this->publicHost) as $candidate) {
+        foreach (array((string)($server['HTTP_HOST'] ?? ''), $forwarded, $ticketHost) as $candidate) {
             $host = self::host($candidate);
             if ($host !== '' && !in_array($host, $hosts, true)) $hosts[] = $host;
         }
@@ -97,7 +113,7 @@ final class Access
         if ($value === '') return '';
         // X-Forwarded-Host допускает цепочку из нескольких значений.
         $value = trim((string)strstr($value . ',', ',', true));
-        if (str_contains($value, '://')) return strtolower((string)parse_url($value, PHP_URL_HOST));
-        return strtolower((string)preg_replace('/:\d+$/D', '', $value));
+        $url = parse_url(str_contains($value, '://') ? $value : 'http://' . $value);
+        return is_array($url) ? SiteDomain::normalize((string)($url['host'] ?? '')) : '';
     }
 }

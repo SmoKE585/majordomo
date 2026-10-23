@@ -7,6 +7,10 @@ use MajorDoMo\Core\Api\{AccessPolicy, TokenStore};
 use MajorDoMo\Core\Users\UserAccounts;
 use Workerman\Worker;
 
+/**
+ * Запуск WebSocket-сервера ядра и очереди изменений свойств.
+ * 2026-10-23 — доменная политика Origin привязана к публичному адресу BASE_URL.
+ */
 final class Runtime
 {
     public const PORT = 8001;
@@ -39,9 +43,8 @@ final class Runtime
         $access = new Access(new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), $trustedProxies),
             new Tickets($root), fn($token) => (new TokenStore($connection()))->verify($token),
             fn($id) => (new UserAccounts($connection()))->adminState($id),
-            // Публичный адрес проекта: Origin проверяется и по нему, если прокси
-            // не передал исходный Host.
-            (string)parse_url(Config::string('BASE_URL'), PHP_URL_HOST));
+            // Настройка владельца задаёт разрешённый домен независимо от nginx.
+            Config::string('BASE_URL'));
         $queue = Core::websockets();
         $drain = static function (Protocol $protocol) use ($queue): void {
             $items = $queue->claim(500);
