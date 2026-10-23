@@ -16,6 +16,9 @@ export default defineConfig({
     emptyOutDir: false,
     cssCodeSplit: false,
     sourcemap: false,
+    // Деплою нужны только файлы: gzip-размер ничего не меняет, но заставляет
+    // Vite отдельно сжимать крупные шрифты и добавляет в журнал «computing gz».
+    reportCompressedSize: false,
     target: 'es2018',
     chunkSizeWarningLimit: 700,
     rollupOptions: {

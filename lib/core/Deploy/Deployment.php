@@ -162,16 +162,20 @@ final class Deployment
     {
         $composer = $this->composerCommand();
         if ($composer === array()) throw new RuntimeException('Composer не найден. Установите Composer или задайте DEPLOY_COMPOSER.');
-        $command = array_merge($composer, array(
+        $options = array(
             'install', '--no-dev', '--prefer-dist', '--no-interaction', '--no-progress',
-            '--optimize-autoloader', '--no-scripts', '--no-plugins', '--no-audit',
-        ));
+            '--optimize-autoloader', '--no-scripts', '--no-plugins',
+        );
+        if ($this->composerSupportsNoAudit($composer)) {
+            $options[] = '--no-audit';
+        }
+        $command = array_merge($composer, $options);
         $environment = $this->composerEnvironment();
         $this->log($log, 'composer install', 'info');
         $result = $this->runner->run($command, $this->timeout(), $environment, $this->lineStream($log, 'composer'), 20);
         if (!$result['ok'] && empty($result['timed_out']) && str_contains($result['err'] . $result['out'], '--no-audit')) {
-            // Composer старше 2.4 не знает --no-audit: один повтор без него,
-            // иначе обновление падало бы на «option does not exist».
+            // На случай нестандартной сборки Composer: help мог не показать
+            // флаг, а install — отказаться. Один повтор без него.
             $this->log($log, 'Composer не поддерживает --no-audit, повтор без него', 'muted');
             $command = array_values(array_filter($command, static function (string $argument): bool {
                 return $argument !== '--no-audit';
@@ -243,9 +247,9 @@ final class Deployment
             // На FastPanel/серверах NODE_ENV часто = production. В этом режиме
             // npm ci не ставит vite из devDependencies, и `npm run build`
             // падает с `vite: not found` (127). npm читает env в нижнем регистре.
+            // `npm_config_production` не выставляем: npm 11 считает эту настройку
+            // устаревшей и просит `--omit=dev`; `--include=dev` ниже важнее неё.
             'NODE_ENV' => 'development',
-            'NPM_CONFIG_PRODUCTION' => 'false',
-            'npm_config_production' => 'false',
             'PATH' => getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin',
         );
         if ($needsCi) {
@@ -414,6 +418,29 @@ final class Deployment
     private function timeout(): int
     {
         return max(60, Config::int('DEPLOY_TIMEOUT', 900));
+    }
+
+    /**
+     * Есть ли у установленного Composer флаг --no-audit.
+     *
+     * В 2.4–2.8 он отключал автоматический аудит после установки. В 2.9 аудит
+     * стал opt-in (`--audit`), а `--no-audit` убрали; если передать его вслепую,
+     * обновление начинается с ошибки «option does not exist». Спрашиваем сам
+     * Composer, а не угадываем по версии.
+     *
+     * @param string[] $composer
+     */
+    private function composerSupportsNoAudit(array $composer): bool
+    {
+        static $supports = null;
+        if ($supports !== null) return $supports;
+        $help = $this->runner->run(
+            array_merge($composer, array('--no-ansi', 'install', '--help')),
+            30,
+            $this->composerEnvironment()
+        );
+        $supports = $help['ok'] && str_contains($help['out'] . $help['err'], '--no-audit');
+        return $supports;
     }
 
     /** @return array<string,string> */

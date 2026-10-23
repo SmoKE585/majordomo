@@ -283,16 +283,19 @@ systemctl status majordomo-mjdm_smart15_usr.service --no-pager -l
 До 23.10.2026 пайплайн вычислял `COMPOSER_IPRESOLVE=4`, но не передавал его
 процессу: Composer шёл с обычными настройками и мог ждать недоступный IPv6 до
 Packagist/GitHub. Теперь окружение (`COMPOSER_IPRESOLVE=4`, `COMPOSER_HOME`,
-`GIT_TERMINAL_PROMPT=0`) передаётся явно, а `--no-audit` убирает лишний сетевой
-запрос после установки.
+`GIT_TERMINAL_PROMPT=0`) передаётся явно. Флаг `--no-audit` добавляется только
+если его поддерживает установленный Composer: в 2.4–2.8 он отключает
+автоматический аудит, а в 2.9 аудит стал opt-in и флага больше нет.
 
 Если «Применение» всё равно встаёт, в журнале видно, на каком пакете остановился
 Composer (вывод идёт потоком). Ручная проверка от пользователя сайта:
 
 ```bash
 COMPOSER_IPRESOLVE=4 composer install --no-dev --prefer-dist \
-  --no-interaction --optimize-autoloader --no-audit -vvv
+  --no-interaction --optimize-autoloader -vvv
 ```
+
+На Composer 2.4–2.8 добавьте `--no-audit`; на 2.9 он не нужен.
 
 Если и вручную висит — это сеть или прокси хостинга, а не MajorDoMo:
 

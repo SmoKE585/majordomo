@@ -15,6 +15,7 @@ export default defineConfig({
     emptyOutDir: false,
     cssCodeSplit: false,
     sourcemap: false,
+    reportCompressedSize: false,
     target: 'es2018',
     chunkSizeWarningLimit: 1200,
     rollupOptions: {

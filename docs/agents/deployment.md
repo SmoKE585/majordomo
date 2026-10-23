@@ -126,16 +126,19 @@ CLI не пишет версию в конфиг модуля сам: pending-ф
 процессу — `composer install` шёл с обычными настройками и мог висеть на IPv6
 или на запросе пароля Git. Теперь окружение передаётся явно.
 
-Дополнительно `composer install` идёт с `--no-audit`: иначе после установки
-Composer делает сетевой запрос за списком уязвимостей, который на медленном
-канале тоже выглядит как зависание.
+Дополнительно пайплайн проверяет `composer install --help` и добавляет
+`--no-audit` только если установленный Composer его поддерживает. В Composer
+2.4–2.8 флаг отключает автоматический аудит, а в 2.9 аудит стал opt-in и флага
+больше нет — иначе обновление начиналось бы с ошибки «option does not exist».
 
 Для ручного запуска:
 
 ```bash
 COMPOSER_IPRESOLVE=4 composer install \
-  --no-dev --prefer-dist --no-interaction --optimize-autoloader --no-audit -vvv
+  --no-dev --prefer-dist --no-interaction --optimize-autoloader -vvv
 ```
+
+На Composer 2.4–2.8 можно добавить `--no-audit`; на 2.9 он не нужен.
 
 Переменная действует только на Composer; системный IPv4/IPv6 не меняется.
 
@@ -153,9 +156,14 @@ Composer, npm и миграции печатают вывод построчно
 
 ## npm и devDependencies
 
-`npm ci` запускается с `NODE_ENV=development`, `NPM_CONFIG_PRODUCTION=false` и
-`--include=dev`: иначе на FastPanel с `NODE_ENV=production` не устанавливается
-`vite`, и `npm run build` падает с `sh: 1: vite: not found` (код 127).
+`npm ci` запускается с `NODE_ENV=development` и `--include=dev`: иначе на
+FastPanel с `NODE_ENV=production` не устанавливается `vite`, и `npm run build`
+падает с `sh: 1: vite: not found` (код 127). Устаревшую настройку
+`npm_config_production` не выставляем: npm 11 ругается на неё и предлагает
+`--omit=dev`; `--include=dev` важнее.
+
+Сборка идёт без `reportCompressedSize`: деплою нужны файлы, а не gzip-цифры,
+поэтому шаг «computing gzip size…» и лишнее сжатие крупных шрифтов убраны.
 
 Для ручной сборки:
 
