@@ -82,6 +82,7 @@ final class ConfigSchema
 
             // Background cycles ---------------------------------------------
             'RESTART_THREADS' => array('type' => 'list', 'default' => array(), 'constant' => false),
+            'CORE_WORKERS' => array('type' => 'integer', 'default' => 3, 'constant' => false),
             'CYCLE_HEARTBEAT_TIMEOUT' => array('type' => 'integer', 'default' => 120, 'constant' => false),
             'CYCLE_STARTUP_TIMEOUT' => array('type' => 'integer', 'default' => 180, 'constant' => false),
             'CYCLE_TIMEOUTS' => array('type' => 'json', 'default' => array(), 'constant' => false),
@@ -131,6 +132,12 @@ final class ConfigSchema
             // MQTT receive limits -------------------------------------------
             'MQTT_MAX_PACKET_BYTES' => array('type' => 'integer', 'default' => 1048576, 'constant' => false),
             'MQTT_PACKET_TIMEOUT' => array('type' => 'decimal', 'default' => 5.0, 'constant' => false),
+            // Быстрый путь MQTT включается только при USE_REDIS и phpredis.
+            // Ложное значение оставляет прежний синхронный путь.
+            'MQTT_ASYNC_ENABLED' => array('type' => 'boolean', 'default' => true, 'constant' => false),
+            'MQTT_HANDLERS' => array('type' => 'integer', 'default' => 3, 'constant' => false),
+            'MQTT_HANDLER_LEASE' => array('type' => 'integer', 'default' => 120, 'constant' => false),
+            'MQTT_MAX_ATTEMPTS' => array('type' => 'integer', 'default' => 5, 'constant' => false),
 
         );
     }

@@ -135,6 +135,8 @@ $offset = ($page - 1) * $per_page;
 $result = $total
     ? SQLSelect("SELECT * FROM mqtt WHERE " . $where_sql . " ORDER BY " . $order . " LIMIT " . $offset . "," . $per_page)
     : array();
+// Sql-проекция может отставать до секунды; список показывает значение из Redis.
+$result = MqttRuntime::overlay($result);
 
 $objects = array();
 foreach ($result as $row) {

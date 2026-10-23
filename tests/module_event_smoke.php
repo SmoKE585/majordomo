@@ -11,6 +11,9 @@ namespace MajorDoMo\Core {
             if ($topic !== 'core_runtime' || $token !== 'fixture-token') throw new \RuntimeException('Bad queue claim');
             return $this->item;
         }
+        public function claimedRuntime($topic, $id, $token) {
+            return $this->claimed($topic, $id, $token);
+        }
     }
 }
 namespace {

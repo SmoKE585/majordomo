@@ -13,7 +13,53 @@ use \RuntimeException;
  */
 final class OperationsQueue
 {
-    public function __construct(private Database $db, private RedisConnection $redis) {}
+    public function __construct(
+        private Database $db,
+        private RedisConnection $redis,
+        private ?LaneEventQueue $lanes = null
+    ) {}
+
+    /**
+     * Параллельный исполнитель включается только при наличии Redis и
+     * CORE_WORKERS > 1. Иначе остаётся прежний последовательный путь.
+     */
+    public function parallelEnabled(): bool
+    {
+        return $this->lanes !== null && Config::int('CORE_WORKERS', 3) > 1
+            && (bool)Config::get('USE_REDIS') && class_exists('Redis');
+    }
+
+    public function lanes(): ?LaneEventQueue
+    {
+        return $this->lanes;
+    }
+
+    /**
+     * Полоса операции. Метод и уведомление модуля о свойстве относятся к
+     * объекту; сценарии, API, подписки и события модулей — произвольный PHP,
+     * поэтому идут в эксклюзивную полосу serial.
+     */
+    private function laneFor(string $operation, array $params, ?string $target): string
+    {
+        $explicit = (string)($params['_lane'] ?? '');
+        if ($explicit !== '') return mb_substr($explicit, 0, 160, 'UTF-8');
+        if ($operation === 'method') {
+            $object = explode('.', (string)$target, 2)[0];
+            if ($object !== '') return 'object:' . mb_substr($object, 0, 150, 'UTF-8');
+        }
+        if ($operation === 'modulepropertyset') {
+            $object = (string)($params['object'] ?? '');
+            if ($object !== '') return 'object:' . mb_substr($object, 0, 150, 'UTF-8');
+        }
+        return 'serial';
+    }
+
+    private function laneForItem(array $item): string
+    {
+        $payload = json_decode((string)($item['DATAVALUE'] ?? ''), true);
+        $params = is_array($payload['params'] ?? null) ? $payload['params'] : array();
+        return $this->laneFor((string)($item['DATANAME'] ?? ''), $params, $payload['target'] ?? null);
+    }
 
     public function enqueueRuntime(string $operation, array $params, ?string $target = null): bool
     {
@@ -22,7 +68,86 @@ final class OperationsQueue
         if (!isset($params['_delivery']) && PropertyChain::source() !== '') $params['_delivery'] = PropertyChain::delivery();
         $target ??= (string)($params['event'] ?? $operation);
         $payload = array('target' => $target, 'path' => 'core:' . $operation . '/' . $target, 'params' => $params);
-        return (bool)$this->enqueue('core_runtime', $operation, json_encode($payload, JSON_THROW_ON_ERROR), false, 3600);
+        return $this->enqueueRuntimePayload($operation, $payload);
+    }
+
+    /**
+     * Постановка уже собранного payload (совместимость с внутренним API).
+     * Позволяет не терять полосы там, где раньше вызывался enqueue() напрямую.
+     */
+    public function enqueueRuntimePayload(string $operation, array $payload): bool
+    {
+        $json = json_encode($payload, JSON_THROW_ON_ERROR);
+        if ($this->parallelEnabled()) {
+            $params = is_array($payload['params'] ?? null) ? $payload['params'] : array();
+            $this->lanes->push(array(
+                'TOPIC' => 'core_runtime',
+                'DATANAME' => $operation,
+                'DATAVALUE' => $json,
+            ), $this->laneFor($operation, $params, $payload['target'] ?? null), 3600);
+            return true;
+        }
+        return (bool)$this->enqueue('core_runtime', $operation, $json, false, 3600);
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function claimRuntime(int $limit = 1, int $lease = 300): array
+    {
+        if ($this->parallelEnabled()) return $this->lanes->claim($limit, $lease);
+        return $this->claim('core_runtime', $limit, $lease);
+    }
+
+    public function acknowledgeRuntime(array $item): bool
+    {
+        if ($this->parallelEnabled() && isset($item['LANE'])) return $this->lanes->acknowledge($item);
+        return (bool)$this->acknowledge($item);
+    }
+
+    public function releaseRuntime(array $item, int $delay = 5): bool
+    {
+        if ($this->parallelEnabled() && isset($item['LANE'])) return $this->lanes->release($item, $delay);
+        return (bool)$this->release($item, $delay);
+    }
+
+    public function failRuntime(array $item, string $error): void
+    {
+        if ($this->parallelEnabled() && isset($item['LANE'])) {
+            $this->lanes->fail($item, $error);
+            return;
+        }
+        $this->acknowledge($item);
+    }
+
+    public function claimedRuntime(string $topic, string $id, string $token): array
+    {
+        if ($this->parallelEnabled()) return $this->lanes->claimed($id, $token);
+        return $this->claimed($topic, $id, $token);
+    }
+
+    /**
+     * Переносит элементы старого ZSET core_runtime в полосы. Нужен при
+     * обновлении, когда в очереди уже лежат операции прежней версии.
+     */
+    public function migrateLegacyRuntime(int $limit = 200): int
+    {
+        if (!$this->parallelEnabled()) return 0;
+        $items = $this->claim('core_runtime', $limit, 60);
+        $moved = 0;
+        foreach ($items as $item) {
+            try {
+                $this->lanes->push(array(
+                    'TOPIC' => 'core_runtime',
+                    'DATANAME' => $item['DATANAME'],
+                    'DATAVALUE' => (string)$item['DATAVALUE'],
+                ), $this->laneForItem($item), 3600);
+                $this->acknowledge($item);
+                $moved++;
+            } catch (\Throwable $error) {
+                $this->release($item, 5);
+                throw $error;
+            }
+        }
+        return $moved;
     }
 
     public function keys($topic)

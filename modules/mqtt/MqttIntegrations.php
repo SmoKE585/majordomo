@@ -40,7 +40,7 @@ final class MqttIntegrations
                 if (!self::matches($filter, $topic)) continue;
                 $operation = array('target' => $name, 'path' => '/mqtt/module/' . $name,
                     'params' => array('event' => 'MQTT_MESSAGE', 'details' => array('topic' => $topic, 'payload' => $payload)));
-                if (!\MajorDoMo\Core\Core::queue()->enqueue('core_runtime', 'moduleevent', json_encode($operation, JSON_THROW_ON_ERROR), false, 3600)) {
+                if (!\MajorDoMo\Core\Core::queue()->enqueueRuntimePayload('moduleevent', $operation)) {
                     throw new RuntimeException('MQTT module event was not queued: ' . $name);
                 }
                 break;

@@ -352,7 +352,7 @@ final class Migrations
      * `PROCESSED` is the queue flag for module subscribers; history retention is
      * applied by EventBus::prune() on maintenance runs.
      */
-    private function ensureSystemEventsSchema(): void
+    public function ensureSystemEventsSchema(): void
     {
         $this->db->requireExec(
             "CREATE TABLE IF NOT EXISTS system_events (" .

@@ -36,7 +36,7 @@ final class Application
             new Commands\AuthUnblockCommand(), new Commands\AuthResetCommand(),
             new Commands\ModesListCommand(), new Commands\ModesSetCommand(),
             new Commands\ApiTokensCommand(), new Commands\ApiRevokeCommand(), new Commands\ApiSpecCommand(),
-            new Commands\WebSocketsServeCommand(),
+            new Commands\WebSocketsServeCommand(), new Commands\MqttRuntimeCommand(),
         ) as $command) $this->register($command);
     }
 

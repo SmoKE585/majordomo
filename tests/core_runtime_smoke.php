@@ -16,6 +16,9 @@ define('REDIS_DB', 15);
 define('REDIS_TIMEOUT', 0.5);
 define('SEPARATE_HISTORY_STORAGE', getenv('MJD_TEST_SEPARATE_HISTORY') ? 1 : 0);
 define('DB_NAME', 'mjd_core_test_' . bin2hex(random_bytes(6)));
+// Этот тест проверяет общий последовательный путь; параллельные полосы
+// проверяются отдельным tests/core_lanes_smoke.php.
+putenv('CORE_WORKERS=1');
 require __DIR__ . '/bootstrap.php';
 
 use MajorDoMo\Core\Core;
@@ -28,6 +31,15 @@ $db = new mysql('127.0.0.1', (int)getenv('MJD_TEST_DB_PORT'), 'root', '', DB_NAM
 $checks = 0;
 function check($condition, $message) { global $checks; if (!$condition) throw new RuntimeException('FAILED: ' . $message); $checks++; echo 'PASS ' . $message . PHP_EOL; }
 function execTest($sql) { global $db; if (!$db->Exec($sql)) throw new RuntimeException('Fixture SQL failed'); }
+/** Remove pending module notifications so a method is the head of its lane. */
+function drainCoreRuntime(): void
+{
+    for ($i = 0; $i < 50; $i++) {
+        $items = Core::queue()->claim('core_runtime', 1, 30);
+        if (!$items) break;
+        foreach ($items as $item) Core::queue()->acknowledge($item);
+    }
+}
 
 try {
     if (USE_REDIS && mjdGetRedisConnection()->get('codex:mjd-test-sandbox') !== 'disposable-20261021') throw new RuntimeException('Redis is not the disposable test sandbox');
@@ -78,8 +90,9 @@ try {
     check(SQLSelectOne("SELECT VALUE FROM pvalues WHERE PROPERTY_NAME='Lamp.connectionStatus'")['VALUE'] === 'keep', 'Connect cleanup preserves unrelated connection properties');
     check(!SQLSelectOne("SELECT ID FROM project_modules WHERE NAME='connect'"), 'Connect module registration removed');
     check(!isset(json_decode(SQLSelectOne("SELECT VALUE FROM settings WHERE NAME='HOOK_EVENT_TEST'")['VALUE'], true)['connect']), 'Connect hook removed structurally');
+    $migrationCount = (int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_migrations')['C'];
     Core::migrations()->run();
-    check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_migrations')['C'] === 5, 'migration is idempotent');
+    check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_migrations')['C'] === $migrationCount, 'migration is idempotent');
     check(SQLSelectOne("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pvalues'")['ENGINE'] === 'InnoDB', 'hot tables migrated to InnoDB');
 
     sg('Lamp.status', 0);
@@ -113,10 +126,11 @@ try {
     sg('Lamp.status',10);
     check(gg('Lamp.status') === 12, 'custom validation retains object context and can transform value');
     $property['VALIDATION_TYPE']=0; SQLUpdate('properties',$property);
+    drainCoreRuntime();
     check((bool)callMethodSafe('Lamp.calculate',array('offset'=>1)), 'safe internal method call enters durable queue without HTTP');
-    $operation=Core::queue()->claim('core_runtime',1)[0];
+    $operation=Core::queue()->claimRuntime(1,30)[0];
     check(Core::worker()->execute($operation['QUEUE_ID'],$operation['CLAIM_TOKEN'])['success'] === true, 'queued method executes through new runtime');
-    Core::queue()->acknowledge($operation);
+    Core::queue()->acknowledgeRuntime($operation);
     unset($_GET['r_s_m'],$_SERVER['REQUEST_URI'],$_SERVER['REQUEST_METHOD']); $_REQUEST=array();
 
     $queue = Core::queue();
@@ -280,7 +294,7 @@ try {
     $fixture = sys_get_temp_dir() . '/mjd-worker-' . bin2hex(random_bytes(6)) . '/';
     mkdir($fixture . 'lib',0777,true); mkdir($fixture . 'scripts',0777,true);
     copy(ROOT . 'scripts/core_worker.php',$fixture . 'scripts/core_worker.php');
-    $constants = array('APP_ENV'=>'testing','ROOT'=>$fixture,'MJD_TEST_SOURCE_ROOT'=>ROOT,'DIR_MODULES'=>DIR_MODULES,'ROOTHTML'=>'/','BASE_URL'=>BASE_URL,'USE_REDIS'=>USE_REDIS,'REDIS_PORT'=>REDIS_PORT,'REDIS_DB'=>15,'REDIS_TIMEOUT'=>0.5,'DB_NAME'=>DB_NAME,'SEPARATE_HISTORY_STORAGE'=>SEPARATE_HISTORY_STORAGE);
+    $constants = array('APP_ENV'=>'testing','ROOT'=>$fixture,'MJD_TEST_SOURCE_ROOT'=>ROOT,'DIR_MODULES'=>DIR_MODULES,'ROOTHTML'=>'/','BASE_URL'=>BASE_URL,'USE_REDIS'=>USE_REDIS,'REDIS_PORT'=>REDIS_PORT,'REDIS_DB'=>15,'REDIS_TIMEOUT'=>0.5,'DB_NAME'=>DB_NAME,'SEPARATE_HISTORY_STORAGE'=>SEPARATE_HISTORY_STORAGE,'CORE_WORKERS'=>1);
     $config="<?php\nif (getenv('APP_ENV') !== 'testing') exit(2);\n";
     foreach ($constants as $name=>$value) $config .= 'define(' . var_export($name,true) . ',' . var_export($value,true) . ");\n";
     file_put_contents($fixture . 'config.php',$config);
@@ -295,8 +309,9 @@ try {
     $scheduler->run();
     check((int)SQLSelectOne('SELECT PROCESSED FROM jobs WHERE ID='.$id)['PROCESSED'] === 0, 'worker exit without result is not acknowledged');
     $worker = new \MajorDoMo\Core\OperationWorker(Core::database(),Core::redis(),Core::queue(),$processes);
+    drainCoreRuntime();
     callMethodSafe('Lamp.calculate',array('offset'=>2));
-    check($worker->process() === 1 && Core::queue()->claim('core_runtime') === array(), 'real operation subprocess executes and acknowledges method');
+    check($worker->process() === 1 && Core::queue()->claimRuntime(1,30) === array(), 'real operation subprocess executes and acknowledges method');
     $beforeWrites=(int)SQLSelectOne('SELECT COUNT(*) AS C FROM phistory_queue')['C'];
     $children=array();
     for ($n=0;$n<6;$n++) {

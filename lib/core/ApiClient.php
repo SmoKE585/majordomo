@@ -32,7 +32,7 @@ final class ApiClient
         if (str_starts_with($path, '/api/') || str_starts_with($path, '/api.php/')) return $this->localRequest($path, strtoupper($method), $params, (bool)$wait);
         if (!$wait && preg_match('#^/api/(method|modulePropertySet)/([^/?]+)$#i', $path, $match)) {
             $payload = array('target' => rawurldecode($match[2]), 'path' => $path, 'params' => $params);
-            return (bool)$this->queue->enqueue('core_runtime', strtolower($match[1]), json_encode($payload, JSON_THROW_ON_ERROR), false, 3600);
+            return $this->queue->enqueueRuntimePayload(strtolower($match[1]), $payload);
         }
         $params['no_session'] = 1;
         $url = preg_replace('#^/api/#', rtrim(BASE_URL, '/') . '/api.php/', $path);
@@ -77,10 +77,10 @@ final class ApiClient
         $resource = strtolower(explode('/', trim(preg_replace('#^/api(?:\.php)?/#', '', $path), '/'))[0] ?? '');
         if (!$wait && preg_match('#^/api/(method|modulePropertySet)/([^/?]+)$#i', $path, $match)) {
             $payload = array('target' => rawurldecode($match[2]), 'path' => $path, 'params' => $params);
-            return (bool)$this->queue->enqueue('core_runtime', strtolower($match[1]), json_encode($payload, JSON_THROW_ON_ERROR), false, 3600);
+            return $this->queue->enqueueRuntimePayload(strtolower($match[1]), $payload);
         }
         if (!$wait && (in_array($resource, array('script', 'events', 'module'), true) || ($method !== 'GET' && $resource !== 'v1'))) {
-            return (bool)$this->queue->enqueue('core_runtime', 'api', json_encode(array('target' => $resource, 'path' => $path, 'method' => $method, 'params' => $params), JSON_THROW_ON_ERROR), false, 3600);
+            return $this->queue->enqueueRuntimePayload('api', array('target' => $resource, 'path' => $path, 'method' => $method, 'params' => $params));
         }
         $saved = array($_GET, $_POST, $_REQUEST, $_SERVER);
         $level = ob_get_level(); ob_start(); $adopted = false;

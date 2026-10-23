@@ -14,6 +14,12 @@ $rec = SQLSelectOne("SELECT * FROM " . $table_name . " WHERE ID=" . (int)$id);
 if (!is_array($rec)) {
     $rec = array();
 }
+if (!empty($rec['PATH']) && class_exists('MqttRuntime')) {
+    // Значение могло ещё не дойти до MySQL: карточка показывает актуальное
+    // состояние из Redis.
+    $overlay = MqttRuntime::overlay(array($rec));
+    $rec = $overlay[0] ?? $rec;
+}
 
 if ($this->mode == 'update') {
     $ok = 1;
@@ -69,7 +75,11 @@ if ($this->mode == 'update') {
             $old_linked_object !== $rec['LINKED_OBJECT'] ||
             $old_linked_property !== $rec['LINKED_PROPERTY'] ||
             $old_linked_method !== $rec['LINKED_METHOD']) {
-            setGlobal('cycle_mqttControl', 'restart');
+            // В быстром пути достаточно поднять версию снимка: обработчики
+            // перечитают привязки без переподключения к брокеру.
+            if (!MqttRuntime::enabled()) {
+                setGlobal('cycle_mqttControl', 'restart');
+            }
         }
 
         if ($rec['LINKED_OBJECT'] !== '' && $rec['LINKED_PROPERTY'] !== '') {
@@ -100,6 +110,10 @@ if ($this->mode == 'update') {
         $rec = SQLSelectOne("SELECT * FROM " . $table_name . " WHERE ID=" . (int)$rec['ID']);
         if (!is_array($rec)) {
             $rec = array();
+        }
+        if (!empty($rec['PATH']) && class_exists('MqttRuntime')) {
+            $overlay = MqttRuntime::overlay(array($rec));
+            $rec = $overlay[0] ?? $rec;
         }
         $out['OK'] = 1;
     } else {

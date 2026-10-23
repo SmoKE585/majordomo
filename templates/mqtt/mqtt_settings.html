@@ -164,7 +164,7 @@
                                         <option value="2" [#if MQTT_WRITE_METHOD="2"#]selected[#endif#]>Через очередь операций</option>
                                     </select>
                                 </div>
-                                <div class="md-field__hint">Очередь снижает нагрузку при частых публикациях.</div>
+                                <div class="md-field__hint">Очередь снижает нагрузку при частых публикациях. При включённом Redis и быстром пути команды всегда идут через отдельного издателя, независимо от выбранного способа.</div>
                             </div>
                             <div class="md-field">
                                 <label class="md-field__label" for="mdMqttDelay">Задержка повторов, сек</label>

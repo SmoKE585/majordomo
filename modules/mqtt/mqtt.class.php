@@ -4,6 +4,8 @@
  *
  * Mqtt
  * 2026-10-22 — клиент MQTT загружается Composer без ручного include.
+ * 2026-10-23 — добавлен быстрый путь: индекс привязок, состояние в Redis,
+ *              отложенная проекция в MySQL и отдельная публикация.
  *
  * @package project
  * @author Serge J. <jey@tut.by>
@@ -11,6 +13,9 @@
  * @version 0.1 (wizard, 13:07:08 [Jul 19, 2013])
  */
 require_once __DIR__ . '/MqttUnlinkedThrottle.php';
+require_once __DIR__ . '/MqttSchema.php';
+require_once __DIR__ . '/MqttBindingIndex.php';
+require_once __DIR__ . '/MqttRuntime.php';
 
 class mqtt extends module
 {
@@ -21,6 +26,11 @@ class mqtt extends module
     protected $lookup_linked_paths = array();
     protected $setglobal_supports_source = null;
     protected static $unlinked_throttle = null;
+    private ?MqttBindingIndex $runtime_index = null;
+    private bool $config_loaded = false;
+    /** Последние значения в памяти обработчика: путь => строка. */
+    private array $runtime_last_values = array();
+    private int $runtime_last_values_limit = 20000;
     /**
      * mqtt
      *
@@ -146,6 +156,59 @@ class mqtt extends module
         $this->lookup_by_path = array();
         $this->lookup_write_paths = array();
         $this->lookup_linked_paths = array();
+        $this->runtime_index = null;
+        if (class_exists('MqttRuntime') && MqttRuntime::enabled()) {
+            // Версия в Redis: обработчики перечитают снимок без переподключения
+            // к брокеру и без перезапуска цикла.
+            MqttRuntime::invalidate();
+        }
+    }
+
+    function getRuntimeIndex(): MqttBindingIndex
+    {
+        if ($this->runtime_index === null) {
+            $this->runtime_index = new MqttBindingIndex(\MajorDoMo\Core\Core::redis());
+        }
+        $this->runtime_index->ensureFresh();
+        return $this->runtime_index;
+    }
+
+    function loadConfigOnce()
+    {
+        if (!$this->config_loaded) {
+            $this->getConfig();
+            $this->config_loaded = true;
+        }
+        return $this->config;
+    }
+
+    private function rememberRuntimeValue(string $path, string $value): void
+    {
+        if (!isset($this->runtime_last_values[$path]) && count($this->runtime_last_values) >= $this->runtime_last_values_limit) {
+            unset($this->runtime_last_values[array_key_first($this->runtime_last_values)]);
+        }
+        $this->runtime_last_values[$path] = $value;
+    }
+
+    private function runtimeOldValue(string $path, array $record): string
+    {
+        if (array_key_exists($path, $this->runtime_last_values)) {
+            return (string)$this->runtime_last_values[$path];
+        }
+        $state = MqttRuntime::state($path);
+        if ($state !== null) {
+            $value = (string)($state['VALUE'] ?? '');
+        } else {
+            $value = (string)($record['VALUE'] ?? '');
+            // Снимок не хранит значения обычных привязок: после перезапуска
+            // Redis старое значение для метода читается один раз из SQL.
+            if ($value === '' && !empty($record['ID']) && !empty($record['LINKED_METHOD'])) {
+                $row = SQLSelectOne("SELECT VALUE FROM mqtt WHERE ID=" . (int)$record['ID']);
+                $value = (string)($row['VALUE'] ?? '');
+            }
+        }
+        $this->rememberRuntimeValue($path, $value);
+        return $value;
     }
 
     function refreshLookupCache($force = false)
@@ -391,8 +454,11 @@ class mqtt extends module
     function mqttPublish($topic, $value, $qos = 0, $retain = 0, $write_type = 0)
     {
         startMeasure('mqttPublish');
-        $this->getConfig();
-        if ($write_type == 0 && $this->config['MQTT_WRITE_METHOD']) {
+        $this->loadConfigOnce();
+        $async = MqttRuntime::enabled();
+        if ($async || ($write_type == 0 && !empty($this->config['MQTT_WRITE_METHOD']))) {
+            // При быстром пути любая команда идёт через отдельный издатель:
+            // автоматизация не ждёт ни соединения с брокером, ни пачки датчиков.
             $write_type = 2;
         }
 
@@ -404,14 +470,26 @@ class mqtt extends module
             if ($retain) {
                 $data['r'] = $retain;
             }
-            addToOperationsQueue('mqtt_queue', $topic, json_encode($data), true);
-            endMeasure('mqttPublish');
-            return 1;
+            try {
+                $queued = addToOperationsQueue('mqtt_queue', $topic, json_encode($data), true);
+                if ($queued === false) throw new RuntimeException('MQTT command was not queued');
+                MqttRuntime::count('commands_queued');
+                endMeasure('mqttPublish');
+                return 1;
+            } catch (Throwable $error) {
+                if ($async) {
+                    // Redis недоступен: не теряем команду, уходим в прямой путь.
+                    DebMes('MQTT queue unavailable, publishing directly: ' . $error->getMessage(), 'mqtt_error');
+                    $write_type = 0;
+                } else {
+                    throw $error;
+                }
+            }
         }
 
 
 
-        if ($this->config['MQTT_CLIENT']) {//
+        if (!empty($this->config['MQTT_CLIENT'])) {//
             $client_name = $this->config['MQTT_CLIENT'];
         } else {
             $client_name = "MajorDoMo MQTT";
@@ -419,17 +497,17 @@ class mqtt extends module
 
         $username = '';
         $password = '';
-        if ($this->config['MQTT_AUTH']) {
-            $username = $this->config['MQTT_USERNAME'];
-            $password = $this->config['MQTT_PASSWORD'];
+        if (!empty($this->config['MQTT_AUTH'])) {
+            $username = (string)($this->config['MQTT_USERNAME'] ?? '');
+            $password = (string)($this->config['MQTT_PASSWORD'] ?? '');
         }
-        if ($this->config['MQTT_HOST']) {
+        if (!empty($this->config['MQTT_HOST'])) {
             $host = $this->config['MQTT_HOST'];
         } else {
             $host = 'localhost';
         }
-        if ($this->config['MQTT_PORT']) {
-            $port = $this->config['MQTT_PORT'];
+        if (!empty($this->config['MQTT_PORT'])) {
+            $port = (int)$this->config['MQTT_PORT'];
         } else {
             $port = 1883;
         }
@@ -489,17 +567,21 @@ class mqtt extends module
      *
      * @access public
      */
-    function setProperty($id, $value, $set_linked = 0)
+    function setProperty($id, $value, $set_linked = 0, $rec = null)
     {
-
         $original_value = $value;
 
-        $rec = SQLSelectOne("SELECT * FROM mqtt WHERE ID='" . $id . "'");
+        if (!is_array($rec)) {
+            $rec = SQLSelectOne("SELECT * FROM mqtt WHERE ID='" . (int)$id . "'");
+        }
 
-
-        if (!$rec['ID'] || !$rec['PATH']) {
+        if (empty($rec['ID']) || $rec['PATH'] === '') {
             return 0;
         }
+
+        $this->loadConfigOnce();
+        $async = MqttRuntime::enabled();
+        $debug = !empty($this->config['DEBUG_MODE']);
 
         if ($rec['REPLACE_LIST'] != '') {
             $list = explode(',', $rec['REPLACE_LIST']);
@@ -517,20 +599,16 @@ class mqtt extends module
         }
 
         $topic = $rec['PATH_WRITE'] ? $rec['PATH_WRITE'] : $rec['PATH'];
+        $old_value = $async
+            ? MqttRuntime::value($rec['PATH'], (string)($rec['VALUE'] ?? ''))
+            : (string)($rec['VALUE'] ?? '');
 
-        if ($rec['ONLY_NEW_VALUE'] && $rec['VALUE'] == $value) {
+        if ($rec['ONLY_NEW_VALUE'] && $old_value == $value) {
             if ($rec['LOGGING']) {
-                DebMes("Ignoring \"$value\" = \"" . $rec['VALUE'] . "\"", 'mqtt_topic_' . $rec['ID']);
+                DebMes("Ignoring \"$value\" = \"" . $old_value . "\"", 'mqtt_topic_' . $rec['ID']);
             }
-            if ($rec['LOGGING'] || (isset($this->config['DEBUG_MODE']) && $this->config['DEBUG_MODE'])) {
-                $hist = array();
-                $hist['MQTT_ID'] = $rec['ID'];
-                $hist['DESTINATION'] = 1;
-                $hist['TOPIC'] = $topic;
-                $hist['DATA_PAYLOAD'] = $value;
-                $hist['VALUE'] = $original_value;
-                $hist['UPDATED'] = date('Y-m-d H:i:s');
-                SQLInsert('mqtt_history', $hist);
+            if ($rec['LOGGING'] || $debug) {
+                $this->queueOutgoingHistory($rec, $topic, $value, $original_value, $async);
             }
             return 0;
         }
@@ -558,10 +636,25 @@ class mqtt extends module
             $this->mqttPublish($rec['PATH'], $value, (int)$rec['QOS'], (int)$rec['RETAIN'], (int)$rec['WRITE_TYPE']);
         }
 
-        $rec['VALUE'] = $value . '';
-        $rec['UPDATED'] = date('Y-m-d H:i:s');
-        SQLUpdate('mqtt', $rec);
-
+        $updated = date('Y-m-d H:i:s');
+        if ($async) {
+            // Значение уходит в проекцию; интерфейс читает его из Redis и не
+            // ждёт следующей записи MySQL. Если Redis исчез после публикации,
+            // команда уже отправлена — сохраняем состояние напрямую.
+            try {
+                MqttRuntime::stage(array('ID' => (int)$rec['ID'], 'PATH' => (string)$rec['PATH'],
+                    'VALUE' => (string)$value, 'UPDATED' => $updated));
+            } catch (Throwable $error) {
+                DebMes('MQTT state projection unavailable, writing SQL directly: ' . $error->getMessage(), 'mqtt_runtime', 'warning');
+                $rec['VALUE'] = $value . '';
+                $rec['UPDATED'] = $updated;
+                SQLUpdate('mqtt', $rec);
+            }
+        } else {
+            $rec['VALUE'] = $value . '';
+            $rec['UPDATED'] = $updated;
+            SQLUpdate('mqtt', $rec);
+        }
 
         if ($set_linked && $rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
             $currentValue = getGlobal($rec['LINKED_OBJECT'] . '.' . $rec['LINKED_PROPERTY']);
@@ -573,23 +666,37 @@ class mqtt extends module
             }
         }
 
-        if ($rec['LOGGING'] || (isset($this->config['DEBUG_MODE']) && $this->config['DEBUG_MODE'])) {
-            $hist = array();
-            $hist['MQTT_ID'] = $rec['ID'];
-            $hist['DESTINATION'] = 1;
-            $hist['TOPIC'] = $topic;
-            $hist['DATA_PAYLOAD'] = $value;
-            $hist['VALUE'] = $original_value;
-            if (mb_strlen($hist['VALUE']) > 255) {
-                $hist['VALUE'] = '[Data too large]';
+        if ($rec['LOGGING'] || $debug) {
+            $this->queueOutgoingHistory($rec, $topic, $value, $original_value, $async, $updated);
+        }
+    }
+
+    /** История команды: отдельное событие, даже если состояние объединяется. */
+    private function queueOutgoingHistory(array $rec, string $topic, $value, $original_value, bool $async, ?string $updated = null): void
+    {
+        $hist = array();
+        $hist['MQTT_ID'] = (int)$rec['ID'];
+        $hist['DESTINATION'] = 1;
+        $hist['TOPIC'] = $topic;
+        $hist['DATA_PAYLOAD'] = (string)$value;
+        $hist['VALUE'] = (string)$original_value;
+        if (mb_strlen($hist['VALUE'], 'UTF-8') > 255) {
+            $hist['VALUE'] = '[Data too large]';
+        }
+        $hist['UPDATED'] = $updated ?? date('Y-m-d H:i:s');
+        if ($rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
+            $hist['LINKED_DATA'] = $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_PROPERTY'];
+        }
+        if ($async) {
+            try {
+                MqttRuntime::stageHistory($hist);
+            } catch (Throwable $error) {
+                DebMes('MQTT history queue unavailable, writing SQL directly: ' . $error->getMessage(), 'mqtt_runtime', 'warning');
+                SQLInsert('mqtt_history', $hist);
             }
-            $hist['UPDATED'] = date('Y-m-d H:i:s');
-            if ($rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
-                $hist['LINKED_DATA'] = $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_PROPERTY'];
-            }
+        } else {
             SQLInsert('mqtt_history', $hist);
         }
-
     }
 
     /**
@@ -783,6 +890,177 @@ class mqtt extends module
     }
 
     /**
+     * Обработка сообщения в быстром пути: состояние пишется в Redis, MySQL
+     * получает только проекцию и отдельные события истории.
+     */
+    function processRuntimeMessage($path, $value, $ignore_stripmode = false, ?MqttBindingIndex $index = null)
+    {
+        if (preg_match('/\#$/', $path)) {
+            return 0;
+        }
+
+        $this->loadConfigOnce();
+        $original_value = $value;
+        if ($value === false) $value = 0;
+        elseif ($value === true) $value = 1;
+        elseif ($value === null) $value = '';
+
+        $index = $index ?? $this->getRuntimeIndex();
+        if (!$index->ready()) throw new RuntimeException('MQTT binding index is not ready');
+        if (preg_match("/^\\\\u\\d+/", $path)) {
+            $path = json_decode('"' . $path . '"');
+        }
+
+        $stripmode = !$ignore_stripmode && !empty($this->config['MQTT_STRIPMODE']);
+        if ($stripmode && !$index->isLinkedOrPrefix($path)) {
+            return false;
+        }
+
+        $is_linked = $index->isLinked($path);
+        $interval = isset($this->config['MQTT_UNLINKED_UPDATE_INTERVAL'])
+            ? max(0, (int)$this->config['MQTT_UNLINKED_UPDATE_INTERVAL']) : 3600;
+        $process_record = $is_linked || (!$stripmode && $this->getUnlinkedThrottle()->allow($path, $interval));
+        if (!$process_record && !$index->hasLinkedPrefix($path)) {
+            return false;
+        }
+
+        $throttled = $process_record && !$is_linked && $interval > 0;
+        try {
+            $json_payload = $this->decodeJsonObjectPayload($value);
+            if ($json_payload !== false) {
+                foreach ($json_payload as $key => $child) {
+                    if (is_array($child)) $child = json_encode($child);
+                    $this->processRuntimeMessage($path . '/' . $key, $child, $ignore_stripmode, $index);
+                }
+            }
+            if (!$process_record) return false;
+            $result = $this->processRuntimeValue($path, $value, $original_value,
+                $this->buildIncomingSource($path, $original_value), $index);
+            if ($result === false && $throttled) $this->getUnlinkedThrottle()->cancel($path, $interval);
+            return $result;
+        } catch (Throwable $error) {
+            if ($throttled) $this->getUnlinkedThrottle()->cancel($path, $interval);
+            throw $error;
+        }
+    }
+
+    function processRuntimeValue($path, $value, $original_value, $source_url, MqttBindingIndex $index)
+    {
+        startMeasure('mqttProcessMessage');
+        if (preg_match("/^\\\\u\\d+/", $value)) {
+            $value = json_decode('"' . $value . '"');
+        }
+        if ($index->isWritePath($path)) {
+            endMeasure('mqttProcessMessage');
+            return false;
+        }
+
+        $rec = $index->record($path);
+        $debug = !empty($this->config['DEBUG_MODE']);
+        $updated = date('Y-m-d H:i:s');
+
+        if (empty($rec['ID'])) {
+            if ($this->isLikelyJsonFragmentPath($path)) {
+                endMeasure('mqttProcessMessage');
+                return false;
+            }
+            MqttRuntime::stage(array('ID' => 0, 'PATH' => $path, 'VALUE' => (string)$value, 'UPDATED' => $updated));
+            $this->rememberRuntimeValue($path, (string)$value);
+            endMeasure('mqttProcessMessage');
+            return true;
+        }
+
+        $old_value = $this->runtimeOldValue($path, $rec);
+
+        if ($rec['ONLY_NEW_VALUE'] && $value == $old_value) {
+            if ($rec['LOGGING']) {
+                DebMes("Ignoring \"$value\" (already existing)", 'mqtt_topic_' . $rec['ID']);
+            }
+            if ($rec['LOGGING'] || $debug || $rec['LINKED_OBJECT']) {
+                $this->stageIncomingHistory($rec, $path, $value, $original_value, $updated);
+            }
+            endMeasure('mqttProcessMessage');
+            return true;
+        }
+
+        $raw_value = (string)$value;
+
+        if ($rec['REPLACE_LIST'] != '') {
+            $list = explode(',', $rec['REPLACE_LIST']);
+            foreach ($list as $pair) {
+                $pair = trim($pair);
+                list($new, $old) = explode('=', $pair);
+                if ($value == $new) {
+                    if ($rec['LOGGING']) {
+                        DebMes("Replacing \"$value\" with \"$old\"", 'mqtt_topic_' . $rec['ID']);
+                    }
+                    $value = $old;
+                    break;
+                }
+            }
+        }
+
+        $is_bound = $rec['LINKED_OBJECT'] && ($rec['LINKED_PROPERTY'] || $rec['LINKED_METHOD']);
+
+        if ($rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
+            if ($rec['LOGGING']) {
+                DebMes("Setting property " . $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_PROPERTY'] . " to \"" . $value . "\"", 'mqtt_topic_' . $rec['ID']);
+            }
+            $started = microtime(true);
+            $this->setLinkedPropertyFromMqtt($rec['LINKED_OBJECT'], $rec['LINKED_PROPERTY'], $value, $source_url);
+            MqttRuntime::sample('property', (microtime(true) - $started) * 1000);
+        }
+
+        if ($rec['LINKED_OBJECT'] && $rec['LINKED_METHOD'] &&
+            !(strtolower($rec['LINKED_PROPERTY']) == 'status' && strtolower($rec['LINKED_METHOD']) == 'switch')) {
+            if ($rec['LOGGING']) {
+                DebMes("Calling method " . $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], 'mqtt_topic_' . $rec['ID']);
+            }
+            callMethod($rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], array(
+                'VALUE' => $value,
+                'NEW_VALUE' => $value,
+                'OLD_VALUE' => $old_value,
+                'SOURCE' => $path,
+                'TITLE' => $rec['TITLE'] ?: $path,
+            ));
+        }
+
+        // Состояние и локальный кэш обновляем только после успешной записи
+        // свойства/метода: иначе повтор после сбоя увидит «новое» значение и
+        // ONLY_NEW_VALUE пропустит так и не применённое изменение.
+        MqttRuntime::stage(array('ID' => (int)$rec['ID'], 'PATH' => $path, 'VALUE' => $raw_value, 'UPDATED' => $updated));
+        $this->rememberRuntimeValue($path, $raw_value);
+
+        // Событие истории ставим после успешной обработки: при повторе
+        // сообщения не появится дубль уже записанного события.
+        if ($rec['LOGGING'] || $debug || $is_bound) {
+            $this->stageIncomingHistory($rec, $path, $value, $original_value, $updated);
+        }
+
+        endMeasure('mqttProcessMessage');
+        return true;
+    }
+
+    private function stageIncomingHistory(array $rec, string $path, $value, $original_value, string $updated): void
+    {
+        $hist = array(
+            'MQTT_ID' => (int)$rec['ID'],
+            'DESTINATION' => 0,
+            'TOPIC' => $path,
+            'DATA_PAYLOAD' => (string)$original_value,
+            'VALUE' => (string)$value,
+            'UPDATED' => $updated,
+        );
+        if (mb_strlen($hist['VALUE'], 'UTF-8') > 255) {
+            $hist['VALUE'] = '[Data too large]';
+        }
+        if ($rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
+            $hist['LINKED_DATA'] = $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_PROPERTY'];
+        }
+        MqttRuntime::stageHistory($hist);
+    }
+
+    /**
      * BackEnd
      *
      * Module backend
@@ -810,7 +1088,8 @@ class mqtt extends module
                 }
                 $data = array();
                 if ($clean_ids) {
-                    $rows = SQLSelect("SELECT ID, VALUE, UPDATED FROM mqtt WHERE ID IN (" . implode(',', array_slice($clean_ids, 0, 200)) . ")");
+                    $rows = SQLSelect("SELECT ID, PATH, VALUE, UPDATED FROM mqtt WHERE ID IN (" . implode(',', array_slice($clean_ids, 0, 200)) . ")");
+                    $rows = MqttRuntime::overlay($rows);
                     foreach ($rows as $row) {
                         $data[] = array(
                             'ID' => (int)$row['ID'],
@@ -928,6 +1207,9 @@ class mqtt extends module
             $this->saveConfig();
 
             setGlobal('cycle_mqttControl', 'restart');
+            // Отдельный супервизор держит обработчиков и издателя: смена
+            // брокера/числа обработчиков должна перезапустить и его.
+            setGlobal('cycle_mqtt_runtimeControl', 'restart');
 
             $this->redirect("?view_mode=settings&ok_msg=" . urlencode(LANG_DATA_SAVED));
         }
@@ -1236,7 +1518,17 @@ class mqtt extends module
     function api($params)
     {
         if (isset($_REQUEST['topic']) && $_REQUEST['topic']) {
-            $this->processMessage($_REQUEST['topic'], $_REQUEST['msg']);
+            if (MqttRuntime::enabled() && MqttRuntime::handlersAlive()) {
+                $this->getConfig();
+                try {
+                    $this->processRuntimeMessage($_REQUEST['topic'], $_REQUEST['msg']);
+                } catch (Throwable $error) {
+                    DebMes('MQTT API fast path failed, using sync: ' . $error->getMessage(), 'mqtt_runtime', 'warning');
+                    $this->processMessage($_REQUEST['topic'], $_REQUEST['msg']);
+                }
+            } else {
+                $this->processMessage($_REQUEST['topic'], $_REQUEST['msg']);
+            }
         }
         if (isset($params['publish']) && $params['publish']) {
             $this->mqttPublish($params['publish'], $params['msg']);
@@ -1269,14 +1561,17 @@ class mqtt extends module
     function propertySetHandle($object, $property, $value)
     {
         // Exact match: LIKE treats "_" and "%" in object/property titles as wildcards.
-        $mqtt_properties = SQLSelect("SELECT ID, LOGGING FROM mqtt WHERE READONLY=0 AND LINKED_OBJECT='" . DBSafe($object) . "' AND LINKED_PROPERTY='" . DBSafe($property) . "'");
+        // Индекс (LINKED_OBJECT, LINKED_PROPERTY) добавлен в MqttSchema::ensure().
+        $mqtt_properties = SQLSelect("SELECT * FROM mqtt WHERE READONLY=0 AND LINKED_OBJECT='" . DBSafe($object) . "' AND LINKED_PROPERTY='" . DBSafe($property) . "'");
         $total = count($mqtt_properties);
         if ($total) {
             for ($i = 0; $i < $total; $i++) {
                 if ($mqtt_properties[$i]['LOGGING']) {
                     DebMes("Linked property (" . $object . "." . $property . ") updated to \"" . $value . '"', 'mqtt_topic_' . $mqtt_properties[$i]['ID']);
                 }
-                $this->setProperty($mqtt_properties[$i]['ID'], $value);
+                // Передаём уже прочитанную запись: setProperty больше не делает
+                // второй SELECT по ID на каждое изменение свойства.
+                $this->setProperty($mqtt_properties[$i]['ID'], $value, 0, $mqtt_properties[$i]);
             }
         }
     }
@@ -1310,11 +1605,17 @@ class mqtt extends module
 
         // some action for related tables
         SQLExec("DELETE FROM mqtt WHERE ID='" . (int)$rec['ID'] . "'");
+        if (class_exists('MqttRuntime')) {
+            try { MqttRuntime::forget((string)$rec['PATH']); } catch (Throwable $ignored) {}
+        }
         if ($linked_object != '' && $linked_property != '') {
             removeLinkedPropertyIfNotUsed('mqtt', $linked_object, $linked_property, $this->name);
         }
-        setGlobal('cycle_mqttControl', 'restart');
         $this->invalidateLookupCache();
+        if (!MqttRuntime::enabled()) {
+            // В синхронном режиме цикл держит снимок привязок в памяти.
+            setGlobal('cycle_mqttControl', 'restart');
+        }
     }
 
     function processSubscription($event, &$details)
@@ -1343,7 +1644,7 @@ class mqtt extends module
             SQLExec("DELETE FROM mqtt WHERE PATH='" . DBSafe($write_paths[$i]['PATH_WRITE']) . "'");
         }
         $this->invalidateLookupCache();
-
+        MqttSchema::ensure();
     }
 
     /**
@@ -1392,6 +1693,9 @@ class mqtt extends module
  mqtt: LOGGING int(3) NOT NULL DEFAULT '0'
  mqtt: INDEX (PATH)
  mqtt: INDEX (PATH_WRITE)
+ mqtt: INDEX (LINKED_OBJECT, LINKED_PROPERTY)
+ mqtt: INDEX (LINKED_OBJECT, LINKED_METHOD)
+ mqtt: INDEX (UPDATED)
  
  mqtt_history: ID int(10) unsigned NOT NULL auto_increment
  mqtt_history: MQTT_ID int(10) NOT NULL DEFAULT '0'
@@ -1401,6 +1705,7 @@ class mqtt extends module
  mqtt_history: LINKED_DATA varchar(255) NOT NULL DEFAULT ''
  mqtt_history: DATA_PAYLOAD text
  mqtt_history: UPDATED datetime 
+ mqtt_history: INDEX (MQTT_ID, ID)
  
 EOD;
         parent::dbInstall($data);

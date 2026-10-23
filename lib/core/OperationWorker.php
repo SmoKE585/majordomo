@@ -38,7 +38,7 @@ final class OperationWorker
         $auditError = null;
         $result = null;
         try {
-            $item = $this->queue->claimed('core_runtime', $id, $token);
+            $item = $this->queue->claimedRuntime('core_runtime', $id, $token);
             $data = json_decode($item['DATAVALUE'], true, 512, JSON_THROW_ON_ERROR);
             $params = $data['params'];
             $chain = is_array($params['_chain'] ?? null) ? $params['_chain'] : array();
@@ -209,11 +209,13 @@ final class OperationWorker
     {
         $timeout = defined('CORE_OPERATION_TIMEOUT') ? max(1, (int)CORE_OPERATION_TIMEOUT) : 60;
         // One reservation at a time: no message waits in a local batch while its lease expires.
-        $items = $this->queue->claim('core_runtime', 1, $timeout + 30);
+        // При CORE_WORKERS > 1 очередь выдаёт событие только из свободной полосы.
+        $items = $this->queue->claimRuntime(1, $timeout + 60);
         foreach ($items as $item) {
             $result = $execute ? $execute($item) : $this->processes->run('operation', $item['QUEUE_ID'], $item['CLAIM_TOKEN'], $timeout);
-            if (!empty($result['success'])) $this->queue->acknowledge($item);
-            elseif ((int)($item['ATTEMPTS'] ?? 1) >= 3) {
+            if (!empty($result['success'])) {
+                $this->queue->acknowledgeRuntime($item);
+            } elseif ((int)($item['ATTEMPTS'] ?? 1) >= 3) {
                 $error = substr((string)($result['error'] ?? 'Unknown worker error'), 0, 4096);
                 if (Config::get('USE_REDIS')) {
                     $this->redis->requireConnection()->hSet($this->redis->key('queue:failed:core_runtime'), $item['QUEUE_ID'], json_encode(array('item' => $item, 'error' => $error), JSON_THROW_ON_ERROR));
@@ -221,7 +223,7 @@ final class OperationWorker
                     $record = array('TOPIC' => 'core_runtime', 'PAYLOAD' => json_encode($item, JSON_THROW_ON_ERROR), 'LAST_ERROR' => $error, 'ADDED' => date('Y-m-d H:i:s'));
                     if (!$this->db->insert('operations_failed', $record)) throw new RuntimeException('Cannot preserve failed operation');
                 }
-                $this->queue->acknowledge($item);
+                $this->queue->failRuntime($item, $error);
                 if ($this->errors) {
                     $this->errors->report('property_delivery',
                         'Фоновая операция не выполнена после повторов: ' . $error,
@@ -231,7 +233,8 @@ final class OperationWorker
                 }
             } else {
                 $attempt = max(1, (int)($item['ATTEMPTS'] ?? 1));
-                $this->queue->release($item, min(300, 5 * (2 ** ($attempt - 1))));
+                $delay = min(300, 5 * (2 ** ($attempt - 1)));
+                $this->queue->releaseRuntime($item, $delay);
                 if ($this->errors) {
                     $this->errors->report('property_delivery',
                         'Фоновая операция будет повторена: ' . ($result['error'] ?? 'unknown error'),

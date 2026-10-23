@@ -18,12 +18,22 @@ class Redis
         return $this->command('SET', $args);
     }
     public function eval($script, $args, $numKeys) { return $this->command('EVAL', array_merge(array($script, $numKeys), $args)); }
+    public function zRangeByScore($key, $min, $max, $options = array()) {
+        $args = array($key, $min, $max);
+        if (isset($options['limit'])) {
+            $args[] = 'LIMIT';
+            $args[] = $options['limit'][0];
+            $args[] = $options['limit'][1];
+        }
+        return $this->command('ZRANGEBYSCORE', $args);
+    }
     public function scan(&$cursor, $pattern, $count) {
         $result = $this->command('SCAN', array($cursor ?? 0, 'MATCH', $pattern, 'COUNT', $count));
         $cursor = (int)$result[0];
         return $result[1] ?: false;
     }
     public function hGetAll($key) { $raw = $this->command('HGETALL', array($key)); $result = array(); for ($i=0; $i<count($raw); $i+=2) $result[$raw[$i]]=$raw[$i+1]; return $result; }
+    public function hMGet($key, $fields) { return $this->command('HMGET', array_merge(array($key), array_values($fields))); }
     public function __call($name, $args) { return $this->command(strtoupper($name), $args); }
     private function command($name, $args) {
         $args = array_merge(array($name), $args);
