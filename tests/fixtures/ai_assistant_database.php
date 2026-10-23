@@ -39,7 +39,8 @@ final class AiAssistantDatabaseFixture
     }
     private function checkRecord(string $table, array $record): void
     {
-        if ($table !== 'project_modules' && !preg_match('/^ai_assistant_[a-z_]+$/D', $table)) throw new RuntimeException('Неожиданная таблица фикстуры ИИ-помощника.');
+        if (!in_array($table, array('project_modules', 'classes', 'objects', 'properties', 'scripts'), true)
+            && !preg_match('/^ai_assistant_[a-z_]+$/D', $table)) throw new RuntimeException('Неожиданная таблица фикстуры ИИ-помощника.');
         foreach (array_keys($record) as $field) {
             if (!preg_match('/^[A-Z_]+$/D', $field)) throw new RuntimeException('Некорректное поле тестовой записи.');
         }

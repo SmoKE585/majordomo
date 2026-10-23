@@ -8,10 +8,12 @@ $agentJson = array_map(static fn(array $agent): array => array(
 ), $readyAgents);
 ?>
 <div class="md-ai-chat" data-ai-chat
+     data-actions="<?= $e(json_encode($actions ?? array(), JSON_UNESCAPED_UNICODE)) ?>"
      data-dialog-id="<?= (int)$dialogId ?>"
      data-selected-agent="<?= $selectedAgent ?>"
      data-agents="<?= $e(json_encode($agentJson, JSON_UNESCAPED_UNICODE)) ?>">
 
+    <?php if (empty($drawer)): ?>
     <aside class="md-ai-chat__side">
         <?php ob_start(); ?>
             <div class="md-ai-dialogs" data-ai-dialogs>
@@ -51,9 +53,21 @@ $agentJson = array_map(static fn(array $agent): array => array(
             <li>История хранится в вашей установке; удаление диалога убирает его из списка.</li>
         </ul>') ?>
     </aside>
+    <?php endif; ?>
 
     <section class="md-ai-chat__main">
         <?php ob_start(); ?>
+            <?php if (!empty($drawer)): ?>
+                <div class="md-ai-chat__quick">
+                    <span data-ai-dialog-title hidden><?= $e($dialog['TITLE'] ?? 'Новый чат') ?></span>
+                    <select data-ai-agent hidden aria-label="Агент помощника">
+                        <?php foreach ($readyAgents as $agent): ?>
+                            <option value="<?= (int)$agent['ID'] ?>" <?= (int)$agent['ID'] === $selectedAgent ? 'selected' : '' ?>><?= $e($agent['TITLE']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?= MDJUI::button('Новый чат', array('variant' => 'ghost', 'size' => 'sm', 'icon' => 'plus', 'attrs' => array('data-ai-new-dialog' => '', 'type' => 'button'))) ?>
+                </div>
+            <?php else: ?>
             <div class="md-ai-chat__top">
                 <div class="md-ai-chat__identity">
                     <span class="md-ai-chat__avatar"><?= MDJUI::icon('robot') ?></span>
@@ -83,7 +97,9 @@ $agentJson = array_map(static fn(array $agent): array => array(
                 </div>
             </div>
 
-            <div class="md-ai-chat__messages" data-ai-messages aria-live="polite">
+            <?php endif; ?>
+            <div class="md-alert md-alert--danger" data-ai-recovery hidden></div>
+            <div class="md-ai-chat__messages" data-ai-messages role="log" aria-label="Сообщения диалога" aria-live="polite">
                 <?php if ($messages === array()): ?>
                     <div class="md-ai-chat__empty" data-ai-empty>
                         <?= MDJUI::emptyState(array('icon' => 'messages', 'title' => 'Начните разговор',
@@ -93,16 +109,17 @@ $agentJson = array_map(static fn(array $agent): array => array(
                 <?php else: ?>
                     <?php foreach ($messages as $message): require __DIR__ . '/_message.php'; endforeach; ?>
                 <?php endif; ?>
+                <div class="md-ai-actions" data-ai-actions></div>
             </div>
 
             <form class="md-ai-composer" data-ai-composer>
-                <label class="md-visually-hidden" for="aiPrompt">Сообщение</label>
-                <textarea class="md-textarea md-ai-composer__input" id="aiPrompt" name="prompt" rows="3"
+                <label class="md-visually-hidden" for="<?= !empty($drawer) ? 'aiDrawerPrompt' : 'aiPrompt' ?>">Сообщение</label>
+                <textarea class="md-textarea md-ai-composer__input" id="<?= !empty($drawer) ? 'aiDrawerPrompt' : 'aiPrompt' ?>" name="prompt" rows="<?= !empty($drawer) ? 2 : 3 ?>"
                           placeholder="Спросите о доме или коде…" data-ai-prompt
                           <?= $readyAgents === array() ? 'disabled' : '' ?>></textarea>
                 <div class="md-ai-composer__bar">
                     <div class="md-ai-composer__status" data-ai-status>
-                        <?= $readyAgents === array()
+                        <?= $readyAgents !== array()
                             ? 'Enter — отправить, Shift+Enter — новая строка'
                             : 'Сначала назначьте модель включённому агенту' ?>
                     </div>
@@ -117,9 +134,11 @@ $agentJson = array_map(static fn(array $agent): array => array(
             </form>
         <?php $chatBody = ob_get_clean(); ?>
         <?= MDJUI::card(array('flush' => true, 'class' => 'md-ai-chat__card'), $chatBody) ?>
+        <?php if (empty($drawer)): ?>
         <div class="md-ai-chat__footnote">
             <?= MDJUI::icon('shield-lock') ?>
             <span>Ответ модели может быть неполным. Проверяйте имена и код; действующий метод сохраняется только вами.</span>
         </div>
+        <?php endif; ?>
     </section>
 </div>

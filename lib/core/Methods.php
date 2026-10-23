@@ -12,6 +12,7 @@ use \Throwable;
  * вызывающему коду.
  *
  * Изменения:
+ * 2026-10-23 — наследование сохраняет параметры, проверяет циклы и пишет снимок кода в аудит.
  * 2026-10-22 — фоновый вызов ставится напрямую в очередь ядра, без API.
  * 2026-10-22 — фоновый вызов метода кодирует путь через rawurlencode: пробелы
  *              и "+" в названии больше не теряются при разборе API.
@@ -44,6 +45,13 @@ final class Methods
 
     public function call($object, $name, $params = 0, $parentClassId = 0)
     {
+        return $this->execute($object, $name, $params, $parentClassId);
+    }
+
+    // Публичный вызов сохраняет прежнюю сигнатуру. Только уровни наследования
+    // разделяют параметры: нормализация датчика в классе нужна коду объекта.
+    private function execute($object, $name, &$params, $parentClassId, array $ancestors = array())
+    {
         if (!$parentClassId) {
             verbose_log("Method [" . $object->object_title . ".$name] (" . (is_array($params) ? json_encode($params) : '') . ")");
             //dprint("Method [" . $object->object_title . ".$name] (" . (is_array($params) ? json_encode($params) : '') . ")",false);
@@ -69,8 +77,16 @@ final class Methods
 
         if ($id) {
 
+            if (in_array((int)$id, $ancestors, true)) {
+                throw new \RuntimeException('Цикл наследования метода ' . $original_method_name . ': метод #' . (int)$id . ' уже выполняется.');
+            }
+            $ancestors[] = (int)$id;
+
             $source = '';
             $method = $this->metadata->get('method:' . (int)$id, function () use ($id) { return $this->db->one("SELECT * FROM methods WHERE ID=" . (int)$id); });
+            // resolve() мог пропустить классы без своего метода. Продолжаем
+            // наследование от владельца найденного кода, иначе вызов повторится.
+            if (!$method['OBJECT_ID']) $parentClassId = (int)$method['CLASS_ID'];
             $update_rec = array('ID' => $method['ID']);
             $update_rec['EXECUTED'] = date('Y-m-d H:i:s');
             if (defined('CALL_SOURCE')) {
@@ -87,14 +103,15 @@ final class Methods
                 if (!$params) {
                     $params = array();
                 }
-                $params['ORIGINAL_OBJECT_TITLE'] = $object->object_title;
+                if (is_array($params)) $params['ORIGINAL_OBJECT_TITLE'] = $object->object_title;
             }
 
             if ($params) {
                 $saved_params = $params;
-                unset($params['r_s_m']);
-                unset($saved_params['m_c_s']);
-                unset($saved_params['SOURCE']);
+                if (is_array($params)) {
+                    unset($params['r_s_m']);
+                    unset($saved_params['m_c_s'], $saved_params['SOURCE']);
+                }
                 $update_rec['EXECUTED_PARAMS'] = json_encode($saved_params, JSON_UNESCAPED_UNICODE);
                 if (mb_strlen($update_rec['EXECUTED_PARAMS']) > 250) {
                     $update_rec['EXECUTED_PARAMS'] = mb_substr($update_rec['EXECUTED_PARAMS'], 0, 250);
@@ -115,22 +132,30 @@ final class Methods
                     'method_id' => (int)($method['ID'] ?? 0),
                     'params' => $auditParams,
                     'source' => $source,
+                    'execution' => array(
+                        'code' => $method['SCRIPT_ID'] ? '' : (string)$method['CODE'],
+                        'owner' => $method['OBJECT_ID'] ? 'object' : 'class',
+                        'object_title' => $object->object_title,
+                        'parent_order' => (int)$method['CALL_PARENT'],
+                        'script_id' => (int)$method['SCRIPT_ID'],
+                    ),
                 ));
             } else {
                 $auditStep = null;
             }
             try {
+            $parent_success = true;
 
             if ($method['OBJECT_ID'] && $method['CALL_PARENT'] == 1) {
                 // call class method
                 startMeasure('callParentMethod');
-                $parent_success = $this->call($object, $name, $params, $object->class_id);
+                $parent_success = $this->execute($object, $name, $params, $object->class_id, $ancestors);
                 endMeasure('callParentMethod');
             } elseif ($method['CALL_PARENT'] == 1) {
                 $parentClass = $this->db->one("SELECT ID, PARENT_ID FROM classes WHERE ID=" . (int)$parentClassId);
-                if ($parentClass['PARENT_ID']) {
+                if (!empty($parentClass['PARENT_ID'])) {
                     startMeasure('callParentMethod');
-                    $parent_success = $this->call($object, $name, $params, $parentClass['PARENT_ID']);
+                    $parent_success = $this->execute($object, $name, $params, $parentClass['PARENT_ID'], $ancestors);
                     endMeasure('callParentMethod');
                 }
             }
@@ -140,7 +165,7 @@ final class Methods
                  $script=$this->db->one("SELECT * FROM scripts WHERE ID='".$method['SCRIPT_ID']."'");
                  $code=$script['CODE'];
                 */
-                runScriptSafe($method['SCRIPT_ID']);
+                $success = runScriptSafe($method['SCRIPT_ID'], $params);
             } else {
                 $code = $method['CODE'];
             }
@@ -170,17 +195,15 @@ final class Methods
             endMeasure('callMethod (' . $original_method_name . ')', 1);
             if ($method['OBJECT_ID'] && $method['CALL_PARENT'] == 2) {
                 startMeasure('callParentMethod');
-                $parent_success = $this->call($object, $name, $params, $object->class_id);
+                $parent_success = $this->execute($object, $name, $params, $object->class_id, $ancestors);
                 endMeasure('callParentMethod');
             } elseif ($method['CALL_PARENT'] == 2) {
                 $parentClass = $this->db->one("SELECT ID, PARENT_ID FROM classes WHERE ID=" . (int)$parentClassId);
-                if ($parentClass['PARENT_ID']) {
+                if (!empty($parentClass['PARENT_ID'])) {
                     startMeasure('callParentMethod');
-                    $parent_success = $this->call($object, $name, $params, $parentClass['PARENT_ID']);
+                    $parent_success = $this->execute($object, $name, $params, $parentClass['PARENT_ID'], $ancestors);
                     endMeasure('callParentMethod');
                 }
-            } else {
-                $parent_success = true;
             }
 
             if (isset($success)) {
@@ -210,16 +233,10 @@ final class Methods
 
     }
 
-    /**
-     * Removes queue/internal plumbing from params shown in the audit UI.
-     *
-     * Legacy callers pass 0 (the default), a string or another scalar as the
-     * whole params argument; the journal only stores arrays, so such values
-     * must not reach the array-typed audit API.
-     */
+    /** Скрывает служебные параметры очереди; скаляр сохраняет под ключом value. */
     private function auditParams(mixed $params): array
     {
-        if (!is_array($params)) return array();
+        if (!is_array($params)) return array('value' => $params);
         foreach (array('m_c_s', 'r_s_m', 'r_s_s', 'raiseEvent', '_trace', '_chain', '_delivery') as $key) {
             unset($params[$key]);
         }

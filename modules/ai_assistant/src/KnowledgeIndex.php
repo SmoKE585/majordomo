@@ -19,6 +19,7 @@ use Throwable;
  * ключом установки, а выдача — фильтром аудитории.
  *
  * Изменения:
+ * 2026-10-23 — сверка коллекции по файлам, стабильные ID, подпись модели и блокировка обслуживания.
  * 2026-10-23 — параметры вектора и HNSW фиксируются в строке индекса.
  *
  * Изменения:
@@ -50,6 +51,11 @@ final class KnowledgeIndex
     /** Начать пересборку индекса выбранной модели; старый остаётся рабочим. */
     public function start(int $modelId): array
     {
+        return $this->locked($modelId, fn(): array => $this->startBuild($modelId));
+    }
+
+    private function startBuild(int $modelId): array
+    {
         $embedding = array_column($this->models->embeddingModels(), 'ID');
         if (!in_array($modelId, array_map('intval', $embedding), true)) {
             throw new InvalidArgumentException('Выберите включённую модель эмбеддингов у включённого провайдера.');
@@ -73,6 +79,7 @@ final class KnowledgeIndex
         $vector = $this->settings->get();
         $record = array(
             'MODEL_ID' => $modelId,
+            'MODEL_SIGNATURE' => $this->embeddingSignature($modelId),
             'COLLECTION' => $collection,
             'DIMENSION' => 0,
             'STATUS' => 'building',
@@ -94,6 +101,7 @@ final class KnowledgeIndex
             'PREVIOUS_ACTIVE' => $previousActive ? 1 : 0,
             'PREVIOUS_DIMENSION' => $previousActive ? (int)$existing['DIMENSION'] : 0,
             'PREVIOUS_VECTOR_NAME' => $previousActive ? (string)($existing['VECTOR_NAME'] ?? '') : '',
+            'PREVIOUS_MODEL_SIGNATURE' => $previousActive ? (string)($existing['MODEL_SIGNATURE'] ?? '') : '',
             'CREATED_AT' => time(),
             'UPDATED_AT' => time(),
         );
@@ -108,6 +116,11 @@ final class KnowledgeIndex
 
     /** Обработать порцию фрагментов; вызывается повторно, пока статус building. */
     public function step(int $modelId, int $batch = 24): array
+    {
+        return $this->locked($modelId, fn(): array => $this->stepBuild($modelId, $batch));
+    }
+
+    private function stepBuild(int $modelId, int $batch): array
     {
         $row = $this->row($modelId);
         if ($row === null) throw new RuntimeException('Запуск индексации не найден. Начните пересборку.');
@@ -146,7 +159,7 @@ final class KnowledgeIndex
                 if ((int)$row['DIMENSION'] > 0 && (int)$row['DIMENSION'] !== $dimension) {
                     throw new ProviderFailure('invalid_vector', 'Размерность векторов изменилась. Запустите пересборку с новой моделью.');
                 }
-                $points[] = array('id' => $this->pointId((string)$row['COLLECTION'], $chunk['doc_id'], (int)$chunk['chunk']),
+                $points[] = array('id' => $this->pointId((string)$row['COLLECTION'], $chunk['doc_id'] . ':' . $chunk['checksum'], (int)$chunk['chunk']),
                     'vector' => array_values(array_map('floatval', $vector)),
                     'payload' => array(
                         'install' => $this->settings->installKey(),
@@ -186,6 +199,11 @@ final class KnowledgeIndex
 
     public function cancel(int $modelId): void
     {
+        $this->locked($modelId, function () use ($modelId): array { $this->cancelBuild($modelId); return array(); });
+    }
+
+    private function cancelBuild(int $modelId): void
+    {
         $row = $this->row($modelId);
         if ($row === null) return;
         if ($row['STATUS'] === 'building') {
@@ -198,7 +216,8 @@ final class KnowledgeIndex
             if ((int)$row['PREVIOUS_ACTIVE'] === 1 && (string)$row['PREVIOUS_COLLECTION'] !== '') {
                 $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='ready',ACTIVE=1,COLLECTION='"
                     . $this->db->escape((string)$row['PREVIOUS_COLLECTION']) . "',DIMENSION=" . (int)$row['PREVIOUS_DIMENSION']
-                    . ",VECTOR_NAME='" . $this->db->escape((string)$row['PREVIOUS_VECTOR_NAME'])
+                    . ",MODEL_SIGNATURE='" . $this->db->escape((string)$row['PREVIOUS_MODEL_SIGNATURE'])
+                    . "',VECTOR_NAME='" . $this->db->escape((string)$row['PREVIOUS_VECTOR_NAME'])
                     . "',ERROR='Сборка отменена; работает предыдущий индекс',PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,PREVIOUS_VECTOR_NAME='',UPDATED_AT="
                     . time() . ' WHERE MODEL_ID=' . $modelId);
             } else {
@@ -209,6 +228,11 @@ final class KnowledgeIndex
     }
 
     public function delete(int $modelId): void
+    {
+        $this->locked($modelId, function () use ($modelId): array { $this->deleteIndex($modelId); return array(); });
+    }
+
+    private function deleteIndex(int $modelId): void
     {
         $row = $this->row($modelId);
         if ($row === null) return;
@@ -240,6 +264,10 @@ final class KnowledgeIndex
         $all = array();
         foreach ($rows as $row) {
             try {
+                $signature = (string)($row[$row['STATUS'] === 'ready' ? 'MODEL_SIGNATURE' : 'PREVIOUS_MODEL_SIGNATURE'] ?? '');
+                if ($signature !== '' && $signature !== $this->embeddingSignature((int)$row['MODEL_ID'])) {
+                    throw new ProviderFailure('embedding_changed', 'Модель эмбеддингов изменена. Дождитесь пересборки индекса.');
+                }
                 $vector = $this->providers->embeddings((int)$row['MODEL_ID'])->embedText($query);
                 $collection = $row['STATUS'] === 'ready' ? (string)$row['COLLECTION'] : (string)$row['PREVIOUS_COLLECTION'];
                 $vectorName = $row['STATUS'] === 'ready' ? (string)$row['VECTOR_NAME'] : (string)$row['PREVIOUS_VECTOR_NAME'];
@@ -281,7 +309,7 @@ final class KnowledgeIndex
             . " AND (ACTIVE=1 OR PREVIOUS_ACTIVE=1)");
         $this->db->requireExec('UPDATE ai_assistant_indexes SET ACTIVE=0 WHERE MODEL_ID<>' . $modelId);
         $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='ready',ACTIVE=1,PROCESSED=CHUNKS,ERROR='',"
-            . "PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,PREVIOUS_VECTOR_NAME='',UPDATED_AT="
+            . "PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,PREVIOUS_VECTOR_NAME='',PREVIOUS_MODEL_SIGNATURE='',UPDATED_AT="
             . time() . ' WHERE MODEL_ID=' . $modelId);
         $this->saveSources((int)$row['ID'], $plan);
         try {
@@ -311,7 +339,8 @@ final class KnowledgeIndex
             // остаётся видимой в строке, чтобы её можно было исправить.
             $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='ready',ACTIVE=1,COLLECTION='"
                 . $this->db->escape((string)$row['PREVIOUS_COLLECTION']) . "',DIMENSION=" . (int)$row['PREVIOUS_DIMENSION']
-                . ",VECTOR_NAME='" . $this->db->escape((string)$row['PREVIOUS_VECTOR_NAME']) . "',ERROR='" . $safe
+                . ",MODEL_SIGNATURE='" . $this->db->escape((string)$row['PREVIOUS_MODEL_SIGNATURE'])
+                . "',VECTOR_NAME='" . $this->db->escape((string)$row['PREVIOUS_VECTOR_NAME']) . "',ERROR='" . $safe
                 . "',PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,PREVIOUS_VECTOR_NAME='',UPDATED_AT="
                 . time() . ' WHERE MODEL_ID=' . $modelId);
             return;
@@ -378,7 +407,8 @@ final class KnowledgeIndex
         if ($overlap >= $size) $overlap = (int)floor($size / 5);
         $chunks = array();
         foreach ($this->documents() as $document) {
-            $checksum = sha1((string)$document['body']);
+            $checksum = sha1(json_encode(array($document['body'], $document['title'], $document['module'] ?? '',
+                $document['is_module'], $size, $overlap), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
             $audience = (int)$document['is_module'] === 1 ? 'modules' : 'core';
             foreach ($this->split((string)$document['body'], $size, $overlap) as $index => $part) {
                 $text = SensitiveData::text($part['text']);
@@ -468,6 +498,89 @@ final class KnowledgeIndex
         $hex = sha1($this->settings->installKey() . '|' . $collection . '|' . $docId . '|' . $chunk);
         return substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-5' . substr($hex, 13, 3)
             . '-a' . substr($hex, 17, 3) . '-' . substr($hex, 20, 12);
+    }
+
+    /** Только изменённые/пропавшие файлы, без пересоздания рабочей коллекции. */
+    public function synchronize(int $modelId, int $batch = 16): array
+    {
+        return $this->locked($modelId, function () use ($modelId, $batch): array {
+            $row = $this->row($modelId);
+            if ($row === null || $row['STATUS'] !== 'ready' || (int)$row['ACTIVE'] !== 1) {
+                throw new RuntimeException('Для синхронизации нужен готовый активный индекс. Сначала соберите базу знаний.');
+            }
+            if ($this->needsRebuild($modelId)) throw new RuntimeException('Модель эмбеддингов или параметры вектора изменились. Нужна полная пересборка индекса.');
+            $connection = $this->settings->connection();
+            $plan = $this->plan();
+            $documents = array();
+            foreach ($plan as $chunk) $documents[$chunk['doc_id']][] = $chunk;
+            $changed = 0;
+            $removed = 0;
+            try {
+                $manifest = $this->qdrant->sourceManifest($connection, $row['COLLECTION'], $this->settings->installKey());
+                $provider = $this->providers->embeddings($modelId);
+                foreach ($documents as $id => $chunks) {
+                    $hash = $chunks[0]['checksum'];
+                    if (($manifest[$id] ?? array()) === array($hash => count($chunks))) continue;
+                    foreach (array_chunk($chunks, max(1, min(40, $batch))) as $slice) {
+                        $vectors = $provider->embedDocuments(array_map(static fn(array $chunk): Document => new Document(content: $chunk['text']), $slice));
+                        $points = array();
+                        foreach ($slice as $i => $chunk) {
+                            $vector = $vectors[$i]->getEmbedding();
+                            if (count($vector) !== (int)$row['DIMENSION']) throw new RuntimeException('Размерность эмбеддингов изменилась. Нужна полная пересборка.');
+                            $points[] = array('id' => $this->pointId($row['COLLECTION'], $id . ':' . $hash, (int)$chunk['chunk']),
+                                'vector' => array_values(array_map('floatval', $vector)),
+                                'payload' => array('install' => $this->settings->installKey()) + $chunk);
+                        }
+                        $this->qdrant->upsert($connection, $row['COLLECTION'], $points, $row['VECTOR_NAME']);
+                    }
+                    $this->qdrant->deleteSource($connection, $row['COLLECTION'], $this->settings->installKey(), $id, $hash);
+                    $changed++;
+                }
+                foreach (array_diff(array_keys($manifest), array_keys($documents)) as $id) {
+                    $this->qdrant->deleteSource($connection, $row['COLLECTION'], $this->settings->installKey(), $id);
+                    $removed++;
+                }
+                $this->saveSources((int)$row['ID'], $plan);
+                $this->db->requireExec('UPDATE ai_assistant_indexes SET DOCUMENTS=' . count($documents) . ',CHUNKS=' . count($plan)
+                    . ',PROCESSED=' . count($plan) . ",CHECKSUM='" . $this->planHash($plan) . "',ERROR='',UPDATED_AT=" . time() . ' WHERE MODEL_ID=' . $modelId);
+                return array('changed' => $changed, 'removed' => $removed, 'documents' => count($documents));
+            } catch (Throwable $failure) {
+                $this->db->requireExec("UPDATE ai_assistant_indexes SET ERROR='" . $this->db->escape(mb_substr(SensitiveData::text($failure->getMessage()), 0, 480))
+                    . "',UPDATED_AT=" . time() . ' WHERE MODEL_ID=' . $modelId);
+                throw $failure;
+            }
+        });
+    }
+
+    private function locked(int $modelId, callable $operation): array
+    {
+        $directory = ($this->root ?? Config::root()) . '/var/ai_assistant';
+        if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new RuntimeException('Не удалось создать каталог индекса.');
+        $handle = fopen($directory . '/index-' . $modelId . '.lock', 'c');
+        if ($handle === false) throw new RuntimeException('Не удалось открыть блокировку индекса.');
+        try {
+            if (!flock($handle, LOCK_EX | LOCK_NB)) throw new RuntimeException('Индекс уже обслуживается другим запросом.');
+            return $operation();
+        } finally { fclose($handle); }
+    }
+
+    public function needsRebuild(int $modelId): bool
+    {
+        $row = $this->row($modelId);
+        if ($row === null) return true;
+        $signature = (string)($row['MODEL_SIGNATURE'] ?? '');
+        if ($signature !== '' && $signature !== $this->embeddingSignature($modelId)) return true;
+        $settings = $this->settings->get();
+        foreach (array('VECTOR_NAME', 'VECTOR_SIZE', 'DISTANCE', 'HNSW_M', 'HNSW_EF_CONSTRUCT') as $key) {
+            if ((string)$row[$key] !== (string)$settings[$key]) return true;
+        }
+        return false;
+    }
+
+    private function embeddingSignature(int $modelId): string
+    {
+        $connection = $this->models->connection($modelId, 'embeddings');
+        return sha1(json_encode(array($connection['model']['MODEL'], $connection['provider']['BASE_URL']), JSON_THROW_ON_ERROR));
     }
 
     private function context(array $items, int $maximum): string

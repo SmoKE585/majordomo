@@ -9376,3 +9376,40 @@ body.md-admin-shell .md-disclosure__body > p { margin: 0; }
   body.md-admin-shell .md-disclosure__summary { padding: 12px; gap: 8px; }
   body.md-admin-shell .md-disclosure__body { padding: 12px; }
 }
+
+/* 2026-10-23 — помощник в shell: общие токены, этапы и подтверждение. */
+body.md-admin-shell .md-admin-sidebar__ai {
+    display: flex; align-items: center; gap: 12px; margin: 4px 12px 16px; padding: 12px;
+    border: 1px solid var(--md-ui-border); border-radius: var(--md-ui-radius-md);
+    color: var(--md-ui-text); background: var(--md-ui-surface-2); text-decoration: none;
+    transition: background .18s ease, border-color .18s ease;
+}
+body.md-admin-shell .md-admin-sidebar__ai:hover,
+body.md-admin-shell .md-admin-sidebar__ai.is-active { background: var(--md-ui-primary-soft); border-color: var(--md-ui-primary); }
+body.md-admin-shell .md-admin-sidebar__ai-icon { color: var(--md-ui-primary); font-size: 24px; }
+body.md-admin-shell .md-admin-sidebar__ai-content { display: grid; gap: 4px; min-width: 0; flex: 1; }
+body.md-admin-shell .md-admin-sidebar__ai-title { font-weight: 500; }
+body.md-admin-shell .md-admin-sidebar__ai-meta { font-size: 12px; color: var(--md-ui-muted); }
+body.md-admin-shell .md-admin-sidebar__ai-chevron { color: var(--md-ui-muted); }
+body.md-admin-shell .md-ai-overview { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+body.md-admin-shell .md-ai-overview p { margin: 0; color: var(--md-ui-text-soft); }
+body.md-admin-shell .md-ai-progress { padding: 0; margin: 12px 0; list-style: none; display: grid; gap: 8px; font-size: 12px; color: var(--md-ui-muted); }
+body.md-admin-shell .md-ai-progress__step { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 4px 8px; align-items: baseline; }
+body.md-admin-shell .md-ai-progress__step::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--md-ui-muted); }
+body.md-admin-shell .md-ai-progress__step small { grid-column: 2; overflow-wrap: anywhere; white-space: pre-wrap; }
+body.md-admin-shell .md-ai-progress__step.is-running { color: var(--md-ui-primary); }
+body.md-admin-shell .md-ai-progress__step.is-running::before { background: var(--md-ui-primary); animation: md-ai-pulse 1.3s ease-in-out infinite; }
+body.md-admin-shell .md-ai-progress__step.is-done::before { background: var(--md-ui-success); }
+body.md-admin-shell .md-ai-progress__step.is-error::before { background: var(--md-ui-danger); }
+body.md-admin-shell .md-ai-action { margin: 12px 0; min-width: 0; }
+body.md-admin-shell .md-ai-action__body { display: grid; gap: 8px; }
+body.md-admin-shell .md-ai-action p { margin: 0; }
+body.md-admin-shell .md-ai-action__buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+body.md-admin-shell .md-ai-action__buttons[hidden] { display: none; }
+body.md-admin-shell .md-ai-copy-buffer { position: fixed; left: -9999px; top: 0; }
+body.md-admin-shell .md-ai-editor__question { margin-left: auto; max-width: 90%; background: var(--md-ui-primary-soft); padding: 12px; border-radius: var(--md-ui-radius-md); white-space: pre-wrap; }
+@keyframes md-ai-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+    body.md-admin-shell .md-ai-progress__step.is-running::before { animation: none; }
+    body.md-admin-shell .md-admin-sidebar__ai { transition: none; }
+}

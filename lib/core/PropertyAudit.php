@@ -15,6 +15,9 @@ use \Throwable;
  * Auditing must never break a property write: every database failure is
  * swallowed and reported through ErrorReporter at most once per window. There
  * is intentionally no on/off switch; only retention is configurable.
+ *
+ * Изменения:
+ * 2026-10-23 — снимки выполняемого кода, родительские шаги и корректный JSON при обрезке.
  */
 final class PropertyAudit
 {
@@ -25,6 +28,7 @@ final class PropertyAudit
     private static ?int $runId = null;
     private static bool $schemaReady = false;
     private static bool $shutdownRegistered = false;
+    private static array $steps = array();
 
     public function __construct(private Database $db, private ?ErrorReporter $errors = null) {}
 
@@ -42,6 +46,7 @@ final class PropertyAudit
     {
         self::$traceId = null;
         self::$runId = null;
+        self::$steps = array();
     }
 
     public static function newTraceId(): string
@@ -65,6 +70,7 @@ final class PropertyAudit
         if ($traceId === '') return false;
         self::$traceId = $traceId;
         self::$runId = null;
+        self::$steps = array();
         if (!self::$shutdownRegistered) {
             self::$shutdownRegistered = true;
             register_shutdown_function(function (): void {
@@ -134,6 +140,7 @@ final class PropertyAudit
     {
         try {
             $id = $this->logEvent($type, $title, $data, 'running');
+            if ($id > 0) self::$steps[$id] = $id;
             return $id > 0 ? array('id' => $id, 'started' => microtime(true)) : null;
         } catch (Throwable $e) {
             $this->reportFailure($e, 'step_start');
@@ -147,20 +154,25 @@ final class PropertyAudit
         $id = (int)($step['id'] ?? 0);
         if ($id < 1) return;
         try {
+            $failed = $error !== null || $result === false || (is_array($result) && array_key_exists('success', $result) && !$result['success']);
             $update = array(
                 'ID' => $id,
                 'FINISHED' => date('Y-m-d H:i:s'),
                 'DURATION_MS' => max(0, (int)round((microtime(true) - (float)($step['started'] ?? microtime(true))) * 1000)),
-                'STATUS' => $error ? 'error' : 'done',
+                'STATUS' => $failed ? 'error' : 'done',
                 'RESULT' => $this->json($result),
-                'OUT_PARAMS' => $outParams ? $this->json($outParams) : null,
+                'OUT_PARAMS' => $this->json($outParams),
             );
             if ($error) {
                 $update['ERROR'] = $this->errorText($error);
+            } elseif ($failed) {
+                $update['ERROR'] = is_array($result) ? (string)($result['error'] ?? 'Обработчик сообщил об ошибке.') : 'Выполнение вернуло false.';
             }
             $this->db->update('property_audit_events', $update);
         } catch (Throwable $e) {
             $this->reportFailure($e, 'step_finish');
+        } finally {
+            unset(self::$steps[$id]);
         }
     }
 
@@ -209,14 +221,19 @@ final class PropertyAudit
         try {
             $runId = $this->runId();
             if ($runId < 1) return;
+            // Успех внешней обёртки не должен скрывать отказ вложенного метода
+            // или ошибку предыдущего процесса, продолжавшего эту же цепочку.
+            $failure = $this->db->one("SELECT ERROR FROM property_audit_events WHERE RUN_ID=" . $runId . " AND STATUS='error' ORDER BY ID LIMIT 1");
+            $failed = $error !== null || $failure !== null || $result === false
+                || (is_array($result) && array_key_exists('success', $result) && !$result['success']);
             $update = array(
                 'ID' => $runId,
-                'STATUS' => $status,
+                'STATUS' => $failed ? 'error' : $status,
                 'FINISHED' => date('Y-m-d H:i:s'),
                 'LAST_SEEN' => date('Y-m-d H:i:s'),
             );
             if ($result !== null) $update['RESULT'] = $this->json($result);
-            $update['ERROR'] = $error ? $this->errorText($error) : null;
+            $update['ERROR'] = $error ? $this->errorText($error) : ($failure['ERROR'] ?? ($failed ? 'Обработчик сообщил об ошибке.' : null));
             $this->db->update('property_audit_runs', $update);
         } catch (Throwable $e) {
             $this->reportFailure($e, 'finish');
@@ -405,7 +422,7 @@ final class PropertyAudit
             'OLD_VALUE' => $this->text($data['old_value'] ?? null),
             'NEW_VALUE' => $this->text($data['new_value'] ?? null),
             'SOURCE' => mb_substr((string)($data['source'] ?? $this->source()), 0, 255),
-            'PARAMS' => isset($data['params']) ? $this->json($data['params']) : null,
+            'PARAMS' => $this->eventParams($data),
             'OUT_PARAMS' => isset($data['out_params']) ? $this->json($data['out_params']) : null,
             'RESULT' => isset($data['result']) ? $this->json($data['result']) : null,
             'ERROR' => isset($data['error']) ? $this->text($data['error']) : null,
@@ -425,6 +442,38 @@ final class PropertyAudit
         $row = $this->db->one("SELECT ID FROM property_audit_runs WHERE TRACE_ID='" . $this->db->escape($traceId) . "' LIMIT 1");
         self::$runId = (int)($row['ID'] ?? 0);
         return self::$runId;
+    }
+
+    /** Служебная оболочка хранится в существующем поле, параметры API остаются прежними. */
+    private function eventParams(array $data): ?string
+    {
+        $parent = self::$steps ? (int)end(self::$steps) : 0;
+        $execution = $data['execution'] ?? null;
+        if (!$parent && $execution === null) return isset($data['params']) ? $this->json($data['params']) : null;
+        if (is_array($execution) && isset($execution['code'])) {
+            $code = (string)$execution['code'];
+            $execution['code_hash'] = hash('sha256', $code);
+            $execution['code_truncated'] = strlen($code) > 24576;
+            $execution['code'] = mb_strcut($code, 0, 24576, 'UTF-8');
+        }
+        $metadata = array(
+            'params' => $data['params'] ?? null,
+            'parent_event_id' => $parent,
+            'execution' => $execution,
+        );
+        $encoded = $this->json(array('__mdj_audit_step_v1' => $metadata));
+        $decoded = $this->decode($encoded);
+        // При больших параметрах сохраняем связь шагов и снимок кода,
+        // сокращая только диагностическое содержимое, с явной отметкой.
+        if (is_array($decoded) && isset($decoded['_truncated'])) {
+            $metadata['params'] = array('_truncated' => true, 'preview' => mb_strcut((string)$this->json($metadata['params']), 0, 2048, 'UTF-8'));
+            if (isset($metadata['execution']['code']) && strlen($metadata['execution']['code']) > 8192) {
+                $metadata['execution']['code'] = mb_strcut($metadata['execution']['code'], 0, 8192, 'UTF-8');
+                $metadata['execution']['code_truncated'] = true;
+            }
+            $encoded = $this->json(array('__mdj_audit_step_v1' => $metadata));
+        }
+        return $encoded;
     }
 
     private function presentRun(array $run, array $events, int $targetPropertyId): array
@@ -470,6 +519,8 @@ final class PropertyAudit
     {
         $type = (string)($event['TYPE'] ?? '');
         $added = (string)($event['ADDED'] ?? '');
+        $params = $this->decode($event['PARAMS'] ?? null);
+        $metadata = is_array($params) && count($params) === 1 ? ($params['__mdj_audit_step_v1'] ?? null) : null;
         return array(
             'id' => (int)($event['ID'] ?? 0),
             'type' => $type,
@@ -492,7 +543,9 @@ final class PropertyAudit
             'old_value' => (string)($event['OLD_VALUE'] ?? ''),
             'new_value' => (string)($event['NEW_VALUE'] ?? ''),
             'source' => (string)($event['SOURCE'] ?? ''),
-            'params' => $this->decode($event['PARAMS'] ?? null),
+            'params' => is_array($metadata) ? ($metadata['params'] ?? null) : $params,
+            'parent_event_id' => is_array($metadata) ? (int)($metadata['parent_event_id'] ?? 0) : 0,
+            'execution' => is_array($metadata) ? ($metadata['execution'] ?? null) : null,
             'out_params' => $this->decode($event['OUT_PARAMS'] ?? null),
             'result' => $this->decode($event['RESULT'] ?? null),
             'error' => (string)($event['ERROR'] ?? ''),
@@ -581,13 +634,17 @@ final class PropertyAudit
     private function json(mixed $value): ?string
     {
         if ($value === null) return null;
-        if (is_string($value)) return $this->text($value);
         try {
             $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
         } catch (Throwable $e) {
             return null;
         }
-        return is_string($json) ? mb_strcut($json, 0, self::MAX_TEXT, 'UTF-8') : null;
+        if (!is_string($json)) return null;
+        if (strlen($json) <= self::MAX_TEXT) return $json;
+        // Обрезка посреди JSON теряла структуру параметров без объяснения.
+        // Превью ограничено с запасом на экранирование и помечено явно.
+        return json_encode(array('_truncated' => true, 'preview' => mb_strcut($json, 0, 8192, 'UTF-8')),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     private function text(mixed $value): ?string

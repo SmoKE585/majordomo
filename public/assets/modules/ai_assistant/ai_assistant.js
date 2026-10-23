@@ -4,11 +4,7 @@
  */
 (function (window, document) {
     'use strict';
-
-    function csrf() {
-        var meta = document.querySelector('meta[name="md-csrf-token"]');
-        return meta ? meta.getAttribute('content') || '' : '';
-    }
+    if (window.MDAIPage) { window.MDAIPage.init(document); return; }
 
     function toast(type, title, text) {
         if (window.MDJUIToast && typeof window.MDJUIToast.show === 'function') {
@@ -29,39 +25,7 @@
         }
     }
 
-    function endpoint() {
-        var page = document.querySelector('[data-md-ai-panel]');
-        return page ? page.getAttribute('data-ai-endpoint') || '' : '';
-    }
-
-    function post(op, data, signal) {
-        var body = new URLSearchParams();
-        body.set('op', op);
-        Object.keys(data || {}).forEach(function (key) {
-            if (data[key] !== undefined && data[key] !== null) body.set(key, data[key]);
-        });
-        return fetch(endpoint() + '&op=' + encodeURIComponent(op), {
-            method: 'POST',
-            credentials: 'same-origin',
-            signal: signal,
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-CSRF-Token': csrf(),
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            },
-            body: body.toString()
-        }).then(function (response) {
-            return response.text().then(function (text) {
-                var json = null;
-                try { json = JSON.parse(text); } catch (e) { json = null; }
-                if (!response.ok || !json || json.ok === false) {
-                    throw new Error(json && json.message ? json.message : 'Сервер отклонил запрос.');
-                }
-                return json;
-            });
-        });
-    }
+    function post(op, data, signal) { return window.MDAssistant.request(op, data, signal); }
 
     function el(tag, className, text) {
         var node = document.createElement(tag);
@@ -74,288 +38,208 @@
         var chat = page.querySelector('[data-ai-chat]');
         if (!chat || chat.dataset.aiReady === '1') return;
         chat.dataset.aiReady = '1';
+        var ai = window.MDAssistant;
         var messages = chat.querySelector('[data-ai-messages]');
         var composer = chat.querySelector('[data-ai-composer]');
         var prompt = chat.querySelector('[data-ai-prompt]');
         var send = chat.querySelector('[data-ai-send]');
         var stop = chat.querySelector('[data-ai-stop]');
         var status = chat.querySelector('[data-ai-status]');
-        var agentSelect = chat.querySelector('[data-ai-agent]');
-        var dialogId = parseInt(chat.getAttribute('data-dialog-id') || '0', 10);
-        var runId = '';
-        var controller = null;
-        var busy = false;
-
+        var select = chat.querySelector('[data-ai-agent]');
+        var dialogId = Number(chat.dataset.dialogId || 0);
+        var runId = '', controller = null, busy = false, closed = false;
+        var actions = chat.querySelector('[data-ai-actions]');
+        var recovered = chat.querySelector('[data-ai-recovery]');
+        var initialActions = JSON.parse(chat.dataset.actions || '[]');
+        ai.showActions(actions, initialActions);
+        ai.bindMessages(messages);
+        function scrollDown() { messages.scrollTop = messages.scrollHeight; }
         function setBusy(value, text) {
             busy = value;
-            if (composer) composer.classList.toggle('is-busy', value);
-            if (prompt) prompt.disabled = value;
-            if (send) send.disabled = value;
-            if (stop) { stop.hidden = !value; stop.classList.toggle('is-hidden', !value); }
-            if (status && text) status.textContent = text;
+            prompt.disabled = value || !select.value;
+            send.disabled = value || !select.value;
+            select.disabled = value;
+            stop.hidden = !value;
+            stop.classList.toggle('is-hidden', !value);
+            if (text) status.textContent = text;
+            messages.setAttribute('aria-busy', value ? 'true' : 'false');
+            page.querySelectorAll('[data-ai-new-dialog]').forEach(function (button) { button.disabled = value; });
         }
-
-        function scrollDown() {
-            if (messages) messages.scrollTop = messages.scrollHeight;
+        function failure(text) {
+            recovered.hidden = false;
+            recovered.setAttribute('role', 'alert');
+            recovered.textContent = text;
         }
-
-        function agentId() {
-            return agentSelect ? parseInt(agentSelect.value || '0', 10) : 0;
+        async function refresh(id) {
+            var result = await ai.request('messages', {dialog_id: id});
+            if (closed) return;
+            dialogId = Number(result.dialog.id);
+            chat.dataset.dialogId = String(dialogId);
+            messages.innerHTML = result.messages.map(function (row) { return row.HTML; }).join('');
+            messages.appendChild(actions);
+            var title = chat.querySelector('[data-ai-dialog-title]');
+            if (title) title.textContent = result.dialog.title;
+            select.value = String(result.dialog.agent_id || select.value);
+            actions.innerHTML = '';
+            ai.showActions(actions, result.actions);
+            ai.bindMessages(messages);
+            recovered.hidden = true;
+            var run = result.run;
+            if (run && run.STATUS === 'running') {
+                runId = run.ID;
+                setBusy(true, 'Есть активный запрос. Можно остановить его и отправить новый.');
+            } else {
+                setBusy(false, 'Enter — отправить, Shift+Enter — новая строка');
+                if (run && run.STATUS === 'error') failure(run.ERROR || 'Предыдущий запрос прерван. Можно повторить.');
+            }
+            scrollDown();
         }
-
-        function ensureEmptyGone() {
-            var empty = messages ? messages.querySelector('[data-ai-empty]') : null;
+        function bubble(role, text) {
+            var empty = messages.querySelector('[data-ai-empty]');
             if (empty) empty.remove();
-        }
-
-        function bubbleUser(text) {
-            ensureEmptyGone();
-            var article = el('article', 'md-ai-msg md-ai-msg--user');
+            var article = el('article', 'md-ai-msg md-ai-msg--' + role);
             var avatar = el('span', 'md-ai-msg__avatar');
-            avatar.innerHTML = '<i class="ti ti-user" aria-hidden="true"></i>';
+            avatar.innerHTML = '<i class="ti ti-' + (role === 'user' ? 'user' : 'robot') + '" aria-hidden="true"></i>';
             var body = el('div', 'md-ai-msg__body');
             var head = el('div', 'md-ai-msg__head');
-            head.appendChild(el('strong', '', 'Вы'));
-            var content = el('div', 'md-ai-msg__content');
-            content.textContent = text;
-            body.appendChild(head);
-            body.appendChild(content);
-            article.appendChild(avatar);
-            article.appendChild(body);
-            messages.appendChild(article);
-        }
-
-        function bubbleAssistant() {
-            ensureEmptyGone();
-            var article = el('article', 'md-ai-msg md-ai-msg--assistant');
-            article.setAttribute('data-ai-stream', '1');
-            var avatar = el('span', 'md-ai-msg__avatar');
-            avatar.innerHTML = '<i class="ti ti-robot" aria-hidden="true"></i>';
-            var body = el('div', 'md-ai-msg__body');
-            var head = el('div', 'md-ai-msg__head');
-            head.appendChild(el('strong', '', 'Помощник'));
-            var content = el('div', 'md-ai-msg__content');
-            content.setAttribute('data-ai-stream-content', '');
-            body.appendChild(head);
-            body.appendChild(content);
-            article.appendChild(avatar);
-            article.appendChild(body);
-            messages.appendChild(article);
+            head.appendChild(el('strong', '', role === 'user' ? 'Вы' : 'Помощник'));
+            var content = el('div', 'md-ai-msg__content md-prose', text || '');
+            body.appendChild(head); body.appendChild(content);
+            article.appendChild(avatar); article.appendChild(body); messages.insertBefore(article, actions);
+            ai.bindMessages(messages);
             return {article: article, body: body, content: content};
         }
-
-        function setToolStatus(article, text) {
-            if (!article) return;
-            var body = article.querySelector('.md-ai-msg__body');
-            var line = body.querySelector('[data-ai-tool-status]');
-            if (!line) {
-                line = el('div', 'md-ai-msg__usage');
-                line.setAttribute('data-ai-tool-status', '');
-                body.appendChild(line);
+        async function createDialog() {
+            if (busy || !select.value) return false;
+            setBusy(true, 'Создаю новый чат…');
+            stop.hidden = true;
+            var result;
+            try { result = await ai.request('dialog_create', {agent_id: select.value, context_type: 'chat', title: 'Новый диалог'}); }
+            finally { setBusy(false, 'Enter — отправить, Shift+Enter — новая строка'); }
+            dialogId = Number(result.dialog.id);
+            messages.innerHTML = ''; actions.innerHTML = ''; messages.appendChild(actions); recovered.hidden = true;
+            prompt.value = '';
+            chat.querySelector('[data-ai-dialog-title]').textContent = 'Новый диалог';
+            var list = chat.querySelector('[data-ai-dialogs]');
+            if (list) {
+                var link = el('a', 'md-ai-dialogs__item', 'Новый диалог');
+                link.href = page.dataset.aiUrl + '/chat/' + dialogId + '.html';
+                link.dataset.dialogId = String(dialogId); list.prepend(link);
             }
-            line.textContent = text;
+            return true;
         }
-
-        function addSources(article, sources) {
-            if (!sources || !sources.length) return;
-            var body = article.querySelector('.md-ai-msg__body');
-            if (body.querySelector('.md-ai-msg__sources')) return;
-            var wrap = el('div', 'md-ai-msg__sources');
-            var label = el('span', 'md-ai-msg__label');
-            label.textContent = 'Источники';
-            wrap.appendChild(label);
-            var chips = el('div', 'md-ai-msg__chips');
-            sources.forEach(function (source) {
-                if (!source || (!source.title && !source.url)) return;
-                var node = document.createElement(source.url ? 'a' : 'span');
-                node.className = 'md-badge md-badge--outline';
-                node.textContent = source.title || source.url;
-                if (source.url) {
-                    node.href = source.url;
-                    node.target = '_blank';
-                    node.rel = 'noopener noreferrer';
-                }
-                chips.appendChild(node);
-            });
-            wrap.appendChild(chips);
-            body.appendChild(wrap);
-        }
-
         async function sendPrompt(text) {
-            if (busy) return;
-            if (!dialogId) {
-                await createDialog();
-                return;
-            }
-            if (!agentId()) {
-                toast('danger', 'Нет агента', 'Выберите включённого агента с моделью.');
-                return;
-            }
-            bubbleUser(text);
-            var assistant = bubbleAssistant();
-            setBusy(true, 'Помощник ищет данные…');
-            controller = new AbortController();
-            runId = '';
+            if (busy || !select.value) return;
+            var assistant, timeline, accumulated = '', terminal = false, failed = false;
             try {
-                var response = await fetch(endpoint() + '&op=send', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    signal: controller.signal,
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                        'X-CSRF-Token': csrf(),
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'text/event-stream'
-                    },
-                    body: new URLSearchParams({
-                        dialog_id: String(dialogId),
-                        agent_id: String(agentId()),
-                        prompt: text
-                    }).toString()
-                });
-                if (!response.ok) {
-                    var errorText = await response.text();
-                    var message = 'Не удалось отправить запрос.';
-                    try { message = JSON.parse(errorText).message || message; } catch (e) {}
-                    throw new Error(message);
-                }
-                if (!response.body) throw new Error('Браузер не поддерживает потоковый ответ.');
-                var reader = response.body.getReader();
-                var decoder = new TextDecoder('utf-8');
-                var buffer = '';
-                var accumulated = '';
-                while (true) {
-                    var chunk = await reader.read();
-                    if (chunk.done) break;
-                    buffer += decoder.decode(chunk.value, {stream: true});
-                    var index;
-                    while ((index = buffer.indexOf('\n\n')) >= 0) {
-                        var raw = buffer.slice(0, index);
-                        buffer = buffer.slice(index + 2);
-                        var event = parseSse(raw);
-                        if (!event) continue;
-                        var data = event.data;
-                        if (event.name === 'run') {
-                            runId = data.run_id || '';
-                            if (status) status.textContent = 'Генерация ответа…';
-                        } else if (event.name === 'token') {
-                            accumulated += data.text || '';
-                            assistant.content.textContent = accumulated;
-                            scrollDown();
-                        } else if (event.name === 'tool') {
-                            setToolStatus(assistant.article, 'Инструмент: ' + (data.tool && data.tool.name ? data.tool.name : '') + '…');
-                            if (status) status.textContent = 'Помощник использует инструмент…';
-                        } else if (event.name === 'tool_result') {
-                            setToolStatus(assistant.article, 'Инструмент ' + (data.name || '') + ' завершён.');
-                        } else if (event.name === 'done') {
-                            if (data.html) assistant.content.innerHTML = data.html;
-                            assSources(assistant.article, data.sources);
-                            setToolStatus(assistant.article, '');
-                            if (data.usage) {
-                                var usage = el('div', 'md-ai-msg__usage');
-                                usage.textContent = 'Токены: ' + (data.usage.input_tokens || 0) + ' вход / ' + (data.usage.output_tokens || 0) + ' выход';
-                                assistant.body.appendChild(usage);
-                            }
-                            if (status) status.textContent = 'Enter — отправить, Shift+Enter — новая строка';
-                            setBusy(false);
-                        } else if (event.name === 'error') {
-                            assistant.content.textContent = '';
-                            var alert = el('div', 'md-alert md-alert--danger', data.message || 'Ошибка ответа.');
-                            alert.setAttribute('role', 'alert');
-                            assistant.body.appendChild(alert);
-                            setBusy(false);
-                        } else if (event.name === 'close') {
-                            controller = null;
-                        }
+                if (!dialogId && !await createDialog()) return;
+                if (closed) return;
+                bubble('user', text);
+                assistant = bubble('assistant', '');
+                timeline = ai.progress(assistant.body);
+                prompt.value = ''; recovered.hidden = true;
+                setBusy(true, 'Помощник готовит ответ…');
+                controller = new AbortController(); runId = ai.newRunId();
+                var response = await ai.request('send', {dialog_id: dialogId, agent_id: select.value, prompt: text, request_id: runId}, controller.signal, true);
+                await ai.consume(response, function (name, data) {
+                    timeline.event(name, data);
+                    if (name === 'run') runId = data.run_id || '';
+                    if (name === 'status' && data.text) status.textContent = data.text;
+                    if (name === 'token') {
+                        accumulated += data.text || ''; assistant.content.textContent = accumulated; scrollDown();
+                    } else if (name === 'done') {
+                        terminal = true;
+                        if (data.html) assistant.content.innerHTML = data.html;
+                        var source = el('span', '', accumulated || assistant.content.textContent);
+                        source.hidden = true;
+                        source.dataset.aiCopySource = ''; assistant.body.appendChild(source);
+                        ai.showActions(actions, data.actions);
+                        ai.showSources(assistant.body, data.sources);
+                        ai.bindMessages(messages);
+                        status.textContent = data.status === 'approval' ? 'Ожидается подтверждение действия' : 'Ответ получен';
+                    } else if (name === 'error') {
+                        terminal = true; failed = true;
+                        var alert = el('div', 'md-alert md-alert--danger', data.message || 'Ошибка ответа.');
+                        alert.setAttribute('role', 'alert'); assistant.body.appendChild(alert);
+                        status.textContent = 'Запрос завершился ошибкой. Можно повторить.';
                     }
-                }
+                });
             } catch (error) {
-                if (error.name === 'AbortError') {
-                    setToolStatus(assistant.article, 'Остановлено пользователем.');
-                } else {
-                    var box = el('div', 'md-alert md-alert--danger', error.message || 'Поток ответа прерван.');
-                    box.setAttribute('role', 'alert');
-                    assistant.body.appendChild(box);
+                failed = error.name !== 'AbortError';
+                if (timeline) timeline.finish(failed);
+                if (!failed) status.textContent = 'Остановлено. Можно отправить новый запрос.';
+                if (error.name !== 'AbortError') {
+                    failure(ai.errorText(error));
+                    if (!prompt.value) prompt.value = text;
+                }
+                // Отмена адресуется владельцу диалога даже если событие run не дошло.
+                if (dialogId && !terminal) {
+                    try { await ai.request('cancel', {run_id: runId, dialog_id: dialogId}); }
+                    catch (cancelError) { failure(ai.errorText(error) + ' Не удалось подтвердить остановку. Кнопка «Остановить» останется доступна.'); }
                 }
             } finally {
-                setBusy(false);
+                if (timeline) timeline.finish(failed);
                 controller = null;
-                if (status) status.textContent = 'Enter — отправить, Shift+Enter — новая строка';
-            }
-        }
-
-        function assSources(article, sources) { addSources(article, sources); }
-
-        async function stopGeneration() {
-            if (runId) {
-                try { await post('cancel', {run_id: runId}); } catch (e) {}
-            }
-            if (controller) controller.abort();
-            setBusy(false, 'Остановлено');
-        }
-
-        async function createDialog() {
-            var id = agentId();
-            if (!id) {
-                toast('danger', 'Нет агента', 'Сначала включите агента и назначьте модель.');
-                return;
-            }
-            try {
-                var result = await post('dialog_create', {agent_id: id, context_type: 'chat', title: 'Новый диалог'});
-                var page = document.querySelector('[data-md-ai-panel]');
-                var base = page ? page.getAttribute('data-ai-url') || '' : '';
-                window.location.href = base + '/chat/' + result.dialog.id + '.html';
-            } catch (error) {
-                toast('danger', 'Не удалось создать диалог', error.message);
-            }
-        }
-
-        function parseSse(raw) {
-            var name = 'message';
-            var data = '';
-            raw.split('\n').forEach(function (line) {
-                if (line.indexOf('event:') === 0) name = line.slice(6).trim();
-                else if (line.indexOf('data:') === 0) data += line.slice(5).trim();
-            });
-            if (!data || data.charAt(0) === ':') return null;
-            try { return {name: name, data: JSON.parse(data)}; } catch (e) { return null; }
-        }
-
-        if (composer) {
-            composer.addEventListener('submit', function (event) {
-                event.preventDefault();
-                var text = prompt ? prompt.value.trim() : '';
-                if (text === '') return;
-                prompt.value = '';
-                sendPrompt(text);
-            });
-            if (prompt) {
-                prompt.addEventListener('keydown', function (event) {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                        event.preventDefault();
-                        composer.dispatchEvent(new Event('submit', {cancelable: true, bubbles: true}));
-                    }
-                });
-            }
-        }
-        if (stop) stop.addEventListener('click', stopGeneration);
-
-        var newDialog = page.querySelector('[data-ai-new-dialog]');
-        if (newDialog) newDialog.addEventListener('click', createDialog);
-
-        var deleteDialog = page.querySelector('[data-ai-delete-dialog]');
-        if (deleteDialog) {
-            deleteDialog.addEventListener('click', async function () {
-                if (!window.confirm('Удалить диалог и его сообщения из списка?')) return;
-                try {
-                    await post('dialog_delete', {dialog_id: dialogId});
-                    var panel = document.querySelector('[data-md-ai-panel]');
-                    window.location.href = (panel ? panel.getAttribute('data-ai-url') : '') + '.html';
-                } catch (error) {
-                    toast('danger', 'Не удалось удалить диалог', error.message);
+                setBusy(false, failed ? 'Проверьте сообщение об ошибке выше.' : status.textContent);
+                if (dialogId && !terminal && !closed) {
+                    try {
+                        var state = await ai.request('run_status', {dialog_id: dialogId});
+                        if (state.run && state.run.STATUS === 'running') { runId = state.run.ID; setBusy(true, 'Запрос ещё выполняется. Можно остановить.'); }
+                    } catch (error) { failure('Не удалось проверить состояние запроса. Восстановите соединение и откройте диалог снова.'); }
                 }
-            });
+                scrollDown();
+            }
         }
+        async function stopGeneration() {
+            if (!dialogId) return;
+            try {
+                await ai.request('cancel', {run_id: runId, dialog_id: dialogId});
+                if (controller) controller.abort();
+                else await refresh(dialogId);
+                setBusy(false, 'Остановлено. Можно отправить новый запрос.');
+            } catch (error) { failure(ai.errorText(error)); }
+        }
+        composer.addEventListener('submit', function (event) {
+            event.preventDefault();
+            if (prompt.value.trim()) sendPrompt(prompt.value.trim());
+        });
+        prompt.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+                event.preventDefault(); composer.requestSubmit();
+            }
+        });
+        select.addEventListener('change', function () { setBusy(busy); });
+        stop.addEventListener('click', stopGeneration);
+        page.addEventListener('click', async function (event) {
+            var link = event.target.closest('[data-dialog-id]');
+            if (link && link !== chat) {
+                event.preventDefault();
+                if (busy) return;
+                try { await refresh(Number(link.dataset.dialogId)); } catch (error) { failure(ai.errorText(error)); }
+            }
+            if (event.target.closest('[data-ai-new-dialog]')) {
+                event.preventDefault();
+                try { await createDialog(); prompt.focus(); } catch (error) { failure(ai.errorText(error)); }
+            }
+            if (event.target.closest('[data-ai-delete-dialog]') && !busy && dialogId) {
+                if (!window.confirm('Удалить диалог и его сообщения?')) return;
+                try {
+                    await ai.request('dialog_delete', {dialog_id: dialogId});
+                    page.querySelectorAll('a[data-dialog-id="' + dialogId + '"]').forEach(function (node) { node.remove(); });
+                    dialogId = 0; messages.innerHTML = ''; actions.innerHTML = ''; messages.appendChild(actions);
+                } catch (error) { failure(ai.errorText(error)); }
+            }
+        });
+        var drawer = page.closest('.md-ai-drawer');
+        if (drawer) drawer.addEventListener('ai:close', function () {
+            closed = true;
+            if (controller) { controller.abort(); ai.request('cancel', {run_id: runId, dialog_id: dialogId}).catch(function () {}); }
+        }, {once: true});
+        if (dialogId) {
+            setBusy(true, 'Проверяю состояние диалога…');
+            refresh(dialogId).catch(function (error) { setBusy(false); failure(ai.errorText(error)); });
+        }
+        else setBusy(false);
         scrollDown();
     }
 
@@ -491,6 +375,7 @@
         });
     }
 
+    window.MDAIPage = {init: init};
     if (window.MDJAdminUI && typeof window.MDJAdminUI.registerModuleUI === 'function') {
         window.MDJAdminUI.registerModuleUI('ai_assistant', {init: init});
     }

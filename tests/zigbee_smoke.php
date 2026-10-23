@@ -1,6 +1,7 @@
 <?php
 
 /** SQLite-only module contract tests; no application boot, HTTP, Redis or broker. */
+// 2026-10-23 — заглушка очереди использует действующий контракт MQTT-доставки.
 namespace MajorDoMo\Core {
     final class Core
     {
@@ -61,7 +62,14 @@ namespace {
         }
     };
     Core::$database = new Database($adapter);
-    Core::$queue = new class { public array $items = array(); public function enqueue(...$args) { $this->items[] = $args; return count($this->items); } };
+    Core::$queue = new class {
+        public array $items = array();
+        public function enqueueRuntimePayload($operation, $payload): bool
+        {
+            $this->items[] = array('operation' => $operation, 'payload' => $payload);
+            return true;
+        }
+    };
     foreach (Schema::statements(true) as $sql) $pdo->exec($sql);
     $pdo->exec('CREATE TABLE locations (ID INTEGER PRIMARY KEY, TITLE TEXT)');
     $pdo->exec("INSERT INTO locations VALUES (1, 'Кухня'), (2, 'Прихожая')");
@@ -196,7 +204,9 @@ namespace {
     procmsg('Z2M/House/Kitchen/Renamed', '{"occupancy":true}');
     procmsg('Z2M/House/Kitchen/Renamed', '{"occupancy":true}');
     check(count(Core::$queue->items) === 2, 'Original repeated packets enter module queue before strip/dedup');
-    check(Core::$queue->items[0][1] === 'moduleevent' && Core::$queue->items[0][3] === false, 'Events use non-coalescing durable queue');
+    check(Core::$queue->items[0]['operation'] === 'moduleevent'
+        && Core::$queue->items[0]['payload']['params']['event'] === 'MQTT_MESSAGE'
+        && Core::$queue->items[0]['payload']['params']['details']['payload'] === '{"occupancy":true}', 'Original event parameters reach the runtime queue');
 
     require_once ROOT . 'vendor/autoload.php';
     $packetCalls = 0;

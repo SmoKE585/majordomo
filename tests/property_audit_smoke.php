@@ -1,6 +1,6 @@
 <?php
 
-/** Property audit journal on SQLite :memory:, no database or Redis connection. */
+/** 2026-10-23 — снимки кода и вложенные шаги аудита на SQLite :memory:, без внешних подключений. */
 putenv('APP_ENV=testing');
 putenv('DB_CONNECTION=sqlite');
 putenv('DB_DATABASE=:memory:');
@@ -108,4 +108,60 @@ $audit->leave();
 $page = $audit->tracesForProperty(1, 11, time() - 3600, time() + 60, 1, 10);
 check($page['pagination']['total'] === 1 && count($page['runs'][0]['events']) === 4, 'Resumed trace appends to the same run');
 
-echo 'Property audit smoke tests passed: 14 checks; SQLite :memory:, no external connections.' . "\n";
+// Снимок кода должен пережить завершение шага и последующее редактирование метода.
+$audit->begin('method', 'Sensor.data');
+$methodCode = '$params["NEW_VALUE"] = 0;';
+$outer = $audit->stepStart('method', 'Sensor.data', array('params' => array('NEW_VALUE' => 1),
+    'execution' => array('code' => 'sg("Lamp.status", 1);', 'parent_order' => 1)));
+$inner = $audit->stepStart('method', 'Sensor.data class', array('params' => array('NEW_VALUE' => 1),
+    'execution' => array('code' => $methodCode)));
+$audit->propertyChanged(array('title' => 'Lamp.status', 'object_id' => 1, 'property_id' => 11, 'old_value' => 0, 'new_value' => 1));
+$audit->stepFinish($inner, true, null, array('NEW_VALUE' => 0));
+$audit->stepFinish($outer, true, null, array('NEW_VALUE' => 0));
+$audit->finishRun(); $audit->leave();
+$page = $audit->tracesForProperty(1, 11, time() - 3600, time() + 60, 1, 10);
+$events = $page['runs'][0]['events'];
+check($events[1]['parent_event_id'] === 0 && $events[2]['parent_event_id'] === $outer['id'], 'Nested method links to its caller');
+check($events[3]['parent_event_id'] === $inner['id'], 'Property write links to the method that performed it');
+check($events[2]['execution']['code'] === $methodCode && $events[2]['execution']['code_hash'] === hash('sha256', $methodCode), 'Executed code snapshot and hash are retained');
+check($events[2]['params'] === array('NEW_VALUE' => 1) && $events[2]['out_params'] === array('NEW_VALUE' => 0), 'Metadata does not leak into input/output parameters');
+
+// Завершённые шаги не должны становиться родителями следующего запуска.
+$audit->begin('method', 'Clean');
+$empty = $audit->stepStart('method', 'Clean', array('params' => array('remove' => 1), 'execution' => array('code' => str_repeat('я', 20000))));
+$audit->stepFinish($empty, true, null, array());
+$audit->propertyChanged(array('title' => 'Lamp.status', 'object_id' => 1, 'property_id' => 11, 'old_value' => 1, 'new_value' => 0));
+$audit->finishRun(); $audit->leave();
+$page = $audit->tracesForProperty(1, 11, time() - 3600, time() + 60, 1, 10);
+$events = $page['runs'][0]['events'];
+check($events[1]['parent_event_id'] === 0 && $events[2]['parent_event_id'] === 0, 'Completed steps and old runs are not reused as parents');
+check($events[1]['out_params'] === array(), 'Removal of all parameters is preserved as an empty array');
+check($events[1]['execution']['code_truncated'] === true && mb_check_encoding($events[1]['execution']['code'], 'UTF-8'), 'Large code is explicitly truncated at a valid UTF-8 boundary');
+
+$audit->begin('method', 'Large', array('large' => str_repeat('"', 80000)));
+$audit->propertyChanged(array('title' => 'Lamp.status', 'object_id' => 1, 'property_id' => 11, 'old_value' => 0, 'new_value' => 1));
+$audit->finishRun(); $audit->leave();
+$page = $audit->tracesForProperty(1, 11, time() - 3600, time() + 60, 1, 10);
+check($page['runs'][0]['params']['_truncated'] === true, 'Oversized JSON remains decodable and explicitly marked');
+$audit->begin('method', 'Failure');
+$failed = $audit->stepStart('method', 'Failure');
+$audit->propertyChanged(array('title' => 'Lamp.status', 'object_id' => 1, 'property_id' => 11, 'old_value' => 1, 'new_value' => 0));
+$audit->stepFinish($failed, false);
+$audit->finishRun('done', array('success' => true));
+$audit->leave();
+$page = $audit->tracesForProperty(1, 11, time() - 3600, time() + 60, 1, 10);
+check($page['runs'][0]['status'] === 'error' && $page['runs'][0]['events'][1]['status'] === 'error', 'Outer success cannot hide an explicit method failure');
+check($page['runs'][0]['error'] !== '', 'A failed result has an explanation');
+$audit->begin('method', 'Types');
+foreach (array(false, true, 0, '0', 'false', '', null) as $value) {
+    $step = $audit->stepStart('method', 'Types');
+    $audit->stepFinish($step, $value);
+    $stored = $pdo->query('SELECT RESULT FROM property_audit_events WHERE ID=' . $step['id'])->fetchColumn();
+    check(($stored === null ? null : json_decode($stored, true, 512, JSON_THROW_ON_ERROR)) === $value, 'Result type is preserved');
+}
+$step = $audit->stepStart('method', 'Large metadata', array('params' => array('large' => str_repeat('x', 80000)), 'execution' => array('code' => 'return 1;')));
+$audit->stepFinish($step, true);
+$stored = json_decode($pdo->query('SELECT PARAMS FROM property_audit_events WHERE ID=' . $step['id'])->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
+check($stored['__mdj_audit_step_v1']['execution']['code'] === 'return 1;' && $stored['__mdj_audit_step_v1']['params']['_truncated'] === true, 'Large input cannot erase the code snapshot or step metadata');
+$audit->finishRun(); $audit->leave();
+echo 'Property audit smoke tests passed: 32 checks; SQLite :memory:, no external connections.' . "\n";

@@ -661,3 +661,48 @@ body.md-admin-shell .md-ai-form-section p {
     font-size: 12px;
     line-height: 1.5;
 }
+
+/* Чат в drawer использует ту же разметку и контракты, что и страница. */
+body.md-admin-shell .md-ai-msg--user { grid-template-columns: minmax(0, 1fr) 32px; margin-left: 12%; }
+body.md-admin-shell .md-ai-msg--user .md-ai-msg__avatar { grid-column: 2; grid-row: 1; }
+body.md-admin-shell .md-ai-msg--user .md-ai-msg__body { grid-column: 1; grid-row: 1; background: var(--md-ui-primary-soft); }
+body.md-admin-shell .md-ai-msg--user .md-ai-msg__content { white-space: pre-wrap; }
+body.md-admin-shell .md-ai-msg--assistant { margin-right: 4%; }
+body.md-admin-shell .md-ai-msg__head { flex-wrap: wrap; }
+body.md-admin-shell [data-ai-copy-message] { margin-left: auto; }
+body.md-admin-shell .md-ai-msg__content .md-code-sample pre { padding: 0; border-radius: 0; background: transparent; }
+body.md-admin-shell .md-ai-chat__controls { display: grid; grid-template-columns: minmax(0, 250px) auto; min-width: 0; }
+body.md-admin-shell .md-ai-chat__controls .md-select { max-width: 250px; }
+body.md-admin-shell .md-ai-actions:empty { display: none; }
+body.md-admin-shell .md-ai-actions { min-width: 0; }
+body.md-admin-shell .md-drawer__body:has(> .md-ai-drawer) { display: flex; overflow: hidden; }
+body.md-admin-shell .md-ai-drawer,
+body.md-admin-shell .md-ai-page--drawer { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat__main,
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat__card,
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat__card > .md-card__body { width: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat__messages { flex: 1; height: auto; min-height: 0; max-height: none; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat__top,
+body.md-admin-shell .md-ai-page--drawer .md-ai-composer { flex-shrink: 0; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat__footnote { display: none; }
+body.md-admin-shell .md-ai-chat__messages > .md-ai-msg { animation: md-ai-appear .18s ease-out; }
+@keyframes md-ai-appear { from { opacity: .4; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) {
+    body.md-admin-shell .md-ai-chat__top { flex-direction: column; align-items: stretch; }
+    body.md-admin-shell .md-ai-msg--user { margin-left: 4%; }
+    body.md-admin-shell .md-ai-msg--assistant { margin-right: 0; }
+    body.md-admin-shell .md-ai-chat__controls .md-select { width: 100%; max-width: none; }
+    body.md-admin-shell .md-ai-composer__bar { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { body.md-admin-shell .md-ai-chat__messages > .md-ai-msg { animation: none; } }
+body.md-admin-shell .md-ai-chat__quick { display: flex; flex: 0 0 auto; justify-content: flex-end; padding: 0 0 8px; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat__card { border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-chat__messages { padding: 4px 0 12px; gap: 16px; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-msg { display: block; max-width: 100%; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-msg--user { max-width: 90%; margin-left: auto; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-msg__avatar { display: none; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-composer { padding: 12px 0 0; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-composer__input { min-height: 60px; max-height: 160px; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-composer__bar { flex-direction: row; justify-content: flex-end; }
+body.md-admin-shell .md-ai-page--drawer .md-ai-composer__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

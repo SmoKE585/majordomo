@@ -14,6 +14,7 @@ use NeuronAI\HttpClient\HttpRequest;
  * Проверяет отдельный Qdrant через API; локальная установка сервиса не обязательна.
  *
  * Изменения:
+ * 2026-10-23 — чтение состава коллекции и удаление редакции файла по фильтру установки.
  * 2026-10-23 — именованный вектор, метрика и HNSW при создании коллекции.
  * 2026-10-23 — коллекции, точки и поиск для staging-индекса знаний.
  * 2026-10-23 — диагностика доступа без редиректов, передачи документов и утечки ключа.
@@ -134,6 +135,44 @@ final class QdrantClient
             // Удаление старой коллекции не должно отменять уже готовый новый индекс.
             if ($failure->reason !== 'not_found') throw $failure;
         }
+    }
+
+    /** Метаданные фрагментов позволяют обнаружить и удалённые вручную точки. */
+    public function sourceManifest(array $connection, string $collection, string $installKey): array
+    {
+        $manifest = array();
+        $offset = null;
+        for ($page = 0; $page < 1000; $page++) {
+            $body = array('limit' => 256, 'with_vector' => false,
+                'with_payload' => array('doc_id', 'checksum'),
+                'filter' => array('must' => array(array('key' => 'install', 'match' => array('value' => $installKey)))));
+            if ($offset !== null) $body['offset'] = $offset;
+            $data = $this->send($connection, HttpRequest::post(
+                $this->uri($connection, '/collections/' . rawurlencode($collection) . '/points/scroll'), $body), 4 * 1024 * 1024);
+            $result = $data['result'] ?? null;
+            if (!is_array($result) || !is_array($result['points'] ?? null)) throw new ProviderFailure('invalid_response', 'Не удалось прочитать состав коллекции Qdrant.');
+            foreach ($result['points'] as $point) {
+                $id = (string)($point['payload']['doc_id'] ?? '');
+                $hash = (string)($point['payload']['checksum'] ?? '');
+                if ($id !== '') $manifest[$id][$hash] = ($manifest[$id][$hash] ?? 0) + 1;
+            }
+            $offset = $result['next_page_offset'] ?? null;
+            if ($offset === null) return $manifest;
+        }
+        throw new ProviderFailure('response_too_large', 'Состав коллекции превышает лимит проверки.');
+    }
+
+    /** Удаляем прежнюю редакцию только после записи всех новых фрагментов. */
+    public function deleteSource(array $connection, string $collection, string $installKey, string $docId, ?string $keepChecksum = null): void
+    {
+        $filter = array('must' => array(
+            array('key' => 'install', 'match' => array('value' => $installKey)),
+            array('key' => 'doc_id', 'match' => array('value' => $docId)),
+        ));
+        if ($keepChecksum !== null) $filter['must_not'] = array(array('key' => 'checksum', 'match' => array('value' => $keepChecksum)));
+        $this->send($connection, HttpRequest::post(
+            $this->uri($connection, '/collections/' . rawurlencode($collection) . '/points/delete?wait=true'),
+            array('filter' => $filter)), 1024 * 1024);
     }
 
     public function collectionInfo(array $connection, string $collection): array

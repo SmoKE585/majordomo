@@ -2,6 +2,7 @@
 /**
  * Objects
  *
+ * Изменения: 2026-10-23 — ссылки журнала ведут к объекту фактически изменённого свойства.
  * Objects
  *
  * @package MajorDoMo
@@ -747,7 +748,7 @@ class objects extends module
             $links[] = array(
                 'label' => 'Свойство',
                 'icon' => 'adjustments-horizontal',
-                'url' => $root . 'admin.php?action=objects&md=objects&view_mode=edit_objects&id=' . (int)$object['ID']
+                'url' => $root . 'admin.php?action=objects&md=objects&view_mode=edit_objects&id=' . ($object_id > 0 ? $object_id : (int)$object['ID'])
                     . '&tab=properties#prop-' . $property_id,
             );
         }

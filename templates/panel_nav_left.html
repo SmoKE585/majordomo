@@ -13,6 +13,7 @@
         <!-- ИИ-помощник: аккуратная карточка-кнопка в левом меню над категориями -->
         <a class="md-admin-sidebar__ai [#if AI_ASSISTANT_SELECTED#]is-active[#endif#]"
            href="[#AI_ASSISTANT_LINK#]"
+           [#if AI_ASSISTANT_READY#]data-ai-open aria-haspopup="dialog"[#endif#]
            data-md-admin-sidebar-close
            aria-label="ИИ-помощник">
             <span class="md-admin-sidebar__ai-icon" aria-hidden="true">
@@ -21,11 +22,10 @@
             <span class="md-admin-sidebar__ai-content">
                 <span class="md-admin-sidebar__ai-title">
                     [#AI_ASSISTANT_TITLE#]
-                    <span class="md-admin-sidebar__ai-tag">AI</span>
                 </span>
                 <span class="md-admin-sidebar__ai-meta">
                     <span class="md-admin-sidebar__ai-dot [#if AI_ASSISTANT_READY#]is-ready[#endif#]" aria-hidden="true"></span>
-                    <span class="md-admin-sidebar__ai-status">[#if AI_ASSISTANT_READY#]Готов помочь[#else#]Настроить (3 шага)[#endif#]</span>
+                    <span class="md-admin-sidebar__ai-status">[#if AI_ASSISTANT_READY#]Спросить о доме и коде[#else#]Настроить помощника[#endif#]</span>
                 </span>
             </span>
             <i class="ti ti-chevron-right md-admin-sidebar__ai-chevron" aria-hidden="true"></i>

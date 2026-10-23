@@ -12,6 +12,7 @@ use RuntimeException;
  * Версия собственных таблиц ИИ-помощника и их безопасное обновление.
  *
  * Изменения:
+ * 2026-10-23 — предложения действий, последний запуск и подпись эмбеддингов.
  * 2026-10-23 — параметры коллекции Qdrant: имя вектора, размерность, метрика и HNSW.
  * 2026-10-23 — диалоги, сообщения, запуски и обслуживаемый индекс знаний.
  * 2026-10-23 — опциональный Qdrant, режим знаний агента и порядок эмбеддингов.
@@ -21,7 +22,7 @@ use RuntimeException;
  */
 final class Schema
 {
-    public const VERSION = 6;
+    public const VERSION = 7;
     public const DELETE_CONFIRMATION = 'DELETE ai_assistant';
 
     public static function install(Database $db, bool $sqlite = false): void
@@ -141,10 +142,33 @@ final class Schema
             $db->requireExec('UPDATE ai_assistant_settings SET SCHEMA_VERSION=6 WHERE ID=1 AND SCHEMA_VERSION<6');
         }
         // Ручного выключателя больше нет; старые установки включаются при обновлении.
+        if ($version < 7) {
+            self::addColumn($db, $sqlite, 'ai_assistant_dialogs', 'LAST_RUN', "varchar(32) NOT NULL DEFAULT ''");
+            $id = $sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY';
+            $db->requireExec("CREATE TABLE IF NOT EXISTS ai_assistant_actions (
+                ID $id, DIALOG_ID bigint NOT NULL, USER_ID bigint NOT NULL, AGENT_ID bigint NOT NULL,
+                PAYLOAD " . ($sqlite ? 'text' : 'mediumtext') . " NOT NULL, STATUS varchar(16) NOT NULL DEFAULT 'pending',
+                CREATED_AT bigint NOT NULL, RESULT text NOT NULL
+            )" . $tail);
+            // Полный прежний набор штатного профиля дополняется предложением
+            // создания; ограниченный пользователем набор остаётся без изменений.
+            $previousTools = array_values(array_diff(AgentCatalog::TOOLS, array('create_entity')));
+            sort($previousTools);
+            foreach ($db->select("SELECT ID,TOOLS,REVISION FROM ai_assistant_agents WHERE PROFILE IN ('assistant','editor') AND DELETED=0") as $agent) {
+                $tools = json_decode($agent['TOOLS'], true, 16, JSON_THROW_ON_ERROR);
+                sort($tools);
+                if ($tools !== $previousTools) continue;
+                $db->update('ai_assistant_agents', array('ID' => (int)$agent['ID'],
+                    'TOOLS' => json_encode(AgentCatalog::TOOLS, JSON_THROW_ON_ERROR), 'REVISION' => (int)$agent['REVISION'] + 1));
+            }
+            $db->requireExec('UPDATE ai_assistant_settings SET SCHEMA_VERSION=7 WHERE ID=1 AND SCHEMA_VERSION<7');
+        }
         $db->requireExec('UPDATE ai_assistant_settings SET ENABLED=1 WHERE ID=1 AND INSTALLED=1 AND ENABLED<>1');
         // Колонки staging-индекса появились после первой версии схемы 5.
         // Проверяем их при каждом открытии, чтобы обновление не зависело от даты установки.
         foreach (array(
+            'MODEL_SIGNATURE' => "varchar(40) NOT NULL DEFAULT ''",
+            'PREVIOUS_MODEL_SIGNATURE' => "varchar(40) NOT NULL DEFAULT ''",
             'PREVIOUS_COLLECTION' => "varchar(190) NOT NULL DEFAULT ''",
             'PREVIOUS_STATUS' => "varchar(16) NOT NULL DEFAULT ''",
             'PREVIOUS_ACTIVE' => 'int NOT NULL DEFAULT 0',
@@ -255,7 +279,7 @@ final class Schema
         if ($record !== null && (int)$record['INSTALLED'] !== 0) {
             throw new RuntimeException('Перед очисткой данных удалите ИИ-помощника штатным способом.');
         }
-        foreach (array('ai_assistant_runs', 'ai_assistant_messages', 'ai_assistant_dialogs',
+        foreach (array('ai_assistant_actions', 'ai_assistant_runs', 'ai_assistant_messages', 'ai_assistant_dialogs',
             'ai_assistant_index_sources', 'ai_assistant_indexes', 'ai_assistant_model_links',
             'ai_assistant_agents', 'ai_assistant_models', 'ai_assistant_providers',
             'ai_assistant_knowledge', 'ai_assistant_settings') as $table) {

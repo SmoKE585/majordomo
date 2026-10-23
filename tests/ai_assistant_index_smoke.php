@@ -54,6 +54,20 @@ final class AiIndexHttp implements HttpClientInterface
             foreach (($request->body['points'] ?? array()) as $point) $this->points[(string)$point['id']] = $point;
             return new HttpResponse(200, '{"status":"ok","result":true}');
         }
+        if (str_ends_with($path, '/points/scroll')) {
+            $install = $request->body['filter']['must'][0]['match']['value'];
+            $points = array_values(array_filter($this->points, static fn(array $point): bool => $point['payload']['install'] === $install));
+            return new HttpResponse(200, json_encode(array('status' => 'ok', 'result' => array('points' => $points, 'next_page_offset' => null)), JSON_THROW_ON_ERROR));
+        }
+        if (str_ends_with($path, '/points/delete')) {
+            $must = $request->body['filter']['must'];
+            $keep = $request->body['filter']['must_not'][0]['match']['value'] ?? null;
+            foreach ($this->points as $id => $point) {
+                if ($point['payload']['install'] === $must[0]['match']['value'] && $point['payload']['doc_id'] === $must[1]['match']['value']
+                    && ($keep === null || $point['payload']['checksum'] !== $keep)) unset($this->points[$id]);
+            }
+            return new HttpResponse(200, '{"status":"ok","result":{"status":"completed"}}');
+        }
         if (str_ends_with($path, '/points/search')) {
             $must = $request->body['filter']['must'] ?? array();
             $audience = array();
@@ -85,6 +99,7 @@ final class AiIndexHttp implements HttpClientInterface
 }
 
 function isModuleInstalled(string $name): bool { return $name === 'demo'; }
+function setTimeOut($title, $commands, $timeout = 0, $expire = 0) { $GLOBALS['ai_fixture_timers'][$title] = array($commands, $timeout); return 1; }
 
 $fixture = sys_get_temp_dir() . '/mjd-ai-index-' . bin2hex(random_bytes(6));
 mkdir($fixture, 0700);
@@ -156,6 +171,34 @@ try {
     $moduleFound = $index->search('модуль', array('modules'), 3);
     check(count($moduleFound['items']) > 0 && $moduleFound['items'][0]['source'] === 'demo', 'Фильтр источников учитывает модули.');
 
+    // Неизменённая справка не отправляется на эмбеддинги повторно.
+    $embeddingCount = static fn(): int => count(array_filter($http->requests, static fn(HttpRequest $r): bool => str_ends_with($r->uri, '/embeddings')));
+    $before = $embeddingCount();
+    $sync = $index->synchronize($model, 8);
+    check($sync['changed'] === 0 && $embeddingCount() === $before, 'Сверка неизменённых документов не запрашивает эмбеддинги.');
+    file_put_contents($fixture . '/docs/user/security.md', "---\ntitle: Охрана\n---\n# Охрана\nИзменённый текст охраны и датчиков движения.\n");
+    $collectionBefore = $index->rows()[0]['COLLECTION'];
+    $sync = $index->synchronize($model, 8);
+    check($sync['changed'] === 1 && $index->rows()[0]['COLLECTION'] === $collectionBefore, 'Изменён только один файл, коллекция сохранена.');
+    check($embeddingCount() > $before, 'Эмбеддинги изменённого файла пересчитаны.');
+    $unchangedBefore = $embeddingCount();
+    $index->synchronize($model, 8);
+    check($embeddingCount() === $unchangedBefore, 'Повторная сверка не переиндексирует уже обновлённый файл.');
+    $firstPoint = array_key_first($http->points);
+    unset($http->points[$firstPoint]);
+    check($index->synchronize($model, 8)['changed'] === 1, 'Потерянный в Qdrant фрагмент восстанавливается по фактической коллекции.');
+    unlink($fixture . '/modules/demo/docs/guide.md');
+    check($index->synchronize($model, 8)['removed'] === 1, 'Удалённая справка убрана из коллекции.');
+    $http->failEmbeddings = true;
+    file_put_contents($fixture . '/docs/user/security.md', "---\ntitle: Охрана\n---\n# Охрана\nНовая редакция справки охраны.\n");
+    $countBeforeFailure = count($http->points);
+    $failedSync = false;
+    try { $index->synchronize($model, 8); } catch (RuntimeException) { $failedSync = true; }
+    check($failedSync && count($http->points) === $countBeforeFailure, 'Сбой эмбеддингов не удаляет прежнюю версию файла.');
+    check($index->rows()[0]['ERROR'] !== '', 'Ошибка автоматической синхронизации видна у индекса.');
+    $http->failEmbeddings = false;
+    check($index->synchronize($model, 8)['changed'] === 1, 'Повтор после сбоя завершает обновление файла.');
+
     // Смена документа: новый запуск пишет в новую коллекцию, старая удаляется после успеха.
     $firstCollection = '';
     foreach ($index->rows() as $row) $firstCollection = $row['COLLECTION'];
@@ -188,7 +231,35 @@ try {
     $active = array_values(array_filter($index->rows(), static fn(array $row): bool => (int)$row['ACTIVE'] === 1));
     check(count($active) === 1 && $active[0]['STATUS'] === 'ready', 'Отмена сборки не отключила рабочий индекс.');
 
-    echo 'ИИ-помощник индекс: ' . $checks . ' проверок пройдено (SQLite, Qdrant simulation, без сети).' . PHP_EOL;
+    $httpBase = $argv[1] ?? '';
+    if ($httpBase !== '') {
+        if (parse_url($httpBase, PHP_URL_HOST) !== '127.0.0.1' || parse_url($httpBase, PHP_URL_SCHEME) !== 'http') throw new RuntimeException('Только локальная simulation.');
+        $providerId = $models->saveProvider(0, array('TITLE' => 'Simulation', 'BASE_URL' => $httpBase . '/provider/v1', 'PROTOCOL' => 'openai_chat', 'TIMEOUT' => 2, 'ENABLED' => 1));
+        $httpModel = $models->saveModel(0, array('PROVIDER_ID' => $providerId, 'TITLE' => 'HTTP embeddings', 'MODEL' => 'fixture-model', 'CAPABILITIES' => array('embeddings'), 'PARAMETERS' => array(), 'CONTEXT_WINDOW' => 8192, 'MAX_OUTPUT' => 512, 'ENABLED' => 1));
+        $settings->save(array('QDRANT_URL' => $httpBase . '/qdrant/index', 'TIMEOUT' => 2, 'REVISION' => $settings->get()['REVISION'], 'TOKEN' => ''));
+        $settings->saveIndex(array('EMBEDDING_MODEL_ID' => $httpModel, 'CHUNK_SIZE' => 300, 'CHUNK_OVERLAP' => 40, 'TOP_K' => 3, 'MAX_CONTEXT' => 5000,
+            'VECTOR_NAME' => '', 'VECTOR_SIZE' => 3, 'DISTANCE' => 'Cosine', 'HNSW_M' => 16, 'HNSW_EF_CONSTRUCT' => 100, 'REVISION' => $settings->get()['REVISION']), $models);
+        $real = new KnowledgeIndex($database, $settings, $models, new MajorDoMo\Modules\AiAssistant\ProviderFactory($models), new QdrantClient(), $fixture);
+        $real->start($httpModel);
+        do { $row = $real->step($httpModel, 8); } while ($row['status'] === 'building');
+        check($row['status'] === 'ready' && $real->synchronize($httpModel)['changed'] === 0, 'Реальный HTTP: сборка и сверка фактической коллекции.');
+        file_put_contents($fixture . '/docs/user/security.md', "---\ntitle: Охрана\n---\n# Охрана\nHTTP-обновление только одного документа охраны.\n");
+        check($real->synchronize($httpModel)['changed'] === 1, 'Реальный HTTP: изменённый документ обновлён отдельно.');
+        check($real->synchronize($httpModel)['changed'] === 0, 'Реальный HTTP: после обновления лишних фрагментов нет.');
+        unlink($fixture . '/docs/user/security.md');
+        check($real->synchronize($httpModel)['removed'] === 1, 'Реальный HTTP: удаление документа ограничено фильтром установки и файла.');
+        file_put_contents($fixture . '/docs/user/automatic.md', "---\ntitle: Автоматическая справка\n---\n# Автоматическая справка\nНовый документ после обновления модуля.\n");
+        MajorDoMo\Modules\AiAssistant\KnowledgeSync::run();
+        check($real->synchronize($httpModel)['changed'] === 0, 'Фоновая сверка самостоятельно проиндексировала новый файл.');
+        MajorDoMo\Modules\AiAssistant\KnowledgeSync::schedule();
+        check(($GLOBALS['ai_fixture_timers']['ai_assistant.knowledge_sync'][1] ?? 0) === 30, 'Сверка назначается на штатный именованный таймер.');
+        $pdo->exec("UPDATE ai_assistant_models SET MODEL='changed-fixture' WHERE ID=" . $httpModel);
+        check($real->needsRebuild($httpModel), 'Смена модели в той же записи требует пересборки, а не смешивания векторов.');
+        $pdo->exec("UPDATE ai_assistant_models SET MODEL='fixture-model' WHERE ID=" . $httpModel);
+
+    }
+
+    echo 'ИИ-помощник индекс: ' . $checks . ' проверок пройдено (SQLite, Qdrant fixtures; HTTP ' . ($httpBase !== '' ? 'локальная Postman simulation' : 'не запускался') . ').' . PHP_EOL;
 } finally {
     $resolved = realpath($fixture);
     $temporaryRoot = realpath(sys_get_temp_dir());

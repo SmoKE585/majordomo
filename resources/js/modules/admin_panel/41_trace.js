@@ -1,5 +1,6 @@
 (function (window, document) {
     'use strict';
+    // 2026-10-23 — копирование цепочек и кода, изменения параметров и переход к родительскому шагу.
 
     /**
      * Always-on property trace drawer.
@@ -336,14 +337,48 @@
             + '</div>';
     }
 
-    function renderDetails(label, value) {
+    function renderDetails(label, value, open) {
         if (!hasContent(value)) {
             return '';
         }
-        return '<details class="md-trace__details">'
+        return '<details class="md-trace__details"' + (open ? ' open' : '') + '>'
             + '<summary>' + escapeHtml(label) + '</summary>'
+            + '<button type="button" class="md-icon-btn md-icon-btn--sm" data-md-trace-copy-details aria-label="Копировать: ' + escapeHtml(label) + '" title="Копировать">'
+            + '<i class="ti ti-copy" aria-hidden="true"></i></button>'
             + '<pre class="md-trace__json">' + escapeHtml(jsonText(value)) + '</pre>'
             + '</details>';
+    }
+
+    function renderParamChanges(event) {
+        if (['method', 'script'].indexOf(event.type) === -1 || !event.params || event.out_params === null || typeof event.out_params !== 'object') {
+            return '';
+        }
+        var changes = Object.create(null);
+        var before = event.params;
+        var after = event.out_params;
+        Object.keys(before).concat(Object.keys(after)).forEach(function (key) {
+            var had = Object.prototype.hasOwnProperty.call(before, key);
+            var has = Object.prototype.hasOwnProperty.call(after, key);
+            if (had !== has || JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+                changes[key] = {до: had ? before[key] : '(отсутствует)', после: has ? after[key] : '(удалён)'};
+            }
+        });
+        return renderDetails('Изменения параметров', changes, true);
+    }
+
+    function renderExecution(event) {
+        var execution = event.execution;
+        if (!execution) return '';
+        var html = '';
+        if (execution.parent_order) {
+            html += '<div class="md-trace__event-subtitle">Родитель: '
+                + (execution.parent_order === 1 ? 'до кода метода' : 'после кода метода') + '</div>';
+        }
+        if (execution.script_id) {
+            html += '<div class="md-trace__event-subtitle">Связанный сценарий #' + escapeHtml(execution.script_id) + ': постановка в очередь</div>';
+        }
+        html += renderDetails('Код на момент запуска' + (execution.code_truncated ? ' (фрагмент)' : ''), execution.code);
+        return html;
     }
 
     function renderEvent(event) {
@@ -363,7 +398,11 @@
         var error = event.error ? '<div class="md-trace__error">' + escapeHtml(event.error) + '</div>' : '';
         var subtitle = event.subtitle ? '<div class="md-trace__event-subtitle">' + escapeHtml(event.subtitle) + '</div>' : '';
         var source = event.source ? '<div class="md-trace__event-subtitle">Источник: ' + escapeHtml(event.source) + '</div>' : '';
-        return '<li class="' + classes.join(' ') + '" data-trace-event-type="' + escapeHtml(event.type) + '">'
+        var actions = '<div class="md-trace__event-links">'
+            + '<button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-trace-copy-event="' + escapeHtml(event.id) + '">Копировать шаг</button>'
+            + (event.parent_event_id ? '<button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-trace-jump="' + escapeHtml(event.parent_event_id) + '">К вызывающему шагу</button>' : '')
+            + '</div>';
+        return '<li class="' + classes.join(' ') + '" data-md-trace-event="' + escapeHtml(event.id) + '" tabindex="-1" data-trace-event-type="' + escapeHtml(event.type) + '">'
             + '<span class="md-trace__event-marker"><i class="ti ti-' + eventIcon(event.type) + '" aria-hidden="true"></i></span>'
             + '<div class="md-trace__event-body">'
             + '<div class="md-trace__event-head">'
@@ -373,7 +412,7 @@
             + (duration ? badge(duration, 'neutral', 'clock') : '')
             + '</div>'
             + subtitle + source + renderLinks(event) + renderValues(event)
-            + params + outParams + result + chain + error
+            + renderParamChanges(event) + params + outParams + result + chain + renderExecution(event) + error + actions
             + '</div></li>';
     }
 
@@ -413,6 +452,7 @@
             + '<span class="md-trace__chevron" aria-hidden="true"><i class="ti ti-chevron-down"></i></span>'
             + '</summary>'
             + '<div class="md-trace__run-body">'
+            + '<div class="md-trace__event-links"><button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-trace-copy-run="' + escapeHtml(run.id) + '">Копировать запуск с кодом</button></div>'
             + '<div class="md-trace__facts">'
             + renderFact('ID запуска', trace)
             + renderFact('Старт', escapeHtml(run.started_label || '—'))
@@ -607,32 +647,45 @@
         });
     }
 
-    function copyText(value) {
+    function copyText(value, message) {
         if (!value) {
             return;
         }
         function done() {
             if (window.MDJAdminUI && typeof window.MDJAdminUI.showToast === 'function') {
-                window.MDJAdminUI.showToast({type: 'success', message: 'ID запуска скопирован'});
+                window.MDJAdminUI.showToast({type: 'success', message: message || 'Скопировано'});
+            }
+        }
+        function failed() {
+            if (window.MDJAdminUI && typeof window.MDJAdminUI.showToast === 'function') {
+                window.MDJAdminUI.showToast({type: 'danger', message: 'Не удалось скопировать. Выделите и скопируйте текст вручную.'});
+            }
+        }
+        function fallback() {
+            var focused = document.activeElement;
+            var input = document.createElement('textarea');
+            input.value = value;
+            input.setAttribute('readonly', 'readonly');
+            input.style.position = 'absolute';
+            input.style.left = '-9999px';
+            // Поле остаётся внутри drawer, чтобы его focus trap не сбрасывал выделение.
+            (state.root || document.body).appendChild(input);
+            input.select();
+            try {
+                if (document.execCommand('copy')) done();
+                else failed();
+            } catch (error) {
+                failed();
+            } finally {
+                input.remove();
+                if (focused && focused.isConnected) focused.focus({preventScroll: true});
             }
         }
         if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-            navigator.clipboard.writeText(value).then(done).catch(function () {});
-            return;
+            navigator.clipboard.writeText(value).then(done).catch(fallback);
+        } else {
+            fallback();
         }
-        var input = document.createElement('textarea');
-        input.value = value;
-        input.setAttribute('readonly', 'readonly');
-        input.style.position = 'absolute';
-        input.style.left = '-9999px';
-        document.body.appendChild(input);
-        input.select();
-        try {
-            document.execCommand('copy');
-            done();
-        } catch (error) {
-        }
-        document.body.removeChild(input);
     }
 
     function resetUi(component) {
@@ -727,6 +780,45 @@
         var inside = state.root.contains(event.target)
             || (state.footer && state.footer.contains(event.target));
         if (!inside) {
+            return;
+        }
+        var detailsCopy = event.target.closest('[data-md-trace-copy-details]');
+        if (detailsCopy) {
+            event.preventDefault();
+            copyText(detailsCopy.closest('details').querySelector('pre').textContent);
+            return;
+        }
+        var exportButton = event.target.closest('[data-md-trace-copy-run], [data-md-trace-copy-event], [data-md-trace-copy-page]');
+        if (exportButton && state.data) {
+            event.preventDefault();
+            var exported = state.data;
+            var runNode = exportButton.closest('[data-md-trace-run]');
+            if (runNode) {
+                var run = state.data.runs.find(function (item) { return String(item.id) === runNode.getAttribute('data-md-trace-run'); });
+                if (!run) return;
+                var eventId = exportButton.getAttribute('data-md-trace-copy-event');
+                exported = {meta: state.data.meta, trace_id: run.trace_id, run_id: run.id, started_at: run.started_at};
+                if (eventId !== null) {
+                    exported.event = run.events.find(function (item) { return String(item.id) === eventId; });
+                } else {
+                    exported.run = run;
+                }
+            }
+            copyText(JSON.stringify(exported, null, 2), 'Цепочка с кодом и параметрами скопирована');
+            return;
+        }
+        var jump = event.target.closest('[data-md-trace-jump]');
+        if (jump) {
+            event.preventDefault();
+            var targetId = jump.getAttribute('data-md-trace-jump');
+            var target = Array.from(state.root.querySelectorAll('[data-md-trace-event]')).find(function (item) {
+                return item.getAttribute('data-md-trace-event') === targetId;
+            });
+            if (target) {
+                target.closest('details.md-trace__run').open = true;
+                target.scrollIntoView({block: 'center'});
+                target.focus({preventScroll: true});
+            }
             return;
         }
         var copy = event.target.closest('[data-md-trace-copy]');

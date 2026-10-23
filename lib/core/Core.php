@@ -4,6 +4,7 @@ namespace MajorDoMo\Core;
 
 /**
  * The legacy loader owns the connection; new code receives explicit dependencies.
+ * 2026-10-23 — общий сервис создания сущностей с обновлением метаданных.
  * Изменения: 2026-10-22 — добавлен сервис apiHooks() для реестра webhook.
  */
 final class Core
@@ -37,6 +38,7 @@ final class Core
     public static function locks(): PropertyLock { return self::service(__FUNCTION__, fn() => new PropertyLock(self::database(), self::redis())); }
     public static function properties(): Properties { return self::service(__FUNCTION__, fn() => new Properties(self::database(), self::cache(), self::metadata(), self::locks(), self::websockets(), self::code(), self::errors(), self::audit())); }
     public static function objects(): Objects { return self::service(__FUNCTION__, fn() => new Objects(self::database(), self::metadata(), self::cache(), self::properties(), self::locks())); }
+    public static function entities(): EntityCreator { return self::service(__FUNCTION__, fn() => new EntityCreator(self::database(), static function (): void { self::metadata()->invalidate(); })); }
     public static function bindings(): PropertyBindings { return self::service(__FUNCTION__, fn() => new PropertyBindings(self::database(), self::properties(), self::locks())); }
     public static function errors(): ErrorReporter { return self::service(__FUNCTION__, fn() => new ErrorReporter(self::cache())); }
     public static function audit(): PropertyAudit { return self::service(__FUNCTION__, fn() => new PropertyAudit(self::database(), self::errors())); }

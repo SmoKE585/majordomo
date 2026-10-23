@@ -96,6 +96,14 @@ try {
         return $controller->handle();
     };
 
+    $csrfController = new PanelController($db, $state, true);
+    $decisionEndpoint = new ReflectionMethod($csrfController, 'ajaxActionDecide');
+    $_SERVER['REQUEST_METHOD'] = 'POST';
+    unset($_SERVER['HTTP_X_CSRF_TOKEN']);
+    rejects(fn() => $decisionEndpoint->invoke($csrfController), 'Подтверждение отклонено');
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+    rejects(fn() => $decisionEndpoint->invoke($csrfController), 'Подтверждение отклонено');
+
     $views = array(
         'chat' => array('view_mode' => 'chat'),
         'agents' => array('view_mode' => 'agents'),
@@ -140,6 +148,25 @@ try {
         'Мягкое удаление сохраняет сообщения для истории.');
 
     $longDialog = $chat->createDialog(1, $agentId, 'Лимит', 'chat', array());
+    if (($argv[1] ?? '') === '--export-ui') {
+        $chat->appendMessage($longDialog, 1, 'user', 'Найди свет в туалете и предложи вечерний сценарий.');
+        $chat->appendMessage($longDialog, 1, 'assistant', "Найден кандидат LigthToilet. Проверьте его назначение.\n\n```php\ncm('LigthToilet.turnOn');\n```");
+        $requests = new MajorDoMo\Modules\AiAssistant\ActionRequests($db, $chat, $agents, $state);
+        $proposal = $requests->propose($longDialog, 1, $agentId, array('kind' => 'script', 'name' => 'EveningFixture', 'parent' => '',
+            'description' => 'Включить свет вечером. Сценарий будет создан, но не запущен.', 'code' => "cm('LigthToilet.turnOn');"));
+        $exportMessages = array();
+        foreach ($chat->messages($longDialog, 1) as $message) {
+            ob_start(); require $fixture . '/templates/ai_assistant/_message.php'; $message['HTML'] = ob_get_clean(); $exportMessages[] = $message;
+        }
+        $pageHtml = $render(array('view_mode' => 'chat', 'dialog_id' => $longDialog));
+        $drawerHtml = $render(array('view_mode' => 'chat', 'dialog_id' => $longDialog, 'op' => 'drawer'));
+        check(!str_contains($drawerHtml, '<script') && str_contains($drawerHtml, 'data-ai-drawer'), 'Drawer использует общий чат без вложенных скриптов.');
+        $export = sys_get_temp_dir() . '/mjd-ai-ui-' . bin2hex(random_bytes(6)) . '.json';
+        file_put_contents($export, json_encode(array('page' => $pageHtml, 'drawer' => $drawerHtml, 'messages' => $exportMessages,
+            'answer_html' => MajorDoMo\Modules\AiAssistant\AgentRunner::render("Найдено устройство.\n\n```php\ncm('LigthToilet.turnOn');\n```"),
+            'action' => $proposal, 'dialog_id' => $longDialog), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        echo 'UI_FIXTURE=' . $export . PHP_EOL;
+    }
     $long = str_repeat('я', 200001);
     rejects(fn() => $chat->appendMessage($longDialog, 1, 'user', $long), 'слишком длинное');
 

@@ -16,6 +16,7 @@ use Throwable;
  * Контроллер раздела «ИИ-помощник»: настройки, чат и служебные AJAX-операции.
  *
  * Изменения:
+ * 2026-10-23 — компактный drawer, состояние запуска, подтверждения и защита аварийного завершения.
  * 2026-10-23 — единый экран вместо заглушки: провайдеры, модели, агенты,
  * знания, диагностика, чат с потоковым ответом и интеграция редактора.
  */
@@ -124,6 +125,9 @@ final class PanelController
     private function renderChat(): string
     {
         $dialogs = $this->chatStore->listDialogs($this->userId, 50);
+        if ($this->query('op') === 'drawer') {
+            $dialogs = array_values(array_filter($dialogs, static fn(array $dialog): bool => $dialog['CONTEXT_TYPE'] === 'chat'));
+        }
         $dialog = null;
         $messages = array();
         if ($this->dialogId > 0) {
@@ -155,6 +159,8 @@ final class PanelController
             'moduleEnabled' => $this->state->snapshot()['enabled'], 'url' => $this->urlPrefix(),
             'configured' => $this->isConfigured(), 'csrf' => Core::session()->csrfToken(), 'dialogs' => $dialogs, 'dialog' => $dialog,
             'messages' => $messages, 'agents' => $agents, 'dialogId' => $this->dialogId,
+            'drawer' => $this->query('op') === 'drawer',
+            'actions' => $this->dialogId > 0 ? $this->actions()->forDialog($this->dialogId, $this->userId) : array(),
         );
         extract($data, EXTR_SKIP);
         ob_start();
@@ -312,6 +318,7 @@ final class PanelController
             'find_scripts' => 'Поиск сценариев',
             'search_knowledge' => 'Поиск по базе знаний',
             'read_knowledge' => 'Чтение статьи',
+            'create_entity' => 'Создание с подтверждением',
         );
     }
 
@@ -469,6 +476,7 @@ final class PanelController
         if ($this->post('clear_token') === '1') $input['TOKEN'] = '';
         elseif ($this->post('token') !== '') $input['TOKEN'] = $this->post('token');
         $this->knowledgeSettings->saveAll($input, $this->models);
+        KnowledgeSync::schedule();
         $this->redirect($this->urlPrefix() . '/knowledge.html', 'Настройки Qdrant и индекса сохранены.');
     }
 
@@ -490,6 +498,9 @@ final class PanelController
                 'dialog_delete' => $this->ajaxDialogDelete(),
                 'dialog_rename' => $this->ajaxDialogRename(),
                 'messages' => $this->ajaxMessages(),
+                'run_status' => $this->ajaxRunStatus(),
+                'drawer' => $this->ajaxDrawer(),
+                'action_decide' => $this->ajaxActionDecide(),
                 'send' => $this->ajaxSend(),
                 'cancel' => $this->ajaxCancel(),
                 'editor_state' => $this->ajaxEditorState(),
@@ -542,15 +553,44 @@ final class PanelController
 
     private function ajaxMessages(): array
     {
-        $dialogId = (int)$this->query('dialog_id');
+        $dialogId = (int)($this->post('dialog_id') ?: $this->query('dialog_id'));
         $dialog = $this->chatStore->dialog($dialogId, $this->userId);
         $rows = $this->chatStore->messages($dialogId, $this->userId, 0, 300);
-        return array('dialog' => array('id' => (int)$dialog['ID'], 'title' => $dialog['TITLE'],
+        return array('actions' => $this->actions()->forDialog($dialogId, $this->userId), 'run' => $this->chatStore->latestRun($dialogId, $this->userId), 'dialog' => array('id' => (int)$dialog['ID'], 'title' => $dialog['TITLE'],
                 'agent_id' => (int)$dialog['AGENT_ID'], 'type' => $dialog['CONTEXT_TYPE']),
             'messages' => array_map(function (array $row): array {
                 $row['HTML'] = $this->messageHtml($row);
                 return $row;
             }, $rows));
+    }
+
+    private function ajaxRunStatus(): array
+    {
+        return array('run' => $this->chatStore->latestRun((int)$this->post('dialog_id'), $this->userId));
+    }
+
+    private function actions(): ActionRequests
+    {
+        return new ActionRequests($this->db, $this->chatStore, $this->agents, $this->state);
+    }
+
+    private function ajaxActionDecide(): array
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
+            || !Core::session()->checkCsrf($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null)) {
+            throw new InvalidArgumentException('Подтверждение отклонено. Обновите страницу и повторите действие.');
+        }
+        $decision = $this->post('decision');
+        if (!in_array($decision, array('approve', 'reject'), true)) throw new InvalidArgumentException('Неизвестное решение.');
+        return array('action' => $this->actions()->decide((int)$this->post('action_id'), $this->userId,
+            $decision === 'approve', Core::entities()));
+    }
+
+    private function ajaxDrawer(): array
+    {
+        $this->dialogId = max(0, (int)$this->post('dialog_id'));
+        $this->view = 'chat';
+        return array('html' => $this->renderChat());
     }
 
     /** SSE-поток: пользовательское сообщение уже сохранено, отмена идёт через БД. */
@@ -571,14 +611,25 @@ final class PanelController
             // Контекст обновляется перед каждым запросом: в редакторе мог измениться черновик.
             $this->chatStore->updateContext($dialogId, $this->userId, $context);
         }
-        $runId = $this->chatStore->beginRun($dialogId, $this->userId, $agentId, $prompt);
+        $runId = $this->chatStore->beginRun($dialogId, $this->userId, $agentId, $prompt, $this->post('request_id'));
+        // PHP может завершиться без catch (лимит времени, fatal). Запуск обязан
+        // получить конечный статус; клиент сможет увидеть его отдельным запросом.
+        register_shutdown_function(function () use ($runId): void {
+            try {
+                $this->chatStore->finishRun($runId, 'error', 'Поток ответа прерван сервером. Повторите запрос; подробности — в журнале PHP.');
+            } catch (Throwable $failure) {
+                error_log('MajorDoMo AI shutdown: ' . get_class($failure));
+            }
+        });
         try {
-            $this->chatStore->appendMessage($dialogId, $this->userId, 'user', $prompt);
+            $this->chatStore->appendMessage($dialogId, $this->userId, 'user', $prompt, array('run_id' => $runId));
         } catch (Throwable $failure) {
             $this->chatStore->finishRun($runId, 'error', $failure->getMessage());
             throw $failure;
         }
         $this->startSse();
+        ignore_user_abort(true);
+        set_time_limit(max(30, (int)$agent['TIMEOUT'] + 15));
         $this->sse(array('type' => 'run', 'run_id' => $runId, 'dialog_id' => $dialogId));
         try {
             $this->runner->run($runId, $this->userId, function (array $event): void {
@@ -586,6 +637,7 @@ final class PanelController
             });
         } catch (Throwable $failure) {
             error_log('MajorDoMo AI SSE failed: ' . get_class($failure));
+            $this->chatStore->finishRun($runId, 'error', 'Поток ответа прерван. Повторите запрос.');
             $this->sse(array('type' => 'error', 'message' => 'Поток ответа прерван. Перезагрузите диалог.'));
         }
         $this->sse(array('type' => 'close'));
@@ -594,7 +646,13 @@ final class PanelController
 
     private function ajaxCancel(): array
     {
-        $this->chatStore->requestCancel($this->post('run_id'), $this->userId);
+        $id = $this->post('run_id');
+        if ($id === '') {
+            $run = $this->chatStore->latestRun((int)$this->post('dialog_id'), $this->userId);
+            if ($run === null || $run['STATUS'] !== 'running') return array('cancelled' => true);
+            $id = (string)$run['ID'];
+        }
+        $this->chatStore->requestCancel($id, $this->userId);
         return array('cancelled' => true);
     }
 
@@ -679,9 +737,6 @@ final class PanelController
 
     private function sse(array $event): void
     {
-        if (connection_aborted()) {
-            try { $this->chatStore->requestCancel((string)($event['run_id'] ?? ''), $this->userId); } catch (Throwable) {}
-        }
         echo 'event: ' . ($event['type'] ?? 'message') . "\n";
         echo 'data: ' . json_encode($event, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n\n";
         flush();

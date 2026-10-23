@@ -12,6 +12,15 @@ http.createServer((req, res) => {
   }
   const body = req.body;
   if (!body || typeof body.model !== 'string') return json(res, 400, { error: { message: 'model required' } });
+  if (body.model.startsWith('stream-')) {
+    if (body.model === 'stream-timeout') return setTimeout(() => json(res, 200, {}), 1500);
+    res.writeHead(200, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache'});
+    const chunk = (delta, finish = null) => res.write('data: ' + JSON.stringify({id: 'stream-fixture', object: 'chat.completion.chunk', model: body.model, choices: [{index: 0, delta, finish_reason: finish}]}) + '\n\n');
+    chunk({role: 'assistant', content: 'Часть ответа'});
+    if (body.model === 'stream-drop') return setTimeout(() => res.end(), 20);
+    chunk({content: '. Готово.'}); chunk({}, 'stop');
+    return res.end('data: [DONE]\n\n');
+  }
   if (body.model.startsWith('status-')) {
     return json(res, Number(body.model.slice(7)), { error: { message: 'upstream-fixture-secret-must-not-leak' } });
   }
@@ -31,8 +40,8 @@ http.createServer((req, res) => {
   if (body.model === 'invalid-shape') return json(res, 200, {});
   if (body.model === 'without-token' && req.headers.authorization) return json(res, 401, {});
   if (req.url.endsWith('/embeddings')) {
-    if (typeof body.input !== 'string' || body.encoding_format !== 'float') return json(res, 400, {});
-    return json(res, 200, { data: [{ index: 0, embedding: [0.1, 0.2, 0.3] }], model: body.model, usage: { prompt_tokens: 4, total_tokens: 4 } });
+    if (!(typeof body.input === 'string' || Array.isArray(body.input)) || body.encoding_format !== 'float') return json(res, 400, {});
+    return json(res, 200, { data: (Array.isArray(body.input) ? body.input : [body.input]).map((_, index) => ({index, embedding: [0.1, 0.2, 0.3]})), model: body.model, usage: { prompt_tokens: 4, total_tokens: 4 } });
   }
   if (!Array.isArray(body.messages) || body.messages[0]?.role !== 'user') return json(res, 400, {});
   const tool = body.tools?.[0];

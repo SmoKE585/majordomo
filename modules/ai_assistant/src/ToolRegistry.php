@@ -12,6 +12,7 @@ use RuntimeException;
  * Реестр реализованных Neuron Tools; произвольных обработчиков из запроса нет.
  *
  * Изменения:
+ * 2026-10-23 — подтверждаемое создание и пульс во время поиска знаний.
  * 2026-10-23 — объекты, свойства, ссылки, код и история установки под тем же
  * контролем прав, что и знания; у каждого инструмента фиксированная схема.
  * 2026-10-23 — чтение знаний через общую границу прав и лимитов результата.
@@ -22,7 +23,8 @@ final class ToolRegistry
         private ToolAccess $access,
         private KnowledgeReader $knowledge,
         private ?InstallationInspector $installation = null,
-        private ?KnowledgeIndex $index = null
+        private ?KnowledgeIndex $index = null,
+        private ?\Closure $heartbeat = null
     ) {}
 
     public function tools(): array
@@ -39,6 +41,7 @@ final class ToolRegistry
             new Tools\FindScripts($this),
             new Tools\SearchKnowledge($this),
             new Tools\ReadKnowledge($this),
+            new Tools\CreateEntity(),
         ) as $tool) {
             if (in_array($tool->getName(), $agent['TOOLS'], true)) $tools[] = $tool;
         }
@@ -128,7 +131,7 @@ final class ToolRegistry
         $models = new ModelCatalog(\MajorDoMo\Core\Core::database(), $vault);
         return $this->index = new KnowledgeIndex(\MajorDoMo\Core\Core::database(),
             new KnowledgeSettings(\MajorDoMo\Core\Core::database(), $vault), $models,
-            new ProviderFactory($models), new QdrantClient());
+            new ProviderFactory($models, null, $this->heartbeat), new QdrantClient());
     }
 
     private function code(array $arguments): array

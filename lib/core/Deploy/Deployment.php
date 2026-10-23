@@ -7,6 +7,7 @@ use RuntimeException;
 
 /**
  * Шаги установки зависимостей и проверки после замены файлов.
+ * 2026-10-23 — после миграций уведомляются подписчики обновления системы.
  *
  * Пайплайн намеренно не копирует файлы и не делает бэкапов: этим владеет
  * saverestore. Здесь только Composer, npm, миграции и health-check, чтобы один
@@ -287,7 +288,7 @@ final class Deployment
         // Отдельный процесс: автообновление работает в уже загруженном
         // cycle.php, где старый класс Migrations остался в памяти. Дочерний
         // CLI загрузит новые файлы миграций с диска.
-        $command = array($this->phpBinary(), $this->root . '/majordomo', 'migrations:run', '--no-ansi', '--json');
+        $command = array($this->phpBinary(), $this->root . '/majordomo', 'migrations:run', '--after-update', '--no-ansi', '--json');
         $this->log($log, 'Применение миграций', 'info');
         // stdout дочерней команды — это JSON-отчёт, его нельзя лить в журнал;
         // оставляем только пульс, чтобы долгая миграция не выглядела зависанием.

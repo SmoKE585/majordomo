@@ -27,6 +27,7 @@ Define("EQ_DELIMITER", "qz_");
 
 /**
  * Module class
+ * Изменения: 2026-10-23 — событие MODULE_INSTALLED для фоновых подписчиков.
  * @category Modules
  * @package Framework
  * @author Serge Dzheigalo <jey@activeunit.com>
@@ -423,6 +424,16 @@ class module
         }
         $flag_filename = ROOT . 'cms/modules_installed/' . $this->name . '.installed';
         if (!file_exists($flag_filename)) SaveFile($flag_filename, date("H:m d.M.Y"));
+        // Справочные индексы и другие подписчики обновляются в штатной очереди.
+        if (function_exists('processSubscriptionsSafe')) {
+            try {
+                if (!processSubscriptionsSafe('MODULE_INSTALLED', array('module' => $this->name))) {
+                    error_log('MajorDoMo MODULE_INSTALLED: событие не поставлено в очередь');
+                }
+            } catch (\Throwable $failure) {
+                error_log('MajorDoMo MODULE_INSTALLED: ' . get_class($failure));
+            }
+        }
     }
 
     /**

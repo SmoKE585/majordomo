@@ -14,6 +14,7 @@ use RuntimeException;
  * сценарии, ссылки и история. Никакого SQL, shell или записи от модели.
  *
  * Изменения:
+ * 2026-10-23 — поиск кандидатов с опечатками, транслитерацией и бытовыми названиями.
  * 2026-10-23 — единый серверный слой для Tools помощника и контекста редактора.
  */
 final class InstallationInspector
@@ -45,8 +46,91 @@ final class InstallationInspector
             $items[] = $this->objectSummary($row, $query);
         }
         $total = (int)($count['C'] ?? 0);
+        if ($total === 0 && $query !== '') return $this->fuzzyObjects($query, $offset, $limit);
         return array('items' => $items, 'total' => $total,
             'next_offset' => $offset + $limit < $total ? $offset + $limit : null);
+    }
+
+    /** Нечёткое совпадение — только кандидат; управлять им без проверки нельзя. */
+    private function fuzzyObjects(string $query, int $offset, int $limit): array
+    {
+        $terms = self::searchWords($query);
+        $candidates = $this->db->select('SELECT objects.ID,objects.TITLE,objects.DESCRIPTION,objects.CLASS_ID,classes.TITLE AS CLASS '
+            . 'FROM objects LEFT JOIN classes ON objects.CLASS_ID=classes.ID ORDER BY objects.ID LIMIT 5001');
+        $truncated = count($candidates) > 5000;
+        $matches = array();
+        foreach (array_slice($candidates, 0, 5000) as $row) {
+            $words = self::searchWords($row['TITLE'] . ' ' . ($row['DESCRIPTION'] ?? '') . ' ' . ($row['CLASS'] ?? ''), true);
+            $score = 0;
+            foreach ($terms as $term) {
+                $best = 0;
+                foreach ($words as $word) {
+                    if ($word === $term) $best = max($best, 10);
+                    elseif (min(strlen($term), strlen($word)) >= 3 && (str_contains($word, $term) || str_contains($term, $word))) $best = max($best, 6);
+                    elseif (strlen($term) >= 4 && abs(strlen($word) - strlen($term)) <= 2
+                        && self::similarWord($term, $word)) $best = max($best, 3);
+                }
+                if ($best === 0) continue 2;
+                $score += $best;
+            }
+            if ($score === 0) continue;
+            $item = $this->objectSummary($row, $query);
+            $item['match_score'] = $score;
+            $matches[] = $item;
+        }
+        usort($matches, static fn(array $a, array $b): int => ($b['match_score'] <=> $a['match_score']) ?: ($a['id'] <=> $b['id']));
+        $total = count($matches);
+        return array('items' => array_slice($matches, $offset, $limit), 'total' => $total,
+            'next_offset' => $offset + $limit < $total ? $offset + $limit : null,
+            'search_mode' => 'fuzzy_candidates', 'truncated' => $truncated);
+    }
+
+    private static function searchWords(string $text, bool $candidate = false): array
+    {
+        $text = preg_replace('/([a-zа-я])([A-ZА-Я])/u', '$1 $2', $text) ?? $text;
+        $words = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($text), -1, PREG_SPLIT_NO_EMPTY) ?: array();
+        $groups = array('light' => array('свет', 'ламп', 'освещ', 'light', 'lamp', 'svet'),
+            'toilet' => array('туалет', 'сануз', 'toilet', 'tualet', 'wc'),
+            'bathroom' => array('ванн', 'bath', 'vann'), 'kitchen' => array('кухн', 'kitchen', 'kuhn', 'kukhn'),
+            'motion' => array('движ', 'motion', 'pir'), 'temperature' => array('температ', 'temperat') );
+        $letters = array_combine(preg_split('//u', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя', -1, PREG_SPLIT_NO_EMPTY),
+            array('a','b','v','g','d','e','e','zh','z','i','y','k','l','m','n','o','p','r','s','t','u','f','kh','ts','ch','sh','sch','','y','','e','yu','ya'));
+        $result = array();
+        foreach ($words as $word) {
+            if (in_array($word, array('в', 'во', 'на', 'из', 'и', 'для', 'the', 'in', 'of'), true)) continue;
+            if ($candidate) {
+                $result[] = strtr($word, $letters);
+                foreach ($groups as $canonical => $prefixes) {
+                    foreach ($prefixes as $prefix) {
+                        if ((strlen($prefix) > 2 && str_contains($word, $prefix)) || $word === $prefix) {
+                            $result[] = $canonical;
+                            break;
+                        }
+                    }
+                }
+                continue;
+            }
+            foreach ($groups as $canonical => $prefixes) {
+                foreach ($prefixes as $prefix) {
+                    if (str_starts_with($word, $prefix)) { $word = $canonical; break 2; }
+                }
+            }
+            $result[] = strtr($word, $letters);
+        }
+        return array_values(array_unique($result));
+    }
+
+    private static function similarWord(string $term, string $word): bool
+    {
+        if (levenshtein($term, $word) <= (strlen($term) >= 7 ? 2 : 1)) return true;
+        if (strlen($term) !== strlen($word)) return false;
+        for ($i = 0; $i < strlen($term) - 1; $i++) {
+            $swapped = $term;
+            $swapped[$i] = $term[$i + 1];
+            $swapped[$i + 1] = $term[$i];
+            if ($swapped === $word) return true;
+        }
+        return false;
     }
 
     public function objectDetails(string $name): array
@@ -77,6 +161,8 @@ final class InstallationInspector
             'class' => SensitiveText::clean((string)($class['TITLE'] ?? '')),
             'class_path' => array_map(static fn(array $item): string => (string)$item['TITLE'], $classes),
             'description' => SensitiveText::clean((string)($object['DESCRIPTION'] ?? '')),
+            'location_id' => (int)($object['LOCATION_ID'] ?? 0),
+            'nearby' => $this->nearbyObjects($object),
             'url' => self::url('/panel/class/' . (int)$object['CLASS_ID'] . '/object/' . (int)$object['ID'] . '.html'),
             'properties' => $properties,
             'methods' => $methods,
@@ -351,9 +437,19 @@ final class InstallationInspector
     private function object(string $name): array
     {
         $name = self::query($name, 190);
-        $row = $this->db->one("SELECT ID,TITLE,CLASS_ID,DESCRIPTION,KEEP_HISTORY FROM objects WHERE TITLE='" . $this->db->escape($name) . "' LIMIT 1");
+        $row = $this->db->one("SELECT * FROM objects WHERE TITLE='" . $this->db->escape($name) . "' LIMIT 1");
         if ($row === null) throw new InvalidArgumentException('Объект не найден. Проверьте точное имя через find_objects.');
         return $row;
+    }
+
+    private function nearbyObjects(array $object): array
+    {
+        $location = (int)($object['LOCATION_ID'] ?? 0);
+        if ($location < 1) return array();
+        $rows = $this->db->select('SELECT objects.ID,objects.TITLE,objects.DESCRIPTION,objects.CLASS_ID,classes.TITLE AS CLASS '
+            . 'FROM objects LEFT JOIN classes ON objects.CLASS_ID=classes.ID WHERE objects.LOCATION_ID=' . $location
+            . ' AND objects.ID<>' . (int)$object['ID'] . ' ORDER BY objects.TITLE LIMIT 12');
+        return array_map(fn(array $row): array => $this->objectSummary($row, ''), $rows);
     }
 
     private function classRecord(int $id): array

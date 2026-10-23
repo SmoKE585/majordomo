@@ -13,6 +13,8 @@ putenv('USE_REDIS=false');
 putenv('AI_SECRET_KEY=');
 
 $projectRoot = dirname(__DIR__);
+define('ROOT', $projectRoot . '/');
+define('ROOTHTML', '/');
 require_once $projectRoot . '/lib/core.class.php';
 require_once __DIR__ . '/fixtures/ai_assistant_database.php';
 
@@ -122,7 +124,100 @@ try {
     $disabled = $runner4->run($run3, 1, static function (array $event): void {});
     check($disabled['status'] === 'error' && $fake4->getCallCount() === 0, 'Удалённый модуль не вызывает модель.');
 
-    echo 'ИИ-помощник чат: ' . $checks . ' проверок пройдено (SQLite, FakeAIProvider, без сети).' . PHP_EOL;
+    // Подтверждение Neuron останавливает инструмент до любой записи в систему.
+    $state->installed();
+    $record = $agents->get($agentId);
+    $record['TOOLS'] = array('find_objects', 'create_entity');
+    $agents->save($agentId, $record);
+    $payload = array('kind' => 'script', 'name' => 'EveningFixture', 'parent' => '',
+        'description' => 'Тестовый вечерний сценарий', 'code' => '$GLOBALS["ai_fixture_executed"] = true;');
+    $chat->appendMessage($dialogId, 1, 'user', 'Создай вечерний сценарий');
+    $pendingRun = $chat->beginRun($dialogId, 1, $agentId, 'Создай вечерний сценарий');
+    $approvalFake = new FakeAIProvider(new ToolCallMessage(null, array(new ToolCall('create_entity', 'create-1', $payload))));
+    $approvalRunner = new AgentRunner($state, $chat, $agents, $models, $factory, null, static fn(): int => 1, $approvalFake);
+    $approvalEvents = array();
+    $approval = $approvalRunner->run($pendingRun, 1, static function (array $event) use (&$approvalEvents): void { $approvalEvents[] = $event; });
+    check($approval['status'] === 'approval', 'Neuron приостановил создание для подтверждения.');
+    check((int)$pdo->query('SELECT COUNT(*) FROM scripts')->fetchColumn() === 0, 'До подтверждения сценарий не создан.');
+    $requests = new \MajorDoMo\Modules\AiAssistant\ActionRequests($database, $chat, $agents, $state);
+    $draft = $requests->forDialog($dialogId, 1)[0];
+    check($draft['status'] === 'pending' && str_contains($draft['code_html'], 'data-md-code-sample'), 'Сохранён точный код для подтверждения в общем UI-компоненте.');
+    $invalidated = 0;
+    $creator = new \MajorDoMo\Core\EntityCreator($database, static function () use (&$invalidated): void { $invalidated++; }, true);
+    $foreignDenied = false;
+    try { $requests->decide($draft['id'], 2, true, $creator); } catch (RuntimeException) { $foreignDenied = true; }
+    check($foreignDenied, 'Чужой пользователь не может подтвердить предложение.');
+    $decision = $requests->decide($draft['id'], 1, true, $creator);
+    check($decision['status'] === 'created' && (int)$pdo->query('SELECT COUNT(*) FROM scripts')->fetchColumn() === 1, 'Подтверждение создало ровно один сценарий.');
+    check(!isset($GLOBALS['ai_fixture_executed']) && $invalidated === 1, 'Создание обновило метаданные, не исполнило PHP-код.');
+    $requests->decide($draft['id'], 1, true, $creator);
+    check((int)$pdo->query('SELECT COUNT(*) FROM scripts')->fetchColumn() === 1, 'Повторный клик не создаёт дубликат.');
+    $rejected = $requests->propose($dialogId, 1, $agentId, array_replace($payload, array('name' => 'RejectedFixture')));
+    check($requests->decide($rejected['id'], 1, false, $creator)['status'] === 'rejected', 'Отказ сохранён.');
+    check((int)$pdo->query('SELECT COUNT(*) FROM scripts')->fetchColumn() === 1, 'Отклонённый сценарий не создаётся.');
+    $revoked = $requests->propose($dialogId, 1, $agentId, array_replace($payload, array('name' => 'RevokedFixture')));
+    $record = $agents->get($agentId); $record['TOOLS'] = array('find_objects'); $agents->save($agentId, $record);
+    $denied = false;
+    try { $requests->decide($revoked['id'], 1, true, $creator); } catch (RuntimeException) { $denied = true; }
+    check($denied, 'Отзыв права до клика запрещает создание.');
+    $class = $creator->create(array('kind' => 'class', 'name' => 'FixtureLights'));
+    $object = $creator->create(array('kind' => 'object', 'name' => 'FixtureToilet', 'parent' => 'FixtureLights'));
+    $property = $creator->create(array('kind' => 'object_property', 'name' => 'status', 'parent' => 'FixtureToilet'));
+    $classProperty = $creator->create(array('kind' => 'class_property', 'name' => 'level', 'parent' => 'FixtureLights'));
+    check($class['id'] > 0 && $object['id'] > 0 && $property['id'] > 0 && $classProperty['id'] > 0, 'Классы, объекты и оба вида свойств создаются через общий сервис.');
+    $inheritedDenied = false;
+    try { $creator->create(array('kind' => 'object_property', 'name' => 'level', 'parent' => 'FixtureToilet')); } catch (InvalidArgumentException) { $inheritedDenied = true; }
+    check($inheritedDenied, 'Создание не переопределяет унаследованное свойство неявно.');
+    $invalidSyntax = false;
+    try { $creator->create(array_replace($payload, array('name' => 'BrokenFixture', 'code' => 'if ('))); } catch (InvalidArgumentException) { $invalidSyntax = true; }
+    check($invalidSyntax, 'Синтаксически неверный PHP не записывается.');
+    $duplicateDenied = false;
+    try { $creator->create(array('kind' => 'object', 'name' => 'FixtureToilet', 'parent' => 'FixtureLights')); } catch (InvalidArgumentException) { $duplicateDenied = true; }
+    check($duplicateDenied, 'Существующий объект не перезаписывается.');
+    $cancelRun = $chat->beginRun($dialogId, 1, $agentId, 'Проверка обрыва');
+    $chat->requestCancel($cancelRun, 1);
+    check($chat->run($cancelRun, 1)['STATUS'] === 'cancelled', 'Отмена сразу освобождает диалог.');
+    $nextRun = $chat->beginRun($dialogId, 1, $agentId, 'Продолжение после обрыва');
+    check($chat->latestRun($dialogId, 1)['ID'] === $nextRun, 'Последний запуск точен даже при запросах в одну секунду.');
+    $pdo->exec("UPDATE ai_assistant_runs SET UPDATED_AT=1 WHERE ID='" . $nextRun . "'");
+    check($chat->latestRun($dialogId, 1)['STATUS'] === 'error', 'Зависший процесс восстанавливается по просроченному пульсу.');
+    $selection = ChatStore::context(array('selection' => array('from' => 1, 'to' => 3, 'text' => 'sg')));
+    check($selection['selection'] === 'sg', 'Выделение редактора передаётся модели текстом.');
+    $inspector = new \MajorDoMo\Core\Inspection\InstallationInspector($database);
+    $pdo->exec("INSERT INTO objects VALUES (99,'LigthToilet',1,'',0)");
+    $found = $inspector->searchObjects('свет в туалете');
+    check(in_array('LigthToilet', array_column($found['items'], 'title'), true), 'Русский бытовой запрос находит устройство с опечаткой среди кандидатов.');
+    $typoFound = $inspector->searchObjects('light toliet');
+    check(in_array('LigthToilet', array_column($typoFound['items'], 'title'), true), 'Поиск учитывает переставленные соседние буквы.');
+
+    $pdo->exec('ALTER TABLE objects ADD COLUMN LOCATION_ID INTEGER DEFAULT 0');
+    $pdo->exec("UPDATE objects SET LOCATION_ID=7 WHERE TITLE IN ('KitchenLamp','LigthToilet')");
+    $neighbors = $inspector->objectDetails('LigthToilet');
+    check(in_array('KitchenLamp', array_column($neighbors['nearby'], 'title'), true), 'Соседи определяются по фактическому LOCATION_ID.');
+    $correlation = bin2hex(random_bytes(16));
+    $correlated = $chat->beginRun($dialogId, 1, $agentId, 'Запрос с потерянным первым SSE', $correlation);
+    check($correlated === $correlation, 'Клиент знает ID запуска до первого события SSE.');
+    $chat->requestCancel($correlation, 1);
+
+    $httpBase = $argv[1] ?? '';
+    if ($httpBase !== '') {
+        if (parse_url($httpBase, PHP_URL_HOST) !== '127.0.0.1' || parse_url($httpBase, PHP_URL_SCHEME) !== 'http') throw new RuntimeException('Только локальная simulation.');
+        $httpProvider = $models->saveProvider(0, array('TITLE' => 'Simulation', 'BASE_URL' => $httpBase . '/v1', 'PROTOCOL' => 'openai_chat', 'TIMEOUT' => 1, 'ENABLED' => 1));
+        foreach (array('stream-drop' => 'error', 'stream-timeout' => 'error', 'stream-ok' => 'done') as $name => $expected) {
+            $httpModel = $models->saveModel(0, array('PROVIDER_ID' => $httpProvider, 'TITLE' => $name, 'MODEL' => $name, 'CAPABILITIES' => array('chat'), 'PARAMETERS' => array(), 'CONTEXT_WINDOW' => 8192, 'MAX_OUTPUT' => 512, 'ENABLED' => 1));
+            $httpAgent = $agents->get($agentId); $httpAgent['TOOLS'] = array(); $httpAgent['MODEL_ID'] = $httpModel; $agents->save($agentId, $httpAgent);
+            $httpRun = $chat->beginRun($dialogId, 1, $agentId, 'HTTP-проверка');
+            $chat->appendMessage($dialogId, 1, 'user', 'HTTP-проверка');
+            $httpEvents = array();
+            $httpRunner = new AgentRunner($state, $chat, $agents, $models, new ProviderFactory($models), null, static fn(): int => 1);
+            $httpResult = $httpRunner->run($httpRun, 1, static function (array $event) use (&$httpEvents): void { $httpEvents[] = $event; });
+            check($httpResult['status'] === $expected && $chat->run($httpRun, 1)['STATUS'] === $expected, 'Реальный HTTP-поток: ' . $name . ' завершает запуск.');
+            check(count(array_filter($httpEvents, static fn(array $e): bool => $e['type'] === 'heartbeat')) > 0, 'cURL посылает пульс в ходе HTTP-запроса.');
+            if ($name === 'stream-drop') check(str_contains($httpResult['content'], 'Часть ответа'), 'Обрыв провайдера сохраняет полученный текст.');
+        }
+    }
+
+    echo 'ИИ-помощник чат: ' . $checks . ' проверок пройдено (SQLite, FakeAIProvider; HTTP ' . ($httpBase !== '' ? 'локальная Postman simulation' : 'не запускался') . ').' . PHP_EOL;
 } finally {
     $resolved = realpath($fixture);
     $temporaryRoot = realpath(sys_get_temp_dir());

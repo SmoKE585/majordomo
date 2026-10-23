@@ -5,19 +5,6 @@
 (function (window, document) {
     'use strict';
 
-    var statePromise = null;
-    var current = null;
-
-    function endpoint() {
-        var root = window.ROOTHTML || '/';
-        return root.replace(/\/?$/, '/') + 'panel/ai_assistant.html?ajax=1';
-    }
-
-    function csrf() {
-        var meta = document.querySelector('meta[name="md-csrf-token"]');
-        return meta ? meta.getAttribute('content') || '' : '';
-    }
-
     function toast(type, title, text) {
         if (window.MDJUIToast && typeof window.MDJUIToast.show === 'function') {
             window.MDJUIToast.show({type: type, title: title, text: text || '', duration: type === 'danger' ? 6500 : 4200});
@@ -26,42 +13,10 @@
         }
     }
 
-    function api(op, data) {
-        var body = new URLSearchParams();
-        body.set('op', op);
-        Object.keys(data || {}).forEach(function (key) {
-            if (data[key] !== undefined && data[key] !== null) body.set(key, data[key]);
-        });
-        return fetch(endpoint() + '&op=' + encodeURIComponent(op), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-CSRF-Token': csrf(),
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            },
-            body: body.toString()
-        }).then(function (response) {
-            return response.text().then(function (text) {
-                var json = null;
-                try { json = JSON.parse(text); } catch (e) {}
-                if (!response.ok || !json || json.ok === false) {
-                    throw new Error(json && json.message ? json.message : 'Сервис ИИ-помощника недоступен.');
-                }
-                return json;
-            });
-        });
-    }
+    function api(op, data) { return window.MDAssistant.request(op, data); }
 
     function state() {
-        if (!statePromise) {
-            statePromise = api('editor_state', {}).catch(function (error) {
-                statePromise = null;
-                throw error;
-            });
-        }
-        return statePromise;
+        return api('editor_state', {});
     }
 
     function el(tag, className, text) {
@@ -135,7 +90,7 @@
 
         return {
             root: root, prompt: prompt, select: select, status: status, send: send, stop: stop, answer: answer,
-            dialogId: 0, runId: '', snapshot: editor.getValue(), controller: null, busy: false
+            dialogId: 0, runId: '', snapshot: editor.getValue(), controller: null, busy: false, closed: false
         };
     }
 
@@ -145,39 +100,22 @@
             panel.send.disabled = value;
             panel.stop.hidden = !value;
             panel.prompt.disabled = value;
+            panel.select.disabled = value;
             if (text) panel.status.textContent = text;
         }
 
-        function renderAnswer(html) {
-            panel.answer.innerHTML = html || '';
-            panel.answer.querySelectorAll('pre').forEach(function (pre) {
+        function bindCode(root) {
+            root.querySelectorAll('pre').forEach(function (pre) {
                 var code = pre.querySelector('code');
                 var text = code ? code.textContent : pre.textContent;
                 if (!text || !text.trim()) return;
-                var tools = el('div', 'md-ai-editor__code-actions');
                 var insert = el('button', 'md-btn md-btn--secondary md-btn--sm', 'Вставить в редактор');
                 insert.type = 'button';
                 insert.addEventListener('click', function () { applyCode(text, pre); });
-                var copy = el('button', 'md-btn md-btn--ghost md-btn--sm', 'Копировать');
-                copy.type = 'button';
-                copy.addEventListener('click', function () {
-                    if (navigator.clipboard) navigator.clipboard.writeText(text);
-                    copy.textContent = 'Скопировано';
-                });
-                tools.appendChild(insert);
-                tools.appendChild(copy);
-                pre.parentNode.insertBefore(tools, pre);
+                var sample = pre.closest('[data-md-code-sample]');
+                (sample ? sample.querySelector('.md-code-sample__actions') || sample : pre.parentNode).appendChild(insert);
             });
-            if (!panel.answer.querySelector('pre')) {
-                var wrap = el('div', 'md-ai-editor__code-actions');
-                var insertAll = el('button', 'md-btn md-btn--secondary md-btn--sm', 'Вставить ответ в редактор');
-                insertAll.type = 'button';
-                insertAll.addEventListener('click', function () {
-                    applyCode(panel.answer.textContent || '', null);
-                });
-                wrap.appendChild(insertAll);
-                panel.answer.appendChild(wrap);
-            }
+            if (window.MDCodeSample) window.MDCodeSample.init(root);
         }
 
         function applyCode(text, node) {
@@ -204,109 +142,87 @@
         }
 
         async function send() {
-            if (panel.busy) return;
+            if (panel.busy || !panel.prompt.value.trim()) return;
+            var ai = window.MDAssistant;
             var prompt = panel.prompt.value.trim();
-            if (!prompt) {
-                panel.prompt.focus();
-                return;
-            }
             panel.snapshot = editor.getValue();
+            var selection = editor.view.state.selection.main;
+            var freshContext = Object.assign({}, context, {code: panel.snapshot,
+                selection: selection.empty ? '' : editor.view.state.sliceDoc(selection.from, selection.to)});
             panel.answer.innerHTML = '';
+            var question = el('div', 'md-ai-editor__question', prompt);
+            panel.answer.appendChild(question);
+            var steps = el('div'); panel.answer.appendChild(steps);
+            var timeline = ai.progress(steps);
+            var content = el('div', 'md-prose'); panel.answer.appendChild(content);
+            var actions = el('div', 'md-ai-actions'); panel.answer.appendChild(actions);
+            var terminal = false, failed = false, accumulated = '';
             setBusy(true, 'Помощник готовит ответ…');
+            panel.runId = ai.newRunId();
             panel.controller = new AbortController();
             try {
                 if (!panel.dialogId) {
-                    var created = await api('dialog_create', {
-                        agent_id: panel.select.value,
-                        context_type: 'editor',
-                        title: context.title || context.method || 'Помощь с кодом',
-                        context: JSON.stringify(context)
-                    });
+                    var created = await api('dialog_create', {agent_id: panel.select.value, context_type: 'editor',
+                        title: context.title || context.method || 'Помощь с кодом', context: JSON.stringify(freshContext)});
                     panel.dialogId = created.dialog.id;
                 }
-                var body = new URLSearchParams({
-                    dialog_id: String(panel.dialogId),
-                    agent_id: panel.select.value,
-                    prompt: prompt,
-                    context: JSON.stringify(context)
-                });
-                var response = await fetch(endpoint() + '&op=send', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    signal: panel.controller.signal,
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                        'X-CSRF-Token': csrf(),
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'text/event-stream'
-                    },
-                    body: body.toString()
-                });
-                if (!response.ok) {
-                    var text = await response.text();
-                    var message = 'Не удалось получить ответ.';
-                    try { message = JSON.parse(text).message || message; } catch (e) {}
-                    throw new Error(message);
-                }
-                var reader = response.body.getReader();
-                var decoder = new TextDecoder('utf-8');
-                var buffer = '';
-                var accumulated = '';
-                while (true) {
-                    var chunk = await reader.read();
-                    if (chunk.done) break;
-                    buffer += decoder.decode(chunk.value, {stream: true});
-                    var index;
-                    while ((index = buffer.indexOf('\n\n')) >= 0) {
-                        var raw = buffer.slice(0, index);
-                        buffer = buffer.slice(index + 2);
-                        var event = parse(raw);
-                        if (!event) continue;
-                        if (event.name === 'run') {
-                            panel.runId = event.data.run_id || '';
-                            panel.status.textContent = 'Генерация ответа…';
-                        } else if (event.name === 'token') {
-                            accumulated += event.data.text || '';
-                            panel.answer.textContent = accumulated;
-                        } else if (event.name === 'tool') {
-                            var tool = event.data.tool || {};
-                            panel.status.textContent = 'Инструмент: ' + (tool.name || '') + '…';
-                        } else if (event.name === 'done') {
-                            renderAnswer(event.data.html || '');
-                            panel.status.textContent = 'Проверьте ответ и вставьте код.';
-                            setBusy(false);
-                        } else if (event.name === 'error') {
-                            var error = el('div', 'md-alert md-alert--danger', event.data.message || 'Ошибка ответа.');
-                            panel.answer.appendChild(error);
-                            setBusy(false);
-                        }
+                if (panel.closed) return;
+                var response = await ai.request('send', {dialog_id: panel.dialogId, agent_id: panel.select.value,
+                    prompt: prompt, context: JSON.stringify(freshContext), request_id: panel.runId}, panel.controller.signal, true);
+                await ai.consume(response, function (name, data) {
+                    timeline.event(name, data);
+                    if (name === 'run') panel.runId = data.run_id || '';
+                    else if (name === 'token') { accumulated += data.text || ''; content.textContent = accumulated; }
+                    else if (name === 'status' && data.text) panel.status.textContent = data.text;
+                    else if (name === 'done') {
+                        terminal = true;
+                        // Сохраняем этапы и вопрос при замене текста готовой разметкой.
+                        content.innerHTML = data.html || '';
+                        bindCode(content);
+                        ai.showActions(actions, data.actions);
+                        ai.showSources(content, data.sources);
+                        panel.status.textContent = data.status === 'approval' ? 'Подтвердите действие ниже.' : 'Проверьте ответ и вставьте код.';
+                    } else if (name === 'error') {
+                        terminal = true; failed = true;
+                        var alert = el('div', 'md-alert md-alert--danger', data.message || 'Ошибка ответа.');
+                        alert.setAttribute('role', 'alert'); panel.answer.appendChild(alert);
+                        panel.status.textContent = 'Запрос завершился ошибкой. Можно повторить.';
                     }
-                }
+                });
             } catch (error) {
-                if (error.name !== 'AbortError') {
-                    toast('danger', 'ИИ-помощник', error.message);
-                    panel.status.textContent = error.message;
+                failed = error.name !== 'AbortError';
+                var message = error.name === 'AbortError' ? 'Остановлено пользователем.' : ai.errorText(error);
+                if (failed) {
+                    var alert = el('div', 'md-alert md-alert--danger', message);
+                    alert.setAttribute('role', 'alert'); panel.answer.appendChild(alert);
+                }
+                panel.status.textContent = message;
+                if (panel.dialogId && !terminal) {
+                    try { await api('cancel', {run_id: panel.runId, dialog_id: panel.dialogId}); }
+                    catch (cancelError) { panel.status.textContent += ' Не удалось подтвердить остановку. Откройте диалог для проверки.'; }
                 }
             } finally {
+                timeline.finish(failed);
                 setBusy(false);
                 panel.controller = null;
+                if (panel.dialogId && !terminal && !panel.closed) {
+                    try {
+                        var state = await api('run_status', {dialog_id: panel.dialogId});
+                        if (state.run && state.run.STATUS === 'running') {
+                            panel.runId = state.run.ID;
+                            setBusy(true, 'Запрос ещё выполняется. Нажмите «Остановить».');
+                        }
+                    } catch (error) { panel.status.textContent = 'Не удалось проверить состояние. Откройте диалог после восстановления связи.'; }
+                }
             }
-        }
-
-        function parse(raw) {
-            var name = 'message';
-            var data = '';
-            raw.split('\n').forEach(function (line) {
-                if (line.indexOf('event:') === 0) name = line.slice(6).trim();
-                else if (line.indexOf('data:') === 0) data += line.slice(5).trim();
-            });
-            if (!data) return null;
-            try { return {name: name, data: JSON.parse(data)}; } catch (e) { return null; }
         }
 
         panel.send.addEventListener('click', send);
         panel.stop.addEventListener('click', async function () {
-            if (panel.runId) { try { await api('cancel', {run_id: panel.runId}); } catch (e) {} }
+            if (panel.dialogId) {
+                try { await api('cancel', {run_id: panel.runId, dialog_id: panel.dialogId}); }
+                catch (error) { panel.status.textContent = window.MDAssistant.errorText(error); return; }
+            }
             if (panel.controller) panel.controller.abort();
             setBusy(false, 'Остановлено');
         });
@@ -339,16 +255,6 @@
         }
         var panel = buildPanel(detail.editor, detail.context, stateData);
         bindPanel(panel, detail.editor, detail.context);
-        current = panel;
-        var footer = el('div', 'md-ai-editor__footer');
-        var close = el('button', 'md-btn md-btn--secondary md-btn--sm', 'Закрыть');
-        close.type = 'button';
-        close.addEventListener('click', function () { window.MDJAdminUI.closeDrawer(); });
-        var submit = el('button', 'md-btn md-btn--primary md-btn--sm', 'Спросить');
-        submit.type = 'button';
-        submit.addEventListener('click', function () { panel.send.click(); });
-        footer.appendChild(close);
-        footer.appendChild(submit);
         window.MDJAdminUI.openDrawer({
             owner: 'ai-editor:' + (detail.context.key || detail.context.id || 'editor'),
             eyebrow: 'ИИ-помощник',
@@ -356,9 +262,15 @@
             subtitle: 'Ответ вставляется одной отменяемой операцией; форма не сохраняется.',
             width: '560px',
             body: panel.root,
-            footer: footer,
+
             focus: panel.prompt,
-            onClose: function () { current = null; }
+            onClose: function () {
+                panel.closed = true;
+                if (panel.controller) {
+                    panel.controller.abort();
+                    api('cancel', {run_id: panel.runId, dialog_id: panel.dialogId}).catch(function (error) { toast('danger', 'Не удалось подтвердить остановку', window.MDAssistant.errorText(error)); });
+                }
+            }
         });
     }
 

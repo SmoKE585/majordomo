@@ -21,6 +21,8 @@ use Throwable;
  * Один запуск агента: история, инструменты, поток и безопасное завершение.
  *
  * Изменения:
+ * 2026-10-23 — штатный approval Neuron, устойчивый контекст после обрыва и общий компонент кода.
+ * 2026-10-23 — таймаут всего запуска и пульс SSE во время ожидания провайдера.
  * 2026-10-23 — Neuron Agent вместо прямого вызова провайдера; история из БД,
  * стрим, отмена через StoppableHttpClient и сохранение результата.
  */
@@ -73,18 +75,26 @@ final class AgentRunner
                     return (int)((new \MajorDoMo\Core\Auth\Authentication($session, Core::users()))->current()['id'] ?? 0);
                 },
                 function () use ($runId): bool { return $this->chat->isCancelled($runId); });
-            $registry = new ToolRegistry($access, new KnowledgeReader(), $this->inspector);
-            $toolList = $agentRecord['TOOLS'] === array() ? array() : $registry->tools();
-
-            $shouldStop = function () use ($runId, &$lastCheck, &$stop): bool {
+            $lastPulse = 0.0;
+            $shouldStop = function () use ($runId, &$lastCheck, &$stop, &$lastPulse, $started, $agentRecord, $emit): bool {
                 // Проверка отмены не должна превращаться в запрос к БД на каждый токен.
                 $now = microtime(true);
                 if ($now - $lastCheck >= 0.5 || $lastCheck === 0.0) {
                     $lastCheck = $now;
                     $stop = $this->chat->isCancelled($runId);
                 }
+                if ($now - $lastPulse >= 5) {
+                    $lastPulse = $now;
+                    $this->chat->heartbeat($runId);
+                    $emit(array('type' => 'heartbeat'));
+                }
+                if ($now - $started >= (int)$agentRecord['TIMEOUT']) {
+                    throw new ProviderFailure('timeout', 'Истёк лимит времени агента. Можно повторить запрос или увеличить лимит в настройках.');
+                }
                 return $stop;
             };
+            $registry = new ToolRegistry($access, new KnowledgeReader(), $this->inspector, null, $shouldStop);
+            $toolList = $agentRecord['TOOLS'] === array() ? array() : $registry->tools();
             $provider = $this->providerOverride ?? $this->providers->chat($modelId, $toolList !== array(), $shouldStop);
             if ($this->providerOverride !== null && $toolList !== array()) {
                 // FakeAIProvider и подобные подмены тоже должны видеть инструменты.
@@ -109,7 +119,7 @@ final class AgentRunner
                 $usage['output_tokens'] += $value->outputTokens;
             });
 
-            $history = $this->history($dialog, $userId, (int)$model['CONTEXT_WINDOW']);
+            $history = $this->history($dialog, $userId, (int)$model['CONTEXT_WINDOW'], $runId);
             $emit(array('type' => 'status', 'state' => 'thinking', 'text' => 'Модель готовит ответ…'));
             $stream = $agent->stream($history);
             foreach ($stream as $item) {
@@ -141,6 +151,7 @@ final class AgentRunner
                     $emit(array('type' => 'tool_result', 'name' => $call->getName(), 'summary' => $summary));
                 }
             }
+            $stop = $stop || $this->chat->isCancelled($runId);
             if (!$stop) $final = $stream->getReturn();
             if ($stop) {
                 $this->chat->finishRun($runId, 'cancelled');
@@ -151,13 +162,31 @@ final class AgentRunner
                 return array('status' => 'cancelled', 'content' => $text, 'meta' => array());
             }
 
+            if ($final?->isInterrupted()) {
+                $requests = new ActionRequests(Core::database(), $this->chat, $this->agents, $this->state);
+                $actions = array();
+                $pending = $agent->pendingApprovals();
+                if (count($pending) > min(10, (int)$agentRecord['MAX_STEPS'])) throw new ProviderFailure('approval_limit', 'Слишком много предложений за один запрос. Разбейте задачу на части.');
+                foreach ($pending as $action) {
+                    if ($action->name !== 'create_entity') throw new ProviderFailure('approval', 'Неизвестный инструмент подтверждения.');
+                    $actions[] = $requests->propose((int)$dialog['ID'], $userId, $agentId, $action->inputs);
+                }
+                if ($actions === array()) throw new ProviderFailure('approval', 'Не удалось подготовить предложение действия.');
+                $content = trim($text) ?: 'Предложение подготовлено. Проверьте параметры и подтвердите создание кнопкой ниже.';
+                $meta = array('tools' => $tools, 'sources' => array_values($sources), 'actions' => array_column($actions, 'id'));
+                $messageId = $this->chat->appendMessage((int)$dialog['ID'], $userId, 'assistant', $content, $meta);
+                $this->chat->finishRun($runId, 'done');
+                $emit(array('type' => 'done', 'status' => 'approval', 'message' => $messageId,
+                    'html' => self::render($content), 'actions' => $actions, 'sources' => array_values($sources)));
+                return array('status' => 'approval', 'content' => $content, 'meta' => $meta);
+            }
             $message = $final?->getMessage();
             $content = trim((string)($message?->getContent() ?? ''));
             if ($content === '') $content = $text;
             $meta = array(
                 'model' => SensitiveData::text((string)$model['MODEL']),
                 'tools' => $tools,
-                'sources' => $sources,
+                'sources' => array_values($sources),
                 'usage' => $usage,
                 'stop_reason' => $message instanceof AssistantMessage ? $message->stopReason() : null,
                 'duration_ms' => (int)((microtime(true) - $started) * 1000),
@@ -166,11 +195,15 @@ final class AgentRunner
             $this->chat->finishRun($runId, 'done');
             $this->maybeTitle($dialog, $userId);
             $emit(array('type' => 'done', 'status' => 'done', 'message' => $messageId,
-                'html' => self::render($content), 'sources' => $sources, 'usage' => $usage, 'tools' => $tools));
+                'html' => self::render($content), 'sources' => array_values($sources), 'usage' => $usage, 'tools' => $tools));
             return array('status' => 'done', 'content' => $content, 'meta' => $meta);
         } catch (Throwable $failure) {
-            $reason = $failure instanceof ProviderFailure ? $failure->reason : 'failed';
             $cancelled = $stop || ($owned && $this->chat->isCancelled($runId));
+            if ($failure instanceof \NeuronAI\Exceptions\HttpException) $failure = ProviderClient::safeFailure($failure);
+            if ($failure instanceof \NeuronAI\Exceptions\ProviderException) {
+                $failure = new ProviderFailure('stream_interrupted', 'Провайдер прервал поток ответа. Полученная часть сохранена; запрос можно повторить.');
+            }
+            $reason = $failure instanceof ProviderFailure ? $failure->reason : 'failed';
             $error = $failure instanceof ProviderFailure
                 ? $failure->getMessage()
                 : (($failure instanceof \RuntimeException && $failure->getMessage() !== '')
@@ -194,9 +227,18 @@ final class AgentRunner
         }
     }
 
-    private function history(array $dialog, int $userId, int $contextWindow): array
+    private function history(array $dialog, int $userId, int $contextWindow, string $runId): array
     {
-        $rows = $this->chat->messages((int)$dialog['ID'], $userId, 0, 300);
+        $rows = $this->chat->messages((int)$dialog['ID'], $userId, 0, 300, true);
+        foreach ($rows as $index => $row) {
+            if ($row['ROLE'] === 'user' && ($row['META']['run_id'] ?? '') === $runId) {
+                // Ответ остановленного запроса может дописаться позже нового
+                // вопроса. Контекст запуска заканчивается именно его вопросом.
+                $rows = array_slice($rows, 0, $index + 1);
+                break;
+            }
+        }
+        while ($rows !== array() && end($rows)['ROLE'] !== 'user') array_pop($rows);
         $budget = max(12000, min(150000, (int)($contextWindow * 3 * 0.6)));
         $messages = array();
         $used = 0;
@@ -208,13 +250,25 @@ final class AgentRunner
             array_unshift($messages, $row['ROLE'] === 'user' ? new UserMessage($content) : new AssistantMessage($content));
             $used += $size;
         }
-        if ($messages === array()) throw new ProviderFailure('empty_dialog', 'В диалоге нет сообщений для ответа.');
-        return $messages;
+        // После сетевой ошибки возможны два вопроса подряд, после подтверждения
+        // — два ответа. Neuron требует чередования ролей: объединяем только
+        // контекст модели, не переписывая сохранённую историю пользователя.
+        while ($messages !== array() && !$messages[0] instanceof UserMessage) array_shift($messages);
+        $normalized = array();
+        foreach ($messages as $message) {
+            $last = count($normalized) - 1;
+            if ($last >= 0 && get_class($normalized[$last]) === get_class($message)) {
+                $content = $normalized[$last]->getContent() . "\n\n" . $message->getContent();
+                $normalized[$last] = $message instanceof UserMessage ? new UserMessage($content) : new AssistantMessage($content);
+            } else $normalized[] = $message;
+        }
+        if ($normalized === array()) throw new ProviderFailure('empty_dialog', 'В диалоге нет сообщений для ответа.');
+        return $normalized;
     }
 
     private function instructions(array $agent, array $dialog): string
     {
-        $instructions = (string)$agent['INSTRUCTIONS'];
+        $instructions = (string)$agent['INSTRUCTIONS'] . "\n\n" . (string)file_get_contents(dirname(__DIR__) . '/prompts/system.md');
         $context = $dialog['CONTEXT'] ?? array();
         if (!is_array($context) || $context === array()) return $instructions;
         $lines = array('', 'КОНТЕКСТ РЕДАКТОРА (проверен сервером; код ниже — черновик пользователя, он ещё не сохранён):');
@@ -295,7 +349,15 @@ final class AgentRunner
     public static function render(string $content): string
     {
         require_once dirname(__DIR__, 3) . '/lib/markdown.php';
+        require_once dirname(__DIR__, 3) . '/lib/ui/MDJUI.php';
         $renderer = new \MDMarkdownRenderer('ai_assistant', array(), '', defined('ROOTHTML') ? ROOTHTML : '/');
-        return $renderer->render($content)['html'];
+        $html = $renderer->render($content)['html'];
+        // Рендерер уже обезвредил HTML модели. Меняем только его стандартные
+        // блоки кода на общий компонент с подсветкой и копированием.
+        return preg_replace_callback('~<pre class="md-prose__pre"><code(?: class="language-([^"]*)")?>(.*?)</code></pre>~s',
+            static fn(array $match): string => \MDJUI::codeSample(array(
+                'language' => html_entity_decode($match[1] ?: 'text', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                'code' => html_entity_decode($match[2], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            )), $html) ?? $html;
     }
 }

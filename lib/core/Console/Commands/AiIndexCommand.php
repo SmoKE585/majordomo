@@ -15,6 +15,7 @@ use Throwable;
  * Обслуживание векторного индекса знаний без внешнего планировщика.
  *
  * Изменения:
+ * 2026-10-23 — --sync обновляет только изменённые документы готового индекса.
  * 2026-10-23 — сборка по шагам, явная модель или все включённые модели.
  */
 final class AiIndexCommand extends Command
@@ -29,6 +30,7 @@ final class AiIndexCommand extends Command
         return array(
             'model=' => 'ID модели эмбеддингов; по умолчанию выбранная в настройках',
             'all' => 'Пересобрать индексы всех включённых моделей эмбеддингов',
+            'sync' => 'Сверить готовый индекс и обновить только изменённые файлы',
             'batch=' => 'Фрагментов за шаг, 1–40 (по умолчанию 16)',
         );
     }
@@ -55,6 +57,12 @@ final class AiIndexCommand extends Command
             foreach ($ids as $id) {
                 $output->section('Модель #' . $id);
                 try {
+                    if ($input->option('sync')) {
+                        $synced = $index->synchronize($id, $batch);
+                        $output->info('Обновлено файлов: ' . $synced['changed'] . ', удалено: ' . $synced['removed']);
+                        $result[] = array('model_id' => $id, 'status' => 'ready') + $synced;
+                        continue;
+                    }
                     $row = $index->start($id);
                     $output->info('Фрагментов в плане: ' . (int)$row['CHUNKS']);
                     $guard = 0;

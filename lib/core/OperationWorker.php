@@ -10,6 +10,7 @@ use \InvalidArgumentException;
  * Выполнение фоновых операций из очереди (методы, модули, сообщения, подписки).
  *
  * Изменения:
+ * 2026-10-23 — явный отказ метода или сценария больше не подтверждается как успешная операция.
  * 2026-10-22 — воркер восстанавливает точку доставки (модуль + свойство), чтобы
  *              исключение эха не распространялось на вложенные привязки.
  * 2026-10-22 — сценарии, сообщения и подписки вызывают функции ядра напрямую.
@@ -148,7 +149,9 @@ final class OperationWorker
                         . ($reason !== '' ? ' (' . $reason . ')' : ''));
                 }
             } else throw new InvalidArgumentException('Unknown core operation');
-            if ($item['DATANAME'] === 'modulepropertyset' && $result === false) throw new RuntimeException('Module handler returned false');
+            if ($result === false && in_array($item['DATANAME'], array('method', 'script', 'modulepropertyset'), true)) {
+                throw new RuntimeException('Обработчик операции ' . $item['DATANAME'] . ' вернул false: ' . (string)($data['target'] ?? ''));
+            }
             if (!is_array($result) || !array_key_exists('success', $result)) $result = array('success' => true);
             return $result;
         } catch (Throwable $e) {

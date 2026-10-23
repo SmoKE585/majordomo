@@ -74,5 +74,6 @@ import './modules/admin_panel/122_folder_picker.js';
 import './modules/admin_panel/116_ui_components.js';
 import './modules/admin_panel/120_linkedobject.js';
 import './modules/admin_panel/123_code_sample.js';
+import './modules/admin_panel/129_ai_runtime.js';
 import './modules/admin_panel/130_ai_editor.js';
 import './codeeditor/loader.js';

@@ -485,6 +485,14 @@ if ($backup) {
             removeTree(ROOT . 'cms/saverestore/temp');
             @unlink(ROOT . 'cms/modules_installed/control_modules.installed');
             saverestoreFrameLog(LANG_UPDATEBACKUP_DONE, 'success');
+            if (function_exists('processSubscriptionsSafe')) {
+                try {
+                    if (!processSubscriptionsSafe('SYSTEM_UPDATED')) saverestoreFrameLog('Не удалось поставить уведомление об обновлении в очередь.', 'warning');
+                } catch (Throwable $failure) {
+                    saverestoreFrameLog('Обновление применено, но очередь уведомлений недоступна.', 'warning');
+                    error_log('MajorDoMo SYSTEM_UPDATED: ' . get_class($failure));
+                }
+            }
             saverestoreFrameLog(LANG_UPDATEBACKUP_UPDATE_GET_DONE, 'success');
             if ($with_extensions) {
                 saverestoreFrameParentStatus('Системное обновление применено. Перехожу к обновлению модулей...', 'active', 95, 'finish');

@@ -24,6 +24,7 @@ $error = (string)($meta['error'] ?? '');
          data-message-id="<?= (int)($message['ID'] ?? 0) ?>">
     <span class="md-ai-msg__avatar"><?= MDJUI::icon($isUser ? 'user' : 'robot') ?></span>
     <div class="md-ai-msg__body">
+        <span data-ai-copy-source hidden><?= MDJUI::e($content) ?></span>
         <div class="md-ai-msg__head">
             <strong><?= $isUser ? 'Вы' : 'Помощник' ?></strong>
             <?php if (!empty($message['CREATED_AT'])): ?>

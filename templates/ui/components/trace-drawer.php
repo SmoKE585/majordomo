@@ -1,4 +1,5 @@
 <?php
+// 2026-10-23 — копирование загруженных цепочек вместе с кодом и параметрами.
 if (!class_exists('MDJUI')) {
     http_response_code(404);
     exit;
@@ -82,6 +83,9 @@ if (!empty($props['demo_data']) && is_array($props['demo_data'])) {
     <div class="md-trace__actions" data-md-trace-actions hidden>
         <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-trace-refresh title="Обновить журнал">
             <?= MDJUI::icon('refresh') ?><span class="md-btn__label">Обновить</span>
+        </button>
+        <button type="button" class="md-btn md-btn--secondary md-btn--sm" data-md-trace-copy-page>
+            <?= MDJUI::icon('copy') ?><span class="md-btn__label">Копировать страницу</span>
         </button>
     </div>
 </div>

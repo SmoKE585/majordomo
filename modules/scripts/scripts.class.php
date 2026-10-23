@@ -2,6 +2,7 @@
 /**
  * Scripts
  *
+ * Изменения: 2026-10-23 — журнал сохраняет код сценария на момент выполнения.
  * Изменения: 2026-10-23 — ошибки сценария webhook доходят до HTTP-границы вместо пустого ответа 200.
  *
  * Scripts
@@ -169,6 +170,7 @@ class scripts extends module
                 'subtitle' => (string)($rec['DESCRIPTION'] ?? ''),
                 'params' => $this->auditParams($params),
                 'source' => $source,
+                'execution' => array('code' => (string)$rec['CODE']),
             ));
             $auditError = null;
             try {

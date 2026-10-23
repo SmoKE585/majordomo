@@ -13,6 +13,7 @@ use Throwable;
  * Настраиваемые агенты и их разрешения; инструкции не меняют серверный набор Tools.
  *
  * Изменения:
+ * 2026-10-23 — разрешение create_entity запрашивает подтверждение пользователя.
  * 2026-10-23 — поиск сценариев добавлен в серверный список Tools.
  * 2026-10-23 — серверный запрет RAG без доступного Qdrant и моделей эмбеддингов.
  * 2026-10-23 — создание агента без модели учитывает NULL-контракт штатного Insert.
@@ -20,7 +21,7 @@ use Throwable;
  */
 final class AgentCatalog
 {
-    public const TOOLS = array('find_objects', 'read_object', 'read_property', 'find_references', 'read_code', 'read_history', 'find_scripts', 'search_knowledge', 'read_knowledge');
+    public const TOOLS = array('find_objects', 'read_object', 'read_property', 'find_references', 'read_code', 'read_history', 'find_scripts', 'search_knowledge', 'read_knowledge', 'create_entity');
 
     public function __construct(private Database $db, private ModelCatalog $models, private ?RagAvailability $rag = null) {}
 

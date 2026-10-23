@@ -17,9 +17,18 @@ $tabs = array(
 $activeTab = in_array($view, array('agent_edit'), true) ? 'agents'
     : (in_array($view, array('model_edit'), true) ? 'models'
     : (in_array($view, array('provider_edit'), true) ? 'providers' : $view));
+if (!empty($drawer)) {
+    ?>
+    <div class="md-ai-page md-ai-page--drawer" data-md-ai-panel data-ai-drawer
+         data-ai-endpoint="<?= $e(ROOTHTML) ?>panel/ai_assistant.html?ajax=1" data-ai-url="<?= $e(ROOTHTML) ?>panel/ai_assistant">
+        <?php require __DIR__ . '/chat.php'; ?>
+    </div>
+    <?php
+    return;
+}
 ?>
-<link rel="stylesheet" href="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.css?v=20261023-8">
-<script src="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.js?v=20261023-8" defer></script>
+<link rel="stylesheet" href="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.css?v=20261023-9">
+<script src="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.js?v=20261023-9" defer></script>
 
 <div class="md-ui-page md-ui-page--stack md-ai-page" data-md-ai-panel
      data-ai-endpoint="<?= $e(ROOTHTML) ?>panel/ai_assistant.html?ajax=1"
@@ -39,7 +48,7 @@ $activeTab = in_array($view, array('agent_edit'), true) ? 'agents'
         </div>
         <div class="md-ui-hero__actions">
             <?php if ($configured): ?>
-                <?= MDJUI::button('Открыть чат', array('href' => $url() . '.html', 'icon' => 'messages')) ?>
+                <?= MDJUI::button('Открыть помощника', array('href' => $url(), 'icon' => 'messages', 'attrs' => array('data-ai-open' => ''))) ?>
             <?php else: ?>
                 <?= MDJUI::button('Настроить помощника', array('href' => $url('/models'), 'icon' => 'settings')) ?>
             <?php endif; ?>

@@ -12,13 +12,14 @@ use RuntimeException;
  * Диалоги, сообщения и запуски; владелец всегда проверяется на сервере.
  *
  * Изменения:
+ * 2026-10-23 — пульс запуска, восстановление состояния и немедленная отмена.
  * 2026-10-23 — история чата, состояния генерации и отмена без доверия браузеру.
  */
 final class ChatStore
 {
     public const ROLES = array('user', 'assistant', 'system');
     public const CONTEXT_TYPES = array('chat', 'editor');
-    private const RUN_TIMEOUT = 900;
+    private const RUN_TIMEOUT = 90;
     private const MAX_MESSAGE = 200000;
     private const MAX_PROMPT = 16000;
     private const MAX_CONTEXT = 65536;
@@ -103,12 +104,13 @@ final class ChatStore
     }
 
     /** @return list<array{id:int,role:string,content:string,meta:array,created:int}> */
-    public function messages(int $dialogId, int $userId, int $afterId = 0, int $limit = 200): array
+    public function messages(int $dialogId, int $userId, int $afterId = 0, int $limit = 200, bool $latest = false): array
     {
         $this->dialog($dialogId, $userId);
         $limit = max(1, min($limit, 500));
         $rows = $this->db->select('SELECT ID,ROLE,CONTENT,META,CREATED_AT FROM ai_assistant_messages WHERE DIALOG_ID='
-            . $dialogId . ' AND ID>' . max(0, $afterId) . ' ORDER BY ID LIMIT ' . $limit);
+            . $dialogId . ' AND ID>' . max(0, $afterId) . ' ORDER BY ID ' . ($latest ? 'DESC' : 'ASC') . ' LIMIT ' . $limit);
+        if ($latest) $rows = array_reverse($rows);
         foreach ($rows as &$row) {
             $row['ID'] = (int)$row['ID'];
             $row['CREATED_AT'] = (int)$row['CREATED_AT'];
@@ -139,7 +141,7 @@ final class ChatStore
         return $id;
     }
 
-    public function beginRun(int $dialogId, int $userId, ?int $agentId, string $prompt): string
+    public function beginRun(int $dialogId, int $userId, ?int $agentId, string $prompt, string $requestId = ''): string
     {
         $this->dialog($dialogId, $userId);
         if (!mb_check_encoding($prompt, 'UTF-8') || count(preg_split('/\R/u', $prompt) ?: array()) > 200
@@ -154,7 +156,11 @@ final class ChatStore
             . " AND STATUS='running' LIMIT 1") !== null) {
             throw new RuntimeException('В диалоге уже идёт генерация. Дождитесь ответа или остановите её.');
         }
-        $id = bin2hex(random_bytes(16));
+        if ($requestId !== '' && !preg_match('/^[a-f0-9]{32}$/D', $requestId)) throw new InvalidArgumentException('Некорректный идентификатор запроса.');
+        if ($requestId !== '' && $this->db->one("SELECT ID FROM ai_assistant_runs WHERE ID='" . $requestId . "'") !== null) {
+            throw new InvalidArgumentException('Идентификатор запроса уже использован. Повторная отправка заблокирована.');
+        }
+        $id = $requestId !== '' ? $requestId : bin2hex(random_bytes(16));
         $record = array(
             'ID' => $id,
             'DIALOG_ID' => $dialogId,
@@ -169,6 +175,15 @@ final class ChatStore
         );
         if ($record['AGENT_ID'] === null) unset($record['AGENT_ID']);
         $this->db->insert('ai_assistant_runs', $record);
+        // Атомарное занятие диалога: два одновременных POST не должны оба
+        // пройти проверку running перед вставкой своего запуска.
+        $this->db->requireExec("UPDATE ai_assistant_dialogs SET LAST_RUN='" . $id . "' WHERE ID=" . $dialogId
+            . ' AND USER_ID=' . $userId . " AND DELETED=0 AND (LAST_RUN='' OR NOT EXISTS (SELECT ID FROM ai_assistant_runs"
+            . " WHERE ID=ai_assistant_dialogs.LAST_RUN AND STATUS='running'))");
+        if ($this->db->affectedRows() !== 1) {
+            $this->finishRun($id, 'error', 'Диалог занят другим запуском.');
+            throw new RuntimeException('В диалоге уже идёт генерация. Дождитесь ответа или остановите её.');
+        }
         return $id;
     }
 
@@ -185,8 +200,29 @@ final class ChatStore
     public function requestCancel(string $id, int $userId): void
     {
         $this->run($id, $userId);
-        $this->db->requireExec('UPDATE ai_assistant_runs SET CANCEL_REQUESTED=1,UPDATED_AT=' . $this->now()
+        $this->db->requireExec("UPDATE ai_assistant_runs SET STATUS='cancelled',CANCEL_REQUESTED=1,UPDATED_AT=" . $this->now()
             . " WHERE ID='" . $this->db->escape($id) . "' AND USER_ID=" . $userId . " AND STATUS='running'");
+    }
+
+    /** Свежесть запуска обновляется и во время ожидания ответа провайдера. */
+    public function heartbeat(string $id): void
+    {
+        $this->db->requireExec('UPDATE ai_assistant_runs SET UPDATED_AT=' . $this->now()
+            . " WHERE ID='" . $this->db->escape($id) . "' AND STATUS='running'");
+    }
+
+    /** Состояние доступно после перезагрузки страницы и при потерянном SSE. */
+    public function latestRun(int $dialogId, int $userId): ?array
+    {
+        $dialog = $this->dialog($dialogId, $userId);
+        $last = (string)($dialog['LAST_RUN'] ?? '');
+        $row = $last !== '' ? $this->run($last, $userId) : $this->db->one('SELECT * FROM ai_assistant_runs WHERE DIALOG_ID=' . $dialogId
+            . ' AND USER_ID=' . $userId . " ORDER BY CASE WHEN STATUS='running' THEN 0 ELSE 1 END,CREATED_AT DESC,ID DESC LIMIT 1");
+        if ($row !== null && $row['STATUS'] === 'running' && (int)$row['UPDATED_AT'] < $this->now() - self::RUN_TIMEOUT) {
+            $this->finishRun((string)$row['ID'], 'error', 'Соединение прервано: запуск больше не отвечает. Можно отправить запрос снова.');
+            $row = $this->run((string)$row['ID'], $userId);
+        }
+        return $row;
     }
 
     public function isCancelled(string $id): bool
@@ -213,6 +249,10 @@ final class ChatStore
         foreach ($context as $key => $value) {
             if (!is_string($key) || !in_array($key, $allowed, true)) continue;
             if (is_array($value)) {
+                if ($key === 'selection') {
+                    $clean[$key] = is_string($value['text'] ?? null) ? mb_substr($value['text'], 0, 12000) : '';
+                    continue;
+                }
                 $clean[$key] = array_values(array_filter(array_map(static fn($item): string =>
                     is_scalar($item) ? mb_substr(trim((string)$item), 0, 190) : '', $value)));
             } elseif (is_scalar($value)) {

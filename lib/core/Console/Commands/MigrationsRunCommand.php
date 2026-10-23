@@ -6,6 +6,7 @@ use MajorDoMo\Core\Console\{Command, Context, Input, Output};
 
 /**
  * Применение всех отсутствующих миграций.
+ * 2026-10-23 — --after-update ставит событие обновления в штатную очередь.
  *
  * 2026-10-22 — добавлено вместе с переходом на автообнаружение миграций.
  */
@@ -13,7 +14,7 @@ final class MigrationsRunCommand extends Command
 {
     public function name(): string { return 'migrations:run'; }
     public function description(): string { return 'Применить все отсутствующие миграции базы данных'; }
-    public function options(): array { return array('pending' => 'Только показать список без применения'); }
+    public function options(): array { return array('pending' => 'Только показать список без применения', 'after-update' => 'Уведомить подписчиков о завершении обновления файлов'); }
 
     public function execute(Input $input, Output $output, Context $context): int
     {
@@ -37,6 +38,14 @@ final class MigrationsRunCommand extends Command
         }
         if ($result['orphaned'] !== array()) {
             $output->warning('Записи без файлов миграций: ' . implode(', ', $result['orphaned']));
+        }
+        if ($input->option('after-update') && function_exists('processSubscriptionsSafe')) {
+            try {
+                if (!\processSubscriptionsSafe('SYSTEM_UPDATED')) $output->warning('Не удалось поставить уведомление об обновлении в очередь.');
+            } catch (\Throwable $failure) {
+                $output->warning('Миграции применены, но очередь уведомления об обновлении недоступна.');
+                error_log('MajorDoMo SYSTEM_UPDATED: ' . get_class($failure));
+            }
         }
         $output->result($result);
         return 0;
