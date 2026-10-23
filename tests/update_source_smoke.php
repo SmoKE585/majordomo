@@ -133,14 +133,19 @@ try {
         $update->updateUrl() === $github . '/archive/master.tar.gz',
         'Источник берётся из GIT_URL в .env'
     );
+    check($update->updateUrlSource() === '.env', 'Источник по умолчанию помечен как .env');
+    $branchUpdate = new SystemUpdate($root, array('branch' => 'alpha'));
     check(
-        (new SystemUpdate($root, array('branch' => 'alpha')))->updateUrl() === $github . '/archive/alpha.tar.gz',
+        $branchUpdate->updateUrl() === $github . '/archive/alpha.tar.gz',
         'Опция --branch подменяет ветку'
     );
     check(
-        (new SystemUpdate($root, array('url' => $githubArchive)))->updateUrl() === $githubArchive,
-        'Опция --url важнее .env'
+        str_contains($branchUpdate->updateUrlSource(), 'ветка'),
+        'Подмена ветки отмечается в источнике'
     );
+    $urlUpdate = new SystemUpdate($root, array('url' => $githubArchive));
+    check($urlUpdate->updateUrl() === $githubArchive, 'Опция --url важнее .env');
+    check($urlUpdate->updateUrlSource() === 'аргумент --url', 'Источник --url помечается отдельно');
 
     // ── Установленная версия ────────────────────────────────────────────────
     check($update->installedVersion() === '', 'Без данных версия неизвестна');

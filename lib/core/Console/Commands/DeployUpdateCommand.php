@@ -75,7 +75,12 @@ final class DeployUpdateCommand extends Command
         }
 
         $output->title('Обновление системы');
-        $output->muted('Источник: ' . ($update->updateUrl() !== '' ? $update->updateUrl() : 'не задан'));
+        $sourceUrl = $update->updateUrl();
+        $output->muted(
+            'Источник: ' . ($sourceUrl !== ''
+                ? $sourceUrl . ' (' . $update->updateUrlSource() . ')'
+                : 'не задан')
+        );
 
         if (!$input->option('yes')) {
             if ($output->isJson() || !$this->isInteractive()) {

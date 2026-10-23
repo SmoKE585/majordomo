@@ -68,6 +68,7 @@ var DEFAULT_LINE_HEIGHT = 21;
 var DEFAULT_VISIBLE_MIN_LINES = 5;
 var DARK_THEME_NAMES = ['ambiance', 'dracula', 'material', 'moxer', 'smoke_theme'];
 var LIGHT_THEME_NAMES = ['base16-light', 'icecoder', 'neat'];
+var PYTHON_UNAVAILABLE_HINT = 'Python недоступен: укажите путь к интерпретатору в настройках системы.';
 var moduleRegistered = false;
 var openShortcutsPopover = null;
 
@@ -159,6 +160,61 @@ function getCodeEditorDefault(name, fallback) {
         : defaults[name];
 }
 
+function isPythonAvailable() {
+    var config = window.MDCodeEditorConfig || {};
+    if (!Object.prototype.hasOwnProperty.call(config, 'pythonAvailable')) {
+        // Older pages do not expose the flag; keep the previous behaviour.
+        return true;
+    }
+    return config.pythonAvailable === true
+        || config.pythonAvailable === 1
+        || config.pythonAvailable === '1'
+        || config.pythonAvailable === 'true';
+}
+
+function syncPythonAvailability(wrapper, mode) {
+    var switcher = wrapper.querySelector('.md-code-editor__mode-switch');
+    if (!switcher) {
+        return;
+    }
+    var toggle = switcher.querySelector('[data-code-editor-mode-toggle]');
+    var pythonOption = switcher.querySelector('.md-code-editor__mode-switch-option--python');
+
+    if (toggle && !toggle.dataset.codeEditorOriginalLabel) {
+        toggle.dataset.codeEditorOriginalLabel = toggle.getAttribute('aria-label')
+            || 'Режим редактора: PHP или Python';
+    }
+
+    if (isPythonAvailable()) {
+        switcher.classList.remove('is-python-unavailable');
+        if (pythonOption) {
+            pythonOption.removeAttribute('title');
+            pythonOption.removeAttribute('aria-disabled');
+        }
+        if (toggle) {
+            toggle.disabled = false;
+            toggle.removeAttribute('title');
+            toggle.removeAttribute('aria-disabled');
+            toggle.setAttribute('aria-label', toggle.dataset.codeEditorOriginalLabel);
+        }
+        return;
+    }
+
+    switcher.classList.add('is-python-unavailable');
+    if (pythonOption) {
+        pythonOption.setAttribute('title', PYTHON_UNAVAILABLE_HINT);
+        pythonOption.setAttribute('aria-disabled', 'true');
+    }
+    if (toggle) {
+        // A stored Python mode must still be switchable back to PHP; only
+        // switching *into* Python is locked.
+        toggle.disabled = normalizeMode(mode) !== 'python';
+        toggle.setAttribute('title', PYTHON_UNAVAILABLE_HINT);
+        toggle.setAttribute('aria-disabled', toggle.disabled ? 'true' : 'false');
+        toggle.setAttribute('aria-label', 'Режим редактора: PHP или Python. ' + PYTHON_UNAVAILABLE_HINT);
+    }
+}
+
 function applyWrapperDefaults(wrapper) {
     if (!wrapper || wrapper.dataset.codeEditorDefaultsApplied === '1') {
         return;
@@ -193,7 +249,10 @@ function modeStorageKey(wrapper) {
 
 function getStoredMode(wrapper) {
     try {
-        return normalizeMode(window.localStorage.getItem(modeStorageKey(wrapper)) || '');
+        var stored = window.localStorage.getItem(modeStorageKey(wrapper));
+        // normalizeMode('') falls back to PHP, so check the raw value first:
+        // without a saved mode the server-side data-code-editor-mode wins.
+        return stored ? normalizeMode(stored) : '';
     } catch (e) {
         return '';
     }
@@ -233,6 +292,7 @@ function syncModeControls(wrapper, mode) {
     if (switcher) {
         switcher.setAttribute('data-mode', mode);
     }
+    syncPythonAvailability(wrapper, mode);
 }
 
 function setText(el, value) {
@@ -1174,6 +1234,10 @@ function bindToolbar(wrapper, editor) {
     if (modeSelect && !modeSelect.dataset.codeEditorBound) {
         modeSelect.dataset.codeEditorBound = '1';
         modeSelect.addEventListener('change', function () {
+            if (modeSelect.value === 'python' && !isPythonAvailable()) {
+                modeSelect.value = 'php';
+                return;
+            }
             editor.setMode(modeSelect.value, true);
         });
     }
@@ -1182,6 +1246,10 @@ function bindToolbar(wrapper, editor) {
     if (modeToggle && !modeToggle.dataset.codeEditorBound) {
         modeToggle.dataset.codeEditorBound = '1';
         modeToggle.addEventListener('change', function () {
+            if (modeToggle.checked && !isPythonAvailable()) {
+                syncModeControls(wrapper, 'php');
+                return;
+            }
             editor.setMode(modeToggle.checked ? 'python' : 'php', true);
         });
     }
@@ -1967,6 +2035,9 @@ function createEditor(wrapper, textarea, mode) {
         },
         setMode: function (nextMode, persist) {
             var normalized = normalizeMode(nextMode || 'php');
+            if (normalized === 'python' && !isPythonAvailable()) {
+                normalized = 'php';
+            }
             wrapper.dataset.codeEditorMode = normalized;
             if (persist !== false) {
                 storeMode(wrapper, normalized);

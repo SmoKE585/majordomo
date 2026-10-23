@@ -47,7 +47,7 @@ final class ArchiveDownloader
     /**
      * @param callable|null $progress function(int $downloaded, int $total, int $percent): void
      *        Вызывается не чаще раза в две секунды; $total = 0, если сервер не сообщил размер.
-     * @return array{ok:bool,size:int,error:string,attempts:int,insecure:bool,code:int}
+     * @return array{ok:bool,size:int,error:string,attempts:int,insecure:bool,code:int,stats:array<string,mixed>,proxy:string}
      */
     public function download(string $url, string $target, ?callable $progress = null): array
     {
@@ -68,25 +68,32 @@ final class ArchiveDownloader
         $partial = $target . '.part';
         $attempts = 0;
         $insecure = false;
-        $result = $this->attempt($url, $partial, $progress, false, true);
+        $callbackMs = 0.0;
+        $result = $this->attempt($url, $partial, $progress, false, true, $callbackMs);
         $attempts++;
 
         if (!$result['ok']) {
             $tlsFailure = in_array($result['code'], self::TLS_ERRORS, true);
             if (!$tlsFailure) {
                 // Не отвечает IPv6 — повторяем с принудительным IPv4.
-                $result = $this->attempt($url, $partial, $progress, true, true);
+                $callbackMs = 0.0;
+                $result = $this->attempt($url, $partial, $progress, true, true, $callbackMs);
                 $attempts++;
                 $tlsFailure = in_array($result['code'], self::TLS_ERRORS, true);
             }
             if (!$result['ok'] && $tlsFailure && $this->allowInsecureFallback) {
                 // Сертификат не проверяется только как последняя попытка и
                 // только после TLS-ошибки: иначе это молчаливое ослабление.
-                $result = $this->attempt($url, $partial, $progress, true, false);
+                $callbackMs = 0.0;
+                $result = $this->attempt($url, $partial, $progress, true, false, $callbackMs);
                 $attempts++;
                 $insecure = $result['ok'];
             }
         }
+
+        $stats = $result['stats'] ?? array();
+        $stats['callback_ms'] = (int)round($callbackMs);
+        $proxy = $this->proxyFromEnvironment();
 
         if (!$result['ok']) {
             @unlink($partial);
@@ -97,6 +104,8 @@ final class ArchiveDownloader
                 'attempts' => $attempts,
                 'insecure' => false,
                 'code' => $result['code'],
+                'stats' => $stats,
+                'proxy' => $proxy,
             );
         }
 
@@ -109,6 +118,8 @@ final class ArchiveDownloader
                 'attempts' => $attempts,
                 'insecure' => $insecure,
                 'code' => 0,
+                'stats' => $stats,
+                'proxy' => $proxy,
             );
         }
 
@@ -123,6 +134,8 @@ final class ArchiveDownloader
                 'attempts' => $attempts,
                 'insecure' => $insecure,
                 'code' => 0,
+                'stats' => $stats,
+                'proxy' => $proxy,
             );
         }
 
@@ -133,6 +146,8 @@ final class ArchiveDownloader
             'attempts' => $attempts,
             'insecure' => $insecure,
             'code' => 0,
+            'stats' => $stats,
+            'proxy' => $proxy,
         );
     }
 
@@ -140,21 +155,22 @@ final class ArchiveDownloader
      * Одна попытка загрузки.
      *
      * @param callable|null $progress
-     * @return array{ok:bool,size:int,error:string,code:int}
+     * @return array{ok:bool,size:int,error:string,code:int,stats:array<string,mixed>}
      */
-    private function attempt(string $url, string $partial, ?callable $progress, bool $forceIpv4, bool $verifyTls): array
+    private function attempt(string $url, string $partial, ?callable $progress, bool $forceIpv4, bool $verifyTls, float &$callbackMs): array
     {
         @unlink($partial);
         $handle = @fopen($partial, 'wb');
         if ($handle === false) {
-            return array('ok' => false, 'size' => 0, 'error' => 'нет прав на запись в ' . basename($partial), 'code' => 0);
+            return array('ok' => false, 'size' => 0, 'error' => 'нет прав на запись в ' . basename($partial), 'code' => 0, 'stats' => array());
         }
         $curl = curl_init($url);
         if ($curl === false) {
             fclose($handle);
-            return array('ok' => false, 'size' => 0, 'error' => 'не удалось инициализировать cURL', 'code' => 0);
+            return array('ok' => false, 'size' => 0, 'error' => 'не удалось инициализировать cURL', 'code' => 0, 'stats' => array());
         }
 
+        $callbackMs = 0.0;
         $options = array(
             CURLOPT_FILE => $handle,
             CURLOPT_FOLLOWLOCATION => true,
@@ -174,22 +190,34 @@ final class ArchiveDownloader
         }
         if ($progress !== null) {
             $options[CURLOPT_NOPROGRESS] = false;
-            $options[CURLOPT_PROGRESSFUNCTION] = $this->progressCallback($progress);
+            $options[CURLOPT_PROGRESSFUNCTION] = $this->progressCallback($progress, $callbackMs);
         }
         curl_setopt_array($curl, $options);
 
         $executed = curl_exec($curl);
-        $http = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        $info = curl_getinfo($curl);
+        $http = (int)($info['http_code'] ?? 0);
         $errno = (int)curl_errno($curl);
         $message = (string)curl_error($curl);
         curl_close($curl);
         fclose($handle);
 
+        // Диагностика: скорость самого curl против времени, проведённого в
+        // колбэке прогресса. Если callback_ms близко к total_time — тормозит
+        // не сеть, а запись прогресса в ответ браузеру.
+        $stats = array(
+            'speed' => (float)($info['speed_download'] ?? 0),
+            'total_time' => (float)($info['total_time'] ?? 0),
+            'connect_time' => (float)($info['connect_time'] ?? 0),
+            'ip' => (string)($info['primary_ip'] ?? ''),
+            'http_version' => $this->httpVersionLabel((int)($info['http_version'] ?? 0)),
+        );
+
         clearstatcache(true, $partial);
         $size = is_file($partial) ? (int)filesize($partial) : 0;
         $httpOk = $http === 0 || ($http >= 200 && $http < 400);
         if ($executed !== false && $httpOk && $size > 0) {
-            return array('ok' => true, 'size' => $size, 'error' => '', 'code' => 0);
+            return array('ok' => true, 'size' => $size, 'error' => '', 'code' => 0, 'stats' => $stats);
         }
 
         if ($errno > 0) {
@@ -204,6 +232,7 @@ final class ArchiveDownloader
             'size' => 0,
             'error' => $reason,
             'code' => $errno > 0 ? $errno : 0,
+            'stats' => $stats,
         );
     }
 
@@ -244,18 +273,21 @@ final class ArchiveDownloader
             'attempts' => 1,
             'insecure' => false,
             'code' => 0,
+            'stats' => array(),
+            'proxy' => $this->proxyFromEnvironment(),
         );
     }
 
     /**
      * Прогресс не чаще раза в две секунды и не чаще чем каждые 10%.
-     * Ошибка в обработчике не должна прерывать загрузку.
+     * Ошибка в обработчике не должна прерывать загрузку; время в обработчике
+     * суммируется — по нему видно, тормозит ли запись прогресса в браузер.
      */
-    private function progressCallback(callable $progress): callable
+    private function progressCallback(callable $progress, float &$callbackMs): callable
     {
         $lastAt = microtime(true);
         $lastPercent = -1;
-        return static function ($resource, $downloadTotal, $downloaded, $uploadTotal, $uploaded) use ($progress, &$lastAt, &$lastPercent): int {
+        return static function ($resource, $downloadTotal, $downloaded, $uploadTotal, $uploaded) use ($progress, &$lastAt, &$lastPercent, &$callbackMs): int {
             $total = (float)$downloadTotal;
             $percent = $total > 0 ? (int)floor(((float)$downloaded) * 100 / $total) : -1;
             $now = microtime(true);
@@ -265,19 +297,58 @@ final class ArchiveDownloader
             }
             $lastAt = $now;
             $lastPercent = max($lastPercent, $percent);
+            $callbackStarted = microtime(true);
             try {
                 $progress((int)$downloaded, (int)$total, $percent);
             } catch (\Throwable $error) {
                 // Индикатор не имеет права ломать обновление.
             }
+            $callbackMs += (microtime(true) - $callbackStarted) * 1000;
             return 0;
         };
     }
 
-    /** @return array{ok:bool,size:int,error:string,attempts:int,insecure:bool,code:int} */
+    /** Прокси из окружения: curl берёт его оттуда неявно, а в журнале этого не видно. */
+    private function proxyFromEnvironment(): string
+    {
+        foreach (array('https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY', 'all_proxy', 'ALL_PROXY') as $key) {
+            $value = getenv($key);
+            if (is_string($value) && trim($value) !== '') {
+                return $key . '=' . trim($value);
+            }
+        }
+        return '';
+    }
+
+    private function httpVersionLabel(int $version): string
+    {
+        switch ($version) {
+            case 1:
+                return '1.0';
+            case 2:
+                return '1.1';
+            case 3:
+                return '2';
+            case 30:
+                return '3';
+            default:
+                return '';
+        }
+    }
+
+    /** @return array{ok:bool,size:int,error:string,attempts:int,insecure:bool,code:int,stats:array<string,mixed>,proxy:string} */
     private function failure(string $message): array
     {
-        return array('ok' => false, 'size' => 0, 'error' => $message, 'attempts' => 1, 'insecure' => false, 'code' => 0);
+        return array(
+            'ok' => false,
+            'size' => 0,
+            'error' => $message,
+            'attempts' => 1,
+            'insecure' => false,
+            'code' => 0,
+            'stats' => array(),
+            'proxy' => $this->proxyFromEnvironment(),
+        );
     }
 
     private function absolute(string $path): string

@@ -53,6 +53,11 @@ final class SystemUpdate
     private string $updateFrom = '';
     private string $updateTo = '';
     private string $updateBranch = '';
+    /** Источник, выбранный в панели (кэш одного чтения). */
+    private string $panelUpdateUrl = '';
+    private bool $panelUpdateUrlLoaded = false;
+    /** Откуда взят адрес архива: --url, панель или .env. */
+    private string $updateUrlSource = '';
 
     /** @param array<string,mixed> $options */
     public function __construct(string $root, array $options = array())
@@ -82,24 +87,104 @@ final class SystemUpdate
         return $this->deployment;
     }
 
-    /** Источник обновления: --url, затем MASTER_UPDATE_URL/GIT_URL из .env. */
+    /**
+     * Источник обновления: --url, затем выбор панели, затем .env.
+     *
+     * Панель хранит ветку в конфиге модуля `saverestore` (`project_modules.DATA`),
+     * а `.env` — в `GIT_URL`. Это два разных места, и CLI обязан читать то же,
+     * что панель: иначе `deploy.sh` скачивает master, пока панель обновляется с
+     * alpha, и в проект попадает чужое дерево.
+     */
     public function updateUrl(): string
     {
         $branch = trim((string)$this->options['branch']);
         $url = trim((string)$this->options['url']);
+        $this->updateUrlSource = 'аргумент --url';
+        if ($url === '') {
+            $url = $this->panelUpdateUrl();
+            $this->updateUrlSource = 'настройка панели';
+        }
         if ($url === '') {
             $url = trim(Config::string('MASTER_UPDATE_URL', ''));
+            $this->updateUrlSource = '.env';
         }
         if ($url === '') {
             $git = trim(Config::string('GIT_URL', ''));
             if ($git !== '') {
                 $url = rtrim($git, '/') . '/archive/' . ($branch !== '' ? $branch : 'master') . '.tar.gz';
+                $this->updateUrlSource = '.env (GIT_URL)';
             }
         }
         if ($url !== '' && $branch !== '') {
             $url = self::withBranch($url, $branch);
+            $this->updateUrlSource .= ', ветка из --branch';
         }
         return $url;
+    }
+
+    /** Откуда взялся адрес архива: для журнала и проверок. */
+    public function updateUrlSource(): string
+    {
+        if ($this->updateUrlSource === '') {
+            $this->updateUrl();
+        }
+        return $this->updateUrlSource;
+    }
+
+    /**
+     * Адрес архива, выбранный в панели «Обновление системы».
+     *
+     * Читаем то же поле, что и модуль: `project_modules.DATA` для `saverestore`.
+     * Любая проблема (нет mysqli, нет таблицы, битые данные) — молча пустая
+     * строка, тогда работает `.env`. Ошибка чтения не должна ломать обновление.
+     */
+    private function panelUpdateUrl(): string
+    {
+        if ($this->panelUpdateUrlLoaded) {
+            return $this->panelUpdateUrl;
+        }
+        $this->panelUpdateUrlLoaded = true;
+        $this->panelUpdateUrl = '';
+        if (!extension_loaded('mysqli')) {
+            return '';
+        }
+        $host = trim(Config::string('DB_HOST', ''));
+        $database = trim(Config::string('DB_NAME', ''));
+        if ($host === '' || $database === '') {
+            return '';
+        }
+        try {
+            $connection = mysqli_init();
+            if ($connection === false) {
+                return '';
+            }
+            $connection->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+            if (!$connection->real_connect(
+                $host,
+                Config::string('DB_USER', ''),
+                Config::string('DB_PASSWORD', ''),
+                $database,
+                Config::int('DB_PORT') ?: 3306
+            )) {
+                return '';
+            }
+            $connection->set_charset('utf8mb4');
+            $result = $connection->query("SELECT DATA FROM project_modules WHERE NAME = 'saverestore' LIMIT 1");
+            if ($result instanceof \mysqli_result) {
+                $row = $result->fetch_assoc();
+                $result->free();
+                if (is_array($row) && !empty($row['DATA'])) {
+                    $config = @unserialize((string)$row['DATA'], array('allowed_classes' => false));
+                    if (is_array($config) && !empty($config['MASTER_UPDATE_URL'])) {
+                        $this->panelUpdateUrl = trim((string)$config['MASTER_UPDATE_URL']);
+                    }
+                }
+            }
+            $connection->close();
+        } catch (Throwable $error) {
+            $this->panelUpdateUrl = '';
+        }
+        return $this->panelUpdateUrl;
     }
 
     /**
@@ -118,9 +203,12 @@ final class SystemUpdate
             true
         );
         $url = $this->updateUrl();
+        $source = $this->updateUrlSource();
         $checks[] = $this->check(
             'Источник обновления',
-            $url !== '' ? $url : 'не задан: заполните GIT_URL в .env или передайте --url',
+            $url !== ''
+                ? $url . ($source !== '' ? ' (' . $source . ')' : '')
+                : 'не задан: укажите ветку в панели, заполните GIT_URL в .env или передайте --url',
             $url !== '',
             true
         );
@@ -262,6 +350,7 @@ final class SystemUpdate
             $this->updateTo = (string)$target['commit'];
             $this->updateBranch = (string)$target['branch'];
             $this->write('Коммит: ' . self::shortCommit($this->updateTo) . ' · ветка ' . $this->updateBranch, 'info');
+            $this->write('Источник: ' . $this->updateUrlSource() . ' · ' . $target['update_url'], 'muted');
             $this->write('Архив: ' . $target['archive_url'], 'muted');
             if ($this->updateFrom !== '') {
                 $this->write('Установлено сейчас: ' . self::shortCommit($this->updateFrom), 'info');
@@ -606,6 +695,20 @@ final class SystemUpdate
             'Скачано ' . $this->formatBytes($size) . ' за ' . $this->formatDuration(microtime(true) - $started),
             'success'
         );
+        // Диагностика скорости: сколько из общего времени ушло в сеть, а сколько
+        // в вывод прогресса. Без этих чисел «медленно» неотличимо от «сеть».
+        $stats = is_array($result['stats'] ?? null) ? $result['stats'] : array();
+        $this->write(
+            'Скорость ' . $this->formatBytes((float)($stats['speed'] ?? 0)) . '/с'
+            . ', соединение ' . number_format((float)($stats['connect_time'] ?? 0), 2, ',', ' ') . ' с'
+            . ', прогресс ' . number_format(((int)($stats['callback_ms'] ?? 0)) / 1000, 2, ',', ' ') . ' с'
+            . (!empty($stats['ip']) ? ', ' . $stats['ip'] : '')
+            . (!empty($stats['http_version']) ? ', HTTP/' . $stats['http_version'] : ''),
+            'muted'
+        );
+        if ((string)($result['proxy'] ?? '') !== '') {
+            $this->write('Прокси из окружения: ' . $result['proxy'], 'warning');
+        }
         return array('path' => $path, 'size' => $size, 'sha1' => $sha1);
     }
 
@@ -661,9 +764,17 @@ final class SystemUpdate
             }
         }
         if (!is_dir($root . '/lib') || !is_file($root . '/bootstrap.php')) {
+            $preview = implode(', ', array_slice($entries, 0, 10));
+            // Старая раскладка MajorDoMo: docroot в корне, без public/ и bootstrap.php.
+            $legacy = !is_dir($root . '/public') && is_file($root . '/index.php');
+            $reason = $legacy
+                ? 'Это архив старой раскладки MajorDoMo (docroot в корне, без public/ и bootstrap.php).'
+                : 'В архиве нет lib/ и bootstrap.php.';
             throw new RuntimeException(
-                'Распакованный архив не похож на MajorDoMo: в ' . $this->relative($root)
-                . ' нет lib/ и bootstrap.php. Проверьте источник обновления.'
+                'Распакованный архив не похож на MajorDoMo: ' . $this->relative($root)
+                . ' (содержимое: ' . $preview . '). ' . $reason
+                . ' Проверьте ветку: у панели и deploy.sh источник должен совпадать. '
+                . 'Ветку можно указать явно: --branch=<ветка> либо --url=<адрес архива>.'
             );
         }
         $this->write('Распаковано: ' . count($entries) . ' записей, корень ' . basename($root), 'success');

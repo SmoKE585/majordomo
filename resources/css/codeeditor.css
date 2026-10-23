@@ -240,6 +240,20 @@
   color: var(--md-codeeditor-text);
 }
 
+/* Python is unavailable until PYTHON_PATH is configured in system settings. */
+.md-code-editor__mode-switch.is-python-unavailable[data-mode="php"] .md-code-editor__mode-switch-option--python {
+  opacity: .45;
+}
+
+.md-code-editor__mode-switch.is-python-unavailable[data-mode="php"] {
+  cursor: not-allowed;
+}
+
+.md-code-editor__mode-switch.is-python-unavailable[data-mode="php"] input[type="checkbox"] {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .md-code-editor__mode-switch input[type="checkbox"]:focus-visible ~ .md-code-editor__mode-switch-option,
 .md-code-editor__mode-switch input[type="checkbox"]:focus-visible + .md-code-editor__mode-switch-option {
   outline: none;

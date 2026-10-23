@@ -14,8 +14,9 @@ var ROOTHTML = window.ROOTHTML;
 window.MDJAdminDefaultTheme = '[#if "<#SETTINGS_THEME#>"!="dark" || PANEL_THEME=="light"#]light[#else#]dark[#endif#]';
 window.MDJAdminConfig = window.MDJAdminConfig || {};
 window.MDCodeEditorConfig = {
-    script: '<#ROOTHTML#>assets/admin/codeeditor.js?v=2026-10-23-ai',
-    style: '<#ROOTHTML#>assets/admin/codeeditor.css?v=2026-10-23-ai'
+    script: '<#ROOTHTML#>assets/admin/codeeditor.js?v=2026-10-23-python',
+    style: '<#ROOTHTML#>assets/admin/codeeditor.css?v=2026-10-23-python',
+    pythonAvailable: [#if "<#PYTHON_PATH#>"!=""#]true[#else#]false[#endif#]
 };
 window.MDChartsConfig = {
     script: '<#ROOTHTML#>assets/admin/charts.js?v=2026-10-22-0093',

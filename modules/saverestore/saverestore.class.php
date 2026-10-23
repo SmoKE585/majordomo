@@ -1676,6 +1676,22 @@ class saverestore extends module
     }
 
     /**
+     * Строка прогресса загрузки архива.
+     *
+     * Вызывается из колбэка curl прямо во время передачи. Поэтому здесь нет
+     * 16 КБ паддинга и DebMes, как в echonow(): на каждом шаге это заметно
+     * тормозило саму загрузку. Пятьсот байт и flush достаточно, потому что
+     * воркер отдаётся с X-Accel-Buffering: no.
+     */
+    function outputProgress($text)
+    {
+        echo '<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8') . '</div>';
+        echo str_repeat(' ', 512);
+        flush();
+        @ob_flush();
+    }
+
+    /**
      * Title
      *
      * Description
@@ -1773,7 +1789,7 @@ class saverestore extends module
                 if ($total > 0) {
                     $text .= ' из ' . number_format($total / 1048576, 1, ',', ' ') . ' МБ (' . $percent . '%)';
                 }
-                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Скачано ' . $text . '</div>');
+                $this->outputProgress('Скачано ' . $text);
             }
         );
 
@@ -1783,6 +1799,18 @@ class saverestore extends module
             }
             if ($download['attempts'] > 1) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-warning-sign"></i> Загрузка удалась с попытки ' . (int)$download['attempts'] . '</div>', 'orange');
+            }
+            // Скорость видна отдельно от времени в колбэке прогресса: так сразу
+            // понятно, тормозит сеть или вывод в браузер.
+            $stats = is_array($download['stats'] ?? null) ? $download['stats'] : array();
+            echonow('<div>Загрузка: ' . number_format((float)($stats['speed'] ?? 0) / 1048576, 2, ',', ' ') . ' МБ/с'
+                . ', соединение ' . number_format((float)($stats['connect_time'] ?? 0), 2, ',', ' ') . ' с'
+                . ', прогресс ' . number_format(((int)($stats['callback_ms'] ?? 0)) / 1000, 2, ',', ' ') . ' с'
+                . (!empty($stats['ip']) ? ', ' . htmlspecialchars((string)$stats['ip']) : '')
+                . (!empty($stats['http_version']) ? ', HTTP/' . htmlspecialchars((string)$stats['http_version']) : '')
+                . '</div>');
+            if ((string)($download['proxy'] ?? '') !== '') {
+                echonow('<div>Прокси из окружения: ' . htmlspecialchars((string)$download['proxy']) . ' — curl идёт через него</div>', 'orange');
             }
 
             // Отпечаток и pending-файл появляются до замены файлов: если
@@ -2684,6 +2712,21 @@ class saverestore extends module
             }
 
             $update_root = DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp' . $folder;
+            if ($is_system_update && (!is_dir($update_root . '/lib') || !is_file($update_root . '/bootstrap.php'))) {
+                // Чужое дерево поверх установки: панель могла скачать архив другой
+                // ветки (например, legacy master вместо текущей alpha). Замена
+                // файлов не начинается, иначе docroot и public/ смешаются.
+                $legacy_layout = !is_dir($update_root . '/public') && is_file($update_root . '/index.php');
+                $message = $legacy_layout
+                    ? 'Архив обновления — старая раскладка MajorDoMo (docroot в корне, без public/ и bootstrap.php).'
+                    : 'Архив обновления не похож на MajorDoMo: нет lib/ и bootstrap.php.';
+                $message .= ' Проверьте выбранную ветку в «Источник обновления»: она должна указывать на текущий проект.';
+                DebMes('System update: archive layout mismatch (' . $folder . ')', 'restore', 'error');
+                if ($iframe) {
+                    echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</div>', 'red');
+                }
+                return false;
+            }
             $this->removeBundledConfigFiles($update_root);
             $this->removeBundledConnectFiles($update_root);
             $old_manifest = array();
