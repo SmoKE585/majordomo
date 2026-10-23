@@ -12,6 +12,11 @@ use RuntimeException;
  * saverestore. Здесь только Composer, npm, миграции и health-check, чтобы один
  * и тот же код использовали веб-обновление и автообновление.
  *
+ * 2026-10-23 — окружение Composer (COMPOSER_IPRESOLVE=4, COMPOSER_HOME,
+ *              GIT_TERMINAL_PROMPT=0) теперь действительно передаётся процессу:
+ *              раньше переменные вычислялись, но не применялись, из-за чего
+ *              `composer install` мог висеть на IPv6 до Packagist/GitHub.
+ *              Вывод composer/npm идёт в журнал обновления потоком.
  * 2026-10-22 — добавлено вместо ручного копирования без vendor.
  */
 final class Deployment
@@ -159,12 +164,27 @@ final class Deployment
         if ($composer === array()) throw new RuntimeException('Composer не найден. Установите Composer или задайте DEPLOY_COMPOSER.');
         $command = array_merge($composer, array(
             'install', '--no-dev', '--prefer-dist', '--no-interaction', '--no-progress',
-            '--optimize-autoloader', '--no-scripts', '--no-plugins',
+            '--optimize-autoloader', '--no-scripts', '--no-plugins', '--no-audit',
         ));
         $environment = $this->composerEnvironment();
         $this->log($log, 'composer install', 'info');
-        $result = $this->runner->run($command, $this->timeout());
+        $result = $this->runner->run($command, $this->timeout(), $environment, $this->lineStream($log, 'composer'), 20);
+        if (!$result['ok'] && empty($result['timed_out']) && str_contains($result['err'] . $result['out'], '--no-audit')) {
+            // Composer старше 2.4 не знает --no-audit: один повтор без него,
+            // иначе обновление падало бы на «option does not exist».
+            $this->log($log, 'Composer не поддерживает --no-audit, повтор без него', 'muted');
+            $command = array_values(array_filter($command, static function (string $argument): bool {
+                return $argument !== '--no-audit';
+            }));
+            $result = $this->runner->run($command, $this->timeout(), $environment, $this->lineStream($log, 'composer'), 20);
+        }
         $this->log($log, 'composer: ' . ($result['ok'] ? 'OK' : 'ошибка ' . $result['code']), $result['ok'] ? 'success' : 'error');
+        if ($result['timed_out']) {
+            throw new RuntimeException(
+                'composer install не завершился за ' . $this->timeout() . ' с и был остановлен. '
+                . 'Обычно это сеть: проверьте доступ сервера к packagist.org и github.com.'
+            );
+        }
         if (!$result['ok']) {
             throw new RuntimeException('composer install завершился с кодом ' . $result['code'] . ': ' . $this->tail($result['err'] ?: $result['out']));
         }
@@ -230,25 +250,25 @@ final class Deployment
         );
         if ($needsCi) {
             $this->log($log, 'npm ci', 'info');
-            $ci = $this->runner->run(array_merge($npm, array('ci', '--include=dev', '--no-audit', '--no-fund')), $this->timeout(), $npmEnvironment);
+            $ci = $this->runner->run(array_merge($npm, array('ci', '--include=dev', '--no-audit', '--no-fund')), $this->timeout(), $npmEnvironment, $this->lineStream($log, 'npm'), 20);
             $output .= $this->tail($ci['out']) . $this->tail($ci['err']);
-            if (!$ci['ok']) throw new RuntimeException('npm ci завершился с кодом ' . $ci['code'] . ': ' . $this->tail($ci['err'] ?: $ci['out']));
+            $this->assertCommand($ci, 'npm ci');
         }
         if (!is_file($viteBin) && !is_file($viteJs)) {
             // Некоторые версии npm/старые .npmrc игнорируют --include=dev.
             // Явно доводим devDependencies, иначе build бессмысленно запускать.
             $this->log($log, 'vite не установлен после npm ci — npm install --include=dev', 'warning');
-            $install = $this->runner->run(array_merge($npm, array('install', '--include=dev', '--no-save', '--no-audit', '--no-fund')), $this->timeout(), $npmEnvironment);
+            $install = $this->runner->run(array_merge($npm, array('install', '--include=dev', '--no-save', '--no-audit', '--no-fund')), $this->timeout(), $npmEnvironment, $this->lineStream($log, 'npm'), 20);
             $output .= $this->tail($install['out']) . $this->tail($install['err']);
-            if (!$install['ok']) throw new RuntimeException('npm install --include=dev завершился с кодом ' . $install['code'] . ': ' . $this->tail($install['err'] ?: $install['out']));
+            $this->assertCommand($install, 'npm install --include=dev');
         }
         if (!is_file($viteBin) && !is_file($viteJs)) {
             throw new RuntimeException('vite не установлен: npm ci/install не создали node_modules/.bin/vite.');
         }
         $this->log($log, 'npm run build', 'info');
-        $build = $this->runner->run(array_merge($npm, array('run', 'build')), $this->timeout(), $npmEnvironment);
+        $build = $this->runner->run(array_merge($npm, array('run', 'build')), $this->timeout(), $npmEnvironment, $this->lineStream($log, 'npm'), 20);
         $output .= $this->tail($build['out']) . $this->tail($build['err']);
-        if (!$build['ok']) throw new RuntimeException('npm run build завершился с кодом ' . $build['code'] . ': ' . $this->tail($build['err'] ?: $build['out']));
+        $this->assertCommand($build, 'npm run build');
         $this->writeJson($stateFile, array('lock_hash' => $hash, 'built_at' => date('c')));
         $this->log($log, 'Сборка фронтенда: OK', 'success');
         return array('ok' => true, 'ci' => $needsCi, 'build' => true, 'output' => $this->tail($output));
@@ -265,7 +285,16 @@ final class Deployment
         // CLI загрузит новые файлы миграций с диска.
         $command = array($this->phpBinary(), $this->root . '/majordomo', 'migrations:run', '--no-ansi', '--json');
         $this->log($log, 'Применение миграций', 'info');
-        $result = $this->runner->run($command, $this->timeout());
+        // stdout дочерней команды — это JSON-отчёт, его нельзя лить в журнал;
+        // оставляем только пульс, чтобы долгая миграция не выглядела зависанием.
+        $migrationStream = $log !== null
+            ? static function (string $line, bool $pulse = false) use ($log): void {
+                if ($pulse) {
+                    $log('… миграции: ' . $line, 'muted');
+                }
+            }
+            : null;
+        $result = $this->runner->run($command, $this->timeout(), array(), $migrationStream, 20);
         $data = json_decode(trim($result['out']), true);
         if (!$result['ok'] || !is_array($data) || empty($data['ok'])) {
             throw new RuntimeException('migrations:run завершился с ошибкой: ' . $this->tail($result['err'] ?: $result['out']));
@@ -422,6 +451,61 @@ final class Deployment
             @unlink($temporary);
             throw new RuntimeException('Не удалось записать ' . $path);
         }
+    }
+
+    /**
+     * Понятная ошибка вместо «код 137»: таймаут и падение команды лечатся
+     * по-разному, и по сообщению должно быть ясно, куда смотреть.
+     *
+     * @param array{ok:bool,code:int,out:string,err:string,timed_out?:bool} $result
+     */
+    private function assertCommand(array $result, string $label): void
+    {
+        if (!empty($result['timed_out'])) {
+            throw new RuntimeException(
+                $label . ' не завершился за ' . $this->timeout() . ' с и был остановлен. '
+                . 'Обычно это сеть: проверьте доступ сервера к реестрам пакетов.'
+            );
+        }
+        if (empty($result['ok'])) {
+            throw new RuntimeException(
+                $label . ' завершился с кодом ' . $result['code'] . ': ' . $this->tail($result['err'] ?: $result['out'])
+            );
+        }
+    }
+
+    /**
+     * Поток вывода дочерней команды в журнал обновления.
+     *
+     * Composer и npm могут молчать минутами (резолв, скачивание пакета), а окно
+     * обновления всё это время показывает «Применение» без новых строк — это
+     * неотличимо от зависания. Поэтому строки идут по мере появления, а при
+     * долгом молчании CommandRunner присылает пульс «выполняется N с».
+     *
+     * @param callable|null $log function(string $message, string $kind = 'info'): void
+     */
+    private function lineStream(?callable $log, string $prefix): ?callable
+    {
+        if ($log === null) {
+            return null;
+        }
+        $last = 0.0;
+        $count = 0;
+        return static function (string $line, bool $pulse = false) use ($log, $prefix, &$last, &$count): void {
+            if ($pulse) {
+                $log('… ' . $line, 'muted');
+                return;
+            }
+            $now = microtime(true);
+            // Журнал не должен превращаться в поток: не чаще 4 строк в секунду
+            // и не больше 120 строк на команду.
+            if ($now - $last < 0.25 || $count >= 120) {
+                return;
+            }
+            $last = $now;
+            $count++;
+            $log($prefix . ': ' . mb_substr($line, 0, 300), 'muted');
+        };
     }
 
     private function tail(string $value): string

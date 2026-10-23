@@ -58,6 +58,20 @@ try {
     $timeout = $runner->run(array(PHP_BINARY, '-r', 'sleep(3);'), 1);
     check($timeout['timed_out'] && !$timeout['ok'], 'CommandRunner завершает команду по таймауту');
 
+    $streamed = array();
+    $stream = $runner->run(
+        array(PHP_BINARY, '-r', 'echo "first\n"; usleep(200000); fwrite(STDERR, "second\n");'),
+        10,
+        array(),
+        static function (string $line, bool $pulse = false) use (&$streamed): void {
+            $streamed[] = $line;
+        }
+    );
+    check(
+        $stream['ok'] && in_array('first', $streamed, true) && in_array('second', $streamed, true),
+        'CommandRunner отдаёт вывод построчно, включая stderr'
+    );
+
     $testUser = function_exists('posix_getpwuid') ? (string)(posix_getpwuid(posix_geteuid())['name'] ?? 'tester') : 'tester';
     if ($testUser === 'root') $testUser = function_exists('posix_getpwnam') && posix_getpwnam('nobody') ? 'nobody' : '';
     if ($testUser === '') {

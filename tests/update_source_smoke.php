@@ -157,6 +157,15 @@ try {
     $write($root . '/cms/deploy/last.json', json_encode(array('status' => 'failed', 'to' => '')));
     check($update->installedVersion() === '', 'Неудачные записи версию не подменяют');
 
+    // ── Скачивание архива ───────────────────────────────────────────────────
+    $downloader = new \MajorDoMo\Core\Deploy\ArchiveDownloader($root);
+    $broken = $downloader->download('http://127.0.0.1:1/archive.tgz', $root . '/cms/saverestore/test.tgz');
+    check($broken['ok'] === false && $broken['error'] !== '', 'Загрузчик возвращает ошибку, а не зависает');
+    check(
+        !is_file($root . '/cms/saverestore/test.tgz') && !is_file($root . '/cms/saverestore/test.tgz.part'),
+        'После неудачной загрузки не остаётся недокачанного файла'
+    );
+
     // ── Проверки окружения ──────────────────────────────────────────────────
     $checkList = $update->checks();
     $byTitle = array();

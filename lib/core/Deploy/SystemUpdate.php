@@ -560,67 +560,47 @@ final class SystemUpdate
         $directory = $this->root . '/cms/saverestore';
         $this->ensureDir($directory);
         $path = $directory . '/master.tgz';
-        if (is_file($path)) {
-            @unlink($path);
-        }
         $started = microtime(true);
         $this->write('Загрузка ' . $url, 'muted');
 
-        if (function_exists('curl_init')) {
-            $handle = @fopen($path, 'wb');
-            if ($handle === false) {
-                throw new RuntimeException('Не удалось открыть ' . $this->relative($path) . ' для записи.');
+        // Загрузчик сам повторяет попытку через IPv4 и, только при TLS-ошибке,
+        // без проверки сертификата — с предупреждением в журнал.
+        $downloader = new ArchiveDownloader($this->root);
+        $lastReport = 0.0;
+        $result = $downloader->download(
+            $url,
+            $path,
+            function (int $downloaded, int $total, int $percent) use (&$lastReport): void {
+                $now = microtime(true);
+                if ($now - $lastReport < 3.0) {
+                    return;
+                }
+                $lastReport = $now;
+                $text = $this->formatBytes((float)$downloaded);
+                if ($total > 0 && $percent >= 0) {
+                    $text .= ' из ' . $this->formatBytes((float)$total) . ' (' . $percent . '%)';
+                }
+                $this->write('Скачано ' . $text, 'muted');
             }
-            $curl = curl_init($url);
-            if ($curl === false) {
-                fclose($handle);
-                throw new RuntimeException('Не удалось инициализировать cURL.');
-            }
-            $verifyTls = empty($this->options['insecure']);
-            curl_setopt($curl, CURLOPT_FILE, $handle);
-            curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($curl, CURLOPT_MAXREDIRS, 5);
-            curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 30);
-            curl_setopt($curl, CURLOPT_TIMEOUT, 900);
-            curl_setopt($curl, CURLOPT_USERAGENT, 'MajorDoMoDeploy/1.0');
-            curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, $verifyTls);
-            curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, $verifyTls ? 2 : 0);
-            $ok = curl_exec($curl);
-            $code = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-            $error = (string)curl_error($curl);
-            curl_close($curl);
-            fclose($handle);
-            if ($ok === false || ($code !== 0 && ($code < 200 || $code >= 400))) {
-                @unlink($path);
-                throw new RuntimeException(
-                    'Не удалось скачать архив (' . ($code > 0 ? 'HTTP ' . $code : $error) . '): ' . $url
-                );
-            }
-        } else {
-            $remote = @fopen($url, 'rb');
-            if ($remote === false) {
-                throw new RuntimeException('Не удалось открыть ' . $url . ' для чтения.');
-            }
-            $local = @fopen($path, 'wb');
-            if ($local === false) {
-                fclose($remote);
-                throw new RuntimeException('Не удалось открыть ' . $this->relative($path) . ' для записи.');
-            }
-            $copied = @stream_copy_to_stream($remote, $local);
-            fclose($remote);
-            fclose($local);
-            if ($copied === false || $copied <= 0) {
-                @unlink($path);
-                throw new RuntimeException('Архив не скачался: ' . $url);
-            }
+        );
+
+        if (!$result['ok']) {
+            $host = (string)parse_url($url, PHP_URL_HOST);
+            throw new RuntimeException(
+                'Не удалось скачать архив: ' . $result['error']
+                . ($host !== '' ? '. Проверьте, что сервер открывает ' . $host : '')
+                . '. Обновление не начато, файлы не тронуты.'
+            );
+        }
+        if (!empty($result['insecure'])) {
+            $this->write('Сертификат TLS не проверен: в системе нет корневых сертификатов', 'warning');
+        }
+        if ((int)$result['attempts'] > 1) {
+            $this->write('Загрузка удалась с попытки ' . $result['attempts'], 'warning');
         }
 
         clearstatcache(true, $path);
         $size = is_file($path) ? (int)filesize($path) : 0;
-        if ($size <= 0) {
-            @unlink($path);
-            throw new RuntimeException('Скачанный архив пуст: ' . $url);
-        }
         $sha1 = (string)@sha1_file($path);
         $this->write(
             'Скачано ' . $this->formatBytes($size) . ' за ' . $this->formatDuration(microtime(true) - $started),

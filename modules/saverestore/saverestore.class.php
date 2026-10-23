@@ -2,6 +2,9 @@
 
 /**
  * Обновление и восстановление системы.
+ * 2026-10-23 — загрузка архива вынесена в Core\Deploy\ArchiveDownloader:
+ *              прогресс в журнале, таймауты и повтор через IPv4 вместо
+ *              «повисшего» curl с единственным TIMEOUT=600.
  * 2026-10-23 — архив скачивается по конкретному коммиту, цель обновления
  *              сохраняется в update.pending.json, а версия восстанавливается
  *              после обрыва запроса; кэш ленты сбрасывается после установки.
@@ -1742,34 +1745,45 @@ class saverestore extends module
         @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/master.tgz');
         @unlink(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/master.tar');
 
-        $f = fopen($filename, 'wb');
-        if ($f == FALSE) {
-            $this->redirect("?err_msg=" . urlencode("Cannot open " . $filename . " for writing"));
-        }
-
         if ($iframe) {
             echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-chevron-right"></i> ' . LANG_UPDATEARHIVE_DONE . ' ' . $download_url . '</div>');
         }
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $download_url);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 600);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-        curl_setopt($ch, CURLOPT_FILE, $f);
-        $incoming = curl_exec($ch);
-        $download_code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        // Загрузчик общий с `deploy:update`: предел на подключение, обрыв при
+        // простое, повтор через IPv4 и прогресс в журнале. Раньше «голый» curl
+        // висел до системного таймаута, а окно показывало «Скачиваем архив»
+        // без единой новой строки — снаружи это выглядело как зависание.
+        $downloader = new \MajorDoMo\Core\Deploy\ArchiveDownloader(DOC_ROOT);
+        $reported_at = 0;
+        $reported_percent = -10;
+        $download = $downloader->download(
+            $download_url,
+            $filename,
+            function (int $downloaded, int $total, int $percent) use ($iframe, &$reported_at, &$reported_percent): void {
+                if (!$iframe) {
+                    return;
+                }
+                $now = time();
+                if ($percent >= 0 && $percent < $reported_percent + 5 && $now - $reported_at < 3) {
+                    return;
+                }
+                $reported_percent = max($reported_percent, $percent);
+                $reported_at = $now;
+                $text = number_format($downloaded / 1048576, 1, ',', ' ') . ' МБ';
+                if ($total > 0) {
+                    $text .= ' из ' . number_format($total / 1048576, 1, ',', ' ') . ' МБ (' . $percent . '%)';
+                }
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Скачано ' . $text . '</div>');
+            }
+        );
 
-        curl_close($ch);
-        @fclose($f);
-
-        if (
-            $incoming !== false
-            && ($download_code === 0 || ($download_code >= 200 && $download_code < 400))
-            && file_exists($filename)
-            && filesize($filename) > 0
-        ) {
+        if ($download['ok']) {
+            if ($download['insecure']) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-warning-sign"></i> Сертификат TLS не проверен: в системе нет корневых сертификатов</div>', 'orange');
+            }
+            if ($download['attempts'] > 1) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-warning-sign"></i> Загрузка удалась с попытки ' . (int)$download['attempts'] . '</div>', 'orange');
+            }
 
             // Отпечаток и pending-файл появляются до замены файлов: если
             // запрос оборвётся во время рестарта, версию можно будет
@@ -1821,12 +1835,17 @@ class saverestore extends module
         } else {
 
             @unlink($filename);
-            DebMes('System update: archive download failed (' . $download_code . ') ' . $download_url, 'restore', 'error');
+            $message = 'Не удалось скачать архив: ' . $download['error'];
+            $host = (string)parse_url($download_url, PHP_URL_HOST);
+            DebMes('System update: archive download failed: ' . $message . ' (' . $download_url . ')', 'restore', 'error');
             if ($iframe) {
-                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_ERROR_DOWNLOAD . '</div>', 'red');
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</div>', 'red');
+                if ($host !== '') {
+                    echonow('<div>Проверьте, что сервер открывает ' . htmlspecialchars($host, ENT_QUOTES, 'UTF-8') . ' (IPv4/IPv6, прокси, таймаут php-fpm), и повторите.</div>', 'red');
+                }
                 return 0;
             } else {
-                $this->redirect("?err_msg=" . urlencode(LANG_UPDATEBACKUP_ERROR_DOWNLOAD . ' ' . $download_url));
+                $this->redirect("?err_msg=" . urlencode($message . ' ' . $download_url));
             }
         }
     }

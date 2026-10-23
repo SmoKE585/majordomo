@@ -9,7 +9,10 @@
         checks: [],
         copyTimer: null,
         lastStep: 'prepare',
-        lastPercent: 0
+        lastPercent: 0,
+        lastActivityAt: 0,
+        stallTimer: null,
+        stallWarned: false
     };
 
     function q(selector, root) {
@@ -71,6 +74,68 @@
             STATE.elapsedTimer = null;
         }
         updateElapsed();
+    }
+
+    // Сколько тишины терпим на этапе. Во время «Применения» идут composer, npm
+    // и миграции: они присылают пульс раз в 20 секунд, поэтому тишина дольше
+    // двух с половиной минут означает, что запрос действительно оборвался.
+    var STALL_LIMITS = {
+        download: 90000,
+        apply: 150000
+    };
+    var STALL_DEFAULT = 120000;
+
+    function stepLabel(step) {
+        var item = q('[data-saverestore-step="' + step + '"] .md-saverestore-update-modal__step-label');
+        return item && item.textContent ? item.textContent.trim() : 'выполнение';
+    }
+
+    function noteActivity() {
+        STATE.lastActivityAt = Date.now();
+        STATE.stallWarned = false;
+        var metaHint = q('[data-saverestore-meta-hint]');
+        if (metaHint && STATE.running) {
+            metaHint.textContent = 'Не закрывайте окно';
+        }
+    }
+
+    function startWatchdog() {
+        if (STATE.stallTimer) {
+            return;
+        }
+        STATE.stallTimer = window.setInterval(checkStall, 5000);
+    }
+
+    function stopWatchdog() {
+        if (STATE.stallTimer) {
+            window.clearInterval(STATE.stallTimer);
+            STATE.stallTimer = null;
+        }
+    }
+
+    /**
+     * Показать, что сервер замолчал. Без этого окно навсегда остаётся в
+     * состоянии «В процессе», и непонятно, работает обновление или умерло.
+     */
+    function checkStall() {
+        if (!STATE.running || STATE.finished || !STATE.lastActivityAt || STATE.stallWarned) {
+            return;
+        }
+        var limit = STALL_LIMITS[STATE.lastStep] || STALL_DEFAULT;
+        var silence = Date.now() - STATE.lastActivityAt;
+        if (silence < limit) {
+            return;
+        }
+        STATE.stallWarned = true;
+        var metaHint = q('[data-saverestore-meta-hint]');
+        if (metaHint) {
+            metaHint.textContent = 'Нет данных от сервера';
+        }
+        appendLog(
+            'Сервер не присылает данные ' + Math.round(silence / 1000) + ' с на этапе «' + stepLabel(STATE.lastStep) +
+            '». Запрос мог оборваться по таймауту PHP: дождитесь ответа либо обновите страницу и повторите.',
+            'warning'
+        );
     }
 
     function setStatusIcon(state) {
@@ -451,6 +516,7 @@
         if (!event || typeof event !== 'object') {
             return;
         }
+        noteActivity();
         if (event.type === 'events' && Array.isArray(event.items)) {
             event.items.forEach(handleEvent);
             return;
@@ -503,10 +569,13 @@
             STATE.running = true;
             STATE.lastStep = step || STATE.lastStep;
             STATE.lastPercent = value;
+            noteActivity();
             startTimer();
+            startWatchdog();
         } else {
             STATE.running = false;
             stopTimer();
+            stopWatchdog();
         }
     };
 
@@ -601,6 +670,36 @@
         var log = page.querySelector('[data-saverestore-log]');
         var copyButton = page.querySelector('[data-saverestore-copy-log]');
         var jumpButton = page.querySelector('[data-saverestore-log-jump]');
+
+        // Воркер (update_iframe.php) заканчивает загрузку документа ровно тогда,
+        // когда PHP закончил запрос. Если события finish к этому моменту нет,
+        // сервер оборвал обновление (таймаут php-fpm, рестарт, падение) —
+        // показываем ошибку вместо вечного «В процессе».
+        var workerFrame = document.getElementById('processUpdateFrame');
+        if (workerFrame) {
+            workerFrame.addEventListener('load', function () {
+                if (STATE.finished) {
+                    return;
+                }
+                window.setTimeout(function () {
+                    if (STATE.finished) {
+                        return;
+                    }
+                    var label = stepLabel(STATE.lastStep);
+                    appendLog(
+                        'Соединение с сервером закрылось на этапе «' + label + '», результат не получен. ' +
+                        'Обычно это таймаут php-fpm или обрыв прокси; обновление могло ещё продолжаться на сервере. ' +
+                        'Обновите страницу панели и проверьте версию в «Обновлении системы». Если снова встаёт на ' +
+                        'скачивании или composer — запустите ./deploy.sh по SSH: он не зависит от веб-сервера.',
+                        'error'
+                    );
+                    window.systemUpdateFinish(
+                        'Запрос обновления оборвался на этапе «' + label + '»: сервер закрыл соединение, не прислав результат.',
+                        'error'
+                    );
+                }, 2000);
+            });
+        }
 
         function setModalOpen(isOpen) {
             if (!modal) {

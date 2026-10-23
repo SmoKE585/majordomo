@@ -5,6 +5,8 @@ namespace MajorDoMo\Core\Deploy;
 /**
  * Запуск внешних команд деплоя без shell и с ограничением времени.
  *
+ * 2026-10-23 — потоковый вывод строк и пульс: во время composer/npm журнал
+ *              обновления больше не молчит минутами.
  * 2026-10-22 — добавлено для composer/npm/systemctl в пайплайне обновления.
  */
 final class CommandRunner
@@ -17,9 +19,12 @@ final class CommandRunner
     /**
      * @param string[] $command
      * @param array<string,string> $environment
+     * @param callable|null $onOutput function(string $line, bool $pulse = false): void
+     *        Пульс приходит, когда команда молчит дольше $heartbeat секунд: по нему
+     *        видно, что процесс жив, а не завис.
      * @return array{ok:bool,code:int,out:string,err:string,timed_out:bool,duration_ms:int,command:string}
      */
-    public function run(array $command, int $timeout = 600, array $environment = array()): array
+    public function run(array $command, int $timeout = 600, array $environment = array(), ?callable $onOutput = null, int $heartbeat = 0): array
     {
         $started = microtime(true);
         $descriptors = array(
@@ -47,6 +52,16 @@ final class CommandRunner
         $err = '';
         $timedOut = false;
         $status = array('running' => true, 'exitcode' => -1);
+        $stdoutBuffer = '';
+        $stderrBuffer = '';
+        $lastEmit = microtime(true);
+        $emit = static function (string $line, bool $pulse = false) use ($onOutput, &$lastEmit): void {
+            if ($onOutput === null) {
+                return;
+            }
+            $lastEmit = microtime(true);
+            $onOutput($line, $pulse);
+        };
         while (true) {
             $status = proc_get_status($process);
             $read = array($pipes[1], $pipes[2]);
@@ -56,11 +71,19 @@ final class CommandRunner
                 foreach ($read as $stream) {
                     $chunk = fread($stream, 8192);
                     if ($chunk === false || $chunk === '') continue;
-                    if ($stream === $pipes[1]) $out .= $chunk;
-                    else $err .= $chunk;
+                    if ($stream === $pipes[1]) {
+                        $out .= $chunk;
+                        $stdoutBuffer = $this->emitLines($stdoutBuffer . $chunk, $emit);
+                    } else {
+                        $err .= $chunk;
+                        $stderrBuffer = $this->emitLines($stderrBuffer . $chunk, $emit);
+                    }
                 }
             }
             if (!$status['running']) break;
+            if ($heartbeat > 0 && microtime(true) - $lastEmit >= $heartbeat) {
+                $emit('выполняется ' . $this->elapsedText(microtime(true) - $started), true);
+            }
             if (microtime(true) - $started > $timeout) {
                 $timedOut = true;
                 @proc_terminate($process, 9);
@@ -75,6 +98,12 @@ final class CommandRunner
                 else $err .= $chunk;
             }
             fclose($stream);
+        }
+        foreach (array($stdoutBuffer, $stderrBuffer) as $rest) {
+            $rest = trim((string)$rest);
+            if ($rest !== '') {
+                $emit(mb_substr($rest, 0, 300), false);
+            }
         }
         $code = (int)($status['exitcode'] ?? -1);
         if ($code === -1) {
@@ -111,6 +140,39 @@ final class CommandRunner
             }
         }
         return '';
+    }
+
+    /**
+     * Разбить накопленный вывод на строки и отдать готовые.
+     *
+     * Composer и npm пишут прогресс через `\r`, поэтому перевод каретки тоже
+     * считается концом строки: иначе весь прогресс склеивается в одну строку.
+     *
+     * @param callable $emit function(string $line, bool $pulse = false): void
+     * @return string Незавершённый хвост, который нужно дочитать.
+     */
+    private function emitLines(string $buffer, callable $emit): string
+    {
+        $normalized = str_replace(array("\r\n", "\r"), "\n", $buffer);
+        $parts = explode("\n", $normalized);
+        $rest = (string)array_pop($parts);
+        foreach ($parts as $line) {
+            $line = trim($line);
+            if ($line === '' || strlen($line) > 2000) {
+                continue;
+            }
+            $emit($line, false);
+        }
+        return $rest;
+    }
+
+    private function elapsedText(float $seconds): string
+    {
+        $seconds = (int)round($seconds);
+        if ($seconds < 60) {
+            return $seconds . ' с';
+        }
+        return (int)floor($seconds / 60) . ' мин ' . ($seconds % 60) . ' с';
     }
 
     /** @return array{ok:bool,version:string,raw:array<string,mixed>} */

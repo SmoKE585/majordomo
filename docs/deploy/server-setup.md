@@ -280,24 +280,41 @@ systemctl status majordomo-mjdm_smart15_usr.service --no-pager -l
 
 ### `composer install` висит
 
-IPv6 до Packagist/GitHub. Для старого кода добавь в PHP-FPM pool:
+До 23.10.2026 пайплайн вычислял `COMPOSER_IPRESOLVE=4`, но не передавал его
+процессу: Composer шёл с обычными настройками и мог ждать недоступный IPv6 до
+Packagist/GitHub. Теперь окружение (`COMPOSER_IPRESOLVE=4`, `COMPOSER_HOME`,
+`GIT_TERMINAL_PROMPT=0`) передаётся явно, а `--no-audit` убирает лишний сетевой
+запрос после установки.
 
-```ini
-env[COMPOSER_IPRESOLVE] = 4
-```
-
-и перезагрузи FPM:
-
-```bash
-systemctl reload php8.3-fpm
-```
-
-Либо запусти вручную от пользователя сайта:
+Если «Применение» всё равно встаёт, в журнале видно, на каком пакете остановился
+Composer (вывод идёт потоком). Ручная проверка от пользователя сайта:
 
 ```bash
-COMPOSER_IPRESOLVE=4 composer install \
-  --no-dev --prefer-dist --no-interaction \
-  --optimize-autoloader -vvv
+COMPOSER_IPRESOLVE=4 composer install --no-dev --prefer-dist \
+  --no-interaction --optimize-autoloader --no-audit -vvv
+```
+
+Если и вручную висит — это сеть или прокси хостинга, а не MajorDoMo:
+
+```bash
+curl -4 -I https://repo.packagist.org/packages.json
+curl -4 -I https://codeload.github.com
+```
+
+### Окно обновления «зависло»
+
+Журнал теперь идёт потоком: у скачивания видно прогресс («Скачано 12,3 МБ из
+24,1 МБ (51%)»), у composer/npm — их собственные строки и пульс «выполняется N с».
+Если строки перестали идти, окно через 1,5–2,5 минуты само напишет, что сервер
+молчит, а при обрыве запроса покажет ошибку с этапом.
+
+Причина обычно в лимитах веб-сервера: `request_terminate_timeout` в пуле php-fpm
+и `fastcgi_read_timeout` в nginx. Проверь их и, если обновление регулярно
+упирается в таймаут, запускай его по SSH — `deploy.sh` не зависит от php-fpm:
+
+```bash
+./deploy.sh --check
+./deploy.sh
 ```
 
 ### `vite: not found` (код 127)
