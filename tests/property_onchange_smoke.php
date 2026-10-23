@@ -1,6 +1,9 @@
 <?php
 
-/** Actual property writer, SQLite :memory:, mocked side effects; no app boot. */
+/**
+ * Запись свойств на SQLite :memory: с подменой внешних операций, без загрузки приложения.
+ * 2026-10-23 — проверка отсутствия повторов WebSocket при сохранении обработчиков.
+ */
 namespace MajorDoMo\Core {
     class Config { public static function bool($key) { return false; } }
     class Cache { public function get($key) { return false; } public function set($key, $value) {} public function delete($key) {} }
@@ -11,7 +14,10 @@ namespace MajorDoMo\Core {
         public function check($lock) {}
         public function release($lock) { $this->released = true; }
     }
-    class WebSocketQueue { public function post($property, $value) {} }
+    class WebSocketQueue {
+        public array $posts = array();
+        public function post($property, $value) { $this->posts[] = array($property, $value); }
+    }
     class CodeExecutor {}
     class Core {
         public static function queue() { return new class {
@@ -32,6 +38,7 @@ namespace {
     $pdo->exec("INSERT INTO properties VALUES (1,1,0,'motion',0,0,0,'onMotion')");
     $pdo->exec("INSERT INTO pvalues VALUES (1,1,1,'0','','','Sensor.motion','zigbee')");
     function startMeasure($name) {} function endMeasure($name, $flag = 0) {}
+    function postToWebSocketQueue($property, $value) { $GLOBALS['websockets']->post($property, $value); }
     function registerError($code, $message) { $GLOBALS['reported'][] = array($code, $message); }
     $reported = array();
     $connection = new class($pdo) {
@@ -45,7 +52,8 @@ namespace {
     };
     require dirname(__DIR__) . '/lib/core/Database.php'; require dirname(__DIR__) . '/lib/core/PropertyChain.php'; require dirname(__DIR__) . '/lib/core/PropertyAudit.php'; require dirname(__DIR__) . '/lib/core/ErrorReporter.php'; require dirname(__DIR__) . '/lib/core/Properties.php';
     $locks = new MajorDoMo\Core\PropertyLock();
-    $properties = new MajorDoMo\Core\Properties(new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(), new MajorDoMo\Core\MetadataCache(), $locks, new MajorDoMo\Core\WebSocketQueue(), new MajorDoMo\Core\CodeExecutor());
+    $websockets = new MajorDoMo\Core\WebSocketQueue();
+    $properties = new MajorDoMo\Core\Properties(new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(), new MajorDoMo\Core\MetadataCache(), $locks, $websockets, new MajorDoMo\Core\CodeExecutor());
     $object = new class {
         public $id = 1; public $class_id = 0; public $object_title = 'Sensor'; public array $calls = array();
         public function callMethod($name, $params) { $this->calls[] = array($name, $params, $GLOBALS['pdo']->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn()); }
@@ -57,9 +65,11 @@ namespace {
     $failQueue = false; $throwQueue = false; $queued = array();
     $properties->set($object, 'motion', 1, array('zigbee' => 0));
     check(count($object->calls) === 1 && $object->calls[0][2] === '1', 'New value saved before ONCHANGE');
+    check($websockets->posts === array(array('Sensor.motion', 1)), 'Changed value is queued for WebSocket');
     check($queued === array(), 'Excluded source module is not echoed');
     $properties->set($object, 'motion', 1, array('zigbee' => 0));
     check(count($object->calls) === 2, 'Repeated value still triggers ONCHANGE');
+    check(count($websockets->posts) === 1, 'Repeated integer does not queue the same stored string for WebSocket');
     $pdo->exec("UPDATE pvalues SET LINKED_MODULES='zigbee,broken,healthy'");
     foreach (array('false', 'exception') as $failure) {
         $failQueue = $failure === 'false'; $throwQueue = $failure === 'exception'; $queued = array();
@@ -113,6 +123,23 @@ namespace {
     $properties->set($object, 'cmd', true);
     check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=2')->fetchColumn() === '1',
         'Boolean true is stored as 1');
+
+    // Тип входного значения не меняет состояние, но разные строки остаются разными:
+    // '01' и '1' нельзя склеивать нестрогим числовым сравнением.
+    foreach (array(
+        array('1', false), array(1, false), array(1.0, false), array(true, false),
+        array(0, true), array(false, false), array(0.0, false), array('0', false),
+        array('', true), array(null, false), array('01', true), array(1, true),
+        array('1.0', true), array(1.0, true), array(1.5, true), array(1.5, false),
+    ) as [$input, $changed]) {
+        $websockets->posts = array(); $queued = array(); $before = count($object->calls);
+        $properties->set($object, 'cmd', $input);
+        check(count($websockets->posts) === (int)$changed,
+            'WebSocket follows the stored value for ' . var_export($input, true));
+        check(count($object->calls) === $before + 1
+            && $queued === array(array('modulepropertyset', 'zigbee'), array('modulepropertyset', 'yandexhome')),
+            'ONCHANGE and linked modules still receive every assignment');
+    }
 
     // Событие должно объяснять себя: причину, что сохранено и что делать.
     $propertiesWithErrors = new MajorDoMo\Core\Properties(

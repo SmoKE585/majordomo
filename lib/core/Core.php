@@ -31,6 +31,7 @@ final class Core
     }
 
     public static function redis(): RedisConnection { return self::service(__FUNCTION__, fn() => new RedisConnection()); }
+    public static function httpCache(): Http\HttpCache { return self::service(__FUNCTION__, fn() => new Http\HttpCache()); }
     public static function metadata(): MetadataCache { return self::service(__FUNCTION__, fn() => new MetadataCache(self::database(), self::redis())); }
     public static function cache(): Cache { return self::service(__FUNCTION__, fn() => new Cache(self::database(), self::redis(), self::metadata())); }
     public static function locks(): PropertyLock { return self::service(__FUNCTION__, fn() => new PropertyLock(self::database(), self::redis())); }

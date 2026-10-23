@@ -361,6 +361,7 @@ $dirs_to_check = array(
     ROOT . 'cms/cached',
     ROOT . 'cms/cached/voice',
     ROOT . 'cms/cached/urls',
+    ROOT . 'cms/cached/http',
     ROOT . 'cms/cached/templates_c',
 );
 

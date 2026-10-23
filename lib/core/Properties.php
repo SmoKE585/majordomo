@@ -13,6 +13,8 @@ use \RuntimeException;
  * изменений не даёт автоматизации зациклиться.
  *
  * Изменения:
+ * 2026-10-23 — одинаковые сохранённые значения не создают повторов в WebSocket
+ *              из-за различия типов строки и числа.
  * 2026-10-22 — boolean-значение сохраняется как '0'/'1', а не как пустая строка:
  *              false больше не выглядит в админке как незаполненное свойство.
  * 2026-10-22 — исключение модуля-источника действует только на то свойство,
@@ -474,7 +476,9 @@ final class Properties
             $skip_notifications = !empty($v['LINKED_MODULES']) && !is_array($no_linked) && $no_linked;
             if (!$skip_notifications && function_exists('postToWebSocketQueue')) {
                 startMeasure('setproperty_postwebsocketqueue');
-                if ($old_value !== $value) {
+                // В БД значения хранятся строками: число 1 и строка '1'
+                // обозначают одно состояние и не требуют повторной отправки.
+                if ($old_value === false || (string)$old_value !== $v['VALUE']) {
                     $this->websockets->post($object->object_title . '.' . $property, $value);
                 }
                 endMeasure('setproperty_postwebsocketqueue');

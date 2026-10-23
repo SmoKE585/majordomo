@@ -1,17 +1,13 @@
-/* 2026-10-22 — единые уведомления UI-кита и дедупликация сообщений журнала.
- * 2026-10-23 — опрос журнала не запускается вне админ-оболочки: на странице
- * входа window.ROOTHTML не определён, и запрос уходил на
- * /undefinedgetlatestnote.html. */
+/* 2026-10-23 — сообщения журнала приходят через общий WebSocket без HTTP-опроса;
+ * подписка восстанавливается при подключении, повторная доставка отсеивается.
+ * 2026-10-22 — единые уведомления UI-кита. */
 (function (window, document, $) {
     'use strict';
 
-    var latestMessage = null;
-    var latestMessageTimer = 0;
-    var latestMessageInFlight = false;
-    var latestMessageLoopStarted = false;
+    var latestMessageSocket = null;
+    var seenMessages = new Set();
+    var messageEvents = ['SAY', 'ASK', 'SAYTO'];
     var flashNotificationsShown = false;
-    var LATEST_MESSAGE_INTERVAL_ACTIVE = 10000;
-    var LATEST_MESSAGE_INTERVAL_HIDDEN = 60000;
 
     function safeJsonParse(data, fallback) {
         if (data && typeof data === 'object') {
@@ -110,53 +106,62 @@
         }
     }
 
-    // Адрес опроса строим только при определённом ROOTHTML: страница входа
-    // подключает тот же бандл, но оболочку и префикс проекта не задаёт.
-    function latestNoteUrl() {
-        if (typeof window.ROOTHTML !== 'string' || window.ROOTHTML === '') {
-            return '';
-        }
-        return window.ROOTHTML + 'getlatestnote.html';
+    function isAdminShell() {
+        return typeof window.ROOTHTML === 'string' && window.ROOTHTML !== '';
     }
 
+    // Сохраняем старое имя для внешних модулей. Оно обеспечивает подписку,
+    // но больше не запускает запросы и таймеры опроса журнала.
     function checkLatestMessage() {
-        if (latestMessageInFlight || !$) {
+        var socket = window.wsSocket;
+        if (!isAdminShell() || !socket || socket.readyState !== 1 || latestMessageSocket === socket) {
             return;
         }
-        var url = latestNoteUrl();
-        if (url === '') {
-            latestMessageLoopStarted = false;
-            return;
-        }
-        latestMessageInFlight = true;
-        $.ajax({
-            url: url
-        }).done(function (data) {
-            var note = safeJsonParse(data);
-            if (!note || typeof note.DATA !== 'string') return;
-            var identity = note.ID ? 'id:' + note.ID : 'text:' + note.DATA;
-            // Первый ответ — исходное состояние, а не новое уведомление.
-            var changed = latestMessage !== null && identity !== latestMessage;
-            latestMessage = identity;
-            if (changed && note.DATA.trim()) showToast({title: 'Журнал сообщений', message: note.DATA, type: 'info'});
-        }).always(function () {
-            latestMessageInFlight = false;
-            clearTimeout(latestMessageTimer);
-            latestMessageTimer = setTimeout(
-                checkLatestMessage,
-                document.hidden ? LATEST_MESSAGE_INTERVAL_HIDDEN : LATEST_MESSAGE_INTERVAL_ACTIVE
-            );
-        });
+
+        socket.send(JSON.stringify({action: 'Subscribe', data: {TYPE: 'events', EVENTS: messageEvents}}));
+        latestMessageSocket = socket;
     }
+
+    function receiveMessage(event) {
+        if (!isAdminShell()) return;
+        var response = event.detail;
+        if (!response || response.action !== 'events') return;
+        var payload = safeJsonParse(response.data);
+        var notification = payload && payload.EVENT_DATA;
+        if (!notification || typeof notification.NAME !== 'string'
+            || !messageEvents.includes(notification.NAME.toUpperCase())) return;
+        var note = notification.VALUE;
+        if (!note || typeof note.message !== 'string' || !note.message.trim() || note.member_id) return;
+
+        // SAY и SAYTO содержат ID записи. У ASK его нет: повтор кадра отличаем
+        // по запуску сервера и номеру события, не склеивая одинаковые вопросы.
+        var identity = null;
+        if (/^[1-9]\d*$/.test(String(note.id))) {
+            identity = 'id:' + note.id;
+        } else if (typeof response.epoch === 'string' && Number.isSafeInteger(response.sequence)) {
+            identity = response.epoch + ':' + response.sequence;
+        }
+        if (identity !== null && seenMessages.has(identity)) return;
+        if (!showToast({title: 'Журнал сообщений', message: note.message, type: 'info'})) return;
+
+        if (identity !== null) {
+            seenMessages.add(identity);
+            // Ограничиваем память вкладки, которая может быть открыта неделями.
+            if (seenMessages.size > 256) seenMessages.delete(seenMessages.values().next().value);
+        }
+    }
+
+    document.addEventListener('md:ws-connected', checkLatestMessage);
+    document.addEventListener('md:ws-disconnected', function () {
+        latestMessageSocket = null;
+    });
+    document.addEventListener('md:ws-data', receiveMessage);
 
     function bindAdminShellHandlers() {
         if (!$) {
             return;
         }
-        if (!latestMessageLoopStarted) {
-            latestMessageLoopStarted = true;
-            checkLatestMessage();
-        }
+        checkLatestMessage();
         showFlashNotifications();
         $(document).on('click', '#btnFilterCloseSearch', function () {
             $('#filter_modules').val('');

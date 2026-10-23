@@ -99,6 +99,8 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 - исправлена прокрутка мобильного меню: полноэкранная панель больше не опирается на `100vh` (на телефоне это «большой» вьюпорт, из-за чего низ списка уходил под адресную строку и не доскролливался), высота берётся из `top/bottom`, добавлен отступ `env(safe-area-inset-bottom)`.
 - деплой переработан: файловые миграции с автообнаружением (`lib/core/Migrations/`), `deploy/removals.json` с защитой пользовательских папок, режим обслуживания `cms/maintenance.json` (сайт/API 503, админка открыта), пайплайн `lib/core/Deploy/` (preflight, Composer, npm, health-check, перезапуск systemd) и команды `systemd:set`/`systemd:give-permissions`; при сбое после замены файлов циклы удерживаются `cms/cycles/deploy.hold`; документация — [deployment.md](deployment.md) и [systemd-sudo.md](../deploy/systemd-sudo.md).
 
+- исправлена фиксация версии системного обновления: `getLatest()` скачивает архив строго по коммиту (`getArchiveURLForCommit`), а не по «плавающей» ветке; коммит и SHA-1 архива пишутся в `cms/saverestore/update.pending.json` до замены файлов, после успешного рестарта — в конфиг модуля, а `reconcilePendingUpdate()` восстанавливает запись, если запрос оборвался; лента обновлений больше не используется для угадывания версии; HTTP-кэш вынесен в `lib/core/Http/HttpCache.php` (Redis при `USE_REDIS`, иначе файл) с ETag/Last-Modified и сбросом после установки; документация — [http-cache.md](http-cache.md).
+
 Следующий этап — **полировка мобильных деталей объектов** (длинные значения в редакторах, компактные формы), затем остальные модули.
 
 ## 3. Что читать перед изменениями
@@ -142,6 +144,7 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
 15. Этот файл — текущее состояние и ограничения.
 16. `docs/agents/deployment.md` — пайплайн деплоя, миграции, removals, maintenance и systemd; пошаговое развёртывание — `docs/deploy/server-setup.md`, детали sudo — `docs/deploy/systemd-sudo.md`.
 17. `docs/agents/mqtt-runtime.md` — быстрый путь MQTT, полосы `core_runtime`, проекция состояния, настройки и диагностика.
+18. `docs/agents/http-cache.md` — кэш HTTP-ответов (Redis/файл), условные запросы ETag/Last-Modified и сброс после обновления.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 

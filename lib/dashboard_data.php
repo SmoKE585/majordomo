@@ -1,5 +1,8 @@
 <?php
 
+// 2026-10-23 — повышенная нагрузка от 350 запросов/с, высокая — выше 500;
+// пороги использования соединений и активных запросов сохранены.
+
 /**
  * Dashboard data collector.
  *
@@ -577,10 +580,10 @@ function mdj_dashboard_collect($fresh = false)
 
     $dbLevel = 'ok';
     $dbStatusText = 'Нагрузка в норме';
-    if ($qps >= 250 || $connectionUsage >= 80 || $connections['running'] >= 20) {
+    if ($qps > 500 || $connectionUsage >= 80 || $connections['running'] >= 20) {
         $dbLevel = 'danger';
         $dbStatusText = 'Высокая нагрузка';
-    } elseif ($qps >= 170 || $connectionUsage >= 60 || $connections['running'] >= 10) {
+    } elseif ($qps >= 350 || $connectionUsage >= 60 || $connections['running'] >= 10) {
         $dbLevel = 'warning';
         $dbStatusText = 'Повышенная нагрузка';
     }

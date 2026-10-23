@@ -2,14 +2,26 @@
 
 /**
  * Обновление и восстановление системы.
+ * 2026-10-23 — архив скачивается по конкретному коммиту, цель обновления
+ *              сохраняется в update.pending.json, а версия восстанавливается
+ *              после обрыва запроса; кэш ленты сбрасывается после установки.
  * 2026-10-22 — getUpdateStatus() для дашборда и /api/v1/panel/updates.
  */
 class saverestore extends module
 {
+    /** Сколько секунд можно показывать закэшированную ленту обновлений. */
+    const UPDATE_FEED_TTL = 1800;
+
+    /** Файл с коммитом, который скачан и уже применён, но ещё не записан в конфиг. */
+    const UPDATE_PENDING_FILE = 'update.pending.json';
+
     var $mode;
     var $view_mode;
     var $edit_mode;
     var $ajax;
+
+    /** @var array|null Цель текущего обновления (коммит + отпечаток архива). */
+    var $target_update = null;
 
     /**
      * saverestore
@@ -128,13 +140,28 @@ class saverestore extends module
         }
     }
 
+    /**
+     * Привести идентификатор коммита из Atom-ленты к чистому SHA.
+     *
+     * GitHub отдаёт `tag:github.com,2008:Grit::Commit/<sha>`, Gitea — ссылку
+     * на `/commit/<sha>`. Раньше вырезался только GitHub-префикс, поэтому для
+     * других хостингов в конфиг попадала целая ссылка и сравнение версий
+     * больше никогда не совпадало.
+     * 2026-10-23 — поддержаны оба формата и короткие SHA.
+     */
     function normalizeCommitId($commit_id)
     {
         $commit_id = trim((string)$commit_id);
         if ($commit_id == '') {
             return '';
         }
-        return preg_replace('/.+Commit\//is', '', $commit_id);
+        if (preg_match('#(?:Grit::Commit/|/commit/)([0-9a-f]{7,64})/?$#i', $commit_id, $match)) {
+            return strtolower($match[1]);
+        }
+        if (preg_match('#^[0-9a-f]{7,64}$#i', $commit_id)) {
+            return strtolower($commit_id);
+        }
+        return trim(preg_replace('/.+Commit\//is', '', $commit_id));
     }
 
     function normalizeUpdateBranch($branch)
@@ -142,37 +169,106 @@ class saverestore extends module
         return mb_strtoupper(trim((string)$branch));
     }
 
-    function readLatestUpdateInfo($update_url)
+    /**
+     * Разобрать Atom-ленту обновлений.
+     *
+     * Один общий разбор вместо трёх копий в admin(), getUpdateStatus() и
+     * autoUpdateSystem(): раньше они по-разному переживали ленту из одной
+     * записи и по-разному трактовали ошибки.
+     * 2026-10-23 — вынесено в отдельный метод.
+     */
+    function parseUpdateFeedEntries($feed_xml)
     {
-        $result = array(
-            'LATEST_ID' => '',
-            'UPDATE_CURR_BRANCH' => $this->normalizeUpdateBranch($this->getUpdateBranch($update_url))
-        );
-
-        $github_feed_url = $this->getUpdateFeedURL($update_url);
-        if ($github_feed_url == '') {
-            return $result;
+        if (!is_string($feed_xml) || trim($feed_xml) === '') {
+            return array();
         }
+        $tree = GetXMLTree($feed_xml);
+        if (!is_array($tree)) {
+            return array();
+        }
+        $data = XMLTreeToArray($tree);
+        $entries = $data['feed']['entry'] ?? array();
+        if (!is_array($entries) || $entries === array()) {
+            return array();
+        }
+        // Единственная запись приходит не списком, а ассоциативным массивом.
+        if (isset($entries['id'])) {
+            $entries = array($entries);
+        }
+        return array_values($entries);
+    }
 
+    /**
+     * Загрузить и разобрать ленту обновлений.
+     *
+     * $cache_ttl = 0 — запросить свежую ленту, не трогая кэш. Именно так
+     * определяется версия, которую собираемся установить.
+     * 2026-10-23 — добавлено.
+     */
+    function getUpdateFeedEntries($feed_url, $cache_ttl = 0)
+    {
+        if ($feed_url == '') {
+            return array();
+        }
         $options = array(
             CURLOPT_HTTPHEADER => array('Accept: application/xml')
         );
-        $github_feed = getURL($github_feed_url, 0, '', '', false, $options);
-        if ($github_feed == '') {
+        // TTL=0 означает «не доверять кэшу», но ответ всё равно нужно
+        // положить в кэш: иначе принудительная проверка не обновит данные
+        // для следующих плановых проверок.
+        $fetch_ttl = (int)$cache_ttl > 0 ? (int)$cache_ttl : 1;
+        $feed = getURL($feed_url, $fetch_ttl, '', '', false, $options);
+        if ($feed === false || $feed === '') {
+            return array();
+        }
+        return $this->parseUpdateFeedEntries($feed);
+    }
+
+    function getUpdateEntryCommit($entry)
+    {
+        if (!is_array($entry)) {
+            return '';
+        }
+        return $this->normalizeCommitId($entry['id']['textvalue'] ?? '');
+    }
+
+    function getUpdateEntryTimestamp($entry)
+    {
+        if (!is_array($entry) || empty($entry['updated']['textvalue'])) {
+            return 0;
+        }
+        $timestamp = strtotime((string)$entry['updated']['textvalue']);
+        return $timestamp !== false ? (int)$timestamp : 0;
+    }
+
+    /**
+     * Определить коммит и ветку, на которые указывает источник обновлений.
+     *
+     * Это единственное место, где версия берётся из ленты. Дальше архив
+     * скачивается именно по этому коммиту, поэтому записанная версия всегда
+     * совпадает с содержимым установленных файлов.
+     * 2026-10-23 — добавлено вместо readLatestUpdateInfo().
+     */
+    function resolveUpdateTarget($cache_ttl = 0)
+    {
+        $update_url = $this->getUpdateURL();
+        $result = array(
+            'commit' => '',
+            'branch' => $this->normalizeUpdateBranch($this->getUpdateBranch($update_url)),
+            'updated_ts' => 0,
+            'update_url' => $update_url,
+            'feed_url' => $this->getUpdateFeedURL($update_url),
+        );
+        if ($result['feed_url'] == '') {
             return $result;
         }
-
-        $tmp = GetXMLTree($github_feed);
-        if (!is_array($tmp)) {
+        $entries = $this->getUpdateFeedEntries($result['feed_url'], $cache_ttl);
+        if ($entries === array()) {
             return $result;
         }
-
-        $data = XMLTreeToArray($tmp);
-        if (!isset($data['feed']['entry']) || !is_array($data['feed']['entry']) || !isset($data['feed']['entry'][0])) {
-            return $result;
-        }
-
-        $result['LATEST_ID'] = $this->normalizeCommitId($data['feed']['entry'][0]['id']['textvalue']);
+        $latest = reset($entries);
+        $result['commit'] = $this->getUpdateEntryCommit($latest);
+        $result['updated_ts'] = $this->getUpdateEntryTimestamp($latest);
         return $result;
     }
 
@@ -796,41 +892,199 @@ class saverestore extends module
         }
     }
 
+    function getPendingUpdateFile()
+    {
+        return DOC_ROOT . DIRECTORY_SEPARATOR . 'cms' . DIRECTORY_SEPARATOR . 'saverestore' . DIRECTORY_SEPARATOR . self::UPDATE_PENDING_FILE;
+    }
+
+    /**
+     * Прочитать цель обновления, скачанную предыдущим запросом.
+     *
+     * Нужно, чтобы `mode=getlatest` → редирект → `mode=upload` не терял
+     * коммит и не подменял его свежей (но уже другой) лентой.
+     * 2026-10-23 — добавлено.
+     */
+    function readPendingUpdate()
+    {
+        $file = $this->getPendingUpdateFile();
+        if (!is_file($file)) {
+            return null;
+        }
+        $data = json_decode((string)@file_get_contents($file), true);
+        if (!is_array($data)) {
+            return null;
+        }
+        $data['commit'] = $this->normalizeCommitId($data['commit'] ?? '');
+        $data['branch'] = $this->normalizeUpdateBranch($data['branch'] ?? '');
+        return $data;
+    }
+
+    function writePendingUpdate(array $data)
+    {
+        $file = $this->getPendingUpdateFile();
+        $directory = dirname($file);
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0777, true);
+        }
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return false;
+        }
+        // Атомарная замена: параллельный запрос не должен прочитать половину
+        // JSON и решить, что цели обновления нет.
+        $temporary = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
+        if (@file_put_contents($temporary, $json, LOCK_EX) === false) {
+            return false;
+        }
+        if (!@rename($temporary, $file)) {
+            @unlink($temporary);
+            return false;
+        }
+        return true;
+    }
+
+    function updatePendingUpdate(array $changes)
+    {
+        $data = $this->readPendingUpdate();
+        if ($data === null) {
+            return false;
+        }
+        $data = array_merge($data, $changes);
+        $data['updated_at'] = date('c');
+        return $this->writePendingUpdate($data);
+    }
+
+    function clearPendingUpdate()
+    {
+        $file = $this->getPendingUpdateFile();
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+
+    function archiveFingerprint($file)
+    {
+        if (!is_string($file) || $file === '' || !is_file($file)) {
+            return '';
+        }
+        $hash = @sha1_file($file);
+        return is_string($hash) ? $hash : '';
+    }
+
+    /**
+     * Взять коммит, который относится именно к применяемому архиву.
+     *
+     * Отпечаток архива защищает от чужого/устаревшего pending-файла: если
+     * master.tgz подменили, версию не записываем, а не угадываем.
+     * 2026-10-23 — добавлено.
+     */
+    function resolveAppliedUpdateTarget($is_system_update, $archive_path)
+    {
+        if (!$is_system_update) {
+            return null;
+        }
+        $candidate = is_array($this->target_update) ? $this->target_update : $this->readPendingUpdate();
+        if (!is_array($candidate)) {
+            return null;
+        }
+        $commit = $this->normalizeCommitId($candidate['commit'] ?? '');
+        if ($commit === '') {
+            return null;
+        }
+        $expected = (string)($candidate['archive_sha1'] ?? '');
+        $actual = $this->archiveFingerprint($archive_path);
+        if ($expected === '' || $actual === '' || !hash_equals($expected, $actual)) {
+            DebMes('System update: archive fingerprint does not match the pending target, installed version will not be recorded', 'restore', 'warning');
+            return null;
+        }
+        return array(
+            'commit' => $commit,
+            'branch' => $this->normalizeUpdateBranch($candidate['branch'] ?? ''),
+            'archive_sha1' => $actual,
+        );
+    }
+
+    /**
+     * Сбросить кэш ленты обновлений.
+     *
+     * После успешной установки старый ответ getURL() ещё до TTL утверждает,
+     * что последний коммит — прежний. Тогда UI честно установленной версии
+     * снова показывает «есть обновление».
+     * 2026-10-23 — добавлено.
+     */
+    function clearUpdateFeedCache()
+    {
+        $feed_url = $this->getUpdateFeedURL($this->getUpdateURL());
+        if ($feed_url != '' && function_exists('clearURLCache')) {
+            clearURLCache($feed_url);
+        }
+    }
+
+    /**
+     * Записать установленную версию в конфиг модуля.
+     *
+     * Единственное место записи LATEST_UPDATED_ID. Значение приходит из
+     * скачанного архива (resolveUpdateTarget в getLatest), а не из повторно
+     * прочитанной ленты.
+     * 2026-10-23 — вынесено из commitSystemUpdate(), добавлена дата в конфиг.
+     */
+    function recordInstalledVersion($commit, $branch)
+    {
+        $latest_id = $this->normalizeCommitId($commit);
+        if ($latest_id == '') {
+            DebMes('System update: installed commit is unknown, version is not recorded', 'restore', 'error');
+            return false;
+        }
+        $update_branch = $this->normalizeUpdateBranch($branch);
+        $timestamp = date('d.m.Y H:i:s');
+
+        try {
+            $this->getConfig();
+            $this->config['LATEST_UPDATED_ID'] = $latest_id;
+            $this->config['LATEST_CURR_BRANCH'] = $update_branch;
+            $this->config['LATEST_UPDATED_DATE'] = $timestamp;
+            $this->config['LATEST_UPDATED_TS'] = time();
+            $this->saveConfig();
+        } catch (\Throwable $error) {
+            DebMes('Cannot save latest update version: ' . $error->getMessage(), 'restore', 'error');
+            return false;
+        }
+
+        // Кэш ленты и pending-файл — после успешной записи в БД: если запись
+        // упала, следующий запрос повторит её по pending-файлу.
+        try {
+            $this->clearUpdateFeedCache();
+        } catch (\Throwable $error) {
+            DebMes('Cannot clear update feed cache: ' . $error->getMessage(), 'restore', 'warning');
+        }
+        $this->clearPendingUpdate();
+
+        try {
+            setGlobal('LatestUpdateId', $latest_id);
+            setGlobal('LatestUpdateBranch', $update_branch);
+            setGlobal('LatestUpdateTimestamp', $timestamp);
+        } catch (\Throwable $error) {
+            // Глобалы — только для старых шаблонов; дата уже есть в конфиге.
+            DebMes('Cannot publish latest update globals: ' . $error->getMessage(), 'restore', 'warning');
+        }
+
+        DebMes('System update: installed version recorded as ' . $update_branch . '_' . $latest_id, 'restore');
+        return true;
+    }
+
     /**
      * Зафиксировать версию только после успешной установки и перезапуска.
      * Вызывается из upload() после restart/reload, а не в середине пайплайна.
+     * 2026-10-23 — больше не читает ленту: коммит уже пришёл из архива.
      */
-    function commitSystemUpdate(&$out, $update_from, $update_to, $deployment)
+    function commitSystemUpdate($update_from, $update_to, $update_branch, $deployment)
     {
-        $latest_id = isset($out['LATEST_ID']) ? $this->normalizeCommitId($out['LATEST_ID']) : '';
-        $update_branch = isset($out['UPDATE_CURR_BRANCH']) ? $this->normalizeUpdateBranch($out['UPDATE_CURR_BRANCH']) : '';
-        if ($latest_id == '' || $update_branch == '') {
-            $update_info = $this->readLatestUpdateInfo(isset($this->url) ? $this->url : $this->getUpdateURL());
-            if ($latest_id == '' && $update_info['LATEST_ID'] != '') {
-                $latest_id = $update_info['LATEST_ID'];
-            }
-            if ($update_branch == '' && $update_info['UPDATE_CURR_BRANCH'] != '') {
-                $update_branch = $update_info['UPDATE_CURR_BRANCH'];
-            }
-        }
-
-        if ($latest_id != '') {
-            try {
-                $this->config['LATEST_UPDATED_ID'] = $latest_id;
-                $this->config['LATEST_CURR_BRANCH'] = $update_branch;
-                $this->saveConfig();
-                setGlobal('LatestUpdateId', $latest_id);
-                setGlobal('LatestUpdateBranch', $update_branch);
-                setGlobal('LatestUpdateTimestamp', date('d.m.Y H:i:s'));
-            } catch (\Throwable $error) {
-                DebMes('Cannot save latest update version: ' . $error->getMessage(), 'restore', 'error');
-            }
-        } else {
-            DebMes('Cannot detect latest update commit after applying archive.', 'restore', 'warning');
-        }
+        $recorded = $this->recordInstalledVersion($update_to, $update_branch);
+        $latest_id = $this->normalizeCommitId($update_to);
+        $branch = $this->normalizeUpdateBranch($update_branch);
 
         try {
-            \MajorDoMo\Core\Events\SystemEvents::systemUpdated($update_from, $latest_id !== '' ? $latest_id : $update_to, $update_branch);
+            \MajorDoMo\Core\Events\SystemEvents::systemUpdated($update_from, $latest_id !== '' ? $latest_id : $update_to, $branch);
         } catch (\Throwable $error) {
             DebMes('Cannot emit system updated event: ' . $error->getMessage(), 'restore', 'warning');
         }
@@ -841,12 +1095,46 @@ class saverestore extends module
                     'status' => 'success',
                     'from' => $update_from,
                     'to' => $latest_id !== '' ? $latest_id : $update_to,
-                    'branch' => $update_branch,
+                    'branch' => $branch,
                 ));
             } catch (\Throwable $error) {
                 DebMes('Cannot write deploy state: ' . $error->getMessage(), 'restore', 'warning');
             }
         }
+
+        return $recorded;
+    }
+
+    /**
+     * Восстановить запись версии, если предыдущий запрос умер между заменой
+     * файлов и сохранением конфига (например, во время restart службы).
+     *
+     * Действует только на pending-файл со статусом applied: до этого файлы
+     * ещё не применены, после — версия уже записана.
+     * 2026-10-23 — добавлено.
+     */
+    function reconcilePendingUpdate()
+    {
+        $pending = $this->readPendingUpdate();
+        if (!is_array($pending) || ($pending['status'] ?? '') !== 'applied') {
+            return false;
+        }
+        $applied_at = strtotime((string)($pending['applied_at'] ?? ''));
+        // Недавний applied принадлежит ещё идущему запросу: он сам запишет
+        // версию после рестарта. Восстанавливаем только «зависшие» записи.
+        if ($applied_at > 0 && (time() - $applied_at) < 30) {
+            return false;
+        }
+        if ($applied_at > 0 && (time() - $applied_at) > 7 * 24 * 60 * 60) {
+            DebMes('System update: stale applied target discarded', 'restore', 'warning');
+            $this->clearPendingUpdate();
+            return false;
+        }
+        $recorded = $this->recordInstalledVersion($pending['commit'] ?? '', $pending['branch'] ?? '');
+        if ($recorded) {
+            DebMes('System update: installed version restored from the pending target', 'restore');
+        }
+        return $recorded;
     }
 
     /**
@@ -923,6 +1211,9 @@ class saverestore extends module
         }
 
         $this->getConfig();
+        // Если прошлый запрос умер после замены файлов, версия уже есть в
+        // pending-файле — записываем её до того, как строить страницу.
+        $this->reconcilePendingUpdate();
         $force_check = (int)gr('check_now') === 1;
         $out['FORCE_CHECK'] = $force_check ? 1 : 0;
 
@@ -956,96 +1247,65 @@ class saverestore extends module
             }
         }
 
+        // Текущая версия показывается независимо от доступности ленты: это
+        // локальные данные, а не результат сетевого запроса.
+        $out['UPDATE_CURR_BRANCH'] = $this->normalizeUpdateBranch($this->getUpdateBranch($update_url));
+        $out['LATEST_UPDATED_ID'] = isset($this->config['LATEST_UPDATED_ID']) ? $this->normalizeCommitId($this->config['LATEST_UPDATED_ID']) : '';
+        $out['LATEST_UPDATED_ID_SLICE'] = mb_strtoupper(substr($out['LATEST_UPDATED_ID'], 0, 7));
+        $out['LATEST_CURR_BRANCH'] = isset($this->config['LATEST_CURR_BRANCH']) ? $this->normalizeUpdateBranch($this->config['LATEST_CURR_BRANCH']) : '';
+        if ($out['LATEST_CURR_BRANCH'] == '' && $out['LATEST_UPDATED_ID'] != '') {
+            $out['LATEST_CURR_BRANCH'] = $out['UPDATE_CURR_BRANCH'];
+        }
+        $out['LATEST_UPDATED_TIME'] = gg('LatestUpdateTimestamp');
+        if ($out['LATEST_UPDATED_TIME'] == '' && !empty($this->config['LATEST_UPDATED_DATE'])) {
+            $out['LATEST_UPDATED_TIME'] = $this->config['LATEST_UPDATED_DATE'];
+        }
+
         $github_feed_url = $this->getUpdateFeedURL($update_url);
-
         $op = isset($_GET['op']) ? $_GET['op'] : '';
-        if ($force_check) {
-            $cache_timeout = 0;
-        } elseif ($op == 'check_updates') {
-            $cache_timeout = 3 * 24 * 60 * 60;
-        } else {
-            $cache_timeout = 30 * 60;
-        }
+        $cache_timeout = $force_check ? 0 : self::UPDATE_FEED_TTL;
+        $items = $this->getUpdateFeedEntries($github_feed_url, $cache_timeout);
 
-        $options = array(
-            CURLOPT_HTTPHEADER => array('Accept: application/xml')
-        );
-        $github_feed = '';
-        if ($github_feed_url != '') {
-            $github_feed = getURL($github_feed_url, $cache_timeout, '', '', false, $options);
-        }
-        if ($github_feed != '') {
-            $tmp = GetXMLTree($github_feed);
-            if (is_array($tmp)) {
-                $data = XMLTreeToArray($tmp);
-                $items = $data['feed']['entry'];
-            } else {
-                $github_feed = getURL($github_feed_url, 0, '', '', false, $options);
-                $items = false;
-            }
-            if (is_array($items)) {
-                $total = count($items);
-                if ($total) {
-                    $iteration = 0;
-                    $current_latest_id = isset($this->config['LATEST_UPDATED_ID']) ? $this->normalizeCommitId($this->config['LATEST_UPDATED_ID']) : '';
-                    // echo '<pre>';
-                    // var_dump($items);
-                    // die();
-                    foreach ($items as $key => $value) {
-                        $itm = array();
-
-                        $itm['ID'] = $this->normalizeCommitId($value['id']['textvalue']);
-                        $itm['MYVERSION'] = ($itm['ID'] == $current_latest_id) ? 1 : 0;
-                        $itm['TITLE'] = trim($value['title']['textvalue']);
-                        $itm['AUTHOR'] = $value['author']['name']['textvalue'];
-                        $itm['LINK'] = $value['link']['href'];
-                        $itm['LINK_URL'] = urlencode($itm['LINK']);
-                        $itm['UPDATED'] = strtotime($value['updated']['textvalue']);
-                        $itm['UPDATE_TEXT'] = date('d.m.Y H:i', $itm['UPDATED']);
-                        $itm['DESC_UPDATE'] = '';
-                        if (isset($value['content']['textvalue'])) {
-                            $content = preg_split('/\\r\\n?|\\n/', $value['content']['textvalue']);
-                            if (isset($content[3])) {
-                                $itm['DESC_UPDATE'] = strip_tags($content[3]);
-                            }
-                        }
-
-                        $itm['MYVERSION'] = ($itm['ID'] == $current_latest_id) ? 1 : 0;
-                        $out['UPDATES'][] = $itm;
-                        $iteration++;
-
-                        if ($iteration >= 5) {
-                            break;
-                        }
+        $out['UPDATES'] = array();
+        if ($items !== array()) {
+            $iteration = 0;
+            foreach ($items as $value) {
+                $itm = array();
+                $itm['ID'] = $this->getUpdateEntryCommit($value);
+                $itm['MYVERSION'] = ($itm['ID'] == $out['LATEST_UPDATED_ID']) ? 1 : 0;
+                $itm['TITLE'] = trim((string)($value['title']['textvalue'] ?? ''));
+                $itm['AUTHOR'] = (string)($value['author']['name']['textvalue'] ?? '');
+                $itm['LINK'] = (string)($value['link']['href'] ?? '');
+                $itm['LINK_URL'] = urlencode($itm['LINK']);
+                $itm['UPDATED'] = $this->getUpdateEntryTimestamp($value);
+                $itm['UPDATE_TEXT'] = $itm['UPDATED'] > 0 ? date('d.m.Y H:i', $itm['UPDATED']) : '';
+                $itm['DESC_UPDATE'] = '';
+                if (isset($value['content']['textvalue'])) {
+                    $content = preg_split('/\\r\\n?|\\n/', $value['content']['textvalue']);
+                    if (isset($content[3])) {
+                        $itm['DESC_UPDATE'] = strip_tags($content[3]);
                     }
-
-                    $out['LATEST_ID'] = $out['UPDATES'][0]['ID'];
-
-                    $out['LATEST_UPDATED_ID'] = $current_latest_id;
-                    $out['LATEST_UPDATED_ID_SLICE'] = mb_strtoupper(substr($out['LATEST_UPDATED_ID'], 0, 7));
-                    $out['LATEST_UPDATED_TIME'] = gg('LatestUpdateTimestamp');
-
-                    $out['UPDATE_CURR_BRANCH'] = $this->normalizeUpdateBranch($this->getUpdateBranch($update_url));
-                    $out['LATEST_CURR_BRANCH'] = isset($this->config['LATEST_CURR_BRANCH']) ? $this->normalizeUpdateBranch($this->config['LATEST_CURR_BRANCH']) : '';
-                    if ($out['LATEST_CURR_BRANCH'] == '' && $out['LATEST_UPDATED_ID'] != '') {
-                        $out['LATEST_CURR_BRANCH'] = $out['UPDATE_CURR_BRANCH'];
-                    }
-
-                    if ($out['LATEST_ID'] != '' && $out['LATEST_ID'] == $out['LATEST_UPDATED_ID'] && $out['LATEST_CURR_BRANCH'] == $out['UPDATE_CURR_BRANCH']) {
-                        $out['NO_NEED_TO_UPDATE'] = 1;
-                    }
-                    $op = isset($_GET['op']) ? $_GET['op'] : '';
-                    if ($this->ajax && $op == 'check_updates') {
-                        if (!isset($out['NO_NEED_TO_UPDATE'])) {
-                            echo json_encode(array('needUpdate' => '1', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $out['LATEST_UPDATED_ID'], 'commitUrl' => $out['PROJECT_COMMIT_URL']));
-                        } else {
-                            echo json_encode(array('needUpdate' => '0', 'currBranch' => $out['LATEST_CURR_BRANCH'], 'current_version' => $out['LATEST_UPDATED_ID'], 'commitUrl' => $out['PROJECT_COMMIT_URL']));
-                        }
-                        exit;
-                    }
-                    //print_r($out['UPDATES']);
-                    //exit;
                 }
+
+                $out['UPDATES'][] = $itm;
+                $iteration++;
+                if ($iteration >= 5) {
+                    break;
+                }
+            }
+
+            $out['LATEST_ID'] = $out['UPDATES'][0]['ID'] ?? '';
+            if ($out['LATEST_ID'] != '' && $out['LATEST_ID'] == $out['LATEST_UPDATED_ID'] && $out['LATEST_CURR_BRANCH'] == $out['UPDATE_CURR_BRANCH']) {
+                $out['NO_NEED_TO_UPDATE'] = 1;
+            }
+            if ($this->ajax && $op == 'check_updates') {
+                echo json_encode(array(
+                    'needUpdate' => isset($out['NO_NEED_TO_UPDATE']) ? '0' : '1',
+                    'currBranch' => $out['LATEST_CURR_BRANCH'],
+                    'current_version' => $out['LATEST_UPDATED_ID'],
+                    'commitUrl' => $out['PROJECT_COMMIT_URL']
+                ));
+                exit;
             }
         }
 
@@ -1292,11 +1552,18 @@ class saverestore extends module
     function getUpdateStatus($force = false)
     {
         $this->getConfig();
+        // Пропущенная запись версии (обрыв запроса во время рестарта)
+        // восстанавливается здесь, до сравнения с лентой.
+        $this->reconcilePendingUpdate();
+        $this->getConfig();
         $update_url = $this->getUpdateURL();
         $commit_url = defined('PROJECT_COMMIT_URL') ? PROJECT_COMMIT_URL : '';
         $current_branch = $this->normalizeUpdateBranch($this->config['LATEST_CURR_BRANCH'] ?? '');
         $update_branch = $this->normalizeUpdateBranch($this->getUpdateBranch($update_url));
         $current_version = $this->normalizeCommitId($this->config['LATEST_UPDATED_ID'] ?? '');
+        if ($current_branch === '' && $current_version !== '') {
+            $current_branch = $update_branch;
+        }
         $result = array(
             'needUpdate' => '0',
             'currBranch' => $current_branch,
@@ -1311,32 +1578,14 @@ class saverestore extends module
         if ($feed_url === '') {
             return $result;
         }
-        $options = array(CURLOPT_HTTPHEADER => array('Accept: application/xml'));
-        $feed = getURL($feed_url, $force ? 0 : 3 * 24 * 60 * 60, '', '', false, $options);
-        if ($feed === '') {
+        $entries = $this->getUpdateFeedEntries($feed_url, $force ? 0 : self::UPDATE_FEED_TTL);
+        if ($entries === array()) {
             return $result;
         }
-        $tree = GetXMLTree($feed);
-        if (!is_array($tree)) {
-            return $result;
-        }
-        $data = XMLTreeToArray($tree);
-        $entries = $data['feed']['entry'] ?? array();
-        if (isset($entries['id'])) {
-            $entries = array($entries);
-        }
-        if (!is_array($entries) || $entries === array()) {
-            return $result;
-        }
-        $latest = reset($entries);
-        $latest_version = $this->normalizeCommitId($latest['id']['textvalue'] ?? '');
+        $latest_version = $this->getUpdateEntryCommit(reset($entries));
         if ($latest_version === '') {
             return $result;
         }
-        if ($current_branch === '' && $current_version !== '') {
-            $current_branch = $update_branch;
-        }
-        $result['currBranch'] = $current_branch;
         $result['latest_version'] = $latest_version;
         $result['needUpdate'] = ($latest_version === $current_version && $current_branch === $update_branch) ? '0' : '1';
         return $result;
@@ -1367,8 +1616,8 @@ class saverestore extends module
             return str_replace($m[0], '/-/commits/' . $m[1] . '.atom', $update_url);
         }
 
-        if (preg_match('#/archive/(?:refs/heads/)?([^/]+)\.tar\.gz$#i', $path, $m)) {
-            return preg_replace('#/archive/(?:refs/heads/)?[^/]+\.tar\.gz#i', '/commits/' . $m[1] . '.atom', $update_url);
+        if (preg_match('#/archive/(?:refs/(?:heads|tags)/)?([^/]+)\.tar\.gz$#i', $path, $m)) {
+            return preg_replace('#/archive/(?:refs/(?:heads|tags)/)?[^/]+\.tar\.gz#i', '/commits/' . $m[1] . '.atom', $update_url);
         }
 
         return str_replace(array('/archive/', '.tar.gz'), array('/commits/', '.atom'), $update_url);
@@ -1383,15 +1632,28 @@ class saverestore extends module
             return $m[1];
         }
 
-        if (preg_match('#/archive/(?:refs/heads/)?([^/]+)\.tar\.gz$#i', $path, $m)) {
+        if (preg_match('#/archive/(?:refs/(?:heads|tags)/)?([^/]+)\.tar\.gz$#i', $path, $m)) {
             return $m[1];
         }
 
         return str_replace('.tar.gz', '', basename($path));
     }
 
+    /**
+     * Ссылка на архив ровно одного коммита.
+     *
+     * Скачивать ветку целиком нельзя: пока идёт запрос, ветка уже может
+     * уехать вперёд, и записанный из ленты коммит перестаёт соответствовать
+     * установленным файлам. Пустая строка означает «источник не умеет
+     * отдавать архив по коммиту» — тогда обновление начинать нельзя.
+     * 2026-10-23 — вместо возврата исходного URL.
+     */
     function getArchiveURLForCommit($update_url, $commit)
     {
+        $commit = trim((string)$commit);
+        if ($commit === '') {
+            return '';
+        }
         $url_info = parse_url($update_url);
         $path = isset($url_info['path']) ? $url_info['path'] : $update_url;
 
@@ -1403,11 +1665,11 @@ class saverestore extends module
             return str_replace($m[0], '/-/archive/' . $commit . '/' . $archive_name . '.tar.gz', $update_url);
         }
 
-        if (preg_match('#/archive/(?:refs/heads/)?[^/]+\.tar\.gz#i', $path, $m)) {
+        if (preg_match('#/archive/(?:refs/(?:heads|tags)/)?[^/]+\.tar\.gz#i', $path, $m)) {
             return str_replace($m[0], '/archive/' . $commit . '.tar.gz', $update_url);
         }
 
-        return $update_url;
+        return '';
     }
 
     /**
@@ -1442,6 +1704,31 @@ class saverestore extends module
             @mkdir(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore', 0777);
         }
 
+        // Сначала фиксируем точный коммит, который собираемся установить:
+        // архив скачивается по нему, поэтому записанная версия не может
+        // разойтись с содержимым файлов.
+        $target = $this->resolveUpdateTarget(0);
+        if ($target['commit'] === '') {
+            // Свежая лента недоступна — пробуем кэш, но только чтобы не
+            // терять обновление из-за временного сбоя сети.
+            $target = $this->resolveUpdateTarget(self::UPDATE_FEED_TTL);
+        }
+        $download_url = $target['commit'] !== '' ? $this->getArchiveURLForCommit($url, $target['commit']) : '';
+        if ($target['commit'] === '' || $download_url === '') {
+            $message = $target['commit'] === ''
+                ? 'Не удалось прочитать ленту коммитов: проверьте GIT_URL/MASTER_UPDATE_URL и доступность хостинга. Обновление не начато.'
+                : 'Источник обновлений не отдаёт архив по конкретному коммиту. Обновление не начато, чтобы не записывать неизвестную версию.';
+            DebMes('System update: ' . $message, 'restore', 'error');
+            if ($iframe) {
+                echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-remove-sign"></i> ' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</div>', 'red');
+                return 0;
+            }
+            $this->redirect("?err_msg=" . urlencode($message));
+        }
+        $target['download_url'] = $download_url;
+        $target['branch'] = $this->normalizeUpdateBranch($target['branch']);
+        DebMes('System update: target ' . $target['branch'] . '_' . $target['commit'] . ' (' . $download_url . ')', 'restore');
+
         if (!$this->backupDatabaseBeforeSystemUpdate($iframe)) {
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> Cannot create mandatory database backup. Update stopped.</div>', 'red');
@@ -1461,22 +1748,50 @@ class saverestore extends module
         }
 
         if ($iframe) {
-            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-chevron-right"></i> ' . LANG_UPDATEARHIVE_DONE . ' ' . $url . '</div>');
+            echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-chevron-right"></i> ' . LANG_UPDATEARHIVE_DONE . ' ' . $download_url . '</div>');
         }
 
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_URL, $download_url);
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_FILE, $f);
         $incoming = curl_exec($ch);
+        $download_code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 
         curl_close($ch);
         @fclose($f);
 
-        if (file_exists($filename)) {
+        if (
+            $incoming !== false
+            && ($download_code === 0 || ($download_code >= 200 && $download_code < 400))
+            && file_exists($filename)
+            && filesize($filename) > 0
+        ) {
+
+            // Отпечаток и pending-файл появляются до замены файлов: если
+            // запрос оборвётся во время рестарта, версию можно будет
+            // восстановить, а подменённый master.tgz — отвергнуть.
+            $target['archive_sha1'] = $this->archiveFingerprint($filename);
+            $this->target_update = $target;
+            $out['LATEST_ID'] = $target['commit'];
+            $out['UPDATE_CURR_BRANCH'] = $target['branch'];
+            $pending_written = $this->writePendingUpdate(array(
+                'status' => 'downloaded',
+                'commit' => $target['commit'],
+                'branch' => $target['branch'],
+                'update_url' => $url,
+                'download_url' => $download_url,
+                'archive' => basename($filename),
+                'archive_sha1' => $target['archive_sha1'],
+                'created_at' => date('c'),
+            ));
+            if (!$pending_written) {
+                DebMes('System update: cannot persist the pending target in ' . $this->getPendingUpdateFile(), 'restore', 'warning');
+            }
+            DebMes('System update: archive pinned to ' . $target['commit'], 'restore');
 
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
@@ -1505,11 +1820,13 @@ class saverestore extends module
 
         } else {
 
+            @unlink($filename);
+            DebMes('System update: archive download failed (' . $download_code . ') ' . $download_url, 'restore', 'error');
             if ($iframe) {
                 echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_ERROR_DOWNLOAD . '</div>', 'red');
-                exit;
+                return 0;
             } else {
-                $this->redirect("?err_msg=" . urlencode(LANG_UPDATEBACKUP_ERROR_DOWNLOAD . ' ' . $url));
+                $this->redirect("?err_msg=" . urlencode(LANG_UPDATEBACKUP_ERROR_DOWNLOAD . ' ' . $download_url));
             }
         }
     }
@@ -2314,6 +2631,10 @@ class saverestore extends module
             $archive_path = $restore_path != '' && is_file($restore_path)
                 ? $restore_path
                 : $this->getSaveRestoreDirectory() . DIRECTORY_SEPARATOR . $file;
+            // Коммит берём из pending-файла и сверяем с отпечатком архива:
+            // это тот же архив, который скачал getLatest(), а не любой
+            // master.tgz, подложенный в каталог.
+            $update_target = $this->resolveAppliedUpdateTarget($is_system_update, $archive_path);
             $error_message = '';
             $result = $this->extractTarArchive($archive_path, DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', $error_message);
 
@@ -2454,9 +2775,17 @@ class saverestore extends module
 
             $update_from = '';
             $update_to = '';
+            $update_branch = '';
             if ($is_system_update) {
                 $update_from = $this->normalizeCommitId($this->config['LATEST_UPDATED_ID'] ?? '');
-                $update_to = isset($out['LATEST_ID']) ? $this->normalizeCommitId($out['LATEST_ID']) : '';
+                $update_to = $update_target !== null ? $update_target['commit'] : '';
+                $update_branch = $update_target !== null ? $update_target['branch'] : '';
+                if ($update_branch === '') {
+                    $update_branch = $this->normalizeUpdateBranch($this->getUpdateBranch($this->getUpdateURL()));
+                }
+                if ($update_to === '') {
+                    DebMes('System update: installed commit is unknown, version will not be recorded', 'restore', 'warning');
+                }
                 try {
                     \MajorDoMo\Core\Events\SystemEvents::systemUpdateStarted($update_from, $update_to);
                 } catch (\Throwable $error) {
@@ -2518,6 +2847,13 @@ class saverestore extends module
                     }
                 }
 
+                if ($is_system_update && $update_target !== null) {
+                    // Файлы и зависимости уже на месте. Если запрос оборвётся
+                    // во время рестарта, следующий заход восстановит версию
+                    // из этого статуса.
+                    $this->updatePendingUpdate(array('status' => 'applied', 'applied_at' => date('c')));
+                }
+
                 if ($iframe) {
                     echonow('<div><i style="font-size: 7pt;" class="glyphicon glyphicon-usd"></i> ' . LANG_UPDATEBACKUP_DONE . '</div>');
                 }
@@ -2543,6 +2879,13 @@ class saverestore extends module
             } finally {
                 if ($updateError !== null) {
                     if ($is_system_update) {
+                        if ($update_target !== null) {
+                            $this->updatePendingUpdate(array(
+                                'status' => 'failed',
+                                'error' => $updateError->getMessage(),
+                                'failed_at' => date('c'),
+                            ));
+                        }
                         if ($maintenance !== null) {
                             try { $maintenance->markFailed($updateError->getMessage()); }
                             catch (\Throwable $maintenanceError) { DebMes('Cannot keep maintenance mode: ' . $maintenanceError->getMessage(), 'restore', 'error'); }
@@ -2566,7 +2909,7 @@ class saverestore extends module
                     // Внутри cycle.php нельзя restart'ить свою cgroup.
                     // Версию фиксируем только после установки зависимостей,
                     // миграций и подготовки reload — не в середине процесса.
-                    $this->commitSystemUpdate($out, $update_from, $update_to, $deployment);
+                    $this->commitSystemUpdate($update_from, $update_to, $update_branch, $deployment);
                     if ($cycleManager !== null) $cycleManager->requestReload();
                     if ($maintenance !== null) $maintenance->disable();
                 } else {
@@ -2574,6 +2917,13 @@ class saverestore extends module
                     if (!$restart['ok']) {
                         $message = 'Система обновлена, но служба не перезапустилась: '
                             . trim((string)($restart['err'] ?: $restart['out']));
+                        if ($update_target !== null) {
+                            $this->updatePendingUpdate(array(
+                                'status' => 'failed',
+                                'error' => $message,
+                                'failed_at' => date('c'),
+                            ));
+                        }
                         if ($maintenance !== null) {
                             try { $maintenance->markFailed($message); }
                             catch (\Throwable $error) { DebMes('Cannot keep maintenance mode: ' . $error->getMessage(), 'restore', 'error'); }
@@ -2594,7 +2944,7 @@ class saverestore extends module
                         $this->redirect("?err_msg=" . urlencode($message));
                     }
                     // Служба уже перезапущена: только теперь фиксируем версию.
-                    $this->commitSystemUpdate($out, $update_from, $update_to, $deployment);
+                    $this->commitSystemUpdate($update_from, $update_to, $update_branch, $deployment);
                     if ($maintenance !== null) $maintenance->disable();
                 }
             }
@@ -2900,83 +3250,84 @@ class saverestore extends module
         if (!$delay) $delay = 1;
         DebMes("Starting auto update ($delay)", 'auto_update');
 
-        $update_url = $this->getUpdateURL();
-
-        $github_feed_url = $this->getUpdateFeedURL($update_url);
-        $github_feed = '';
-        if ($github_feed_url != '') {
-            $github_feed = getURL($github_feed_url, 30 * 60);
+        $target = $this->resolveUpdateTarget(self::UPDATE_FEED_TTL);
+        if ($target['commit'] == '') {
+            DebMes('Auto-update: cannot read the update feed, skipped', 'auto_update', 'warning');
+            return 0;
         }
 
-        if ($github_feed != '') {
-            $tmp = GetXMLTree($github_feed);
-            if (is_array($tmp)) {
-                $data = XMLTreeToArray($tmp);
-                $items = $data['feed']['entry'];
-            } else {
-                $items = false;
-            }
-            if (is_array($items)) {
-                $latest_id = $this->normalizeCommitId($items[0]['id']['textvalue']);
-                $latest_tm = strtotime($items[0]['updated']['textvalue']);
-                //$latest_id = 'force_new_id';
-                $current_latest_id = isset($this->config['LATEST_UPDATED_ID']) ? $this->normalizeCommitId($this->config['LATEST_UPDATED_ID']) : '';
-                if ($latest_id && ($latest_id == $current_latest_id)) {
-                    DebMes("Already updated to the latest version ($latest_id)", 'auto_update');
-                    return 0;
-                } else {
-                    DebMes("Need to update to $latest_id on top of " . $current_latest_id, 'auto_update');
-                }
-                $current_delay = round((time() - $latest_tm) / (24 * 60 * 60), 2);
-                if ($latest_tm && $current_delay < $delay) {
-                    DebMes("Update is too fresh ($current_delay vs $delay)", 'auto_update');
-                    return 0;
-                }
-                // ok, downloading update
-                set_time_limit(0);
-                // updating main system
-                logAction('system_update', 'Auto-update');
-                $out = array();
-                $res = $this->admin($out);
-                DebMes("Getting latest version and making backup", 'auto_update');
-                $res = $this->getLatest($out, 1);
-                if (!$res) {
-                    DebMes('System update download failed', 'auto_update', 'error');
-                    return false;
-                }
-                global $restore;
-                global $folder;
-                $restore = 'master.tgz';
-                $folder = '';
-                DebMes("Applying update from " . basename($this->url), 'auto_update');
-                $res = $this->upload($out, 1);
-                if (!$res) {
-                    DebMes('System update was not applied', 'auto_update', 'error');
-                    return false;
-                }
-                removeTree(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', 1);
-                // now downloading updates for modules
-                if ($this->config['UPDATE_AUTO_PLUGINS']) {
-                    DebMes("Getting updates for modules", 'auto_update');
-                    global $mode;
-                    $mode = '';
-                    $_GET['op'] = 'iframe';
-                    $out = array();
-                    include_once(DIR_MODULES . "market/market.class.php");
-                    $mkt = new market();
-                    $mkt->category_id = 'all';
-                    $mkt->admin($out);
-                    logAction('market_update', 'Auto-update');
-                    $res = $mkt->updateAll($mkt->can_be_updated_new, 1);
-                    if ($res) {
-                        $mkt->removeTree(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', 1);
-                    }
-                }
-                DebMes("Update installed, need to reboot", 'auto_update');
-                // Перезапуск/reload выполняет upload(): система уже знает,
-                // запущен ли updater внутри cycle.php или в веб-запросе.
+        $latest_id = $target['commit'];
+        $latest_tm = $target['updated_ts'];
+        $this->reconcilePendingUpdate();
+        $this->getConfig();
+        $current_latest_id = isset($this->config['LATEST_UPDATED_ID']) ? $this->normalizeCommitId($this->config['LATEST_UPDATED_ID']) : '';
+        if ($latest_id == $current_latest_id) {
+            DebMes("Already updated to the latest version ($latest_id)", 'auto_update');
+            return 0;
+        }
+        DebMes("Need to update to $latest_id on top of " . $current_latest_id, 'auto_update');
+
+        $current_delay = round((time() - $latest_tm) / (24 * 60 * 60), 2);
+        if ($latest_tm && $current_delay < $delay) {
+            DebMes("Update is too fresh ($current_delay vs $delay)", 'auto_update');
+            return 0;
+        }
+
+        // ok, downloading update
+        set_time_limit(0);
+        // updating main system
+        logAction('system_update', 'Auto-update');
+        $out = array();
+        $res = $this->admin($out);
+        DebMes("Getting latest version and making backup", 'auto_update');
+        $res = $this->getLatest($out, 1);
+        if (!$res) {
+            DebMes('System update download failed', 'auto_update', 'error');
+            return false;
+        }
+        // getLatest() берёт свежую ленту и мог выбрать коммит новее того, по
+        // которому считалась задержка. Проверяем свежий коммит ещё раз, чтобы
+        // автообновление не установило только что опубликованную версию.
+        $fresh_tm = is_array($this->target_update) ? (int)($this->target_update['updated_ts'] ?? 0) : 0;
+        if ($fresh_tm > 0) {
+            $fresh_delay = round((time() - $fresh_tm) / (24 * 60 * 60), 2);
+            if ($fresh_delay < $delay) {
+                DebMes("Fresh target is too recent ($fresh_delay vs $delay), auto-update postponed", 'auto_update');
+                return 0;
             }
         }
+        global $restore;
+        global $folder;
+        $restore = 'master.tgz';
+        $folder = '';
+        $applied_from = is_array($this->target_update) ? (string)($this->target_update['download_url'] ?? '') : '';
+        DebMes("Applying update from " . ($applied_from !== '' ? $applied_from : basename($this->url)), 'auto_update');
+        $res = $this->upload($out, 1);
+        if (!$res) {
+            DebMes('System update was not applied', 'auto_update', 'error');
+            return false;
+        }
+        removeTree(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', 1);
+        // now downloading updates for modules
+        if ($this->config['UPDATE_AUTO_PLUGINS']) {
+            DebMes("Getting updates for modules", 'auto_update');
+            global $mode;
+            $mode = '';
+            $_GET['op'] = 'iframe';
+            $out = array();
+            include_once(DIR_MODULES . "market/market.class.php");
+            $mkt = new market();
+            $mkt->category_id = 'all';
+            $mkt->admin($out);
+            logAction('market_update', 'Auto-update');
+            $res = $mkt->updateAll($mkt->can_be_updated_new, 1);
+            if ($res) {
+                $mkt->removeTree(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms/saverestore/temp', 1);
+            }
+        }
+        DebMes("Update installed, need to reboot", 'auto_update');
+        // Перезапуск/reload выполняет upload(): система уже знает,
+        // запущен ли updater внутри cycle.php или в веб-запросе.
     }
 
     function processSubscription($event_name, $details = '')

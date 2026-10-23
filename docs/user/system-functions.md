@@ -320,10 +320,12 @@ $average = getHistoryAvg('Sensor.temperature', -3600);
 
 | Сигнатура | Назначение и результат |
 | --- | --- |
-| `function getURL($url, $cache = 0, $username = '', $password = '', $background = false, $curl_options = 0)` | Выполняет HTTP GET и возвращает ответ; поддерживает кэш, авторизацию, curl_options и фоновый режим. |
+| `function getURL($url, $cache = 0, $username = '', $password = '', $background = false, $curl_options = 0)` | Выполняет HTTP GET и возвращает ответ; поддерживает кэш с валидацией ETag/Last-Modified, авторизацию, curl_options и фоновый режим. Кэш — Redis при включённом `USE_REDIS`, иначе файл в `cms/cached/http`; ошибки сети и ответы 4xx/5xx не кэшируются. |
 | `function getURLBackground($url, $cache = 0, $username = '', $password = '')` | Отправляет GET в фоне и возвращает true после вызова отправки. Это не подтверждение выполнения удалённой операции. |
-| `function postURL($url, $query = array(), $cache = 0, $username = '', $password = '', $background = false)` | Выполняет HTTP POST с данными и возвращает ответ; поддерживает кэш, авторизацию и фоновый режим. |
+| `function postURL($url, $query = array(), $cache = 0, $username = '', $password = '', $background = false)` | Выполняет HTTP POST с данными и возвращает ответ; поддерживает кэш, авторизацию и фоновый режим. Ключ кэша включает тело запроса. |
 | `function postURLBackground($url, $query = array(), $cache = 0, $username = '', $password = '')` | Отправляет POST в фоне; результат удалённой операции не возвращает. |
+| `function getURLCacheFile($url)` | Возвращает путь файловой копии GET-ответа для URL (даже если включён Redis); нужен для диагностики. |
+| `function clearURLCache($url)` | Удаляет кэш одного URL из Redis и файлового хранилища. |
 
 ### Сетевые проверки
 
@@ -546,7 +548,7 @@ $average = getHistoryAvg('Sensor.temperature', -3600);
 | `function SaveFile($filename, $data)` | Записывает файл под блокировкой; возвращает 1 при успешном открытии по legacy-контракту, иначе 0. Полноту записи отдельно не проверяет. |
 | `function UTF_Encode($str, $type)` | Legacy-преобразование кодировки с учётом типа. |
 | `function checkfile($path, $move)` | Служебная обработка файла для legacy-копирования или перемещения. |
-| `function clearCache($verbose = 0)` | Очищает файловый кэш cms/cached; это другой кэш, чем clearCacheData. |
+| `function clearCache($verbose = 0)` | Очищает cms/cached (включая HTTP-кэш в файлах и Redis); это другой кэш, чем clearCacheData. Сам HTTP-кэш — `Core::httpCache()`, см. `docs/agents/http-cache.md`. |
 | `function copyFile($src, $dst)` | Копирует файл с legacy-обработкой пути и метаданных. |
 | `function copyFiles($source, $destination, $over = 0, $patterns = 0)` | Копирует файлы между каталогами с правилами перезаписи и шаблонами. |
 | `function copyNewFile($path, $days)` | Обрабатывает копирование файлов по пути и временному ограничению через legacy-синхронизацию. |

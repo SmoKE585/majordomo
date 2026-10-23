@@ -1007,6 +1007,16 @@ function SaveFile($filename, $data)
  */
 function clearCache($verbose = 0)
 {
+    // HTTP-кэш живёт в отдельном каталоге и, при USE_REDIS, в Redis:
+    // общая очистка должна убирать и его, иначе лента обновлений и другие
+    // внешние ответы переживут «очистить кэш».
+    if (class_exists('\\MajorDoMo\\Core\\Core')) {
+        try {
+            \MajorDoMo\Core\Core::httpCache()->clear();
+        } catch (\Throwable $error) {
+            // Не мешаем остальной очистке из-за недоступного Redis.
+        }
+    }
     if ($handle = opendir(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms' . DIRECTORY_SEPARATOR . 'cached')) {
         while (false !== ($file = readdir($handle))) {
             if (is_file(DOC_ROOT . DIRECTORY_SEPARATOR . 'cms' . DIRECTORY_SEPARATOR . 'cached' . DIRECTORY_SEPARATOR . $file)) {
