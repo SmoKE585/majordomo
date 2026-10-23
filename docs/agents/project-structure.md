@@ -39,6 +39,8 @@ order: 10
 │       ├── vendor/             # браузерные библиотеки (bootstrap, jquery, fancybox)
 │       └── modules/<name>/     # CSS/JS страниц конкретного модуля
 ├── bootstrap.php               # chdir в корень приложения для public-входов
+├── deploy.sh                   # обновление системы из терминала (обёртка deploy:update)
+├── majordomo                   # единая CLI-точка входа (php majordomo)
 ├── composer.json / composer.lock # PHP-зависимости и зафиксированные версии
 ├── vendor/                     # Composer; не коммитится, вне document root
 ├── .env / .env.example         # конфигурация (.env не коммитится)
@@ -104,7 +106,8 @@ order: 10
 | `/rc/...` | 301 → `/panel/` (функция удалена) |
 
 Вне document root и недоступны по HTTP: `.env`, `config.php`, `bootstrap.php`,
-`load_settings.php`, `lib/`, `scripts/`, `packages/`, `vendor/`, `cycle.php`, `tools/`.
+`load_settings.php`, `deploy.sh`, `lib/`, `scripts/`, `packages/`, `vendor/`,
+`cycle.php`, `tools/`.
 
 Приватные подкаталоги `cms/` (`cached`, `debmes`, `modules_installed`,
 `saverestore`) закрыты в nginx; `docs/**/*.sql` и скрипты тоже.

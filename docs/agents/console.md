@@ -134,6 +134,7 @@ php majordomo list config --json
 | `maintenance:on` | включить `cms/maintenance.json`; `--reason`, `--ttl`, `--message` |
 | `maintenance:off` | выключить режим и снять `cms/cycles/deploy.hold` |
 | `maintenance:status` | состояние маркера и ошибки |
+| `deploy:update` | системное обновление без HTTP: `--check`, `--plan`, `--yes`, `--branch`, `--url`; вызывается `deploy.sh` |
 | `systemd:set` | создать unit `majordomo-<user>`; `--apply`, `--disable-old`, `--fix-owner`, `--dry-run` |
 | `systemd:give-permissions` | wrapper + sudoers, только точные действия `systemctl` |
 
@@ -142,6 +143,12 @@ php majordomo list config --json
 меняют ОС только от root; `--dry-run` доступен без root и печатает unit,
 wrapper и sudoers. Реальные команды проверяются на изолированных временных
 каталогах, а не на рабочем `/etc`.
+
+`deploy:update` использует `lib/core/Deploy/SystemUpdate` (тот же порядок
+шагов и те же артефакты, что у веб-обновления: `update.pending.json`, манифест,
+`cms/deploy/last.json`, режим обслуживания). Версию в конфиг модуля пишет не
+команда, а `saverestore::reconcilePendingUpdate()` при первом открытии панели.
+Документация — [deploy-sh.md](../deploy/deploy-sh.md).
 
 ## Пользователи и пароли
 

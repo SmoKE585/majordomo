@@ -29,9 +29,21 @@ health-check, а не копия `vendor`.
 | `lib/core/Deploy/ServiceManager.php` | пользователь сайта, PHP, unit, wrapper, `systemctl` |
 | `lib/core/Deploy/SystemdUnit.php` | рендер unit/wrapper/sudoers без записи |
 | `lib/core/Deploy/SystemdSetup.php` | установка unit и sudoers, backup конфигов ОС |
+| `lib/core/Deploy/UpdateSource.php` | Atom-лента, ветка и архив ровно одного коммита |
+| `lib/core/Deploy/SystemUpdate.php` | пайплайн без HTTP: проверки, дамп, архив, замена, зависимости, рестарт |
 | `lib/core/Maintenance/` | маркер `cms/maintenance.json`, gate и страница 503 |
 | `lib/core/Migrations/` | файловые миграции и `Migrator` |
 | `lib/core/Cycles/` | пауза обновления, hold циклов, поколения |
+
+Два входа в один и тот же порядок шагов: веб-модуль `saverestore`
+(`mode=getlatest` → `update_iframe.php`) и CLI
+`php majordomo deploy:update` (обёртка — `deploy.sh` в корне). Второй нужен,
+когда HTTP-запрос не доживает до конца обновления. Артефакты общие:
+`cms/saverestore/update.pending.json`, `cms/saverestore/system_update_manifest.json`,
+`cms/deploy/last.json`, `cms/maintenance.json`, `cms/cycles/deploy.hold`.
+CLI не пишет версию в конфиг модуля сам: pending-файл со статусом `applied`
+восстанавливает запись при первом открытии панели (`reconcilePendingUpdate()`).
+Подробности — [deploy.sh](../deploy/deploy-sh.md).
 
 ## Порядок
 

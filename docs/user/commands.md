@@ -145,6 +145,21 @@ php majordomo migrations:run
 `migrations:run` применяет отсутствующие версии. `--pending` только выводит
 список.
 
+Полное обновление системы без панели:
+
+```bash
+php majordomo deploy:update --check
+php majordomo deploy:update --plan
+php majordomo deploy:update --yes
+php majordomo deploy:update --yes --branch=alpha --json
+```
+
+`deploy:update` повторяет кнопку «Обновить систему»: проверки, обязательный дамп
+базы, архив ровно того коммита, который сейчас в ленте, распаковка, режим
+обслуживания, пауза циклов, замена файлов, `composer install`, сборка фронтенда,
+миграции и перезапуск службы. В корне проекта для этого есть обёртка
+[`deploy.sh`](../deploy/deploy-sh.md) с шагами, подтверждением и журналом.
+
 Настройка systemd-службы (один раз, от root):
 
 ```bash

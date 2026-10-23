@@ -8,6 +8,7 @@ use MajorDoMo\Core\Console\Commands;
  * Единый реестр CLI и обработка вывода команд.
  *
  * Изменения:
+ * 2026-10-23 — обновление системы из терминала (`deploy:update`) для deploy.sh.
  * 2026-10-23 — сборка индекса знаний ИИ-помощника.
  * 2026-10-23 — зарегистрирована диагностика опционального Qdrant модуля ИИ.
  */
@@ -33,6 +34,7 @@ final class Application
             new Commands\CyclesDisableCommand(), new Commands\CyclesEnableCommand(), new Commands\SystemReloadCommand(),
             new Commands\MigrationsStatusCommand(), new Commands\MigrationsRunCommand(),
             new Commands\MaintenanceOnCommand(), new Commands\MaintenanceOffCommand(), new Commands\MaintenanceStatusCommand(),
+            new Commands\DeployUpdateCommand(),
             new Commands\SystemdSetCommand(), new Commands\SystemdGivePermissionsCommand(),
             new Commands\LogsTailCommand(),
             new Commands\ConfigDoctorCommand(), new Commands\ConfigCacheCommand(), new Commands\ConfigClearCommand(),
