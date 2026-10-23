@@ -53,7 +53,7 @@
         var initialActions = JSON.parse(chat.dataset.actions || '[]');
         ai.showActions(actions, initialActions);
         ai.bindMessages(messages);
-        function scrollDown() { messages.scrollTop = messages.scrollHeight; }
+        function scrollDown() { ai.scrollToBottom(messages); }
         function setBusy(value, text) {
             busy = value;
             prompt.disabled = value || !select.value;
@@ -131,6 +131,32 @@
         async function sendPrompt(text) {
             if (busy || !select.value) return;
             var assistant, timeline, accumulated = '', terminal = false, failed = false;
+            function receive(name, data) {
+                    timeline.event(name, data);
+                    if (name === 'run') runId = data.run_id || '';
+                    if (name === 'status' && data.text) status.textContent = data.text;
+                    if (name === 'token') {
+                        accumulated += data.text || ''; assistant.content.textContent = accumulated;
+                    } else if (name === 'done') {
+                        terminal = true;
+                        if (typeof data.content === 'string') accumulated = data.content;
+                        if (data.html) assistant.content.innerHTML = data.html;
+                        var source = el('span', '', accumulated || assistant.content.textContent);
+                        source.hidden = true;
+                        source.dataset.aiCopySource = ''; assistant.body.appendChild(source);
+                        ai.showActions(actions, data.actions);
+                        ai.showSources(assistant.body, data.sources);
+                        ai.bindMessages(messages);
+                        status.textContent = data.status === 'approval' ? 'Ожидается подтверждение действия'
+                            : data.status === 'cancelled' ? 'Остановлено. Можно отправить новый запрос.' : 'Ответ получен';
+                    } else if (name === 'error') {
+                        terminal = true; failed = true;
+                        var alert = el('div', 'md-alert md-alert--danger', data.message || 'Ошибка ответа.');
+                        alert.setAttribute('role', 'alert'); assistant.body.appendChild(alert);
+                        status.textContent = 'Запрос завершился ошибкой. Можно повторить.';
+                    }
+                    if (['tool', 'tool_result', 'token', 'done', 'error'].includes(name)) scrollDown();
+            }
             try {
                 if (!dialogId && !await createDialog()) return;
                 if (closed) return;
@@ -139,34 +165,17 @@
                 timeline = ai.progress(assistant.body);
                 prompt.value = ''; recovered.hidden = true;
                 setBusy(true, 'Помощник готовит ответ…');
+                scrollDown();
                 controller = new AbortController(); runId = ai.newRunId();
                 var response = await ai.request('send', {dialog_id: dialogId, agent_id: select.value, prompt: text, request_id: runId}, controller.signal, true);
-                await ai.consume(response, function (name, data) {
-                    timeline.event(name, data);
-                    if (name === 'run') runId = data.run_id || '';
-                    if (name === 'status' && data.text) status.textContent = data.text;
-                    if (name === 'token') {
-                        accumulated += data.text || ''; assistant.content.textContent = accumulated; scrollDown();
-                    } else if (name === 'done') {
-                        terminal = true;
-                        if (data.html) assistant.content.innerHTML = data.html;
-                        var source = el('span', '', accumulated || assistant.content.textContent);
-                        source.hidden = true;
-                        source.dataset.aiCopySource = ''; assistant.body.appendChild(source);
-                        ai.showActions(actions, data.actions);
-                        ai.showSources(assistant.body, data.sources);
-                        ai.bindMessages(messages);
-                        status.textContent = data.status === 'approval' ? 'Ожидается подтверждение действия' : 'Ответ получен';
-                    } else if (name === 'error') {
-                        terminal = true; failed = true;
-                        var alert = el('div', 'md-alert md-alert--danger', data.message || 'Ошибка ответа.');
-                        alert.setAttribute('role', 'alert'); assistant.body.appendChild(alert);
-                        status.textContent = 'Запрос завершился ошибкой. Можно повторить.';
-                    }
-                });
+                await ai.consume(response, receive);
             } catch (error) {
+                if (error.name !== 'AbortError' && !terminal && controller && assistant && !closed) {
+                    try { await ai.recoverRun(dialogId, runId, controller.signal, receive); return; }
+                    catch (recoveryError) { error = recoveryError; }
+                }
                 failed = error.name !== 'AbortError';
-                if (timeline) timeline.finish(failed);
+                if (timeline) timeline.finish(failed, !terminal && !failed ? 'Остановлено' : '');
                 if (!failed) status.textContent = 'Остановлено. Можно отправить новый запрос.';
                 if (error.name !== 'AbortError') {
                     failure(ai.errorText(error));
@@ -178,7 +187,7 @@
                     catch (cancelError) { failure(ai.errorText(error) + ' Не удалось подтвердить остановку. Кнопка «Остановить» останется доступна.'); }
                 }
             } finally {
-                if (timeline) timeline.finish(failed);
+                if (timeline) timeline.finish(failed, !terminal && !failed ? 'Остановлено' : '');
                 controller = null;
                 setBusy(false, failed ? 'Проверьте сообщение об ошибке выше.' : status.textContent);
                 if (dialogId && !terminal && !closed) {

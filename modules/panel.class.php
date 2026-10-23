@@ -7,6 +7,7 @@
  * Оболочка админки: навигация, уведомления и содержимое модулей.
  *
  * Изменения:
+ * 2026-10-23 — обычный переход в модуль ИИ-помощника возвращён в категории меню.
  * 2026-10-23 — ИИ-помощник вынесен отдельной карточкой в меню и блоком на главной.
  * 2026-10-23 — иконка ИИ-помощника в меню установленных модулей.
  * 2026-10-22 — данные профиля (имя, инициалы, ссылка) для блока внизу меню.
@@ -221,7 +222,6 @@ class panel extends module
         $sqlQuery = "SELECT *
               FROM project_modules
              WHERE (`HIDDEN`='0' OR NAME='control_modules')
-               AND NAME<>'ai_assistant'
              ORDER BY FIELD(CATEGORY, '<#LANG_SECTION_OBJECTS#>', '<#LANG_SECTION_APPLICATIONS#>',
                             '<#LANG_SECTION_SETTINGS#>', '<#LANG_SECTION_SYSTEM#>', '<#LANG_SECTION_HELP#>'),
                       FIELD(`NAME`,'classes','settings','system_errors','xray','saverestore','market') DESC,
@@ -229,7 +229,7 @@ class panel extends module
 
         $modules = SQLSelect($sqlQuery);
 
-        // 2026-10-23 — ИИ-помощник вынесен отдельной заметной карточкой над категориями.
+        // Быстрый чат доступен над категориями, сам модуль — в обычном списке.
         $aiModule = SQLSelectOne("SELECT * FROM project_modules WHERE NAME='ai_assistant' AND HIDDEN=0");
         if (!empty($aiModule['ID'])) {
             $out['AI_ASSISTANT_LINK'] = ROOTHTML . 'panel/ai_assistant.html';

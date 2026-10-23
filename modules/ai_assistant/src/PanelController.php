@@ -16,6 +16,7 @@ use Throwable;
  * Контроллер раздела «ИИ-помощник»: настройки, чат и служебные AJAX-операции.
  *
  * Изменения:
+ * 2026-10-23 — восстановление результата по ID запуска после обрыва SSE.
  * 2026-10-23 — компактный drawer, состояние запуска, подтверждения и защита аварийного завершения.
  * 2026-10-23 — единый экран вместо заглушки: провайдеры, модели, агенты,
  * знания, диагностика, чат с потоковым ответом и интеграция редактора.
@@ -566,7 +567,27 @@ final class PanelController
 
     private function ajaxRunStatus(): array
     {
-        return array('run' => $this->chatStore->latestRun((int)$this->post('dialog_id'), $this->userId));
+        $dialogId = (int)$this->post('dialog_id');
+        $latest = $this->chatStore->latestRun($dialogId, $this->userId);
+        $runId = $this->post('run_id');
+        $run = $runId === '' ? $latest : $this->chatStore->run($runId, $this->userId);
+        if ($run !== null && (int)$run['DIALOG_ID'] !== $dialogId) throw new InvalidArgumentException('Запуск не принадлежит диалогу.');
+        $result = null;
+        if ($run !== null && $run['STATUS'] !== 'running') {
+            $message = $this->chatStore->result((string)$run['ID'], $this->userId);
+            if ($message !== null) {
+                $meta = $message['META'];
+                $actionIds = $meta['actions'] ?? array();
+                $actions = $actionIds === array() ? array() : array_values(array_filter(
+                    $this->actions()->forDialog($dialogId, $this->userId),
+                    static fn(array $action): bool => in_array($action['id'], $actionIds, true)));
+                $result = array('status' => $run['STATUS'], 'message' => $message['ID'],
+                    'content' => $message['CONTENT'], 'html' => AgentRunner::render($message['CONTENT']),
+                    'sources' => array_values($meta['sources'] ?? array()), 'actions' => $actions);
+                if ($actionIds !== array() && $run['STATUS'] === 'done') $result['status'] = 'approval';
+            }
+        }
+        return array('run' => $run, 'result' => $result);
     }
 
     private function actions(): ActionRequests
@@ -612,11 +633,38 @@ final class PanelController
             $this->chatStore->updateContext($dialogId, $this->userId, $context);
         }
         $runId = $this->chatStore->beginRun($dialogId, $this->userId, $agentId, $prompt, $this->post('request_id'));
+        $started = microtime(true);
+        $phase = 'starting';
+        $toolCalls = 0;
+        // Резерв нужен, чтобы записать понятную причину даже при исчерпании памяти.
+        $shutdownReserve = str_repeat(' ', 524288);
         // PHP может завершиться без catch (лимит времени, fatal). Запуск обязан
         // получить конечный статус; клиент сможет увидеть его отдельным запросом.
-        register_shutdown_function(function () use ($runId): void {
+        register_shutdown_function(function () use ($runId, $started, &$phase, &$toolCalls, &$shutdownReserve): void {
+            $shutdownReserve = '';
             try {
-                $this->chatStore->finishRun($runId, 'error', 'Поток ответа прерван сервером. Повторите запрос; подробности — в журнале PHP.');
+                $run = $this->chatStore->run($runId, $this->userId);
+                if ($run['STATUS'] !== 'running') return;
+                $lastError = error_get_last();
+                $reason = 'server_interrupted';
+                $message = 'Процесс помощника прерван сервером. Проверьте журнал PHP и лимит request_terminate_timeout PHP-FPM.';
+                if ($lastError !== null && in_array($lastError['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR), true)) {
+                    if (str_contains($lastError['message'], 'Allowed memory size')) {
+                        $reason = 'php_memory_limit';
+                        $message = 'Достигнут лимит памяти PHP. Проверьте memory_limit и журнал PHP.';
+                    } elseif (str_contains($lastError['message'], 'Maximum execution time')) {
+                        $reason = 'php_time_limit';
+                        $message = 'Достигнут лимит времени PHP. Проверьте max_execution_time и журнал PHP.';
+                    } else {
+                        $reason = 'php_fatal';
+                        $message = 'PHP аварийно завершил запрос помощника. Подробности — в журнале PHP.';
+                    }
+                }
+                error_log('MajorDoMo AI shutdown: ' . json_encode(array('run_id' => $runId, 'reason' => $reason,
+                    'phase' => $phase, 'tool_calls' => $toolCalls, 'duration_ms' => (int)((microtime(true) - $started) * 1000),
+                    'peak_memory' => memory_get_peak_usage(true), 'php_error_type' => $lastError['type'] ?? null)));
+                $this->chatStore->finishRun($runId, 'error', $message);
+                if ($phase !== 'starting') $this->sse(array('type' => 'error', 'reason' => $reason, 'message' => $message));
             } catch (Throwable $failure) {
                 error_log('MajorDoMo AI shutdown: ' . get_class($failure));
             }
@@ -632,7 +680,9 @@ final class PanelController
         set_time_limit(max(30, (int)$agent['TIMEOUT'] + 15));
         $this->sse(array('type' => 'run', 'run_id' => $runId, 'dialog_id' => $dialogId));
         try {
-            $this->runner->run($runId, $this->userId, function (array $event): void {
+            $this->runner->run($runId, $this->userId, function (array $event) use (&$phase, &$toolCalls): void {
+                if ($event['type'] !== 'heartbeat') $phase = (string)$event['type'];
+                if ($event['type'] === 'tool') $toolCalls++;
                 $this->sse($event);
             });
         } catch (Throwable $failure) {

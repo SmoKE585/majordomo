@@ -70,7 +70,7 @@ $action = $isNew ? $url('/agents/add') : $url('/agents/' . (int)$record['ID']);
 
         <div class="md-ui-form-grid">
             <?= MDJUI::input(array('name' => 'max_steps', 'type' => 'number', 'label' => 'Лимит шагов', 'value' => $record['MAX_STEPS'],
-                'min' => 1, 'max' => 32, 'required' => true, 'description' => 'Вызовы инструментов и шаги ответа.')) ?>
+                'min' => 0, 'required' => true, 'description' => '0 — без ограничения. Считаются вызовы инструментов; анализ и вывод ответа не расходуют шаги.')) ?>
             <?= MDJUI::input(array('name' => 'timeout', 'type' => 'number', 'label' => 'Таймаут, секунд', 'value' => $record['TIMEOUT'],
                 'min' => 1, 'max' => 600, 'required' => true)) ?>
         </div>

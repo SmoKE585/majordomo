@@ -1,4 +1,5 @@
 /*
+ * 2026-10-23 — прокрутка drawer вслед за этапами и частями ответа.
  * 2026-10-23 — ИИ-помощник в редакторе кода: один drawer, вставка одной
  * отменяемой операцией, проверка конфликта и отсутствие автосохранения формы.
  */
@@ -157,9 +158,33 @@
             var content = el('div', 'md-prose'); panel.answer.appendChild(content);
             var actions = el('div', 'md-ai-actions'); panel.answer.appendChild(actions);
             var terminal = false, failed = false, accumulated = '';
+            var scroller = panel.root.closest('.md-drawer__body');
             setBusy(true, 'Помощник готовит ответ…');
+            ai.scrollToBottom(scroller);
             panel.runId = ai.newRunId();
             panel.controller = new AbortController();
+            function receive(name, data) {
+                    timeline.event(name, data);
+                    if (name === 'run') panel.runId = data.run_id || '';
+                    else if (name === 'token') { accumulated += data.text || ''; content.textContent = accumulated; }
+                    else if (name === 'status' && data.text) panel.status.textContent = data.text;
+                    else if (name === 'done') {
+                        terminal = true;
+                        // Сохраняем этапы и вопрос при замене текста готовой разметкой.
+                        if (data.html) content.innerHTML = data.html;
+                        bindCode(content);
+                        ai.showActions(actions, data.actions);
+                        ai.showSources(content, data.sources);
+                        panel.status.textContent = data.status === 'approval' ? 'Подтвердите действие ниже.'
+                            : data.status === 'cancelled' ? 'Остановлено пользователем.' : 'Проверьте ответ и вставьте код.';
+                    } else if (name === 'error') {
+                        terminal = true; failed = true;
+                        var alert = el('div', 'md-alert md-alert--danger', data.message || 'Ошибка ответа.');
+                        alert.setAttribute('role', 'alert'); panel.answer.appendChild(alert);
+                        panel.status.textContent = 'Запрос завершился ошибкой. Можно повторить.';
+                    }
+                    if (['tool', 'tool_result', 'token', 'done', 'error'].includes(name)) ai.scrollToBottom(scroller);
+            }
             try {
                 if (!panel.dialogId) {
                     var created = await api('dialog_create', {agent_id: panel.select.value, context_type: 'editor',
@@ -169,27 +194,12 @@
                 if (panel.closed) return;
                 var response = await ai.request('send', {dialog_id: panel.dialogId, agent_id: panel.select.value,
                     prompt: prompt, context: JSON.stringify(freshContext), request_id: panel.runId}, panel.controller.signal, true);
-                await ai.consume(response, function (name, data) {
-                    timeline.event(name, data);
-                    if (name === 'run') panel.runId = data.run_id || '';
-                    else if (name === 'token') { accumulated += data.text || ''; content.textContent = accumulated; }
-                    else if (name === 'status' && data.text) panel.status.textContent = data.text;
-                    else if (name === 'done') {
-                        terminal = true;
-                        // Сохраняем этапы и вопрос при замене текста готовой разметкой.
-                        content.innerHTML = data.html || '';
-                        bindCode(content);
-                        ai.showActions(actions, data.actions);
-                        ai.showSources(content, data.sources);
-                        panel.status.textContent = data.status === 'approval' ? 'Подтвердите действие ниже.' : 'Проверьте ответ и вставьте код.';
-                    } else if (name === 'error') {
-                        terminal = true; failed = true;
-                        var alert = el('div', 'md-alert md-alert--danger', data.message || 'Ошибка ответа.');
-                        alert.setAttribute('role', 'alert'); panel.answer.appendChild(alert);
-                        panel.status.textContent = 'Запрос завершился ошибкой. Можно повторить.';
-                    }
-                });
+                await ai.consume(response, receive);
             } catch (error) {
+                if (error.name !== 'AbortError' && !terminal && panel.dialogId && !panel.closed) {
+                    try { await ai.recoverRun(panel.dialogId, panel.runId, panel.controller.signal, receive); return; }
+                    catch (recoveryError) { error = recoveryError; }
+                }
                 failed = error.name !== 'AbortError';
                 var message = error.name === 'AbortError' ? 'Остановлено пользователем.' : ai.errorText(error);
                 if (failed) {
@@ -202,8 +212,9 @@
                     catch (cancelError) { panel.status.textContent += ' Не удалось подтвердить остановку. Откройте диалог для проверки.'; }
                 }
             } finally {
-                timeline.finish(failed);
+                timeline.finish(failed, !terminal && !failed ? 'Остановлено' : '');
                 setBusy(false);
+                ai.scrollToBottom(scroller);
                 panel.controller = null;
                 if (panel.dialogId && !terminal && !panel.closed) {
                     try {

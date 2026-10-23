@@ -13,6 +13,7 @@ use MDKnowledgeBase;
  * Ограниченное чтение Markdown через существующий реестр базы знаний.
  *
  * Изменения:
+ * 2026-10-23 — точный поиск функции внутри статьи без перебора страниц.
  * 2026-10-23 — полный текстовый поиск, источники агента и постраничное чтение.
  */
 final class KnowledgeReader
@@ -51,7 +52,7 @@ final class KnowledgeReader
             'total' => $total, 'next_offset' => $offset + $limit < $total ? $offset + $limit : null);
     }
 
-    public function read(string $id, int $offset, int $limit, array $sources): array
+    public function read(string $id, int $offset, int $limit, array $sources, string $query = ''): array
     {
         self::page($offset, $limit, 6000);
         if ($id === '' || strlen($id) > 512 || str_contains($id, '..') || str_contains($id, '\\') || !mb_check_encoding($id, 'UTF-8')) {
@@ -62,10 +63,25 @@ final class KnowledgeReader
         if ($document === null || !$this->allowed($document, $sources)) throw new InvalidArgumentException('Статья не найдена в разрешённых источниках знаний.');
         $body = SensitiveData::text($document['body']);
         $total = mb_strlen($body);
+        $match = null;
+        $nextMatch = null;
+        $query = trim($query);
+        if ($query !== '') {
+            if (mb_strlen($query) > 256 || !mb_check_encoding($query, 'UTF-8') || preg_match('/[\x00-\x1f\x7f]/', $query)) {
+                throw new InvalidArgumentException('Искомый текст должен содержать до 256 символов UTF-8.');
+            }
+            $match = $offset < $total ? mb_stripos($body, $query, $offset) : false;
+            if ($match !== false) {
+                $nextMatch = mb_stripos($body, $query, $match + mb_strlen($query));
+                $offset = max(0, $match - min(500, (int)($limit / 4)));
+            }
+        }
         return array('kind' => 'reference_data', 'id' => $document['id'], 'title' => SensitiveData::text($document['title']),
             'url' => $registry->prettyUrl($id), 'source' => $document['source_label'], 'module' => $document['module'],
-            'content' => mb_substr($body, $offset, $limit), 'offset' => $offset, 'total_characters' => $total,
-            'next_offset' => $offset + $limit < $total ? $offset + $limit : null);
+            'content' => $match === false ? '' : mb_substr($body, $offset, $limit), 'offset' => $offset, 'total_characters' => $total,
+            'query' => $query, 'found' => $match !== false, 'match_offset' => is_int($match) ? $match : null,
+            'next_match_offset' => is_int($nextMatch) ? $nextMatch : null,
+            'next_offset' => $match !== false && $offset + $limit < $total ? $offset + $limit : null);
     }
 
     private function registry(): MDKnowledgeBase

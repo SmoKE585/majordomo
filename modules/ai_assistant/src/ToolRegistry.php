@@ -12,6 +12,7 @@ use RuntimeException;
  * Реестр реализованных Neuron Tools; произвольных обработчиков из запроса нет.
  *
  * Изменения:
+ * 2026-10-23 — точный фрагмент документации через query в read_knowledge.
  * 2026-10-23 — подтверждаемое создание и пульс во время поиска знаний.
  * 2026-10-23 — объекты, свойства, ссылки, код и история установки под тем же
  * контролем прав, что и знания; у каждого инструмента фиксированная схема.
@@ -61,7 +62,7 @@ final class ToolRegistry
             'read_history' => array('object', 'property', 'days', 'page'),
             'find_scripts' => array('query', 'offset', 'limit'),
             'search_knowledge' => array('query', 'offset', 'limit'),
-            'read_knowledge' => array('id', 'offset', 'limit'),
+            'read_knowledge' => array('id', 'offset', 'limit', 'query'),
             default => throw new InvalidArgumentException('Инструмент пока не реализован.'),
         };
         if (array_diff(array_keys($arguments), $allowed) !== array()) throw new InvalidArgumentException('Неизвестный аргумент инструмента.');
@@ -88,7 +89,7 @@ final class ToolRegistry
             'search_knowledge' => $this->searchKnowledge($arguments, $agent),
             'read_knowledge' => $this->knowledge->read(self::text($arguments, array('id')),
                 self::integer($arguments, 'offset', 0, 0, 1000000),
-                self::integer($arguments, 'limit', 4000, 1, 6000), $agent['SOURCES']),
+                self::integer($arguments, 'limit', 4000, 1, 6000), $agent['SOURCES'], self::optionalText($arguments, 'query')),
         };
         $current = $this->access->finish($name);
         if (strlen(json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)) > 32768) {

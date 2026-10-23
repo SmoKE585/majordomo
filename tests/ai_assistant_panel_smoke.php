@@ -148,6 +148,26 @@ try {
         'Мягкое удаление сохраняет сообщения для истории.');
 
     $longDialog = $chat->createDialog(1, $agentId, 'Лимит', 'chat', array());
+    $recoveryDialog = $chat->createDialog(1, $agentId, 'Восстановление', 'chat', array());
+    $recoveryRun = $chat->beginRun($recoveryDialog, 1, $agentId, 'Ответ после обрыва');
+    $chat->appendMessage($recoveryDialog, 1, 'assistant', "Готово.\n\n```php\ngetGlobal('Light.status');\n```", array('run_id' => $recoveryRun));
+    $chat->finishRun($recoveryRun, 'done');
+    $recoveryController = new PanelController($db, $state, true);
+    (new ReflectionProperty($recoveryController, 'userId'))->setValue($recoveryController, 1);
+    $statusEndpoint = new ReflectionMethod($recoveryController, 'ajaxRunStatus');
+    $_POST = array('dialog_id' => $recoveryDialog, 'run_id' => $recoveryRun);
+    $recoveredRun = $statusEndpoint->invoke($recoveryController);
+    check($recoveredRun['run']['STATUS'] === 'done' && str_contains($recoveredRun['result']['html'], 'data-md-code-sample'), 'Потерянный SSE восстанавливает готовый код в общем компоненте.');
+    $_POST['dialog_id'] = $longDialog;
+    rejects(fn() => $statusEndpoint->invoke($recoveryController), 'не принадлежит');
+    $_POST['dialog_id'] = $recoveryDialog;
+    (new ReflectionProperty($recoveryController, 'userId'))->setValue($recoveryController, 2);
+    rejects(fn() => $statusEndpoint->invoke($recoveryController), 'не найден');
+    $nextRecoveryRun = $chat->beginRun($recoveryDialog, 1, $agentId, 'Новый запрос');
+    check($chat->result($nextRecoveryRun, 1) === null, 'Новый запуск не получает ответ предыдущего.');
+    $chat->requestCancel($nextRecoveryRun, 1);
+    $chat->deleteDialog($recoveryDialog, 1);
+    $_POST = array();
     if (($argv[1] ?? '') === '--export-ui') {
         $chat->appendMessage($longDialog, 1, 'user', 'Найди свет в туалете и предложи вечерний сценарий.');
         $chat->appendMessage($longDialog, 1, 'assistant', "Найден кандидат LigthToilet. Проверьте его назначение.\n\n```php\ncm('LigthToilet.turnOn');\n```");

@@ -100,6 +100,41 @@ try {
     $toolResult = $fake->getRecorded()[1]->messages;
     check(str_contains(json_encode($toolResult, JSON_UNESCAPED_UNICODE), 'KitchenLamp'), 'Модель получила данные реального объекта.');
 
+    $longAgent = $agents->get($agentId);
+    $longAgent['MAX_STEPS'] = 30;
+    $agents->save($agentId, $longAgent);
+    $longDialog = $chat->createDialog(1, $agentId, 'Тридцать инструментов', 'chat', array());
+    $chat->appendMessage($longDialog, 1, 'user', 'Проверь данные');
+    $longRun = $chat->beginRun($longDialog, 1, $agentId, 'Проверь данные');
+    $responses = array();
+    for ($step = 0; $step < 30; $step++) {
+        $responses[] = new ToolCallMessage(null, array(new ToolCall('find_objects', 'long-' . $step, array('query' => 'Lamp'))));
+    }
+    $responses[] = new AssistantMessage('Все тридцать проверок выполнены.');
+    $longFake = new FakeAIProvider(...$responses);
+    $longRunner = new AgentRunner($state, $chat, $agents, $models, $factory, null, static fn(): int => 1, $longFake);
+    $longEvents = array();
+    $longResult = $longRunner->run($longRun, 1, static function (array $event) use (&$longEvents): void { $longEvents[] = $event; });
+    $completedTools = array_filter($longEvents, static fn(array $event): bool => $event['type'] === 'tool_result' && str_contains($event['summary'], 'KitchenLamp'));
+    check(count($completedTools) === 30, 'Лимит 30 разрешает тридцать реальных вызовов, включая один инструмент больше десяти раз.');
+    check($longResult['status'] === 'done' && $longFake->getCallCount() === 31, 'После тридцати инструментов остаётся возможность получить финальный ответ.');
+    check($longFake->getRecorded()[30]->tools === array(), 'Финальный ответ после исчерпания бюджета запрашивается без инструментов.');
+    check($chat->result($longRun, 1)['CONTENT'] === 'Все тридцать проверок выполнены.', 'Завершённый ответ восстанавливается по точному ID запуска.');
+    $foreignResultDenied = false;
+    try { $chat->result($longRun, 2); } catch (InvalidArgumentException) { $foreignResultDenied = true; }
+    check($foreignResultDenied, 'Результат запуска недоступен другому пользователю.');
+
+    $budgetAccess = new MajorDoMo\Modules\AiAssistant\ToolAccess($state, $agents, $agentId, 1, static fn(): int => 1);
+    $budgetState = new NeuronAI\Agent\AgentState();
+    $budgetState->request = new NeuronAI\Agent\InferenceRequest('Основные инструкции');
+    $budgetResources = new NeuronAI\Agent\AgentResources($longFake,
+        new NeuronAI\Chat\History\ChatHistory(new NeuronAI\Chat\History\InMemoryMessageStore(), 'budget-fixture'),
+        new NeuronAI\Chat\Messages\SystemMessage('Основные инструкции'),
+        new NeuronAI\Tools\ToolRegistry((new MajorDoMo\Modules\AiAssistant\ToolRegistry($budgetAccess, new MajorDoMo\Modules\AiAssistant\KnowledgeReader()))->tools()));
+    $budget = new MajorDoMo\Modules\AiAssistant\RunBudget($budgetAccess, 30, 0, 120, static function (array $event): void {}, static fn(): float => 97);
+    $budget->before(new NeuronAI\Agent\Nodes\ChatNode(), NeuronAI\Agent\Events\AIInferenceEvent::fromRequest($budgetState->request), $budgetState, $budgetResources);
+    check($budgetResources->tools->all() === array() && $budgetAccess->calls() === 0, 'Перед таймаутом оставлено время на финальный ответ даже при неиспользованных шагах.');
+
     // Второй запуск продолжает историю: два прошлых сообщения и новый вопрос.
     $chat->appendMessage($dialogId, 1, 'user', 'А кто его меняет?');
     $run2 = $chat->beginRun($dialogId, 1, $agentId, 'А кто его меняет?');
@@ -215,6 +250,18 @@ try {
             check(count(array_filter($httpEvents, static fn(array $e): bool => $e['type'] === 'heartbeat')) > 0, 'cURL посылает пульс в ходе HTTP-запроса.');
             if ($name === 'stream-drop') check(str_contains($httpResult['content'], 'Часть ответа'), 'Обрыв провайдера сохраняет полученный текст.');
         }
+        $httpModel = $models->saveModel(0, array('PROVIDER_ID' => $httpProvider, 'TITLE' => '30 HTTP-вызовов', 'MODEL' => 'stream-loop-30',
+            'CAPABILITIES' => array('chat', 'tools'), 'PARAMETERS' => array(), 'CONTEXT_WINDOW' => 32768, 'MAX_OUTPUT' => 512, 'ENABLED' => 1));
+        $httpAgent = $agents->get($agentId); $httpAgent['TOOLS'] = array('find_objects'); $httpAgent['MODEL_ID'] = $httpModel;
+        $httpAgent['MAX_STEPS'] = 30; $agents->save($agentId, $httpAgent);
+        $httpDialog = $chat->createDialog(1, $agentId, '30 HTTP-проверок', 'chat', array());
+        $httpRun = $chat->beginRun($httpDialog, 1, $agentId, 'Лампа');
+        $chat->appendMessage($httpDialog, 1, 'user', 'Лампа');
+        $httpEvents = array();
+        $httpResult = $httpRunner->run($httpRun, 1, static function (array $event) use (&$httpEvents): void { $httpEvents[] = $event; });
+        check($httpResult['status'] === 'done', 'Полный цикл из 30 реальных HTTP-вызовов инструментов завершён ответом.');
+        check(count(array_filter($httpEvents, static fn(array $event): bool => $event['type'] === 'tool_result')) === 30,
+            'В HTTP-цикле выполнены все 30 инструментов без скрытого лимита 10.');
     }
 
     echo 'ИИ-помощник чат: ' . $checks . ' проверок пройдено (SQLite, FakeAIProvider; HTTP ' . ($httpBase !== '' ? 'локальная Postman simulation' : 'не запускался') . ').' . PHP_EOL;

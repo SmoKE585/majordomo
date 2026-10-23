@@ -13,6 +13,7 @@ use RuntimeException;
  * Привязанные сервером права и бюджет одного запуска, независимые от текста модели.
  *
  * Изменения:
+ * 2026-10-23 — неограниченные вызовы при нулевом бюджете; отзыв прав и таймаут сохранены.
  * 2026-10-23 — повторная проверка сессии, агента, модуля и отмены на каждом Tool.
  */
 final class ToolAccess
@@ -57,7 +58,10 @@ final class ToolAccess
         if (!in_array($tool, AgentCatalog::TOOLS, true) || !in_array($tool, $agent['TOOLS'], true)) {
             throw new RuntimeException('У агента нет разрешения на этот инструмент.');
         }
-        if ($this->calls >= min($this->maximumCalls, (int)$agent['MAX_STEPS'])) throw new RuntimeException('Исчерпан лимит вызовов инструментов.');
+        $configured = (int)$agent['MAX_STEPS'];
+        $maximum = $this->maximumCalls === 0 ? $configured
+            : ($configured === 0 ? $this->maximumCalls : min($this->maximumCalls, $configured));
+        if ($maximum > 0 && $this->calls >= $maximum) throw new RuntimeException('Исчерпан лимит вызовов инструментов.');
         $this->checkTime($agent);
         $this->calls++;
         return $agent;

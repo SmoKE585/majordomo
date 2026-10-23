@@ -13,6 +13,7 @@ use Throwable;
  * Настраиваемые агенты и их разрешения; инструкции не меняют серверный набор Tools.
  *
  * Изменения:
+ * 2026-10-23 — ноль означает отсутствие лимита шагов, ограничение 32 снято.
  * 2026-10-23 — разрешение create_entity запрашивает подтверждение пользователя.
  * 2026-10-23 — поиск сценариев добавлен в серверный список Tools.
  * 2026-10-23 — серверный запрет RAG без доступного Qdrant и моделей эмбеддингов.
@@ -112,7 +113,7 @@ final class AgentCatalog
             'TOOLS' => json_encode($tools, JSON_THROW_ON_ERROR),
             'SOURCES' => json_encode($sources, JSON_THROW_ON_ERROR),
             'KNOWLEDGE_MODE' => $knowledgeMode,
-            'MAX_STEPS' => ModelCatalog::integer($input, 'MAX_STEPS', 1, 32),
+            'MAX_STEPS' => ModelCatalog::integer($input, 'MAX_STEPS', 0, 2147483647),
             'TIMEOUT' => ModelCatalog::integer($input, 'TIMEOUT', 1, 600),
             'ENABLED' => ModelCatalog::integer($input, 'ENABLED', 0, 1),
             'BASE_VERSION' => $baseVersion ?? ($previous === null ? 0 : (int)$previous['BASE_VERSION']),

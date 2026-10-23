@@ -12,6 +12,7 @@ use RuntimeException;
  * Версия собственных таблиц ИИ-помощника и их безопасное обновление.
  *
  * Изменения:
+ * 2026-10-23 — штатные агенты переведены на работу без лимита вызовов.
  * 2026-10-23 — предложения действий, последний запуск и подпись эмбеддингов.
  * 2026-10-23 — параметры коллекции Qdrant: имя вектора, размерность, метрика и HNSW.
  * 2026-10-23 — диалоги, сообщения, запуски и обслуживаемый индекс знаний.
@@ -22,7 +23,7 @@ use RuntimeException;
  */
 final class Schema
 {
-    public const VERSION = 7;
+    public const VERSION = 8;
     public const DELETE_CONFIRMATION = 'DELETE ai_assistant';
 
     public static function install(Database $db, bool $sqlite = false): void
@@ -162,6 +163,10 @@ final class Schema
                     'TOOLS' => json_encode(AgentCatalog::TOOLS, JSON_THROW_ON_ERROR), 'REVISION' => (int)$agent['REVISION'] + 1));
             }
             $db->requireExec('UPDATE ai_assistant_settings SET SCHEMA_VERSION=7 WHERE ID=1 AND SCHEMA_VERSION<7');
+        }
+        if ($version < 8) {
+            $db->requireExec("UPDATE ai_assistant_agents SET MAX_STEPS=0,REVISION=REVISION+1 WHERE PROFILE IN ('assistant','editor') AND DELETED=0 AND MAX_STEPS<>0");
+            $db->requireExec('UPDATE ai_assistant_settings SET SCHEMA_VERSION=8 WHERE ID=1 AND SCHEMA_VERSION<8');
         }
         $db->requireExec('UPDATE ai_assistant_settings SET ENABLED=1 WHERE ID=1 AND INSTALLED=1 AND ENABLED<>1');
         // Колонки staging-индекса появились после первой версии схемы 5.

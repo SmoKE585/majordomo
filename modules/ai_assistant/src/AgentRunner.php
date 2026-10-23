@@ -21,6 +21,7 @@ use Throwable;
  * Один запуск агента: история, инструменты, поток и безопасное завершение.
  *
  * Изменения:
+ * 2026-10-23 — единый бюджет инструментов и привязка результата к запуску для восстановления SSE.
  * 2026-10-23 — штатный approval Neuron, устойчивый контекст после обрыва и общий компонент кода.
  * 2026-10-23 — таймаут всего запуска и пульс SSE во время ожидания провайдера.
  * 2026-10-23 — Neuron Agent вместо прямого вызова провайдера; история из БД,
@@ -108,10 +109,13 @@ final class AgentRunner
                 ->setInstructions($instructions)
                 ->setTools($toolList)
                 ->setContextWindow(max(1024, (int)$model['CONTEXT_WINDOW']))
-                ->toolMaxRuns(max(1, min(10, (int)$agentRecord['MAX_STEPS'])))
-                ->setMaxSteps(max(8, min(64, (int)$agentRecord['MAX_STEPS'] * 3 + 4)))
+                ->toolMaxRuns((int)$agentRecord['MAX_STEPS'] > 0 ? (int)$agentRecord['MAX_STEPS'] : PHP_INT_MAX)
+                // Шаг workflow — служебный узел, а не пользовательский вызов инструмента.
+                ->setMaxSteps((int)$agentRecord['MAX_STEPS'] > 0 ? (int)$agentRecord['MAX_STEPS'] * 2 + 6 : null)
                 ->toolErrorHandler(static fn(Throwable $failure, $call): string =>
                     'Инструмент ' . $call->getName() . ' недоступен: ' . $failure->getMessage());
+            $agent->addMiddleware(\NeuronAI\Agent\Nodes\InferenceNode::class,
+                new RunBudget($access, (int)$agentRecord['MAX_STEPS'], $started, (int)$agentRecord['TIMEOUT'], $emit));
             $agent->subscribe(InferenceStop::class, static function (InferenceStop $event) use (&$usage): void {
                 $value = $event->response->message()->getUsage();
                 if ($value === null) return;
@@ -156,7 +160,7 @@ final class AgentRunner
             if ($stop) {
                 $this->chat->finishRun($runId, 'cancelled');
                 $message = $this->chat->appendMessage((int)$dialog['ID'], $userId, 'assistant', $text,
-                    array('cancelled' => true, 'tools' => $tools, 'sources' => $sources, 'usage' => $usage,
+                    array('run_id' => $runId, 'cancelled' => true, 'tools' => $tools, 'sources' => $sources, 'usage' => $usage,
                         'duration_ms' => (int)((microtime(true) - $started) * 1000)));
                 $emit(array('type' => 'done', 'status' => 'cancelled', 'message' => $message));
                 return array('status' => 'cancelled', 'content' => $text, 'meta' => array());
@@ -166,14 +170,14 @@ final class AgentRunner
                 $requests = new ActionRequests(Core::database(), $this->chat, $this->agents, $this->state);
                 $actions = array();
                 $pending = $agent->pendingApprovals();
-                if (count($pending) > min(10, (int)$agentRecord['MAX_STEPS'])) throw new ProviderFailure('approval_limit', 'Слишком много предложений за один запрос. Разбейте задачу на части.');
+                if ((int)$agentRecord['MAX_STEPS'] > 0 && count($pending) > (int)$agentRecord['MAX_STEPS']) throw new ProviderFailure('approval_limit', 'Слишком много предложений за один запрос. Разбейте задачу на части.');
                 foreach ($pending as $action) {
                     if ($action->name !== 'create_entity') throw new ProviderFailure('approval', 'Неизвестный инструмент подтверждения.');
                     $actions[] = $requests->propose((int)$dialog['ID'], $userId, $agentId, $action->inputs);
                 }
                 if ($actions === array()) throw new ProviderFailure('approval', 'Не удалось подготовить предложение действия.');
                 $content = trim($text) ?: 'Предложение подготовлено. Проверьте параметры и подтвердите создание кнопкой ниже.';
-                $meta = array('tools' => $tools, 'sources' => array_values($sources), 'actions' => array_column($actions, 'id'));
+                $meta = array('run_id' => $runId, 'tools' => $tools, 'sources' => array_values($sources), 'actions' => array_column($actions, 'id'));
                 $messageId = $this->chat->appendMessage((int)$dialog['ID'], $userId, 'assistant', $content, $meta);
                 $this->chat->finishRun($runId, 'done');
                 $emit(array('type' => 'done', 'status' => 'approval', 'message' => $messageId,
@@ -184,6 +188,7 @@ final class AgentRunner
             $content = trim((string)($message?->getContent() ?? ''));
             if ($content === '') $content = $text;
             $meta = array(
+                'run_id' => $runId,
                 'model' => SensitiveData::text((string)$model['MODEL']),
                 'tools' => $tools,
                 'sources' => array_values($sources),
@@ -210,11 +215,13 @@ final class AgentRunner
                     ? $failure->getMessage()
                     : 'Не удалось получить ответ модели. Проверьте настройки и повторите запрос.');
             // В системный журнал не пишем ни запрос, ни ответ, ни токен.
-            error_log('MajorDoMo AI run failed: ' . get_class($failure));
+            error_log('MajorDoMo AI run failed: ' . json_encode(array('run_id' => $runId,
+                'exception' => get_class($failure), 'reason' => $reason, 'tool_calls' => isset($access) ? $access->calls() : 0,
+                'duration_ms' => (int)((microtime(true) - $started) * 1000), 'peak_memory' => memory_get_peak_usage(true))));
             $partial = trim($text);
             if ($partial !== '' && $dialog !== null) {
                 $this->chat->appendMessage((int)$dialog['ID'], $userId, 'assistant', $partial,
-                    array('error' => $cancelled ? '' : $error, 'incomplete' => true, 'cancelled' => $cancelled,
+                    array('run_id' => $runId, 'error' => $cancelled ? '' : $error, 'incomplete' => true, 'cancelled' => $cancelled,
                         'tools' => $tools, 'sources' => $sources));
             }
             if ($owned) $this->chat->finishRun($runId, $cancelled ? 'cancelled' : 'error', $cancelled ? '' : $error);

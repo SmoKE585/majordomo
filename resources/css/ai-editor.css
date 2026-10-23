@@ -1,4 +1,4 @@
-/* 2026-10-23 — панель ИИ-помощника в редакторе кода. */
+/* 2026-10-23 — оформление ответа не переопределяет фон и прокрутку codeSample. */
 body.md-admin-shell .md-ai-editor {
     display: flex;
     flex-direction: column;
@@ -72,7 +72,7 @@ body.md-admin-shell .md-ai-editor__answer {
 body.md-admin-shell .md-ai-editor__answer > :first-child { margin-top: 0; }
 body.md-admin-shell .md-ai-editor__answer > :last-child { margin-bottom: 0; }
 
-body.md-admin-shell .md-ai-editor__answer pre {
+body.md-admin-shell .md-ai-editor__answer pre:not(.md-code-sample__pre) {
     padding: 12px;
     border-radius: var(--md-ui-radius-sm);
     background: var(--md-ui-surface-3);
@@ -80,7 +80,7 @@ body.md-admin-shell .md-ai-editor__answer pre {
     font-size: 12px;
 }
 
-body.md-admin-shell .md-ai-editor__answer code {
+body.md-admin-shell .md-ai-editor__answer code:not(.md-code-sample__code) {
     font-family: var(--md-ui-font-mono, Consolas, Monaco, monospace);
     font-size: 0.92em;
 }

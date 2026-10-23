@@ -1,4 +1,4 @@
-// 2026-10-23 — реальный Chrome, PHP-разметка SQLite и локальный HTTP без приложения.
+// 2026-10-23 — свёрнутые этапы, прокрутка потока и единый фон кода в обеих темах.
 import assert from 'node:assert/strict';
 import {execFileSync, spawn} from 'node:child_process';
 import {createServer} from 'node:http';
@@ -13,7 +13,7 @@ const fixturePath = output.match(/UI_FIXTURE=(.+)/)[1].trim();
 assert.ok(path.resolve(fixturePath).startsWith(path.resolve(tmpdir()) + path.sep));
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
 const artifactDir = await mkdtemp(path.join(tmpdir(), 'mjd-ai-browser-'));
-let run = null, decisionCount = 0, lastSend = null;
+let run = null, runResult = null, decisionCount = 0, lastSend = null, sendCount = 0;
 const server = createServer(async (req, res) => {
     try {
         const url = new URL(req.url, 'http://127.0.0.1');
@@ -24,13 +24,15 @@ const server = createServer(async (req, res) => {
             const op = url.searchParams.get('op');
             if (op === 'drawer') return json({html: fixture.drawer});
             if (op === 'messages') return json({dialog: {id: fixture.dialog_id, title: 'Проверка интерфейса', agent_id: 1}, messages: fixture.messages, actions: [fixture.action], run});
-            if (op === 'run_status') return json({run});
+            if (op === 'run_status') return json({run, result: runResult});
             if (op === 'editor_state') return json({enabled: true, agents: [{id: 1, title: 'Редактор', profile: 'editor'}], default_agent: 1});
             if (op === 'dialog_create') return json({dialog: {id: fixture.dialog_id}});
             if (op === 'action_decide') { decisionCount++; return json({action: {...fixture.action, status: 'created', result: 'Создано. Код не запускался.'}}); }
             if (op === 'cancel') { if (run) run.STATUS = 'cancelled'; return json({cancelled: true}); }
             if (op === 'send') {
+                sendCount++;
                 lastSend = data;
+                runResult = null;
                 run = {ID: data.request_id, STATUS: 'running'};
                 res.writeHead(200, {'Content-Type': 'text/event-stream'});
                 const event = (name, value) => res.write(`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`);
@@ -38,8 +40,26 @@ const server = createServer(async (req, res) => {
                 event('tool', {tool: {name: 'find_objects', arguments: '{"query":"свет в туалете"}'}});
                 event('tool_result', {name: 'find_objects'});
                 event('token', {text: 'Часть ответа'});
-                if (data.prompt === 'обрыв') return res.end();
-                event('done', {html: fixture.answer_html, actions: []});
+                if (data.prompt === 'обрыв') {
+                    run.STATUS = 'error'; run.ERROR = 'Истёк лимит времени агента. Проверка восстановления.';
+                    return res.end();
+                }
+                if (data.prompt === 'потерянный ответ') {
+                    const interrupted = run;
+                    setTimeout(() => {
+                        interrupted.STATUS = 'done';
+                        runResult = {status: 'done', html: fixture.answer_html, content: 'Полный сохранённый ответ', actions: []};
+                    }, 200);
+                    return res.end();
+                }
+                if (data.prompt === 'ожидание после обрыва') return res.end();
+                if (data.prompt === 'длинный') {
+                    for (let part = 1; part <= 10; part++) {
+                        await sleep(70);
+                        event('token', {text: `\nЧасть ${part}: ` + 'Объяснение кода и найденных устройств. '.repeat(25)});
+                    }
+                }
+                event('done', {html: (data.prompt === 'длинный' ? '<p>Подробный ответ.</p>'.repeat(35) : '') + fixture.answer_html, actions: []});
                 run.STATUS = 'done'; return res.end();
             }
             return json({});
@@ -102,15 +122,53 @@ try {
     await waitFor('document.querySelector(".md-ai-action__status").textContent.includes("Создано")');
     assert.equal(decisionCount, 1);
     await evaluate('document.querySelector("[data-ai-prompt]").value="обрыв";document.querySelector("[data-ai-composer]").requestSubmit()');
-    await waitFor('!document.querySelector("[data-ai-recovery]").hidden && !document.querySelector("[data-ai-send]").disabled');
-    assert.equal(run.STATUS, 'cancelled');
+    await waitFor('document.querySelector("[data-ai-messages]").textContent.includes("Истёк лимит времени агента") && !document.querySelector("[data-ai-send]").disabled');
+    assert.equal(run.STATUS, 'error', 'Серверная ошибка не заменяется сетевой или отменой.');
     assert.ok(await evaluate('document.querySelector("[data-ai-messages]").textContent.includes("Часть ответа")'));
+    const sendsBeforeRecovery = sendCount;
+    await evaluate('document.querySelector("[data-ai-prompt]").value="потерянный ответ";document.querySelector("[data-ai-composer]").requestSubmit()');
+    await waitFor('document.querySelector("[data-ai-status]").textContent === "Ответ получен" && !document.querySelector("[data-ai-send]").disabled');
+    assert.equal(sendCount, sendsBeforeRecovery + 1, 'Восстановление не запускает повторную генерацию.');
+    assert.ok(await evaluate('document.querySelector("[data-ai-messages]").lastElementChild.previousElementSibling.querySelector("[data-ai-copy-source]").textContent === "Полный сохранённый ответ"'));
+    await evaluate('document.querySelector("[data-ai-prompt]").value="ожидание после обрыва";document.querySelector("[data-ai-composer]").requestSubmit()');
+    await waitFor('document.querySelector("[data-ai-status]").textContent.includes("Проверяю результат")');
+    await evaluate('document.querySelector("[data-ai-stop]").click()');
+    await waitFor('!document.querySelector("[data-ai-send]").disabled');
+    assert.equal(run.STATUS, 'cancelled', 'Ожидание восстановления можно остановить.');
     await evaluate('document.querySelector("[data-ai-prompt]").value="продолжить";document.querySelector("[data-ai-composer]").requestSubmit()');
     await waitFor('document.querySelector("[data-ai-status]").textContent === "Ответ получен"');
     await evaluate('document.querySelector("[data-ai-open]").click()');
     await waitFor('document.querySelector("[data-ai-drawer] [data-ai-prompt]") && !document.querySelector("[data-ai-drawer] [data-ai-send]").disabled');
     assert.equal(await evaluate('document.querySelector("#mdAdminDrawerHost").hidden'), false);
     assert.equal(await evaluate('document.querySelectorAll("[data-ai-drawer] .md-ai-chat__side,[data-ai-drawer] .md-ai-chat__top,[data-ai-drawer] a").length'), 0, 'В быстром drawer нет истории, настроек и служебных переходов.');
+    await sleep(60); // Drawer завершает собственную установку фокуса.
+    await evaluate(`{
+        const root = document.createElement('div'); root.id = 'progressFixture';
+        document.querySelector('[data-ai-drawer] [data-ai-messages]').append(root);
+        window.testSteps = window.MDAssistant.progress(root);
+        window.testSteps.event('tool', {tool: {name: 'search_knowledge', arguments: '{"query":"история"}'}});
+    }`);
+    assert.equal(await evaluate('document.querySelector("#progressFixture details").open'), false);
+    assert.equal(await evaluate('document.querySelector("#progressFixture summary").textContent'), 'Ищу в справке');
+    assert.equal(await evaluate('document.querySelector("#progressFixture ol").checkVisibility()'), false, 'История скрыта по умолчанию.');
+    await evaluate('document.querySelector("#progressFixture summary").click();window.testSteps.event("tool_result",{})');
+    assert.equal(await evaluate('document.querySelector("#progressFixture details").open'), true, 'Новые шаги не закрывают раскрытую историю.');
+    assert.ok(await evaluate('document.querySelector("#progressFixture ol").checkVisibility()'));
+    await evaluate('document.querySelector("#progressFixture summary").focus()');
+    assert.ok(await evaluate('document.activeElement === document.querySelector("#progressFixture summary")'));
+    await call('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r'});
+    await call('Input.dispatchKeyEvent', {type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13});
+    assert.equal(await evaluate('document.querySelector("#progressFixture details").open'), false, 'Раскрытие доступно с клавиатуры.');
+    await evaluate('window.testSteps.event("error",{});window.testSteps.finish(false)');
+    assert.equal(await evaluate('document.querySelector("#progressFixture summary").textContent'), 'Работа прервана');
+    await evaluate('document.querySelector("#progressFixture").remove()');
+    const atBottom = selector => `(() => {const s=document.querySelector(${JSON.stringify(selector)});return s.scrollHeight>s.clientHeight && s.scrollHeight-s.clientHeight-s.scrollTop<3})()`;
+    await evaluate('document.querySelector("[data-ai-drawer] [data-ai-prompt]").value="длинный";document.querySelector("[data-ai-drawer] [data-ai-composer]").requestSubmit()');
+    await waitFor('document.querySelector("[data-ai-drawer] [data-ai-messages]").textContent.includes("Часть 3:")');
+    await waitFor(atBottom('[data-ai-drawer] [data-ai-messages]'));
+    assert.ok(await evaluate('document.querySelector("[data-ai-drawer] [data-ai-send]").disabled'), 'Прокрутка происходит во время потока.');
+    await waitFor('!document.querySelector("[data-ai-drawer] [data-ai-send]").disabled');
+    await waitFor(atBottom('[data-ai-drawer] [data-ai-messages]'));
     for (const [theme, width] of [['light', 1360], ['dark', 390]]) {
         await call('Emulation.setDeviceMetricsOverride', {width, height: 1000, deviceScaleFactor: 1, mobile: width < 600});
         await evaluate(`document.documentElement.dataset.bsTheme=${JSON.stringify(theme)}`); await sleep(150);
@@ -128,8 +186,39 @@ try {
     assert.equal(JSON.parse(lastSend.context).code, '$x = 1;');
     await evaluate('Array.from(document.querySelectorAll(".md-ai-editor__answer button")).find(b => b.textContent === "Вставить в редактор").click()');
     assert.equal(await evaluate('window.testEditor.value'), "cm('LigthToilet.turnOn');");
+    await evaluate('document.querySelector(".md-ai-editor__prompt").value="длинный";document.querySelector(".md-ai-editor__bar .md-btn--primary").click()');
+    await waitFor('document.querySelector(".md-ai-editor__answer").textContent.includes("Часть 3:")');
+    await waitFor(atBottom('#mdAdminDrawerBody'));
+    assert.ok(await evaluate('document.querySelector(".md-ai-editor__bar .md-btn--primary").disabled'), 'Редактор прокручивается во время потока.');
+    await waitFor('!document.querySelector(".md-ai-editor__bar .md-btn--primary").disabled');
+    await waitFor(atBottom('#mdAdminDrawerBody'));
+    // Многострочный код воспроизводит конфликт фона и двойную прокрутку со снимка.
+    await evaluate(`{
+        const code = document.querySelector('.md-ai-editor__answer .md-code-sample__code');
+        code.textContent = '// Пример сценария\\n' + ('$value = getGlobal(\\'Light.status\\'); // Значение свойства\\n').repeat(30);
+        delete code.dataset.mdHighlighted; delete code.dataset.highlighted;
+        window.MDCodeSample.init(document.querySelector('.md-ai-editor__answer'));
+    }`);
+    await waitFor('document.querySelector(".md-ai-editor__answer .md-code-sample__code").dataset.mdHighlighted === "1"');
+    for (const theme of ['light', 'dark']) {
+        await evaluate(`document.documentElement.dataset.bsTheme=${JSON.stringify(theme)}`);
+        const styles = await evaluate(`(() => {
+            const pre=document.querySelector('.md-ai-editor__answer .md-code-sample__pre');
+            const scroll=pre.closest('.md-code-sample__scroll');
+            return {background:getComputedStyle(pre).backgroundColor,overflow:getComputedStyle(pre).overflowX,
+                codeColor:getComputedStyle(pre.querySelector('code')).color,scrollBackground:getComputedStyle(scroll).backgroundColor,
+                gutterBackground:getComputedStyle(scroll.querySelector('.md-code-sample__gutter')).backgroundColor};
+        })()`);
+        assert.equal(styles.background, 'rgba(0, 0, 0, 0)', 'Фон примера не переопределяется ответом: ' + theme);
+        assert.equal(styles.overflow, 'visible', 'У pre нет второй прокрутки: ' + theme);
+        assert.equal(styles.scrollBackground, styles.gutterBackground, 'Единый фон кода и номеров: ' + theme);
+        assert.notEqual(styles.codeColor, styles.scrollBackground);
+        await sleep(60);
+        const screenshot = await call('Page.captureScreenshot', {format: 'png'});
+        await writeFile(path.join(artifactDir, 'editor-' + theme + '.png'), Buffer.from(screenshot.data, 'base64'));
+    }
     assert.deepEqual(errors, []);
-    console.log('ИИ-помощник браузер: drawer, обрыв/повтор, подтверждение, код и 390 px — OK. Снимки: ' + artifactDir);
+    console.log('ИИ-помощник браузер: свёрнутые этапы, прокрутка потока, код light/dark, drawer и 390 px — OK. Снимки: ' + artifactDir);
 } finally {
     ws?.close(); chrome.kill(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
     await sleep(250); await rm(profile, {recursive: true, force: true}); await rm(fixturePath, {force: true});

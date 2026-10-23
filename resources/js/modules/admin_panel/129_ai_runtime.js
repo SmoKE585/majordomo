@@ -1,4 +1,4 @@
-/* 2026-10-23 — общий транспорт, этапы и подтверждения чата и редактора. */
+/* 2026-10-23 — восстановление результата оборванного SSE без повторного запуска. */
 (function (window, document) {
     'use strict';
     var labels = {
@@ -31,7 +31,7 @@
         return json;
     }
     function errorText(error) {
-        if (error && (error.name === 'TypeError' || /network|fetch|load failed/i.test(error.message))) {
+        if (error && /network|failed to fetch|fetch failed|load failed/i.test(error.message)) {
             return 'Соединение с помощником прервано. Полученная часть ответа сохранена на экране. Можно повторить запрос.';
         }
         return error && error.message || 'Поток ответа прерван.';
@@ -69,6 +69,9 @@
                 while ((index = buffer.indexOf('\n\n')) >= 0) {
                     dispatch(buffer.slice(0, index));
                     buffer = buffer.slice(index + 2);
+                    // После конечного события не ждём закрытия HTTP: прокси может
+                    // оборвать его, хотя готовый ответ уже доставлен.
+                    if (terminal) return;
                 }
                 if (chunk.done) break;
             }
@@ -80,20 +83,78 @@
             reader.releaseLock();
         }
     }
+    async function recoverRun(dialogId, runId, signal, onEvent) {
+        onEvent('status', {text: 'Связь прервана. Проверяю результат запроса на сервере…'});
+        var started = Date.now();
+        while (Date.now() - started < 650000) {
+            var state = await request('run_status', {dialog_id: dialogId, run_id: runId}, signal);
+            var run = state.run;
+            if (!run || run.ID !== runId) throw new Error('Не удалось найти состояние этого запроса. Откройте диалог для проверки.');
+            if (run.STATUS === 'error') {
+                onEvent('error', {message: run.ERROR || 'Запрос завершился ошибкой на сервере.'});
+                return;
+            }
+            if (run.STATUS === 'done' || run.STATUS === 'cancelled') {
+                onEvent('done', state.result || {status: run.STATUS});
+                if (!state.result && run.STATUS === 'done') onEvent('status', {text: 'Запрос завершён. Ответ доступен в истории диалога.'});
+                return;
+            }
+            if (run.STATUS !== 'running') throw new Error('Сервер вернул неизвестное состояние запроса.');
+            await new Promise(function (resolve, reject) {
+                function abort() {
+                    window.clearTimeout(timer);
+                    signal.removeEventListener('abort', abort);
+                    reject(new DOMException('Остановлено пользователем.', 'AbortError'));
+                }
+                var timer = window.setTimeout(function () {
+                    if (signal) signal.removeEventListener('abort', abort);
+                    resolve();
+                }, 1500);
+                if (signal) {
+                    signal.addEventListener('abort', abort, {once: true});
+                    if (signal.aborted) abort();
+                }
+            });
+        }
+        throw new Error('Не удалось дождаться результата сервера. Остановите запрос и проверьте журнал PHP.');
+    }
     function progress(root) {
-        var list = el('ol', 'md-ai-progress');
+        var disclosure = el('details', 'md-disclosure md-ai-progress');
+        var summary = el('summary', 'md-disclosure__summary md-ai-progress__summary');
+        var current = el('span', 'md-ai-progress__label');
+        current.setAttribute('role', 'status');
+        current.setAttribute('aria-atomic', 'true');
+        var chevron = el('i', 'ti ti-chevron-down md-disclosure__chevron');
+        chevron.setAttribute('aria-hidden', 'true');
+        summary.appendChild(current);
+        summary.appendChild(chevron);
+        disclosure.appendChild(summary);
+        var body = el('div', 'md-disclosure__body');
+        var list = el('ol', 'md-ai-progress__history');
         list.setAttribute('aria-label', 'Этапы работы помощника');
-        root.appendChild(list);
+        body.appendChild(list);
+        disclosure.appendChild(body);
+        root.appendChild(disclosure);
         var running = null;
-        function finish(failed) {
+        function finishStep(failed) {
             if (running) {
                 running.classList.remove('is-running');
                 running.classList.add(failed ? 'is-error' : 'is-done');
                 running = null;
             }
         }
+        function finish(failed, text) {
+            if (!running) return;
+            finishStep(failed);
+            summary.classList.remove('is-running');
+            summary.classList.add(failed ? 'is-error' : 'is-done');
+            current.textContent = text || (failed ? 'Работа прервана' : 'Ответ готов');
+        }
         function add(text, detail) {
-            finish(false);
+            finishStep(false);
+            summary.classList.remove('is-error', 'is-done');
+            summary.classList.add('is-running');
+            current.textContent = text;
             running = el('li', 'md-ai-progress__step is-running');
             running.appendChild(el('span', 'md-ai-progress__label', text));
             if (detail) running.appendChild(el('small', '', detail));
@@ -105,12 +166,25 @@
                 var tool = data.tool || {};
                 add(labels[tool.name] || 'Использую инструмент', tool.arguments || '');
             } else if (name === 'tool_result') {
-                finish(false);
                 add('Анализирую найденное');
             } else if (name === 'token' && running && ['Готовлю ответ', 'Анализирую найденное'].includes(running.textContent)) {
                 running.firstChild.textContent = 'Пишу ответ';
-            } else if (name === 'done' || name === 'error') finish(name === 'error');
+                current.textContent = 'Пишу ответ';
+            } else if (name === 'done' || name === 'error') {
+                finish(name === 'error', data.status === 'approval' ? 'Требуется подтверждение'
+                    : data.status === 'cancelled' ? 'Остановлено' : '');
+            }
         }, finish: finish};
+    }
+    var pendingScrolls = new WeakSet();
+    function scrollToBottom(container) {
+        if (!container || pendingScrolls.has(container)) return;
+        pendingScrolls.add(container);
+        // Ждём перерасчёта высоты после очередной части ответа или готовой разметки.
+        window.requestAnimationFrame(function () {
+            pendingScrolls.delete(container);
+            if (container.isConnected) container.scrollTop = container.scrollHeight;
+        });
     }
     async function copy(text) {
         if (navigator.clipboard && window.isSecureContext) {
@@ -195,9 +269,9 @@
     function loadPage() {
         if (window.MDAIPage) return Promise.resolve();
         if (!pageScript) pageScript = new Promise(function (resolve, reject) {
-            var link = el('link'); link.rel = 'stylesheet'; link.href = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.css?v=20261023-9';
+            var link = el('link'); link.rel = 'stylesheet'; link.href = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.css?v=20261023-11';
             document.head.appendChild(link);
-            var script = el('script'); script.src = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.js?v=20261023-9';
+            var script = el('script'); script.src = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.js?v=20261023-11';
             script.onload = resolve;
             script.onerror = function () { pageScript = null; script.remove(); reject(new Error('Не удалось загрузить чат. Повторите открытие.')); };
             document.head.appendChild(script);
@@ -224,5 +298,6 @@
         return Array.from(window.crypto.getRandomValues(new Uint8Array(16)), function (byte) { return byte.toString(16).padStart(2, '0'); }).join('');
     }
     window.MDAssistant = {request: request, consume: consume, progress: progress, copy: copy, newRunId: newRunId,
-        bindMessages: bindMessages, showActions: showActions, showSources: showSources, errorText: errorText};
+        bindMessages: bindMessages, showActions: showActions, showSources: showSources, errorText: errorText,
+        scrollToBottom: scrollToBottom, recoverRun: recoverRun};
 })(window, document);

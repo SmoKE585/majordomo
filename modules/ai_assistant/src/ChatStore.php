@@ -12,6 +12,7 @@ use RuntimeException;
  * Диалоги, сообщения и запуски; владелец всегда проверяется на сервере.
  *
  * Изменения:
+ * 2026-10-23 — точный результат запуска для восстановления после потери потока.
  * 2026-10-23 — пульс запуска, восстановление состояния и немедленная отмена.
  * 2026-10-23 — история чата, состояния генерации и отмена без доверия браузеру.
  */
@@ -230,6 +231,17 @@ final class ChatStore
         $record = $this->db->one("SELECT CANCEL_REQUESTED FROM ai_assistant_runs WHERE ID='"
             . $this->db->escape($id) . "' AND STATUS='running'");
         return $record === null || (int)$record['CANCEL_REQUESTED'] === 1;
+    }
+
+    /** Ответ другого запуска нельзя выдать как результат оборвавшегося запроса. */
+    public function result(string $runId, int $userId): ?array
+    {
+        $run = $this->run($runId, $userId);
+        $rows = $this->messages((int)$run['DIALOG_ID'], $userId, 0, 300, true);
+        foreach (array_reverse($rows) as $row) {
+            if ($row['ROLE'] === 'assistant' && ($row['META']['run_id'] ?? '') === $runId) return $row;
+        }
+        return null;
     }
 
     public function finishRun(string $id, string $status, string $error = ''): void

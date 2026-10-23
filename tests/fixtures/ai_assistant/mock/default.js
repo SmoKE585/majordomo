@@ -14,8 +14,15 @@ http.createServer((req, res) => {
   if (!body || typeof body.model !== 'string') return json(res, 400, { error: { message: 'model required' } });
   if (body.model.startsWith('stream-')) {
     if (body.model === 'stream-timeout') return setTimeout(() => json(res, 200, {}), 1500);
+    const toolRounds = body.model === 'stream-loop-30' ? body.messages.filter(message => message.role === 'tool').length : 0;
+    if (body.model === 'stream-loop-30' && toolRounds >= 30 && body.tools?.length) return json(res, 400, {});
     res.writeHead(200, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache'});
     const chunk = (delta, finish = null) => res.write('data: ' + JSON.stringify({id: 'stream-fixture', object: 'chat.completion.chunk', model: body.model, choices: [{index: 0, delta, finish_reason: finish}]}) + '\n\n');
+    if (body.model === 'stream-loop-30' && toolRounds < 30) {
+      chunk({role: 'assistant', tool_calls: [{index: 0, id: 'call-' + toolRounds, type: 'function', function: {name: 'find_objects', arguments: '{"query":"Lamp"}'}}]});
+      chunk({}, 'tool_calls');
+      return res.end('data: [DONE]\n\n');
+    }
     chunk({role: 'assistant', content: 'Часть ответа'});
     if (body.model === 'stream-drop') return setTimeout(() => res.end(), 20);
     chunk({content: '. Готово.'}); chunk({}, 'stop');
