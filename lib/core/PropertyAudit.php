@@ -18,6 +18,8 @@ use \Throwable;
  *
  * Изменения:
  * 2026-10-23 — снимки выполняемого кода, родительские шаги и корректный JSON при обрезке.
+ * 2026-10-23 — поиск ошибки запуска идёт по TRACE_ID (покрыт индексом), а не по RUN_ID:
+ *              запрос по RUN_ID не мог использовать индекс и давал полный скан журнала.
  */
 final class PropertyAudit
 {
@@ -223,7 +225,16 @@ final class PropertyAudit
             if ($runId < 1) return;
             // Успех внешней обёртки не должен скрывать отказ вложенного метода
             // или ошибку предыдущего процесса, продолжавшего эту же цепочку.
-            $failure = $this->db->one("SELECT ERROR FROM property_audit_events WHERE RUN_ID=" . $runId . " AND STATUS='error' ORDER BY ID LIMIT 1");
+            // Ищем по TRACE_ID, а не по RUN_ID: RUN_ID не проиндексирован, и такой
+            // запрос MySQL выполнял полным сканом журнала (1–2 с на каждый запуск,
+            // что при нескольких воркерах давало 300% CPU). TRACE_ID уникален для
+            // запуска и покрыт idx_property_audit_events_trace (TRACE_ID,ID), поэтому
+            // здесь читаются только события этого запуска — единицы строк.
+            $failure = $this->db->one(
+                "SELECT ERROR FROM property_audit_events WHERE TRACE_ID='"
+                . $this->db->escape(self::currentTraceId())
+                . "' AND STATUS='error' ORDER BY ID LIMIT 1"
+            );
             $failed = $error !== null || $failure !== null || $result === false
                 || (is_array($result) && array_key_exists('success', $result) && !$result['success']);
             $update = array(
