@@ -203,6 +203,12 @@
                             <div class="md-field__hint">Без режима «Только известные топики»: первый приём сразу, следующие — не чаще указанного интервала для каждого топика. 0 — без ограничения. Привязанные свойства и методы обрабатываются сразу.</div>
                         </div>
                     </div>
+                    <div class="md-alert md-alert--info" role="note">
+                        <i class="ti ti-bolt md-alert__icon" aria-hidden="true"></i>
+                        <div class="md-alert__body">
+                            <div class="md-alert__text">Сейчас: [#if RUNTIME_ASYNC="1"#]быстрый путь включён[#else#]синхронный путь[#endif#], обработчиков [#RUNTIME_HANDLERS#], аренда [#RUNTIME_LEASE#] с, повторов [#RUNTIME_ATTEMPTS#], исполнителей core_runtime [#RUNTIME_CORE_WORKERS#]. Состояние обработчиков: [#if RUNTIME_HANDLERS_ALIVE="1"#]на связи[#else#]нет данных[#endif#], издателя: [#if RUNTIME_PUBLISHER_ALIVE="1"#]на связи[#else#]нет данных[#endif#]. Настроить: <a href="<#ROOTHTML#>panel/settings.html?filter_name=mqtt">Общие настройки → MQTT и очередь</a> (<code>CORE_WORKERS</code> — в «Производительности»). Эти параметры хранятся в <code>.env</code>, а не в настройках модуля.</div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>

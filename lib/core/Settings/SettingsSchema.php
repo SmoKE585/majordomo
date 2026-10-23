@@ -20,6 +20,7 @@ final class SettingsSchema
     public const SECTION_PERFORMANCE = 'performance';
     public const SECTION_LOGGING = 'logging';
     public const SECTION_REDIS = 'redis';
+    public const SECTION_MQTT = 'mqtt';
     public const SECTION_SECURITY = 'security';
     public const SECTION_INTEGRATIONS = 'integrations';
 
@@ -53,6 +54,11 @@ final class SettingsSchema
                 'title' => 'Redis',
                 'description' => 'Быстрый кэш и очередь операций. Без Redis система работает на SQL-кэше.',
                 'icon' => 'stack-2',
+            ),
+            self::SECTION_MQTT => array(
+                'title' => 'MQTT и очередь',
+                'description' => 'Быстрый приём MQTT через Redis, число обработчиков и повторы. Требует включённого Redis и расширения phpredis.',
+                'icon' => 'broadcast',
             ),
             self::SECTION_SECURITY => array(
                 'title' => 'Доступ',
@@ -120,10 +126,67 @@ final class SettingsSchema
                 'default' => '',
                 'width' => 'full',
             ),
+            // Новые параметры очередей не входят в мастер установки: они
+            // нужны уже работающей системе и зависят от Redis/нагрузки.
+            'CORE_WORKERS' => array(
+                'section' => self::SECTION_PERFORMANCE,
+                'target' => InstallSchema::TARGET_ENV,
+                'type' => 'number',
+                'label' => 'Параллельные исполнители core_runtime',
+                'description' => '1 — прежняя последовательная обработка. Больше 1 — независимые объекты параллельно; сценарии, API и события модулей остаются в последовательной полосе.',
+                'default' => '3',
+                'min' => 1,
+                'max' => 16,
+                'width' => 'half',
+            ),
+            'MQTT_ASYNC_ENABLED' => array(
+                'section' => self::SECTION_MQTT,
+                'target' => InstallSchema::TARGET_ENV,
+                'type' => 'switch',
+                'label' => 'Быстрый путь MQTT',
+                'description' => 'Принимать MQTT в Redis и обрабатывать отдельными процессами. Работает только при включённом Redis и расширении phpredis; иначе используется синхронный путь.',
+                'default' => '1',
+                'width' => 'half',
+            ),
+            'MQTT_HANDLERS' => array(
+                'section' => self::SECTION_MQTT,
+                'target' => InstallSchema::TARGET_ENV,
+                'type' => 'number',
+                'label' => 'Обработчиков MQTT',
+                'description' => 'Сколько событий разных объектов обрабатывать одновременно. Порядок внутри одной сущности сохраняется.',
+                'default' => '3',
+                'min' => 1,
+                'max' => 16,
+                'width' => 'half',
+            ),
+            'MQTT_HANDLER_LEASE' => array(
+                'section' => self::SECTION_MQTT,
+                'target' => InstallSchema::TARGET_ENV,
+                'type' => 'number',
+                'label' => 'Аренда обработчика, сек',
+                'description' => 'Через сколько секунд зависшее событие вернётся в очередь. Должно быть больше времени обработки одного сообщения.',
+                'default' => '120',
+                'min' => 30,
+                'max' => 3600,
+                'width' => 'half',
+            ),
+            'MQTT_MAX_ATTEMPTS' => array(
+                'section' => self::SECTION_MQTT,
+                'target' => InstallSchema::TARGET_ENV,
+                'type' => 'number',
+                'label' => 'Повторов на событие',
+                'description' => 'После этого числа неудачных попыток событие уходит в failed-журнал и больше не блокирует полосу.',
+                'default' => '5',
+                'min' => 2,
+                'max' => 20,
+                'width' => 'half',
+            ),
         );
         foreach ($legacy as $id => $field) {
             $field['id'] = $id;
-            $field['target'] = 'db';
+            if (!isset($field['target'])) {
+                $field['target'] = 'db';
+            }
             $fields[$id] = $field;
         }
 

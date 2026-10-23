@@ -1159,6 +1159,17 @@ class mqtt extends module
         $out['MQTT_STRIPMODE'] = isset($this->config['MQTT_STRIPMODE']) ? (int)$this->config['MQTT_STRIPMODE'] : 0;
         $out['MQTT_UNLINKED_UPDATE_INTERVAL'] = isset($this->config['MQTT_UNLINKED_UPDATE_INTERVAL']) ? (int)$this->config['MQTT_UNLINKED_UPDATE_INTERVAL'] : 3600;
         $out['DEBUG_MODE'] = isset($this->config['DEBUG_MODE']) ? (int)$this->config['DEBUG_MODE'] : 0;
+        // Быстрый путь и очередь настраиваются в «Общих настройках» (.env),
+        // но на странице MQTT полезно видеть текущие значения и состояние.
+        if ($this->view_mode == 'settings' || $this->view_mode == 'update_settings') {
+            $out['RUNTIME_ASYNC'] = MqttRuntime::enabled() ? 1 : 0;
+            $out['RUNTIME_HANDLERS'] = MqttRuntime::handlers();
+            $out['RUNTIME_LEASE'] = max(30, \MajorDoMo\Core\Config::int('MQTT_HANDLER_LEASE', 120));
+            $out['RUNTIME_ATTEMPTS'] = max(2, \MajorDoMo\Core\Config::int('MQTT_MAX_ATTEMPTS', 5));
+            $out['RUNTIME_CORE_WORKERS'] = max(1, min(16, \MajorDoMo\Core\Config::int('CORE_WORKERS', 3)));
+            $out['RUNTIME_HANDLERS_ALIVE'] = MqttRuntime::handlersAlive() ? 1 : 0;
+            $out['RUNTIME_PUBLISHER_ALIVE'] = MqttRuntime::isAlive('publisher') ? 1 : 0;
+        }
 
         // TLS/SSL configuration output
         $out['MQTT_TLS_ENABLE'] = isset($this->config['MQTT_TLS_ENABLE']) ? (int)$this->config['MQTT_TLS_ENABLE'] : 0;
