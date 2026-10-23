@@ -1,5 +1,6 @@
 <?php
 /** Core API, tokens, compatibility and UI on a disposable SQLite database. */
+// 2026-10-23 — HEAD получает заголовки, но не тело ответа.
 // 2026-10-23 — список сценариев передаётся общей форме назначения webhook.
 putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:');
 putenv('DB_HOST='); putenv('DB_NAME='); putenv('USE_REDIS=false');
@@ -177,6 +178,13 @@ try {
 
     $response = new Response('fixture-id', microtime(true));
     check($response->success(false)['data'] === false && $response->failure(new ApiException(422, 'validation_failed', 'Bad'))['error']['details'] instanceof stdClass, 'Response types');
+    $originalMethod = $_SERVER['REQUEST_METHOD'] ?? null;
+    $_SERVER['REQUEST_METHOD'] = 'HEAD';
+    ob_start(); $response->emit(array('ok' => true), 200); $headBody = (string)ob_get_clean();
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+    ob_start(); $response->emit(array('ok' => true), 200); $getBody = (string)ob_get_clean();
+    if ($originalMethod === null) unset($_SERVER['REQUEST_METHOD']); else $_SERVER['REQUEST_METHOD'] = $originalMethod;
+    check($headBody === '' && $getBody !== '', 'HEAD response keeps headers but omits the body');
     $legacy = $response->success(array('data' => 1), true, new Request('GET', '/api/data/Lamp.level', array('token' => 'secret')));
     check(isset($legacy['passed'], $legacy['timestamp']) && !isset($legacy['request']['params']['token']), 'Legacy metadata and credential redaction');
     $app = new ConsoleApplication($root, null, null, null, null, static fn() => $tokens);

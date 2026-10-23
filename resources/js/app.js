@@ -45,6 +45,7 @@ import '../../public/assets/fonts/rubik/rubik.css';
 import '../css/admin_panel.css';
 import '../css/ui-v2.css';
 import '../css/ui-system.css';
+import '../css/ai-editor.css';
 
 /* Shell modules. Keep the order: runtime -> core -> features -> init -> pages. */
 import './modules/admin_panel/00_runtime.js';
@@ -73,4 +74,5 @@ import './modules/admin_panel/122_folder_picker.js';
 import './modules/admin_panel/116_ui_components.js';
 import './modules/admin_panel/120_linkedobject.js';
 import './modules/admin_panel/123_code_sample.js';
+import './modules/admin_panel/130_ai_editor.js';
 import './codeeditor/loader.js';

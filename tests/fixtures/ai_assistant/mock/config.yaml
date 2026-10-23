@@ -1,0 +1,9 @@
+version: 1
+name: majordomo-ai-provider-test
+slug: majordomo-ai-provider-test
+protocol: http
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

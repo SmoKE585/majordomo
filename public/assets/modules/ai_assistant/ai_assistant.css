@@ -1,0 +1,639 @@
+/*
+ * 2026-10-23 — раздел ИИ-помощника: чат, настройки, индексы.
+ * Только страница модуля; токены дизайн-системы, без глобальных селекторов.
+ */
+body.md-admin-shell .md-ai-page {
+    --md-ai-chat-height: min(68vh, 760px);
+}
+
+body.md-admin-shell .md-ai-tabs {
+    align-self: flex-start;
+}
+
+body.md-admin-shell .md-ai-inline-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+body.md-admin-shell .md-ai-narrow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-ui-space-4);
+    max-width: 920px;
+    width: 100%;
+}
+
+body.md-admin-shell .md-ai-chat {
+    display: grid;
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    gap: var(--md-ui-space-4);
+    align-items: start;
+    min-width: 0;
+}
+
+body.md-admin-shell .md-ai-chat__side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-ui-space-3);
+    position: sticky;
+    top: 86px;
+    min-width: 0;
+}
+
+body.md-admin-shell .md-ai-chat__main {
+    min-width: 0;
+}
+
+body.md-admin-shell .md-ai-chat__card {
+    overflow: hidden;
+}
+
+body.md-admin-shell .md-ai-chat__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--md-ui-space-3);
+    padding: var(--md-ui-space-3) var(--md-ui-space-4);
+    border-bottom: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-ai-chat__identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+body.md-admin-shell .md-ai-chat__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--md-ui-radius-sm);
+    background: var(--md-ui-primary-soft);
+    color: var(--md-ui-primary-strong);
+    flex: 0 0 auto;
+}
+
+body.md-admin-shell .md-ai-chat__title {
+    font-weight: 600;
+    color: var(--md-ui-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 52ch;
+}
+
+body.md-admin-shell .md-ai-chat__subtitle,
+body.md-admin-shell .md-ai-chat__footnote,
+body.md-admin-shell .md-ai-msg__usage,
+body.md-admin-shell .md-ai-muted {
+    color: var(--md-ui-muted);
+    font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-ai-chat__controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+body.md-admin-shell .md-ai-chat__controls .md-select--sm {
+    max-width: 240px;
+}
+
+body.md-admin-shell .md-ai-chat__messages {
+    height: var(--md-ai-chat-height);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--md-ui-space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-ui-space-4);
+}
+
+body.md-admin-shell .md-ai-chat__empty {
+    margin: auto 0;
+}
+
+body.md-admin-shell .md-ai-msg {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+body.md-admin-shell .md-ai-msg__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--md-ui-surface-2);
+    color: var(--md-ui-text-soft);
+    font-size: 16px;
+}
+
+body.md-admin-shell .md-ai-msg--assistant .md-ai-msg__avatar {
+    background: var(--md-ui-primary-soft);
+    color: var(--md-ui-primary-strong);
+}
+
+body.md-admin-shell .md-ai-msg__body {
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--md-ui-border);
+    border-radius: var(--md-ui-radius-md);
+    background: var(--md-ui-surface);
+}
+
+body.md-admin-shell .md-ai-msg--user .md-ai-msg__body {
+    background: var(--md-ui-surface-2);
+}
+
+body.md-admin-shell .md-ai-msg__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: var(--md-ui-fs-xs);
+    color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-ai-msg__head strong {
+    color: var(--md-ui-text);
+    font-weight: 600;
+}
+
+body.md-admin-shell .md-ai-msg__content {
+    color: var(--md-ui-text);
+    font-size: var(--md-ui-fs-sm);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+body.md-admin-shell .md-ai-msg__content > :first-child { margin-top: 0; }
+body.md-admin-shell .md-ai-msg__content > :last-child { margin-bottom: 0; }
+body.md-admin-shell .md-ai-msg__content pre {
+    padding: 12px;
+    border-radius: var(--md-ui-radius-sm);
+    background: var(--md-ui-surface-3);
+    overflow-x: auto;
+    font-size: 12px;
+}
+body.md-admin-shell .md-ai-msg__content code {
+    font-family: var(--md-ui-font-mono);
+    font-size: 0.92em;
+}
+body.md-admin-shell .md-ai-msg__content table {
+    border-collapse: collapse;
+    font-size: 12px;
+    width: 100%;
+}
+body.md-admin-shell .md-ai-msg__content th,
+body.md-admin-shell .md-ai-msg__content td {
+    border: 1px solid var(--md-ui-border);
+    padding: 6px 8px;
+}
+
+body.md-admin-shell .md-ai-msg__sources {
+    margin-top: 10px;
+}
+
+body.md-admin-shell .md-ai-msg__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--md-ui-fs-caption);
+    color: var(--md-ui-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+body.md-admin-shell .md-ai-msg__chips,
+body.md-admin-shell .md-ai-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+body.md-admin-shell .md-ai-msg__chips a {
+    text-decoration: none;
+}
+
+body.md-admin-shell .md-ai-msg__tools {
+    margin-top: 10px;
+    font-size: var(--md-ui-fs-xs);
+    color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-ai-msg__tools summary {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+body.md-admin-shell .md-ai-msg__tools ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+body.md-admin-shell .md-ai-msg__tool-result {
+    display: block;
+    margin-top: 2px;
+    color: var(--md-ui-text-soft);
+}
+
+body.md-admin-shell .md-ai-msg__usage {
+    margin-top: 8px;
+}
+
+body.md-admin-shell .md-ai-msg.is-cancelled .md-ai-msg__body {
+    border-style: dashed;
+}
+
+body.md-admin-shell .md-ai-composer {
+    border-top: 1px solid var(--md-ui-border);
+    padding: var(--md-ui-space-3) var(--md-ui-space-4) var(--md-ui-space-4);
+    background: var(--md-ui-surface);
+}
+
+body.md-admin-shell .md-ai-composer__input {
+    width: 100%;
+    resize: vertical;
+    min-height: 64px;
+}
+
+body.md-admin-shell .md-ai-composer__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--md-ui-space-3);
+    margin-top: 8px;
+}
+
+body.md-admin-shell .md-ai-composer__status {
+    color: var(--md-ui-muted);
+    font-size: var(--md-ui-fs-xs);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.md-admin-shell .md-ai-composer__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+body.md-admin-shell .md-ai-composer.is-busy .md-ai-composer__input {
+    opacity: .72;
+}
+
+body.md-admin-shell .md-ai-chat__footnote {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+body.md-admin-shell .md-ai-dialogs {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+body.md-admin-shell .md-ai-dialogs__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--md-ui-radius-sm);
+    color: var(--md-ui-text);
+    text-decoration: none;
+    font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-ai-dialogs__item:hover,
+body.md-admin-shell .md-ai-dialogs__item.is-active {
+    background: var(--md-ui-surface-2);
+}
+
+body.md-admin-shell .md-ai-dialogs__item.is-active {
+    box-shadow: inset 2px 0 0 var(--md-ui-primary);
+}
+
+body.md-admin-shell .md-ai-dialogs__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.md-admin-shell .md-ai-dialogs__empty {
+    padding: 10px;
+    color: var(--md-ui-muted);
+    font-size: var(--md-ui-fs-xs);
+}
+
+body.md-admin-shell .md-ai-help {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: var(--md-ui-fs-xs);
+    color: var(--md-ui-text-soft);
+}
+
+body.md-admin-shell .md-ai-split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--md-ui-space-4);
+    align-items: start;
+}
+
+body.md-admin-shell .md-ai-fieldset {
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--md-ui-border);
+    border-radius: var(--md-ui-radius-md);
+}
+
+body.md-admin-shell .md-ai-fieldset legend {
+    padding: 0 6px;
+    font-size: var(--md-ui-fs-sm);
+    font-weight: 600;
+    color: var(--md-ui-text);
+}
+
+body.md-admin-shell .md-ai-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+}
+
+body.md-admin-shell .md-ai-checks--wide {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.md-admin-shell .md-ai-inline-note,
+body.md-admin-shell .md-ai-rag-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: var(--md-ui-fs-xs);
+    color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-ai-instructions textarea,
+body.md-admin-shell .md-ai-instructions {
+    font-family: var(--md-ui-font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+body.md-admin-shell .md-ai-code {
+    font-size: 11px;
+    word-break: break-all;
+}
+
+body.md-admin-shell .md-ai-index-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: var(--md-ui-space-4);
+}
+
+body.md-admin-shell .md-ai-index {
+    border: 1px solid var(--md-ui-border);
+    border-radius: var(--md-ui-radius-md);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--md-ui-surface);
+}
+
+body.md-admin-shell .md-ai-index__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+body.md-admin-shell .md-ai-index__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+body.md-admin-shell .md-ai-index__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: var(--md-ui-fs-xs);
+    color: var(--md-ui-text-soft);
+}
+
+body.md-admin-shell .md-ai-index__actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+body.md-admin-shell .md-ai-index-foot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 var(--md-ui-space-4) var(--md-ui-space-4);
+}
+
+body.md-admin-shell .md-ai-index-empty {
+    padding: 8px;
+}
+
+body.md-admin-shell .md-ai-diag-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+    margin-bottom: 12px;
+}
+
+body.md-admin-shell .md-ai-diag-list > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--md-ui-border);
+    font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-ai-probe-result {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--md-ui-radius-sm);
+    border: 1px solid var(--md-ui-border);
+    background: var(--md-ui-surface-2);
+    font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-ai-probe-result.is-ok { border-color: var(--md-ui-success); }
+body.md-admin-shell .md-ai-probe-result.is-error { border-color: var(--md-ui-danger); }
+
+body.md-admin-shell .is-hidden {
+    display: none !important;
+}
+
+@media (max-width: 1199.98px) {
+    body.md-admin-shell .md-ai-chat {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    body.md-admin-shell .md-ai-chat__side {
+        position: static;
+    }
+    body.md-admin-shell .md-ai-split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    body.md-admin-shell .md-ai-chat__messages {
+        height: auto;
+        min-height: 42vh;
+        max-height: 64vh;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.md-admin-shell .md-ai-chat__top {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    body.md-admin-shell .md-ai-chat__controls {
+        justify-content: space-between;
+    }
+    body.md-admin-shell .md-ai-chat__controls .md-select--sm {
+        max-width: none;
+        flex: 1 1 auto;
+    }
+    body.md-admin-shell .md-ai-composer__bar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    body.md-admin-shell .md-ai-checks--wide,
+    body.md-admin-shell .md-ai-diag-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    body.md-admin-shell .md-ai-msg {
+        grid-template-columns: 26px minmax(0, 1fr);
+    }
+    body.md-admin-shell .md-ai-msg__avatar {
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+    }
+}
+
+/* 2026-10-23 — на телефоне вкладки раздела прокручиваются, а не расширяют страницу. */
+@media (max-width: 767.98px) {
+    body.md-admin-shell .md-ai-tabs {
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: thin;
+    }
+    body.md-admin-shell .md-ai-tabs .nav-link {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+/* 2026-10-23 — вложенные разделы используют тот же вертикальный ритм, что и страница. */
+body.md-admin-shell .md-ai-knowledge,
+body.md-admin-shell .md-ai-agent-edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-ui-space-4);
+    min-width: 0;
+}
+
+/* 2026-10-23 — «магический» акцент раздела: аура и AI-метка в шапке. */
+body.md-admin-shell .md-ai-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 10px 4px 20px;
+    border-bottom: 1px solid color-mix(in srgb, var(--md-ui-primary) 24%, var(--md-ui-border));
+}
+body.md-admin-shell .md-ai-hero__aura {
+    position: absolute;
+    z-index: -1;
+    top: -90px;
+    right: -40px;
+    width: min(520px, 52vw);
+    height: 260px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 32% 40%, rgba(99, 102, 241, .42), transparent 62%),
+        radial-gradient(circle at 72% 58%, rgba(34, 211, 238, .34), transparent 60%),
+        radial-gradient(circle at 52% 78%, rgba(217, 70, 239, .24), transparent 62%);
+    filter: blur(24px);
+    opacity: .8;
+    pointer-events: none;
+    animation: md-ai-aurora 13s ease-in-out infinite;
+}
+body.md-admin-shell .md-ai-hero__tag {
+    display: inline-flex;
+    align-items: center;
+    height: 17px;
+    margin-left: 6px;
+    padding: 0 6px;
+    border: 1px solid color-mix(in srgb, var(--md-ui-primary) 35%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--md-ui-primary) 12%, transparent);
+    color: var(--md-ui-primary-strong);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    vertical-align: middle;
+}
+body.md-admin-shell .md-ai-hero .md-ui-hero__title {
+    background: linear-gradient(120deg, var(--md-ui-text) 0%, var(--md-ui-primary-strong) 58%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+    body.md-admin-shell .md-ai-hero__aura { animation: none !important; }
+}
+
+/* Fallback для браузеров без background-clip: text. */
+body.md-admin-shell .md-ai-hero .md-ui-hero__title {
+    color: var(--md-ui-text);
+    -webkit-text-fill-color: transparent;
+}
+
+/* 2026-10-23 — убираем крупное прямоугольное свечение в шапке: оно выглядело как обрезанный блок. */
+body.md-admin-shell .md-ai-hero__aura {
+    display: none;
+}
+body.md-admin-shell .md-ai-hero {
+    background: radial-gradient(520px 150px at 92% 10%, color-mix(in srgb, var(--md-ui-primary) 7%, transparent), transparent 72%);
+}
+
+/* 2026-10-23 — формы и карточки раздела занимают всю ширину контента. */
+body.md-admin-shell .md-ai-narrow {
+    max-width: 100%;
+}

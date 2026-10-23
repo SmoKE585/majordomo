@@ -3631,3 +3631,502 @@ body.md-admin-shell .md-admin-drawer-backdrop.is-open {
   pointer-events: auto;
   opacity: 1;
 }
+
+/* 2026-10-23 — ИИ-помощник: отдельная карточка в меню и блок на главной. */
+body.md-admin-shell .md-admin-sidebar__ai {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 12px 6px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--md-ui-primary) 28%, var(--md-ui-border));
+    border-radius: var(--md-ui-radius-md);
+    background:
+        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--md-ui-primary) 18%, transparent) 0%, transparent 70%),
+        var(--md-ui-surface-2);
+    text-decoration: none;
+    color: var(--md-ui-text);
+    transition: border-color var(--md-ui-transition), background var(--md-ui-transition), transform var(--md-ui-transition);
+}
+
+body.md-admin-shell .md-admin-sidebar__ai:hover,
+body.md-admin-shell .md-admin-sidebar__ai.is-active {
+    border-color: var(--md-ui-primary);
+    background:
+        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--md-ui-primary) 26%, transparent) 0%, transparent 70%),
+        var(--md-ui-surface-2);
+    color: var(--md-ui-text);
+    text-decoration: none;
+}
+
+body.md-admin-shell .md-admin-sidebar__ai-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    border-radius: var(--md-ui-radius-sm);
+    background: var(--md-ui-primary);
+    color: #fff;
+    font-size: 18px;
+    box-shadow: var(--md-ui-shadow-xs);
+}
+
+body.md-admin-shell .md-admin-sidebar__ai-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+    line-height: 1.25;
+}
+
+body.md-admin-shell .md-admin-sidebar__ai-title {
+    font-size: var(--md-ui-fs-sm);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.md-admin-shell .md-admin-sidebar__ai-sub {
+    font-size: var(--md-ui-fs-caption);
+    color: var(--md-ui-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.md-admin-shell .md-admin-sidebar__ai-dot {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--md-ui-warning);
+}
+
+body.md-admin-shell .md-admin-sidebar__ai-dot.is-ready {
+    background: var(--md-ui-success);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-ui-success) 22%, transparent);
+}
+
+body.md-admin-shell .md-ai-spotlight {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    margin: 4px 0 18px;
+    padding: 18px;
+    border: 1px solid color-mix(in srgb, var(--md-ui-primary) 26%, var(--md-ui-border));
+    border-radius: var(--md-ui-radius-lg);
+    background:
+        radial-gradient(90% 160% at 0% 0%, color-mix(in srgb, var(--md-ui-primary) 14%, transparent) 0%, transparent 65%),
+        var(--md-ui-surface);
+    box-shadow: var(--md-ui-shadow-xs);
+}
+
+body.md-admin-shell .md-ai-spotlight__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--md-ui-radius-md);
+    background: var(--md-ui-primary);
+    color: #fff;
+    font-size: 24px;
+    box-shadow: var(--md-ui-shadow-pop);
+}
+
+body.md-admin-shell .md-ai-spotlight__body { min-width: 0; }
+
+body.md-admin-shell .md-ai-spotlight__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--md-ui-fs-caption);
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--md-ui-muted);
+    margin-bottom: 4px;
+}
+
+body.md-admin-shell .md-ai-spotlight__title {
+    margin: 0 0 4px;
+    font-size: var(--md-ui-fs-xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--md-ui-text);
+}
+
+body.md-admin-shell .md-ai-spotlight__text {
+    margin: 0;
+    max-width: 80ch;
+    color: var(--md-ui-text-soft);
+    font-size: var(--md-ui-fs-sm);
+}
+
+body.md-admin-shell .md-ai-spotlight__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+body.md-admin-shell .md-ai-spotlight__chip {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--md-ui-border);
+    border-radius: var(--md-ui-radius-sm);
+    background: var(--md-ui-surface-2);
+    color: var(--md-ui-text);
+    text-decoration: none;
+    font-size: var(--md-ui-fs-xs);
+    transition: border-color var(--md-ui-transition), background var(--md-ui-transition);
+}
+
+body.md-admin-shell .md-ai-spotlight__chip:hover {
+    border-color: var(--md-ui-primary);
+    color: var(--md-ui-text);
+    text-decoration: none;
+}
+
+body.md-admin-shell .md-ai-spotlight__chip > i {
+    color: var(--md-ui-primary);
+    font-size: 16px;
+    margin-top: 1px;
+}
+
+body.md-admin-shell .md-ai-spotlight__chip span {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+body.md-admin-shell .md-ai-spotlight__chip strong {
+    font-weight: 600;
+}
+
+body.md-admin-shell .md-ai-spotlight__chip small {
+    color: var(--md-ui-muted);
+    font-size: var(--md-ui-fs-caption);
+}
+
+body.md-admin-shell .md-ai-spotlight__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 991.98px) {
+    body.md-admin-shell .md-ai-spotlight {
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+    }
+    body.md-admin-shell .md-ai-spotlight__actions {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.md-admin-shell .md-ai-spotlight {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 14px;
+    }
+    body.md-admin-shell .md-ai-spotlight__icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+    body.md-admin-shell .md-ai-spotlight__title {
+        font-size: var(--md-ui-fs-lg);
+    }
+}
+
+/* 2026-10-23 — «магический» визуал ИИ: полноширинная карточка в меню и блок на главной. */
+@keyframes md-ai-aurora {
+    0%   { transform: translate3d(-8%, -6%, 0) scale(1); opacity: .7; }
+    50%  { transform: translate3d(10%, 8%, 0) scale(1.18); opacity: 1; }
+    100% { transform: translate3d(-8%, -6%, 0) scale(1); opacity: .7; }
+}
+@keyframes md-ai-spark {
+    0%, 100% { opacity: .25; transform: translateY(0) scale(.85) rotate(-8deg); }
+    50%      { opacity: .95; transform: translateY(-5px) scale(1.1) rotate(8deg); }
+}
+@keyframes md-ai-shimmer {
+    0%   { transform: translateX(-120%) skewX(-18deg); }
+    100% { transform: translateX(240%) skewX(-18deg); }
+}
+@keyframes md-ai-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+}
+
+body.md-admin-shell .md-admin-sidebar__ai--magic {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    margin: 12px 0 8px;
+    width: 100%;
+    border-left: 1px solid rgba(255, 255, 255, .16);
+    border-right: 1px solid rgba(255, 255, 255, .16);
+    border-radius: var(--md-ui-radius-md);
+    padding: 13px 14px;
+    color: #fff;
+    border-color: rgba(255, 255, 255, .16);
+    background:
+        radial-gradient(120% 180% at 0% 0%, rgba(97, 120, 255, .95) 0%, rgba(97, 120, 255, 0) 58%),
+        radial-gradient(130% 180% at 100% 0%, rgba(34, 211, 238, .72) 0%, rgba(34, 211, 238, 0) 60%),
+        linear-gradient(135deg, #2b2f8f 0%, #5b3fd6 46%, #0f766e 100%);
+    box-shadow: 0 10px 28px rgba(52, 48, 160, .28), inset 0 1px 0 rgba(255, 255, 255, .18);
+    transition: box-shadow var(--md-ui-transition), filter var(--md-ui-transition);
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(55% 90% at 78% 18%, rgba(255, 255, 255, .32), transparent 60%),
+        radial-gradient(45% 70% at 12% 96%, rgba(34, 211, 238, .35), transparent 65%);
+    transform: translate3d(-8%, -6%, 0);
+    animation: md-ai-aurora 9s ease-in-out infinite;
+    pointer-events: none;
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 38%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .16), transparent);
+    animation: md-ai-shimmer 6.5s ease-in-out infinite;
+    pointer-events: none;
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic:hover,
+body.md-admin-shell .md-admin-sidebar__ai--magic.is-active {
+    color: #fff;
+    filter: brightness(1.06);
+    box-shadow: 0 14px 34px rgba(52, 48, 160, .42), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic.is-active {
+    outline: 2px solid rgba(255, 255, 255, .55);
+    outline-offset: -2px;
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic .md-admin-sidebar__ai-icon {
+    position: relative;
+    background: rgba(255, 255, 255, .16);
+    border: 1px solid rgba(255, 255, 255, .3);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+body.md-admin-shell .md-admin-sidebar__ai-spark {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    font-size: 13px;
+    color: #fef3c7;
+    text-shadow: 0 0 10px rgba(253, 230, 138, .9);
+    animation: md-ai-spark 3.2s ease-in-out infinite;
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic .md-admin-sidebar__ai-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #fff;
+    font-size: 13px;
+}
+body.md-admin-shell .md-admin-sidebar__ai-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 16px;
+    padding: 0 5px;
+    border: 1px solid rgba(255, 255, 255, .32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: .08em;
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic .md-admin-sidebar__ai-sub {
+    color: rgba(255, 255, 255, .74);
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic .md-admin-sidebar__ai-dot {
+    background: #fbbf24;
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, .18);
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic .md-admin-sidebar__ai-dot.is-ready {
+    background: #4ade80;
+    box-shadow: 0 0 0 3px rgba(74, 222, 128, .22), 0 0 14px rgba(74, 222, 128, .8);
+}
+
+body.md-admin-shell .md-ai-spotlight--magic {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .18);
+    background:
+        radial-gradient(120% 160% at 0% 0%, rgba(99, 102, 241, .95) 0%, rgba(99, 102, 241, 0) 58%),
+        radial-gradient(110% 160% at 100% 10%, rgba(34, 211, 238, .72) 0%, rgba(34, 211, 238, 0) 62%),
+        linear-gradient(135deg, #1e1b4b 0%, #4338ca 48%, #0f766e 100%);
+    box-shadow: 0 18px 44px rgba(37, 35, 120, .24);
+}
+body.md-admin-shell .md-ai-spotlight--magic::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(60% 100% at 10% 10%, rgba(255, 255, 255, .28), transparent 65%),
+        radial-gradient(45% 80% at 90% 90%, rgba(34, 211, 238, .35), transparent 65%);
+    animation: md-ai-aurora 11s ease-in-out infinite;
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__icon {
+    background: rgba(255, 255, 255, .16);
+    border: 1px solid rgba(255, 255, 255, .28);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24), 0 10px 24px rgba(15, 23, 42, .22);
+    animation: md-ai-float 4.8s ease-in-out infinite;
+}
+body.md-admin-shell .md-ai-spotlight__aura {
+    position: absolute;
+    inset: -30% -10%;
+    z-index: -1;
+    background: conic-gradient(from 120deg at 50% 50%, rgba(129, 140, 248, .45), rgba(34, 211, 238, .35), rgba(217, 70, 239, .4), rgba(129, 140, 248, .45));
+    filter: blur(46px);
+    opacity: .55;
+    animation: md-ai-aurora 14s linear infinite;
+}
+body.md-admin-shell .md-ai-spotlight__spark {
+    position: absolute;
+    z-index: 1;
+    color: #fef3c7;
+    font-size: 18px;
+    text-shadow: 0 0 14px rgba(253, 230, 138, .95);
+    animation: md-ai-spark 4.2s ease-in-out infinite;
+    pointer-events: none;
+}
+body.md-admin-shell .md-ai-spotlight__spark--one { top: 14px; right: 18px; }
+body.md-admin-shell .md-ai-spotlight__spark--two { bottom: 18px; right: 42%; font-size: 12px; animation-delay: 1.6s; }
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__eyebrow {
+    color: rgba(255, 255, 255, .78);
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__eyebrow .md-badge {
+    background: rgba(255, 255, 255, .15);
+    border-color: rgba(255, 255, 255, .25);
+    color: #fff;
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__title {
+    color: #fff;
+    text-shadow: 0 2px 18px rgba(15, 23, 42, .25);
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__text {
+    color: rgba(255, 255, 255, .8);
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__chip {
+    border-color: rgba(255, 255, 255, .2);
+    background: rgba(255, 255, 255, .1);
+    color: #fff;
+    backdrop-filter: blur(6px);
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__chip:hover {
+    border-color: rgba(255, 255, 255, .5);
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__chip > i {
+    color: #fef3c7;
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__chip small {
+    color: rgba(255, 255, 255, .66);
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-btn--primary {
+    background: #fff;
+    border-color: #fff;
+    color: #3730a3;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .22);
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-btn--primary:hover {
+    background: #f8fafc;
+    border-color: #f8fafc;
+    color: #312e81;
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-btn--secondary {
+    background: rgba(255, 255, 255, .12);
+    border-color: rgba(255, 255, 255, .28);
+    color: #fff;
+}
+body.md-admin-shell .md-ai-spotlight--magic .md-btn--secondary:hover {
+    background: rgba(255, 255, 255, .2);
+    border-color: rgba(255, 255, 255, .45);
+    color: #fff;
+}
+body.md-admin-shell .md-ai-spotlight__ai-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 17px;
+    padding: 0 6px;
+    border: 1px solid rgba(255, 255, 255, .35);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .14);
+    color: #fff;
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: .08em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.md-admin-shell .md-admin-sidebar__ai--magic::before,
+    body.md-admin-shell .md-admin-sidebar__ai--magic::after,
+    body.md-admin-shell .md-admin-sidebar__ai-spark,
+    body.md-admin-shell .md-ai-spotlight--magic::before,
+    body.md-admin-shell .md-ai-spotlight__aura,
+    body.md-admin-shell .md-ai-spotlight__spark,
+    body.md-admin-shell .md-ai-spotlight--magic .md-ai-spotlight__icon {
+        animation: none !important;
+    }
+}
+
+/* 2026-10-23 — плашка без закругления; hover не должен затирать ИИ-градиент. */
+body.md-admin-shell .md-admin-sidebar__ai--magic,
+body.md-admin-shell .md-admin-sidebar__ai--magic:hover,
+body.md-admin-shell .md-admin-sidebar__ai--magic.is-active {
+    color: #fff;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    margin: 12px 0 8px;
+    width: 100%;
+    background:
+        radial-gradient(120% 180% at 0% 0%, rgba(97, 120, 255, .95) 0%, rgba(97, 120, 255, 0) 58%),
+        radial-gradient(130% 180% at 100% 0%, rgba(34, 211, 238, .72) 0%, rgba(34, 211, 238, 0) 60%),
+        linear-gradient(135deg, #2b2f8f 0%, #5b3fd6 46%, #0f766e 100%);
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic:hover,
+body.md-admin-shell .md-admin-sidebar__ai--magic.is-active {
+    filter: brightness(1.1);
+}
+body.md-admin-shell .md-admin-sidebar__ai--magic:hover .md-admin-sidebar__ai-title,
+body.md-admin-shell .md-admin-sidebar__ai--magic:hover .md-admin-sidebar__ai-sub,
+body.md-admin-shell .md-admin-sidebar__ai--magic.is-active .md-admin-sidebar__ai-title,
+body.md-admin-shell .md-admin-sidebar__ai--magic.is-active .md-admin-sidebar__ai-sub {
+    color: #fff;
+}
+
+/* 2026-10-23 — активная ИИ-плашка не получает рамку. */
+body.md-admin-shell .md-admin-sidebar__ai--magic.is-active {
+    outline: none;
+    box-shadow: 0 14px 34px rgba(52, 48, 160, .42), inset 0 1px 0 rgba(255, 255, 255, .25);
+}

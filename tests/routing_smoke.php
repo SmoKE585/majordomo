@@ -146,6 +146,15 @@ $cases = [
     '/panel/knowledge_base.html' => ['module' => 'knowledge_base', 'params' => []],
     '/panel/knowledge_base/user/commands.html' => ['module' => 'knowledge_base', 'params' => ['view_mode' => 'view_doc', 'doc' => 'user/commands']],
     '/panel/knowledge_base/module/yandexhome/setup.html' => ['module' => 'knowledge_base', 'params' => ['view_mode' => 'view_doc', 'doc' => 'module/yandexhome/setup']],
+    '/panel/ai_assistant.html' => ['module' => 'ai_assistant', 'params' => []],
+    '/panel/ai_assistant/chat/5.html' => ['module' => 'ai_assistant', 'params' => ['view_mode' => 'chat', 'dialog_id' => '5']],
+    '/panel/ai_assistant/agents.html' => ['module' => 'ai_assistant', 'params' => ['view_mode' => 'agents']],
+    '/panel/ai_assistant/agents/add.html' => ['module' => 'ai_assistant', 'params' => ['view_mode' => 'agent_edit']],
+    '/panel/ai_assistant/agents/3.html' => ['module' => 'ai_assistant', 'params' => ['view_mode' => 'agent_edit', 'id' => '3']],
+    '/panel/ai_assistant/models/7.html' => ['module' => 'ai_assistant', 'params' => ['view_mode' => 'model_edit', 'id' => '7']],
+    '/panel/ai_assistant/providers/add.html' => ['module' => 'ai_assistant', 'params' => ['view_mode' => 'provider_edit']],
+    '/panel/ai_assistant/knowledge.html' => ['module' => 'ai_assistant', 'params' => ['view_mode' => 'knowledge']],
+    '/panel/ai_assistant/diagnostics.html' => ['module' => 'ai_assistant', 'params' => ['view_mode' => 'diagnostics']],
 ];
 
 foreach ($cases as $path => $expected) {

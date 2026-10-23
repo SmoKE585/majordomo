@@ -1,0 +1,120 @@
+/* 2026-10-23 — панель ИИ-помощника в редакторе кода. */
+body.md-admin-shell .md-ai-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+body.md-admin-shell .md-ai-editor__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+body.md-admin-shell .md-ai-editor__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+body.md-admin-shell .md-ai-editor__quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+body.md-admin-shell .md-ai-editor__prompt {
+    width: 100%;
+    resize: vertical;
+    min-height: 88px;
+}
+
+body.md-admin-shell .md-ai-editor__agent {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.md-admin-shell .md-ai-editor__agent .md-select {
+    flex: 1 1 auto;
+    max-width: 320px;
+}
+
+body.md-admin-shell .md-ai-editor__label {
+    font-size: var(--md-ui-fs-xs);
+    color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-ai-editor__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    border-top: 1px solid var(--md-ui-border);
+}
+
+body.md-admin-shell .md-ai-editor__status {
+    flex: 1 1 180px;
+    min-width: 0;
+    font-size: var(--md-ui-fs-xs);
+    color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-ai-editor__answer {
+    font-size: var(--md-ui-fs-sm);
+    line-height: 1.6;
+    color: var(--md-ui-text);
+    overflow-wrap: anywhere;
+    min-height: 40px;
+}
+
+body.md-admin-shell .md-ai-editor__answer > :first-child { margin-top: 0; }
+body.md-admin-shell .md-ai-editor__answer > :last-child { margin-bottom: 0; }
+
+body.md-admin-shell .md-ai-editor__answer pre {
+    padding: 12px;
+    border-radius: var(--md-ui-radius-sm);
+    background: var(--md-ui-surface-3);
+    overflow-x: auto;
+    font-size: 12px;
+}
+
+body.md-admin-shell .md-ai-editor__answer code {
+    font-family: var(--md-ui-font-mono, Consolas, Monaco, monospace);
+    font-size: 0.92em;
+}
+
+body.md-admin-shell .md-ai-editor__answer table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+}
+
+body.md-admin-shell .md-ai-editor__answer th,
+body.md-admin-shell .md-ai-editor__answer td {
+    border: 1px solid var(--md-ui-border);
+    padding: 6px 8px;
+}
+
+body.md-admin-shell .md-ai-editor__code-actions {
+    display: flex;
+    gap: 6px;
+    margin: 8px 0 2px;
+}
+
+body.md-admin-shell .md-ai-editor__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+}
+
+body.md-admin-shell .md-ai-editor pre.is-inserted {
+    outline: 2px solid var(--md-ui-success);
+    outline-offset: 2px;
+}
+
+body.md-admin-shell .md-ai-editor__answer .md-alert {
+    margin-top: 8px;
+}

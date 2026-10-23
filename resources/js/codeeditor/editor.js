@@ -1089,6 +1089,78 @@ function toggleShortcuts(button) {
     openShortcutsPopover = popover;
 }
 
+function ensureAiButton(toolbar) {
+    var button = toolbar.querySelector('[data-code-editor-action="ai"]');
+    if (button) {
+        return button;
+    }
+
+    button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'md-code-editor__icon-btn';
+    button.setAttribute('data-code-editor-action', 'ai');
+    button.setAttribute('title', 'Спросить ИИ-помощника');
+    button.setAttribute('aria-label', 'Спросить ИИ-помощника');
+    button.innerHTML = '<i class="ti ti-robot" aria-hidden="true"></i>';
+
+    var fullscreen = toolbar.querySelector('[data-code-editor-action="fullscreen"]');
+    if (fullscreen && fullscreen.parentNode === toolbar) {
+        toolbar.insertBefore(button, fullscreen);
+    } else {
+        toolbar.appendChild(button);
+    }
+
+    return button;
+}
+
+/**
+ * Контекст редактора для ИИ-помощника. Модуль остаётся необязательным:
+ * без обработчика кнопка показывает подсказку, а редактор работает как раньше.
+ */
+function requestCodeEditorAi(wrapper, editor) {
+    var selection = editor.view.state.selection.main;
+    var detail = {
+        wrapper: wrapper,
+        editor: editor,
+        context: {
+            key: wrapper.dataset.codeEditorKey || '',
+            id: wrapper.dataset.codeEditorId || '',
+            md: wrapper.dataset.codeEditorMd || '',
+            entity: wrapper.dataset.codeEditorEntity || '',
+            language: getCurrentMode(wrapper),
+            title: wrapper.dataset.codeEditorTitle || '',
+            object: wrapper.dataset.codeEditorObject || '',
+            class: wrapper.dataset.codeEditorClass || '',
+            method: wrapper.dataset.codeEditorMethod || '',
+            script: (wrapper.dataset.codeEditorEntity || '') === 'script'
+                ? (wrapper.dataset.codeEditorTitle || wrapper.dataset.codeEditorId || '')
+                : '',
+            code: editor.getValue(),
+            selection: selection.empty ? null : {
+                from: selection.from,
+                to: selection.to,
+                text: editor.view.state.sliceDoc(selection.from, selection.to)
+            },
+            parentCode: wrapper.dataset.codeEditorParentCode || '',
+            dirty: wrapper.classList.contains('is-dirty')
+        }
+    };
+    wrapper.dispatchEvent(new CustomEvent('md:code-editor-ai', {bubbles: true, detail: detail}));
+    if (!detail.handled) {
+        window.setTimeout(function () {
+            if (detail.handled) {
+                return;
+            }
+            if (window.MDJAdminUI && typeof window.MDJAdminUI.showToast === 'function') {
+                window.MDJAdminUI.showToast({
+                    type: 'warning',
+                    message: 'ИИ-помощник недоступен: проверьте, что модуль установлен и включён.'
+                });
+            }
+        }, 0);
+    }
+}
+
 function bindToolbar(wrapper, editor) {
     var toolbar = wrapper.querySelector('[data-code-editor-toolbar]');
     if (!toolbar) {
@@ -1096,6 +1168,7 @@ function bindToolbar(wrapper, editor) {
     }
 
     initShortcutsPopover(ensureShortcutsButton(toolbar));
+    ensureAiButton(toolbar);
 
     var modeSelect = toolbar.querySelector('[data-code-editor-mode-select]');
     if (modeSelect && !modeSelect.dataset.codeEditorBound) {
@@ -1136,6 +1209,10 @@ function bindToolbar(wrapper, editor) {
         }
         if (action === 'shortcuts') {
             toggleShortcuts(button);
+            return;
+        }
+        if (action === 'ai') {
+            requestCodeEditorAi(wrapper, editor);
             return;
         }
         if (action === 'search') {

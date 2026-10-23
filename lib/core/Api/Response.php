@@ -2,6 +2,11 @@
 
 namespace MajorDoMo\Core\Api;
 
+/**
+ * Единый JSON-конверт ответа API и заголовки запроса.
+ *
+ * Изменения: 2026-10-23 — для HEAD тело не отправляется, как требует HTTP.
+ */
 final class Response
 {
     public function __construct(public readonly string $requestId, private float $started) {}
@@ -37,7 +42,11 @@ final class Response
         header('X-Content-Type-Options: nosniff');
         header('X-Request-ID: ' . $this->requestId);
         foreach ($headers as $name => $value) header($name . ': ' . $value);
-        echo $json;
+        // HEAD должен вернуть те же заголовки и статус, но без тела. Это
+        // касается и ошибок: 404/405 на HEAD тоже не должны содержать JSON.
+        if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? '')) !== 'HEAD') {
+            echo $json;
+        }
     }
 
     private function meta(): array { return array('request_id' => $this->requestId, 'timestamp' => time(), 'duration_ms' => round((microtime(true) - $this->started) * 1000, 2)); }

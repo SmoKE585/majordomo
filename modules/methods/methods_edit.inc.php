@@ -126,6 +126,13 @@
   }
 
   $out['SCRIPTS']=SQLSelect("SELECT ID, TITLE FROM scripts ORDER BY TITLE");
+  // 2026-10-23 — контекст класса для ИИ-помощника в редакторе.
+  $classTitle = '';
+  if (!empty($out['CLASS_ID'])) {
+   $classRecord = SQLSelectOne("SELECT TITLE FROM classes WHERE ID='" . (int)$out['CLASS_ID'] . "'");
+   if (!empty($classRecord['TITLE'])) $classTitle = (string)$classRecord['TITLE'];
+  }
+  $out['CLASS_TITLE'] = htmlspecialchars($classTitle);
   $out['CODE_EDITOR_MODE'] = normalize_code_editor_mode(isset($out['CODE_EDITOR_MODE']) ? $out['CODE_EDITOR_MODE'] : '') ?: 'php';
   $out['CODE_EDITOR_VALIDATE'] = in_array($out['CODE_EDITOR_MODE'], array('php', 'python'), true) ? 1 : 0;
 

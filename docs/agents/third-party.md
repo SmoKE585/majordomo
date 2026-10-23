@@ -23,6 +23,7 @@ PHP-библиотеки устанавливаются Composer в `vendor/`. �
 | `phpmailer/phpmailer` 7.x | Composer, совместим с PHP 8.1 | Автозагрузка `PHPMailer\PHPMailer\*`; публичные `SendMail()` и `SendMail_HTML()` сохранены. |
 | `workerman/workerman` 5.x | Composer | Сервер ядра `lib/core/WebSockets/`. |
 | `majordomo/phpmqtt` 1.x | Локальный Composer path-пакет `packages/phpmqtt/` | Автозагрузка `Bluerhinos\phpMQTT`. |
+| `neuron-core/neuron-ai` 4.1.x | Composer, PHP 8.1+ и cURL | ИИ-помощник в `modules/ai_assistant/`; установленная версия зафиксирована в `composer.lock`, Qdrant — отдельный опциональный сервис. |
 | Rubik | `public/assets/fonts/rubik/` | CSS импортируется в Vite из `resources/js/app.js`. |
 | Пагинация | `lib/core/Pagination.php` | Журнал действий использует SQL COUNT/LIMIT и ограниченное окно страниц. Внешний Paginator удалён. |
 

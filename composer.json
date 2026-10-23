@@ -6,6 +6,7 @@
     "require": {
         "php": ">=8.1",
         "majordomo/phpmqtt": "^1.0",
+        "neuron-core/neuron-ai": "~4.1.13",
         "phpmailer/phpmailer": "^7.0",
         "workerman/workerman": "^5.1"
     },
@@ -23,7 +24,8 @@
     ],
     "autoload": {
         "psr-4": {
-            "MajorDoMo\\Core\\": "lib/core/"
+            "MajorDoMo\\Core\\": "lib/core/",
+            "MajorDoMo\\Modules\\AiAssistant\\": "modules/ai_assistant/src/"
         }
     },
     "config": {

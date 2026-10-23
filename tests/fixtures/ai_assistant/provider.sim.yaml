@@ -1,0 +1,7 @@
+simulation: majordomo-ai-provider-test
+routing: path
+mocks:
+  - routeKey: provider
+    path: ./mock/config.yaml
+  - routeKey: qdrant
+    path: ./qdrant/config.yaml

@@ -1,4 +1,5 @@
 <?php
+// 2026-10-23 — список методов webhook берётся из HookStore, добавлен HEAD.
 // 2026-10-23 — единая форма назначения webhook: модуль, сценарий или PHP-код.
 require_once ROOT . 'modules/api/lib/ApiDocs.php';
 require_once ROOT . 'modules/api/lib/ApiHooks.php';
@@ -59,7 +60,8 @@ $renderFields = static function (array $fields) use ($e): string {
     </div>
     <?php return (string)ob_get_clean();
 };
-$hookMethods = array('GET', 'POST', 'PUT', 'PATCH', 'DELETE');
+// Единый источник списка — HookStore, чтобы форма не расходилась с проверкой.
+$hookMethods = \MajorDoMo\Core\Api\HookStore::METHODS;
 $renderHookHandlerOptions = static function (array $handlerOptions) use ($e): string {
     $html = '';
     foreach ($handlerOptions as $module => $files) {
@@ -333,7 +335,7 @@ $renderHookMethods = static function (string $prefix, array $selected) use ($hoo
                 </div>
                 <?= $renderHookTarget('md-api-hook') ?>
                 <?= MDJUI::field(
-                    array('label' => 'Разрешённые HTTP-методы', 'description' => 'По умолчанию POST. Остальные методы получат 405 и заголовок Allow.'),
+                    array('label' => 'Разрешённые HTTP-методы', 'description' => 'По умолчанию POST. HEAD отвечает 200 без запуска обработчика — так Яндекс проверяет доступность. Остальные методы получат 405 и заголовок Allow.'),
                     '<div class="md-api-method-checks">' . $renderHookMethods('md-api-hook-method-', array('POST')) . '</div>'
                 ) ?>
                 <div><?= MDJUI::button('Создать вход', array('type' => 'submit', 'icon' => 'webhook')) ?></div>
@@ -361,7 +363,7 @@ $renderHookMethods = static function (string $prefix, array $selected) use ($hoo
             <?= MDJUI::input(array('id' => 'md-api-hook-edit-name', 'name' => 'name', 'label' => 'Название', 'required' => true, 'attrs' => array('maxlength' => 190, 'autocomplete' => 'off'))) ?>
             <?= $renderHookTarget('md-api-hook-edit') ?>
             <?= MDJUI::field(
-                array('label' => 'Разрешённые HTTP-методы'),
+                array('label' => 'Разрешённые HTTP-методы', 'description' => 'HEAD отвечает 200 без запуска обработчика и нужен для проверок доступности.'),
                 '<div class="md-api-method-checks">' . $renderHookMethods('md-api-hook-edit-method-', array()) . '</div>'
             ) ?>
             <?= MDJUI::input(array('id' => 'md-api-hook-edit-header', 'name' => 'header_name', 'label' => 'Дополнительный заголовок', 'optional' => true, 'hint' => 'При смене имени заголовка будет создан новый секрет. Пусто — проверка заголовка отключена.', 'attrs' => array('maxlength' => 100, 'autocomplete' => 'off'))) ?>

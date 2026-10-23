@@ -1,4 +1,5 @@
 <?php
+// 2026-10-23 — HEAD в разрешённых методах и диагностике.
 // 2026-10-23 — назначения module/script/code, синтаксис PHP и обновление старой схемы.
 /** Public webhook registry, path boundaries and rate limit on disposable SQLite. */
 putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:');
@@ -43,8 +44,9 @@ try {
     check($found !== null && (int)$found['ID'] === $created['id'] && (int)$found['ENABLED'] === 1, 'Secret lookup');
     check($store->findBySecret('bad') === null && $store->findBySecret(str_repeat('a', 64)) === null, 'Unknown secret lookup');
 
-    $sameHeader = $store->update($created['id'], 'Telegram renamed', 'fixturehook', 'webhook.php', array('POST', 'GET'), 'X-Fixture-Secret');
+    $sameHeader = $store->update($created['id'], 'Telegram renamed', 'fixturehook', 'webhook.php', array('POST', 'GET', 'HEAD'), 'X-Fixture-Secret');
     check($sameHeader['header_secret'] === null, 'Unchanged header keeps its secret');
+    check(HookStore::methods(array('METHODS' => 'POST,GET,HEAD')) === array('POST', 'GET', 'HEAD'), 'HEAD is a supported allowed method');
     check($store->find($created['id'])['HEADER_SECRET_HASH'] === hash('sha256', $created['header_secret']), 'Unchanged header hash stays');
     $newHeader = $store->update($created['id'], 'Telegram renamed', 'fixturehook', 'webhook.php', array('POST'), 'X-Other-Secret');
     check(preg_match('/^[a-f0-9]{64}$/D', (string)$newHeader['header_secret']) === 1, 'Changed header gets a new secret');
@@ -60,6 +62,8 @@ try {
     $store->touch($created['id'], 429, 'POST');
     $row = $store->find($created['id']);
     check((int)$row['LAST_STATUS'] === 429 && $row['LAST_METHOD'] === 'POST' && !empty($row['LAST_USED_AT']), 'Diagnostics store only status, time and method');
+    $store->touch($created['id'], 200, 'HEAD');
+    check($store->find($created['id'])['LAST_METHOD'] === 'HEAD', 'Diagnostics keep HEAD as the last method');
     $store->delete($created['id']);
     check($store->findBySecret($rotated['secret']) === null && $store->all() === array(), 'Delete removes the entry');
 

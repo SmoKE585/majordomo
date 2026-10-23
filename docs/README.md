@@ -61,6 +61,7 @@ order: 1
 | Фоновый цикл или событие | [`cycles`](agents/cycles.md) → [`events`](agents/events.md) |
 | CLI-команда | [`console`](agents/console.md) → [`user/commands`](user/commands.md) |
 | API-клиент | [`api`](agents/api.md) → [`api-client`](agents/api-client.md) |
+| Внедрение ИИ-агентов, чата и помощи в редакторе | [`ai-agents-todo`](agents/ai-agents-todo.md) |
 | Деплой и nginx | [`deploy/`](deploy/) |
 
 ## Правила

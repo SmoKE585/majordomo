@@ -56,6 +56,22 @@ function mdj_admin_route_table($rootHtml = null)
 
     return array(
         // --- Specific admin pages -----------------------------------------
+        '/^' . $root . 'panel\/ai_assistant\/chat\/(\d+)\.html/is'
+            => '?(panel:{action=ai_assistant})&md=ai_assistant&view_mode=chat&dialog_id=\1',
+        '/^' . $root . 'panel\/ai_assistant\/agents\/add\.html/is'
+            => '?(panel:{action=ai_assistant})&md=ai_assistant&view_mode=agent_edit',
+        '/^' . $root . 'panel\/ai_assistant\/agents\/(\d+)\.html/is'
+            => '?(panel:{action=ai_assistant})&md=ai_assistant&view_mode=agent_edit&id=\1',
+        '/^' . $root . 'panel\/ai_assistant\/providers\/add\.html/is'
+            => '?(panel:{action=ai_assistant})&md=ai_assistant&view_mode=provider_edit',
+        '/^' . $root . 'panel\/ai_assistant\/providers\/(\d+)\.html/is'
+            => '?(panel:{action=ai_assistant})&md=ai_assistant&view_mode=provider_edit&id=\1',
+        '/^' . $root . 'panel\/ai_assistant\/models\/add\.html/is'
+            => '?(panel:{action=ai_assistant})&md=ai_assistant&view_mode=model_edit',
+        '/^' . $root . 'panel\/ai_assistant\/models\/(\d+)\.html/is'
+            => '?(panel:{action=ai_assistant})&md=ai_assistant&view_mode=model_edit&id=\1',
+        '/^' . $root . 'panel\/ai_assistant\/(agents|providers|models|knowledge|diagnostics)\.html/is'
+            => '?(panel:{action=ai_assistant})&md=ai_assistant&view_mode=\1',
         '/^' . $root . 'panel\/modes\/add\.html/is'
             => '?(panel:{action=modes})&md=modes&view_mode=edit_modes',
         '/^' . $root . 'panel\/modes\/(\d+)\.html/is'
@@ -1199,6 +1215,31 @@ function mdj_admin_build_pretty($state)
             'path' => '/panel/knowledge_base.html',
             'query' => mdj_admin_finish_extra($extra, $view, $module, $dropView, $dropDataSource),
         );
+    }
+
+    if ($module === 'ai_assistant') {
+        if ($parents) return null;
+        if ($view === 'chat') {
+            if ($tab !== '') return null;
+            $dialog = isset($extra['dialog_id']) ? (int)$extra['dialog_id'] : 0;
+            unset($extra['dialog_id']);
+            return array('path' => $dialog > 0 ? '/panel/ai_assistant/chat/' . $dialog . '.html' : '/panel/ai_assistant.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, true, $dropDataSource));
+        }
+        $map = array('agents' => 'agents', 'providers' => 'providers', 'models' => 'models',
+            'knowledge' => 'knowledge', 'diagnostics' => 'diagnostics');
+        if (isset($map[$view])) {
+            if ($id > 0) return null;
+            return array('path' => '/panel/ai_assistant/' . $map[$view] . '.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, true, $dropDataSource));
+        }
+        $edit = array('agent_edit' => 'agents', 'provider_edit' => 'providers', 'model_edit' => 'models');
+        if (isset($edit[$view])) {
+            if ($tab !== '') return null;
+            return array('path' => '/panel/ai_assistant/' . $edit[$view] . ($id > 0 ? '/' . $id : '/add') . '.html',
+                'query' => mdj_admin_finish_extra($extra, $view, $module, true, $dropDataSource));
+        }
+        return null;
     }
 
     if ($module === 'modes') {

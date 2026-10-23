@@ -4,6 +4,13 @@ namespace MajorDoMo\Core\Console;
 
 use MajorDoMo\Core\Console\Commands;
 
+/**
+ * Единый реестр CLI и обработка вывода команд.
+ *
+ * Изменения:
+ * 2026-10-23 — сборка индекса знаний ИИ-помощника.
+ * 2026-10-23 — зарегистрирована диагностика опционального Qdrant модуля ИИ.
+ */
 final class Application
 {
     /** @var array<string,Command> */
@@ -37,6 +44,7 @@ final class Application
             new Commands\ModesListCommand(), new Commands\ModesSetCommand(),
             new Commands\ApiTokensCommand(), new Commands\ApiRevokeCommand(), new Commands\ApiSpecCommand(),
             new Commands\WebSocketsServeCommand(), new Commands\MqttRuntimeCommand(),
+            new Commands\AiRagCheckCommand(), new Commands\AiIndexCommand(),
         ) as $command) $this->register($command);
     }
 

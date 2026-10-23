@@ -13,12 +13,13 @@ use MajorDoMo\Core\Config;
  * администратор, и только они определяют назначение вызова: URL, хост или
  * путь из внешнего запроса для этого не используются.
  *
+ * Изменения: 2026-10-23 — HEAD добавлен для проверки доступности (Яндекс).
  * Изменения: 2026-10-23 — назначения module/script/code и отдельное чтение кода для редактора.
  * Изменения: 2026-10-22 — добавлен реестр входов для /api/hooks/<secret>.
  */
 final class HookStore
 {
-    public const METHODS = array('GET', 'POST', 'PUT', 'PATCH', 'DELETE');
+    public const METHODS = array('GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE');
     public const SECRET_PATTERN = '/^[a-f0-9]{64}$/D';
     public const HEADER_DENYLIST = array(
         'authorization', 'proxy-authorization', 'cookie', 'host', 'content-length',

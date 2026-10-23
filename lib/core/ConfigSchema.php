@@ -18,6 +18,9 @@ namespace MajorDoMo\Core;
  *   constant  expose a legacy PHP constant with the same name
  *   secret    never write the value to logs or audit output
  *   required  doctor warns when the key is missing
+ *
+ * Изменения:
+ * 2026-10-23 — необязательный секретный ключ шифрования ИИ-помощника.
  */
 final class ConfigSchema
 {
@@ -59,6 +62,7 @@ final class ConfigSchema
             'PROJECT_TITLE' => array('type' => 'string', 'default' => 'MajorDoMo'),
             'DEBUG_MODE' => array('type' => 'boolean', 'optional' => true),
             'APP_ENV' => array('type' => 'string', 'optional' => true),
+            'AI_SECRET_KEY' => array('type' => 'string', 'optional' => true, 'constant' => false, 'secret' => true),
             'TIMEZONE' => array('type' => 'string', 'optional' => true, 'constant' => false),
             'UPDATES_REPOSITORY_NAME' => array('type' => 'string', 'optional' => true),
 

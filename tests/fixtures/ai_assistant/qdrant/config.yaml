@@ -1,0 +1,9 @@
+version: 1
+name: majordomo-ai-qdrant-test
+slug: majordomo-ai-qdrant-test
+protocol: http
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

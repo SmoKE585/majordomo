@@ -1,5 +1,6 @@
 <?php
 /** Loopback HTTP lifecycle for /api/hooks/<secret> and the admin tab. */
+// 2026-10-23 — HEAD как проверка доступности и подавление тела HEAD-ответа.
 // 2026-10-23 — return/echo, сценарии, штатные функции и редактирование разных назначений.
 putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:');
 putenv('DB_HOST='); putenv('DB_NAME='); putenv('USE_REDIS=false');
@@ -77,6 +78,7 @@ try {
     // Admin tab: CSRF and the real module template.
     [$status, $html] = request('GET', '/panel/api.html?tab=hooks');
     check($status === 200 && str_contains($html, 'Входящие webhook') && str_contains($html, 'data-api-hook-list'), 'Admin hooks tab renders');
+    check(str_contains($html, 'value="HEAD"'), 'Admin offers HEAD for webhooks');
     preg_match('/name="_token" value="([a-f0-9]{64})"/', $html, $tokenMatch);
     $csrf = $tokenMatch[1] ?? '';
     check($csrf !== '', 'Admin page exposes its CSRF token');
@@ -135,7 +137,7 @@ try {
     check($status === 200 && ($json['ok'] ?? false) && str_contains((string)($json['hook_list_html'] ?? ''), 'Входящих webhook пока нет'), 'Admin deletes a webhook');
 
     // Functional fixture with known secrets.
-    $hook = $store->create('HTTP fixture', 'fixturehook', 'webhook.php', array('POST', 'GET'), 'X-Fixture-Secret');
+    $hook = $store->create('HTTP fixture', 'fixturehook', 'webhook.php', array('POST', 'GET', 'HEAD'), 'X-Fixture-Secret');
     $secret = $hook['secret'];
     $header = $hook['header_secret'];
     $path = '/api/hooks/' . $secret;
@@ -151,6 +153,9 @@ try {
     check($status === 400 && ($json['error']['code'] ?? '') === 'invalid_path', 'Traversal in PATH_INFO rejected');
     [$status, $raw, $headers, $json] = request('GET', $path . '?mode=echo&b=2', null, array('X-Fixture-Secret' => $header));
     check($status === 200 && $json['method'] === 'GET' && $json['query']['b'] === '2' && $json['raw'] === '', 'GET request reaches the handler');
+    [$status, $raw, $headers] = request('HEAD', $path . '/v1.0?mode=echo', null, array('X-Fixture-Secret' => $header));
+    check($status === 200 && $raw === '', 'HEAD availability check returns 200 without a body or handler call');
+    check((int)$store->find($hook['id'])['LAST_STATUS'] === 200 && $store->find($hook['id'])['LAST_METHOD'] === 'HEAD', 'HEAD result is recorded in diagnostics');
     [$status, $raw, $headers, $json] = request('POST', $path . '?mode=echo', 'foo=bar', array('Content-Type' => 'application/x-www-form-urlencoded', 'X-Fixture-Secret' => $header));
     check($status === 200 && $json['post']['foo'] === 'bar' && $json['raw'] === 'foo=bar', 'Form data and raw body are preserved');
     $upload = tempnam(sys_get_temp_dir(), 'mjd-hook-');
@@ -220,6 +225,8 @@ PHP;
     check($status === 401, 'Custom handler requires its own header secret');
     [$status] = request('DELETE', $customPath, null, $customHeaders);
     check($status === 405, 'Custom handler respects allowed methods');
+    [$status, $raw, $headers] = request('HEAD', $customPath, null, $customHeaders);
+    check($status === 405 && $raw === '' && str_contains((string)($headers['allow'] ?? ''), 'POST'), 'HEAD is rejected without a body when not allowed');
     [$status] = request('POST', $customPath, str_repeat('x', 1048577), $customHeaders);
     check($status === 413, 'Custom handler respects body limit');
     [$status, $raw, $headers, $json] = request('POST', '/panel/api.html', http_build_query(array('operation' => 'hook_details', 'id' => $custom['id'])));

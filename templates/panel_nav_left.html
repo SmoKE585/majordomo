@@ -9,6 +9,25 @@
             </a>
         </div>
 
+        [#if AI_ASSISTANT_LINK#]
+        <!-- 2026-10-23 — отдельное заметное место ИИ-помощника над категориями. -->
+        <a class="md-admin-sidebar__ai md-admin-sidebar__ai--magic [#if AI_ASSISTANT_SELECTED#]is-active[#endif#]"
+           href="[#AI_ASSISTANT_LINK#]"
+           data-md-admin-sidebar-close
+           aria-label="ИИ-помощник">
+            <span class="md-admin-sidebar__ai-aura" aria-hidden="true"></span>
+            <span class="md-admin-sidebar__ai-icon">
+                <i class="ti ti-robot" aria-hidden="true"></i>
+                <i class="ti ti-sparkles md-admin-sidebar__ai-spark" aria-hidden="true"></i>
+            </span>
+            <span class="md-admin-sidebar__ai-text">
+                <span class="md-admin-sidebar__ai-title">[#AI_ASSISTANT_TITLE#] <em class="md-admin-sidebar__ai-tag">AI</em></span>
+                <span class="md-admin-sidebar__ai-sub">[#if AI_ASSISTANT_READY#]Готов помочь[#else#]Настроить за 3 шага[#endif#]</span>
+            </span>
+            <span class="md-admin-sidebar__ai-dot [#if AI_ASSISTANT_READY#]is-ready[#endif#]" aria-hidden="true"></span>
+        </a>
+        [#endif#]
+
         <div class="md-admin-sidebar__scroll">
             <nav class="md-admin-sidebar__nav" aria-label="Admin modules">
                 [#begin SUB_MODULES#]
