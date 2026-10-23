@@ -1,5 +1,6 @@
 <?php
 /** Loopback-only HTTP/visual fixture, never a deployment router. */
+// 2026-10-23 — пользовательские токены используют только тестовую SQLite.
 $project = dirname(__DIR__, 2);
 $root = getenv('MJD_API_FIXTURE_ROOT');
 if (!is_string($root) || realpath(dirname($root)) !== realpath(sys_get_temp_dir()) || !preg_match('/^mjd-api-[a-f0-9]+$/D', basename($root)) || getenv('APP_ENV') !== 'testing') { http_response_code(500); exit; }
@@ -38,4 +39,5 @@ $store = new MajorDoMo\Core\Api\TokenStore($pdo);
 $hooks = new MajorDoMo\Core\Api\HookStore($pdo, $root);
 $limit = (int)getenv('MJD_API_HOOK_LIMIT');
 $limiter = $limit > 0 ? new MajorDoMo\Core\Api\HookRateLimiter($root, $limit, 60) : null;
-(new MajorDoMo\Core\ApiApplication($root, static fn($token) => $store->verify($token), null, $hooks, $limiter))->run();
+(new MajorDoMo\Core\ApiApplication($root, static fn($token) => $store->verify($token),
+    static fn() => new MajorDoMo\Core\Users\UserAccounts($pdo), $hooks, $limiter, new MajorDoMo\Core\Api\UserTokenStore($pdo)))->run();

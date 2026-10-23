@@ -2,10 +2,12 @@
 
 /** Actual Workerman transport over loopback; no application config or live services. */
 // 2026-10-23 — Origin родительского и соседних доменов проверяется в реальном handshake.
+// 2026-10-23 — пользовательский токен подключает WS и закрывает его при истечении/отзыве.
 putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('USE_REDIS=false');
 require_once dirname(__DIR__) . '/lib/core.class.php';
 
-use MajorDoMo\Core\Api\AccessPolicy;
+use MajorDoMo\Core\Api\{AccessPolicy, Schema, UserTokenStore};
+use MajorDoMo\Core\Users\UserAccounts;
 use MajorDoMo\Core\NetworkAccess;
 use MajorDoMo\Core\WebSockets\{Access, Protocol, Server, Tickets};
 use Workerman\{Worker, Timer};
@@ -22,8 +24,12 @@ if (($argv[1] ?? '') === '--fixture') {
         return $result;
     };
     $protocol = new Protocol($pages, $named);
+    $userTokens = new UserTokenStore(new PDO('sqlite:' . $fixture . '/auth.sqlite', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)));
     $access = new Access(new AccessPolicy(new NetworkAccess(), '', '127.0.0.1/32'), new Tickets($fixture),
-        static function ($token) use ($fixture, $secret): bool { clearstatcache(); return is_file($fixture . '/token-valid') && hash_equals($secret, $token); },
+        static function ($token) use ($fixture, $secret, $userTokens): bool {
+            if (str_starts_with($token, 'mdmu_')) { $userTokens->authenticate($token, false); return true; }
+            clearstatcache(); return is_file($fixture . '/token-valid') && hash_equals($secret, $token);
+        },
         static fn($id) => $id === 7 && is_file($fixture . '/admin-valid') ? array('id' => 7, 'stamp' => 'stamp') : null,
         'https://admin.home.test');
     $server = new Server($protocol, $access, array('per_ip' => 1), static function (Protocol $protocol) use ($fixture, &$values): void {
@@ -39,7 +45,7 @@ if (($argv[1] ?? '') === '--fixture') {
     $worker->onWorkerStart = static function (Worker $worker) use ($start, $fixture): void {
         $start();
         file_put_contents($fixture . '/address', stream_socket_get_name($worker->getMainSocket(), false));
-        Timer::add(25, static fn() => Worker::stopAll());
+        Timer::add(45, static fn() => Worker::stopAll());
     };
     Worker::$pidFile = $fixture . '/worker.pid';
     Worker::$logFile = $fixture . '/worker.log';
@@ -79,7 +85,7 @@ function frame($stream): array {
         if ($size === 127) { $words = unpack('N2', bytes($stream, 8)); if ($words[1] > 0) throw new RuntimeException('Fixture frame too large'); $size = $words[2]; }
         $body = $size ? bytes($stream, $size) : '';
         if ($opcode === 9 || $opcode === 10) continue;
-        if ($opcode === 8) return array('close' => unpack('n', substr($body, 0, 2))[1]);
+        if ($opcode === 8) return array('close' => unpack('n', substr($body, 0, 2))[1], 'reason' => substr($body, 2));
         $message = json_decode($body, true, 32, JSON_THROW_ON_ERROR);
         $message['decoded'] = json_decode($message['data'], true, 32, JSON_THROW_ON_ERROR);
         return $message;
@@ -103,6 +109,12 @@ function snapshot($stream): array {
 $fixture = sys_get_temp_dir() . '/mjd-ws-transport-' . bin2hex(random_bytes(6));
 mkdir($fixture . '/var/sessions', 0700, true);
 touch($fixture . '/token-valid'); touch($fixture . '/admin-valid');
+$authDb = new PDO('sqlite:' . $fixture . '/auth.sqlite', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+$authDb->exec('CREATE TABLE users (ID INTEGER PRIMARY KEY,USERNAME TEXT,NAME TEXT,PASSWORD TEXT,IS_ADMIN INTEGER);
+    INSERT INTO users VALUES (1,\'member\',\'Житель\',\'fixture-hash\',0)');
+$authDb->exec(Schema::userSessionsSql(true));
+$userTokens = new UserTokenStore($authDb);
+$user = (new UserAccounts($authDb))->userState(1);
 $process = proc_open(array(PHP_BINARY, __FILE__, '--fixture', $fixture), array(0 => array('pipe','r'), 1 => array('file', $fixture . '/stdout', 'w'), 2 => array('file', $fixture . '/stderr', 'w')), $pipes, sys_get_temp_dir());
 $remove = static function (string $path) use (&$remove): void { if (is_dir($path)) { foreach (scandir($path) as $file) if ($file !== '.' && $file !== '..') $remove($path . '/' . $file); rmdir($path); } else unlink($path); };
 try {
@@ -160,10 +172,26 @@ try {
     check(str_contains($response, '101') && frame($admin)['action'] === 'ready', 'external administrator uses one-use ticket');
     unlink($fixture . '/var/sessions/sess_' . $sid);
     check(frame($admin)['close'] === 1008, 'logout closes actual connection'); fclose($admin);
+    $userSecret = $userTokens->issue($user)['access_token'];
+    [$member, $response] = handshake($address, '?token=' . $userSecret,
+        array('X-Forwarded-For' => '203.0.113.90', 'Origin' => 'https://ui.home.test'));
+    check(str_contains($response, '101') && count(snapshot($member)) === 2, 'ordinary user token receives actual snapshot from sibling origin');
+    $authDb->exec('UPDATE api_user_sessions SET LAST_USED_AT=' . (time() - 3600));
+    $closed = frame($member);
+    check($closed['close'] === 1008 && $closed['reason'] === 'authorization_expired', 'idle user session closes actual socket without client traffic'); fclose($member);
+    [$member, $response] = handshake($address, '?token=' . $userSecret, array('X-Forwarded-For' => '203.0.113.90'));
+    check(str_contains($response, '401'), 'expired user token cannot reconnect'); fclose($member);
+    $userSecret2 = $userTokens->issue($user)['access_token'];
+    [$member, $response] = handshake($address, '?snapshot=0&token=' . $userSecret2, array('X-Forwarded-For' => '203.0.113.91'));
+    check(str_contains($response, '101') && frame($member)['action'] === 'ready', 'new user login reconnects');
+    $userTokens->revoke($userTokens->authenticate($userSecret2, false)['id']);
+    check(frame($member)['close'] === 1008, 'user logout closes actual connection'); fclose($member);
     fclose($local);
     check(!str_contains(file_get_contents($fixture . '/worker.log'), $secret) && !str_contains(file_get_contents($fixture . '/worker.log'), $ticket), 'transport logs contain no credentials');
+    check(!str_contains(file_get_contents($fixture . '/worker.log'), $userSecret) && !str_contains(file_get_contents($fixture . '/worker.log'), $userSecret2), 'user tokens never enter transport logs');
     echo 'WebSocket transport smoke: ' . $checks . " passed (real loopback Workerman).\n";
 } finally {
     if (is_resource($process)) { proc_terminate($process); proc_close($process); }
+    unset($userTokens, $authDb);
     $remove($fixture);
 }

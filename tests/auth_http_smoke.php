@@ -1,4 +1,5 @@
 <?php
+// 2026-10-23 — полная схема users теперь создаётся общей API-фикстурой.
 putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:');
 putenv('DB_HOST='); putenv('DB_NAME='); putenv('USE_REDIS=false');
 putenv('LOG_DIRECTORY=');
@@ -32,7 +33,6 @@ try {
     $project = dirname(__DIR__);
     ApiFixture::initialize($root, $project);
     $pdo = ApiFixture::pdo($root);
-    $pdo->exec("ALTER TABLE users ADD COLUMN PASSWORD TEXT DEFAULT ''; ALTER TABLE users ADD COLUMN IS_ADMIN INTEGER DEFAULT 0; ALTER TABLE users ADD COLUMN IS_DEFAULT INTEGER DEFAULT 0;");
     $statement = $pdo->prepare('INSERT INTO users (ID,USERNAME,NAME,PASSWORD,IS_ADMIN) VALUES (2,?,?,?,1)');
     $statement->execute(array('admin', 'Admin', hash('sha512', 'admin-secret')));
     check($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' && getenv('APP_ENV') === 'testing' && getenv('DB_HOST') === '', 'Confirmed isolated SQLite');

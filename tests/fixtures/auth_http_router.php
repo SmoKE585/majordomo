@@ -1,5 +1,6 @@
 <?php
 /** Isolated real auth/API boundary. Never deploy this router. */
+// 2026-10-23 — общий API входа тестируется без рабочего подключения.
 $project = dirname(__DIR__, 2);
 $root = getenv('MJD_AUTH_FIXTURE_ROOT');
 if (!is_string($root) || realpath(dirname($root)) !== realpath(sys_get_temp_dir()) || !preg_match('/^mjd-auth-http-[a-f0-9]+$/D', basename($root)) || getenv('APP_ENV') !== 'testing') { http_response_code(500); exit; }
@@ -25,7 +26,7 @@ $db = ApiFixture::pdo($root);
 $users = new UserAccounts($db);
 if (str_starts_with($path, '/api/')) {
     $_SERVER['SCRIPT_FILENAME'] = $root . '/public/api.php';
-    (new ApiApplication($root, static fn($token) => false, static fn() => $users))->run(); exit;
+    (new ApiApplication($root, static fn($token) => false, static fn() => $users, userTokens: new \MajorDoMo\Core\Api\UserTokenStore($db)))->run(); exit;
 }
 $_SERVER['SCRIPT_FILENAME'] = $path === '/admin.php' ? $root . '/public/admin.php'
     : ($path === '/index.php' ? $root . '/public/index.php'

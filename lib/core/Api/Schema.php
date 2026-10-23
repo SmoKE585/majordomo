@@ -6,6 +6,7 @@ use MajorDoMo\Core\Database;
 
 /**
  * DDL для API-токенов и публичных webhook-входов.
+ * Изменения: 2026-10-23 — отдельная таблица пользовательских сеансов.
  * Изменения: 2026-10-22 — добавлена схема api_hooks.
  */
 final class Schema
@@ -60,9 +61,22 @@ final class Schema
     public static function install(Database $db): void
     {
         $db->requireExec(self::sql());
+        $db->requireExec(self::userSessionsSql());
         foreach (self::hooksStatements() as $statement) {
             $db->requireExec($statement);
         }
+    }
+
+    public static function userSessionsSql(bool $sqlite = false): string
+    {
+        $id = $sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY';
+        $tail = $sqlite ? '' : ' ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8mb4';
+        $index = $sqlite ? '' : ', KEY idx_api_user_sessions_expiry (EXPIRES_AT)';
+        return "CREATE TABLE IF NOT EXISTS api_user_sessions (
+            ID $id, TOKEN_HASH char(64) NOT NULL UNIQUE, USER_ID int unsigned NOT NULL,
+            USER_STAMP char(64) NOT NULL, CREATED_AT bigint NOT NULL, LAST_USED_AT bigint NOT NULL,
+            EXPIRES_AT bigint NOT NULL, REVOKED_AT bigint DEFAULT NULL$index
+        )$tail";
     }
 
     public static function installHooks(Database $db): void

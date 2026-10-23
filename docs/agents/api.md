@@ -61,6 +61,21 @@ Core::apiDispatcher → Response. Ошибки и завершение legacy-к
 `rawurldecode()`, а `urlencode()` кодирует пробел как `+` — путь не совпадёт с
 названием сценария или метода.
 
+Исключение по обработке: `/auth/login|me|logout` объявлены в том же Contract,
+но исполняются `ApiApplication` → `UserAuthentication` до legacy loader.
+Dispatcher отклоняет внутренний вызов auth-маршрута: идентичность и секреты
+нельзя передать как параметры доверенного ApiClient. Пользовательский токен
+`mdmu_` проверяется через `UserTokenStore`; actor `user_token` не даёт доступа
+к panel-маршрутам. Механизм, сроки и безопасный профиль с объектом/классом —
+[authentication.md](authentication.md), примеры клиента — [API](../user/api.md#вход-пользователя).
+
+CORS для v1 проверяет `BrowserAccess` по BASE_URL и локальному Public Suffix
+List: домен владельца и поддомены, тот же протокол, без cookie credentials.
+С другого origin всегда нужен явный токен, даже из HOME_NETWORK. Login
+публичен; OPTIONS не требует токена, но проверяет метод/путь через Contract и
+разрешает только Authorization, X-API-Key, Content-Type. JSON-ошибки для
+разрешённого origin также имеют CORS-заголовки. Legacy междоменно закрыт.
+
 `AccessPolicy` использует `NetworkAccess`, HOME_NETWORK, TRUSTED_PROXIES.
 Loopback (`127.0.0.1`, `::1`) всегда считается доверенным прокси, поэтому
 схема «nginx → 127.0.0.1:80» работает без записи в `.env`; `TRUSTED_PROXIES`
@@ -81,6 +96,11 @@ issue/rotate. Ротация использует compare-and-swap по стар
 перестановка и удаление с обновлением привязок были транзакционными. В новом
 install/schema.sql обе схемы присутствуют. Не запускайте миграции на рабочей
 БД для проверки: тесты используют SQLite/фикстуры.
+
+`api_user_sessions` создаётся миграцией `20261026_api_user_sessions`, новой
+установкой и `Schema::install()`. Хранятся только хеш токена и отпечаток
+учётной записи. Истёкшие записи старше суток после EXPIRES_AT удаляются при
+новом входе; EXPIRES_AT индексирован. Постоянные ключи не затрагиваются.
 
 Совместимость legacy: /room и /rooms, setOrder, query/form, apiHandleResult,
 setHandleResult, data/result, passed/timestamp. Внешние вызовы требуют токен.
@@ -176,6 +196,7 @@ NGINX: отдельное правило для каждого webhook не ну
 `Api\Schema::install()`. Не запускайте миграции на рабочей БД для проверки.
 
 Проверки: `php tests/api_smoke.php`, `php tests/api_http_smoke.php`,
+`php tests/api_user_auth_smoke.php` (SQLite: сроки, отзыв, профиль и WS),
 `php tests/api_hooks_smoke.php`, `php tests/api_hooks_http_smoke.php`, обычные
 routing/config/console/template smoke, PHP lint, node --check и npm run build.
 HTTP-фикстуры запускаются только на loopback и не загружают рабочую .env/БД.

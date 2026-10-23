@@ -3,12 +3,13 @@
 namespace MajorDoMo\Core\WebSockets;
 
 use MajorDoMo\Core\{Config, Core, PropertyValues};
-use MajorDoMo\Core\Api\{AccessPolicy, TokenStore};
+use MajorDoMo\Core\Api\{AccessPolicy, TokenStore, UserTokenStore};
 use MajorDoMo\Core\Users\UserAccounts;
 use Workerman\Worker;
 
 /**
  * Запуск WebSocket-сервера ядра и очереди изменений свойств.
+ * 2026-10-23 — временные токены пользователей проверяются без продления сеанса.
  * 2026-10-23 — доменная политика Origin привязана к публичному адресу BASE_URL.
  */
 final class Runtime
@@ -41,7 +42,11 @@ final class Runtime
         // Only the local reverse proxy reaches this loopback listener.
         $trustedProxies = '127.0.0.1/32,::1/128,' . Config::string('TRUSTED_PROXIES');
         $access = new Access(new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), $trustedProxies),
-            new Tickets($root), fn($token) => (new TokenStore($connection()))->verify($token),
+            new Tickets($root), static function (string $token) use ($connection): bool {
+                if (!str_starts_with($token, 'mdmu_')) return (new TokenStore($connection()))->verify($token);
+                (new UserTokenStore($connection()))->authenticate($token, false);
+                return true;
+            },
             fn($id) => (new UserAccounts($connection()))->adminState($id),
             // Настройка владельца задаёт разрешённый домен независимо от nginx.
             Config::string('BASE_URL'));

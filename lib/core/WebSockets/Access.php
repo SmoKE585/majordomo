@@ -6,6 +6,7 @@ use MajorDoMo\Core\Api\{AccessPolicy, ApiException};
 
 /**
  * Доступ к WebSocket: Origin, API-токен или одноразовый билет администратора.
+ * 2026-10-23 — истечение пользовательского токена закрывает соединение штатно.
  *
  * 2026-10-23 — домен и поддомены разрешаются по BASE_URL; Host запроса больше
  * не расширяет доступ при заданном публичном адресе.
@@ -51,12 +52,17 @@ final class Access
 
     public function valid(array $identity): bool
     {
-        return match ($identity['type']) {
-            'local' => true,
-            'token' => (bool)($this->verifyToken)($identity['token']),
-            'session' => $this->tickets->valid($identity['identity'], $this->adminState),
-            default => false,
-        };
+        try {
+            return match ($identity['type']) {
+                'local' => true,
+                'token' => (bool)($this->verifyToken)($identity['token']),
+                'session' => $this->tickets->valid($identity['identity'], $this->adminState),
+                default => false,
+            };
+        } catch (ApiException $error) {
+            if ($error->status !== 401) throw $error;
+            return false;
+        }
     }
 
     public function clientIp(array $server): string { return $this->network->clientIp($server); }

@@ -6,13 +6,14 @@ use MajorDoMo\Core\NetworkAccess;
 
 /**
  * Проверка сетевого доступа к API.
+ * Изменения: 2026-10-23 — поддомены BASE_URL принимаются только с явным токеном.
  * Изменения: 2026-10-22 — loopback-прокси доверенный по умолчанию.
  */
 final class AccessPolicy
 {
     public const LOCAL_NETWORKS = '127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,fc00::/7,fe80::/10';
 
-    public function __construct(private NetworkAccess $network, private string $homeNetworks = '', private string $trustedProxies = '')
+    public function __construct(private NetworkAccess $network, private string $homeNetworks = '', private string $trustedProxies = '', private string $baseUrl = '')
     {
         // Локальный nginx всегда ходит с loopback, независимо от .env.
         $this->trustedProxies = NetworkAccess::trustedProxies($this->trustedProxies);
@@ -58,16 +59,7 @@ final class AccessPolicy
 
     public function authorize(array $server, callable $verify, ?callable $sessionVerifier = null): string
     {
-        // Browser navigation from another site must not invoke a legacy GET action.
-        if (in_array(strtolower((string)($server['HTTP_SEC_FETCH_SITE'] ?? '')), array('cross-site'), true)) {
-            throw new ApiException(403, 'cross_origin_denied', 'Межсайтовые обращения к API запрещены.');
-        }
-        if (isset($server['HTTP_ORIGIN'])) {
-            $origin = parse_url((string)$server['HTTP_ORIGIN']);
-            $host = strtolower((string)($server['HTTP_HOST'] ?? ''));
-            $originHost = is_array($origin) ? strtolower((string)($origin['host'] ?? '')) . (isset($origin['port']) ? ':' . $origin['port'] : '') : '';
-            if ($host === '' || $originHost !== $host || !in_array($origin['scheme'] ?? '', array('http', 'https'), true)) throw new ApiException(403, 'cross_origin_denied', 'Межсайтовые обращения к API запрещены.');
-        }
+        $crossOrigin = (new BrowserAccess($this->baseUrl))->check($server);
         $token = (string)($server['HTTP_X_API_KEY'] ?? '');
         $authorization = (string)($server['HTTP_AUTHORIZATION'] ?? $server['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
         if (preg_match('/^Bearer\s+(\S+)$/iD', $authorization, $match)) $token = $match[1];
@@ -75,6 +67,8 @@ final class AccessPolicy
             if (!$verify($token)) throw new ApiException(401, 'invalid_token', 'Токен недействителен, отозван или истёк.', array(), array('WWW-Authenticate' => 'Bearer'));
             return 'token';
         }
+        // Поддомен не получает cookie-доступ или обход по локальной сети.
+        if ($crossOrigin) throw new ApiException(401, 'token_required', 'Для интерфейса на другом origin требуется Bearer-токен.', array(), array('WWW-Authenticate' => 'Bearer'));
         if ($sessionVerifier !== null && $sessionVerifier()) return 'session';
         if ($this->isLocal($server)) return 'local';
         throw new ApiException(401, 'token_required', 'Для внешнего доступа требуется API-токен.', array(), array('WWW-Authenticate' => 'Bearer'));

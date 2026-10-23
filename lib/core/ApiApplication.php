@@ -2,11 +2,12 @@
 
 namespace MajorDoMo\Core;
 
-use MajorDoMo\Core\Api\{AccessPolicy, ApiException, Contract, FailureLog, HookRateLimiter, HookStore, Request, Response, TokenStore, WebhookRunner};
+use MajorDoMo\Core\Api\{AccessPolicy, ApiException, BrowserAccess, Contract, FailureLog, HookRateLimiter, HookStore, Request, Response, TokenStore, UserAuthentication, UserTokenStore, WebhookRunner};
 use MajorDoMo\Core\Install\{InstallGate, InstallState};
 
 /**
  * HTTP-граница API ядра.
+ * Изменения: 2026-10-23 — пользовательские сеансы и CORS для поддоменов BASE_URL.
  * Изменения: 2026-10-22 — отдельная ветка публичных /api/hooks/<secret>.
  * Изменения: 2026-10-22 — результат AccessPolicy передаётся в Request как actor.
  * Изменения: 2026-10-23 — сбои API (5xx и прерванный запрос) регистрируются в
@@ -20,7 +21,8 @@ final class ApiApplication extends Application
         private ?\Closure $tokenVerifier = null,
         private ?\Closure $usersFactory = null,
         private ?HookStore $hookStore = null,
-        private ?HookRateLimiter $hookLimiter = null
+        private ?HookRateLimiter $hookLimiter = null,
+        private ?UserTokenStore $userTokens = null
     ) {
         parent::__construct($root);
     }
@@ -29,11 +31,11 @@ final class ApiApplication extends Application
     {
         $response = new Response(bin2hex(random_bytes(16)), microtime(true));
         $level = ob_get_level(); ob_start();
-        $finished = false; $legacy = false; $webhook = null; $actor = '';
+        $finished = false; $legacy = false; $webhook = null; $actor = ''; $corsHeaders = array();
         ini_set('display_errors', '0');
         // Легаси-настройки и модули могут завершиться через exit. HTML и
         // частичный вывод не должны попасть клиенту.
-        register_shutdown_function(static function () use (&$finished, &$legacy, &$webhook, &$actor, $response, $level): void {
+        register_shutdown_function(static function () use (&$finished, &$legacy, &$webhook, &$actor, &$corsHeaders, $response, $level): void {
             if ($finished) return;
             // Проверенный webhook может завершиться внутри обработчика. Его
             // вывод уже является ответом: обновляем только диагностику и
@@ -45,7 +47,7 @@ final class ApiApplication extends Application
             while (ob_get_level() > $level) ob_end_clean();
             error_log('MajorDoMo API interrupted; request_id=' . $response->requestId);
             FailureLog::report(self::interrupted(), $response->requestId, $actor);
-            $response->emit($response->failure(new ApiException(503, 'unavailable', 'Выполнение API прервано. Проверьте журнал системы.'), $legacy), 503, array('Retry-After' => '30'));
+            $response->emit($response->failure(new ApiException(503, 'unavailable', 'Выполнение API прервано. Проверьте журнал системы.'), $legacy), 503, $corsHeaders + array('Retry-After' => '30'));
         });
         try {
             $this->bootConfiguration();
@@ -90,9 +92,36 @@ final class ApiApplication extends Application
                 return;
             }
 
-            $policy = new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), Config::string('TRUSTED_PROXIES'));
+            $browser = new BrowserAccess($legacy ? '' : Config::string('BASE_URL'));
+            $corsHeaders = $browser->headers($_SERVER);
+            if (!$legacy && $method === 'OPTIONS' && $corsHeaders !== array()) {
+                $requestedMethod = strtoupper((string)($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] ?? ''));
+                Contract::match(new Request($requestedMethod, $uri, array(), array(), Config::string('ROOTHTML')));
+                $requestedHeaders = array_filter(array_map('trim', explode(',', strtolower((string)($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'] ?? '')))));
+                if (array_diff($requestedHeaders, array('authorization', 'x-api-key', 'content-type')) !== array()) throw new ApiException(403, 'cross_origin_denied', 'Заголовки запроса не разрешены.');
+                while (ob_get_level() > $level) ob_end_clean();
+                $finished = true;
+                $response->emit($response->success(new \stdClass()), 200, $corsHeaders + array('Access-Control-Allow-Methods' => $requestedMethod, 'Access-Control-Allow-Headers' => 'Authorization, X-API-Key, Content-Type', 'Access-Control-Max-Age' => '600'));
+                return;
+            }
+            $policy = new AccessPolicy(Core::network(), Config::string('HOME_NETWORK'), Config::string('TRUSTED_PROXIES'), $legacy ? '' : Config::string('BASE_URL'));
             $gate = new Auth\AuthGate($this->root, $this->usersFactory);
-            $actor = $policy->authorize($_SERVER, $this->tokenVerifier ?? static fn($token) => preg_match('/^mdm_[a-f0-9]{64}$/D', $token) === 1 && TokenStore::connect()->verify($token), fn() => $gate->authorizeApi());
+            $identity = null;
+            $authRoute = !$legacy && ($probe->segments[0] ?? '') === 'auth';
+            $login = !$legacy && $probe->segments === array('auth', 'login');
+            if ($authRoute) Contract::match($probe);
+            // Вход публичен: просроченная cookie панели не мешает новому сеансу.
+            if ($login) $actor = 'anonymous';
+            else {
+                $actor = $policy->authorize($_SERVER, function (string $token) use (&$identity): bool {
+                    if (str_starts_with($token, 'mdmu_')) {
+                        $identity = ($this->userTokens ??= UserTokenStore::connect())->authenticate($token);
+                        return true;
+                    }
+                    return $this->tokenVerifier !== null ? (bool)($this->tokenVerifier)($token) : preg_match('/^mdm_[a-f0-9]{64}$/D', $token) === 1 && TokenStore::connect()->verify($token);
+                }, $authRoute ? null : fn() => $gate->authorizeApi());
+                if ($identity !== null) $actor = 'user_token';
+            }
             $stream = fopen('php://input', 'rb');
             if ($stream === false) throw new ApiException(400, 'invalid_json', 'Не удалось прочитать тело запроса.');
             try { $raw = stream_get_contents($stream, 1048577); } finally { fclose($stream); }
@@ -109,7 +138,13 @@ final class ApiApplication extends Application
             $request = new Request($method, $uri, $query, $body, Config::string('ROOTHTML'), $actor);
             if (!$legacy) Contract::match($request);
             // The specification is available without booting the legacy runtime.
-            if (!$legacy && $request->segments === array('openapi.json')) $data = Contract::openApi(Config::string('ROOTHTML'));
+            if ($authRoute) {
+                $users = $this->usersFactory !== null ? ($this->usersFactory)() : Core::users();
+                $authentication = new UserAuthentication($users, $this->userTokens ??= UserTokenStore::connect(), new Auth\LoginAttempts($this->root));
+                $ip = Core::network()->clientIp($_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '', Config::string('TRUSTED_PROXIES'));
+                $data = $authentication->dispatch($request, $identity, $ip);
+            }
+            elseif (!$legacy && $request->segments === array('openapi.json')) $data = Contract::openApi(Config::string('ROOTHTML'));
             else {
                 $this->bootLibraries();
                 $language = $_SERVER['HTTP_APP_LANGUAGE'] ?? '';
@@ -137,7 +172,7 @@ final class ApiApplication extends Application
         }
         while (ob_get_level() > $level) ob_end_clean();
         $finished = true;
-        $response->emit($payload, $status, $headers);
+        $response->emit($payload, $status, $corsHeaders + $headers);
     }
 
     /**

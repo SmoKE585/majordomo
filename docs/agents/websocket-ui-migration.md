@@ -58,6 +58,12 @@ php majordomo cycles:restart websockets
 ## Доступ
 
 - Локальные сети — без ключа, как в HTTP API. Учитывается `HOME_NETWORK`.
+- Временные пользовательские токены `mdmu_` из POST `/api/v1/auth/login`
+  передаются теми же способами, что ключи интеграций. Runtime проверяет их через
+  `Api\UserTokenStore::authenticate($token, false)`: фоновые проверки не
+  продлевают простой. Срок — час без HTTP-запросов / 12 часов с момента входа.
+  Истечение или отзыв закрывает соединение с 1008 `authorization_expired`.
+  Отказ рукопожатия сохраняет HTTP 401 и код token_expired/token_revoked.
 - Внешние интеграции — существующий API-токен: `Authorization: Bearer <token>`
   либо `X-API-Key: <token>` при handshake. Если клиент не умеет заголовки,
   поддерживается `?token=<token>`; используйте WSS и исключите URL из журналов.

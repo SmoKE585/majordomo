@@ -6,6 +6,7 @@ use MajorDoMo\Core\{Core, Database};
 
 /**
  * Обработчики API делегируют выполнение функциям и сервисам ядра.
+ * Изменения: 2026-10-23 — пользовательский вход обрабатывается только HTTP-границей.
  * Изменения: 2026-10-22 — сообщения и подписки доступны внешним клиентам v1.
  * Изменения: 2026-10-22 — служебные операции панели только по сеансу админа.
  */
@@ -20,6 +21,7 @@ final class Dispatcher
         [$operation, $route] = $request->legacy ? $this->legacyRoute($request) : Contract::match($request);
         $params = $request->params();
         $action = $operation['action'];
+        if (str_starts_with($action, 'auth')) throw new ApiException(403, 'http_auth_required', 'Авторизация доступна только через HTTP API.');
         // Служебные данные панели не доступны по токену или правилу локальной
         // сети: только действующий сеанс администратора.
         if (!empty($operation['admin'])) {

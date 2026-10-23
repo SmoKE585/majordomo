@@ -4,6 +4,7 @@ namespace MajorDoMo\Core\Api;
 
 /**
  * Общий каталог маршрутов, валидации и OpenAPI.
+ * Изменения: 2026-10-23 — вход, профиль и выход пользователя по временному токену.
  * Изменения: 2026-10-22 — внешние операции сообщений и подписок вместо /objects/.
  * Изменения: 2026-10-22 — служебные маршруты панели /api/v1/panel/*.
  */
@@ -23,6 +24,10 @@ final class Contract
             'properties' => array_merge($speech, $extra));
         $definitions = array(
             array('GET', '/openapi.json', 'spec', 'Спецификация OpenAPI', 'Система', null, null, array()),
+            array('POST', '/auth/login', 'authLogin', 'Вход пользователя и временный токен', 'Авторизация', array('type' => 'object', 'required' => array('username', 'password'), 'additionalProperties' => false,
+                'properties' => array('username' => array('type' => 'string', 'minLength' => 1, 'maxLength' => 255), 'password' => array('type' => 'string', 'minLength' => 1, 'maxLength' => 1024, 'format' => 'password'))), null, array('username' => 'user', 'password' => 'YOUR_PASSWORD')),
+            array('GET', '/auth/me', 'authMe', 'Пользователь и срок текущего сеанса', 'Авторизация', null, null, array()),
+            array('POST', '/auth/logout', 'authLogout', 'Выход и отзыв текущего токена', 'Авторизация', array('type' => 'object', 'additionalProperties' => false, 'properties' => array()), null, new \stdClass()),
             array('GET', '/objects', 'objects', 'Все объекты', 'Объекты', null, 'objects', array()),
             array('GET', '/objects/{class}', 'objects', 'Объекты класса со значениями свойств', 'Объекты', null, 'objects', array()),
             array('GET', '/data/{target}', 'dataGet', 'Значение свойства или свойства объекта', 'Свойства', null, 'data', array()),
@@ -143,7 +148,7 @@ final class Contract
 
     public static function openApi(string $root = '/'): array
     {
-        $spec = array('openapi' => '3.0.3', 'info' => array('title' => 'MajorDoMo Core API', 'version' => '1.0.0', 'description' => 'Локальные сети: доступ без токена. Внешний доступ: Bearer-токен или X-API-Key. Права токена распространяются на всё API. Запросы с телом — только JSON. Методы и сценарии выполняются синхронно; повтор запроса может повторить действие. Legacy URL /api/* и /api.php/* сохраняют прежний формат.'),
+        $spec = array('openapi' => '3.0.3', 'info' => array('title' => 'MajorDoMo Core API', 'version' => '1.0.0', 'description' => 'Локальные сети: доступ без токена. Внешний доступ: Bearer-токен или X-API-Key. POST /auth/login принимает логин/пароль пользователя и выдаёт временный токен с профилем. Токены дают весь публичный API без объектных ACL; служебный /panel/* требует сеанс администратора. CORS v1: домен и поддомены BASE_URL с тем же протоколом, без cookie и с явным токеном. Запросы с телом — только JSON. Методы и сценарии выполняются синхронно; повтор запроса может повторить действие. Legacy URL /api/* и /api.php/* сохраняют прежний формат.'),
             'servers' => array(array('url' => rtrim($root, '/') . '/api/v1')),
             'security' => array(array('bearerAuth' => array()), array('apiKey' => array()), new \stdClass()),
             'components' => array('securitySchemes' => array('bearerAuth' => array('type' => 'http', 'scheme' => 'bearer'), 'apiKey' => array('type' => 'apiKey', 'in' => 'header', 'name' => 'X-API-Key')), 'schemas' => array(
@@ -170,7 +175,13 @@ final class Contract
             $dataSchema = self::responseSchema($operation['action']);
             $entry = array('operationId' => $operation['action'] . '_' . strtolower($operation['method']) . '_' . substr(sha1($operation['path']), 0, 6), 'summary' => $operation['summary'], 'tags' => array($operation['tag']), 'parameters' => $parameters,
                 'responses' => array('200' => array('description' => 'Успех. Полезная нагрузка находится в data; meta содержит request_id, timestamp и duration_ms.', 'content' => array('application/json' => array('schema' => array('type' => 'object', 'required' => array('ok', 'data', 'meta'), 'properties' => array('ok' => array('type' => 'boolean', 'enum' => array(true)), 'data' => $dataSchema, 'meta' => array('type' => 'object'))))))));
-            foreach (array(400 => 'invalid_json / invalid_path', 401 => 'token_required / invalid_token', 403 => 'cross_origin_denied', 404 => 'not_found', 405 => 'method_not_allowed', 410 => 'gone', 413 => 'payload_too_large', 415 => 'unsupported_media_type', 422 => 'validation_failed', 500 => 'internal_error', 503 => 'unavailable') as $status => $description) $entry['responses'][(string)$status] = array('description' => $description, 'content' => array('application/json' => array('schema' => array('$ref' => '#/components/schemas/Error'))));
+            foreach (array(400 => 'invalid_json / invalid_path', 401 => 'token_required / invalid_token / token_expired / token_revoked / invalid_credentials / user_token_required', 403 => 'cross_origin_denied', 404 => 'not_found', 405 => 'method_not_allowed', 410 => 'gone', 413 => 'payload_too_large', 415 => 'unsupported_media_type', 422 => 'validation_failed', 429 => 'login_throttled', 500 => 'internal_error', 503 => 'unavailable') as $status => $description) $entry['responses'][(string)$status] = array('description' => $description, 'content' => array('application/json' => array('schema' => array('$ref' => '#/components/schemas/Error'))));
+            if (str_starts_with($operation['action'], 'auth')) {
+                $entry['security'] = $operation['action'] === 'authLogin' ? array() : array(array('bearerAuth' => array()), array('apiKey' => array()));
+                $entry['description'] = $operation['action'] === 'authLogin'
+                    ? 'Вход любого пользователя users с непустым паролем, без API-ключа и cookie. Три ошибки блокируют IP на 15 минут. Токен действует час без HTTP-запросов, максимум 12 часов. expires_at и absolute_expires_at — Unix timestamp. Пароли длиннее 1024 байт отклоняются. В user возвращаются id, username, name, is_admin, linked_object и object с классом. Секрет выдаётся только здесь.'
+                    : 'Требуется пользовательский токен mdmu_, постоянный ключ интеграции и cookie администратора не подходят. Истечение: HTTP 401 token_expired; выход, смена пароля/логина или удаление пользователя: 401 token_revoked. details.reauthenticate=true означает необходимость нового входа.';
+            }
             if ($operation['body'] !== null) $entry['requestBody'] = array('required' => true, 'content' => array('application/json' => array('schema' => $operation['body'], 'example' => $operation['example'])));
             if ($operation['action'] === 'module') $entry['description'] = 'Совместимый вызов module::api($params). Дополнительные сегменты после имени модуля доступны в params.request. Query и JSON передаются модулю; результат определяется модулем. Схемы произвольного стороннего модуля ядру неизвестны.';
             $spec['paths'][$operation['path']][strtolower($operation['method'])] = $entry;
@@ -181,7 +192,17 @@ final class Contract
     private static function responseSchema(string $action): array|\stdClass
     {
         $room = array('type' => 'object', 'properties' => array('id' => array('type' => 'integer'), 'title' => array('type' => 'string'), 'priority' => array('type' => 'integer'), 'object' => array('type' => 'string'), 'roomIcon' => array('type' => 'string')));
+        $entity = array('type' => 'object', 'nullable' => true, 'required' => array('id', 'title'), 'properties' => array('id' => array('type' => 'integer'), 'title' => array('type' => 'string')));
+        $object = $entity;
+        $object['properties']['class'] = $entity;
+        $user = array('type' => 'object', 'required' => array('id', 'username', 'name', 'is_admin', 'linked_object', 'object'), 'properties' => array(
+            'id' => array('type' => 'integer'), 'username' => array('type' => 'string'), 'name' => array('type' => 'string'), 'is_admin' => array('type' => 'boolean'),
+            'linked_object' => array('type' => 'string', 'nullable' => true), 'object' => $object));
+        $session = array('user' => $user, 'expires_at' => array('type' => 'integer', 'format' => 'int64'), 'absolute_expires_at' => array('type' => 'integer', 'format' => 'int64'), 'idle_timeout' => array('type' => 'integer', 'enum' => array(3600)));
         return match ($action) {
+            'authLogin' => array('type' => 'object', 'required' => array_merge(array_keys($session), array('access_token', 'token_type')), 'properties' => $session + array('access_token' => array('type' => 'string'), 'token_type' => array('type' => 'string', 'enum' => array('Bearer')))),
+            'authMe' => array('type' => 'object', 'required' => array_keys($session), 'properties' => $session),
+            'authLogout' => array('type' => 'object', 'required' => array('logged_out'), 'properties' => array('logged_out' => array('type' => 'boolean', 'enum' => array(true)))),
             'objects' => array('type' => 'array', 'items' => array('type' => 'object', 'additionalProperties' => true)),
             'rooms' => array('type' => 'array', 'items' => $room), 'roomGet', 'roomSave' => $room,
             'roomOrder', 'roomDelete', 'dataSet', 'modulePropertySet' => array('type' => 'object', 'additionalProperties' => true),

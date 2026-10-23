@@ -1,5 +1,6 @@
 <?php
 /** Isolated API dependencies. Never loaded by an application entry point. */
+// 2026-10-23 — схема пользовательских сеансов и профиль пользователя для HTTP-проверок.
 
 use MajorDoMo\Core\{Config, Core, Database, MetadataCache, RedisConnection, Methods, CodeExecutor, PropertyAudit};
 use MajorDoMo\Core\Api\{Schema, TokenStore};
@@ -118,6 +119,7 @@ PHP);
         file_put_contents($root . '/cms/modules_installed/fixturehook.installed', 'fixture');
         $pdo = self::pdo($root);
         $pdo->exec(Schema::sql(true));
+        $pdo->exec(Schema::userSessionsSql(true));
         foreach (Schema::hooksStatements(true) as $statement) {
             $pdo->exec($statement);
         }
@@ -127,7 +129,7 @@ PHP);
             CREATE TABLE IF NOT EXISTS properties (ID INTEGER PRIMARY KEY,TITLE TEXT,CLASS_ID INTEGER,OBJECT_ID INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS methods (ID INTEGER PRIMARY KEY,TITLE TEXT,CLASS_ID INTEGER,OBJECT_ID INTEGER DEFAULT 0,CODE TEXT,CALL_PARENT INTEGER DEFAULT 0,SCRIPT_ID INTEGER DEFAULT 0,EXECUTED TEXT,EXECUTED_SRC TEXT,EXECUTED_PARAMS TEXT);
             CREATE TABLE IF NOT EXISTS scripts (ID INTEGER PRIMARY KEY,TITLE TEXT);
-            CREATE TABLE IF NOT EXISTS users (ID INTEGER PRIMARY KEY,NAME TEXT,USERNAME TEXT);
+            CREATE TABLE IF NOT EXISTS users (ID INTEGER PRIMARY KEY,NAME TEXT,USERNAME TEXT,PASSWORD TEXT DEFAULT '',IS_ADMIN INTEGER DEFAULT 0,IS_DEFAULT INTEGER DEFAULT 0,LINKED_OBJECT TEXT DEFAULT '');
             CREATE TABLE IF NOT EXISTS shouts (ID INTEGER PRIMARY KEY AUTOINCREMENT,MEMBER_ID INTEGER,ADDED TEXT,MESSAGE TEXT);
             CREATE TABLE IF NOT EXISTS fixture_values (NAME TEXT PRIMARY KEY,VALUE TEXT);
             CREATE TABLE IF NOT EXISTS operations_queue (ID INTEGER PRIMARY KEY AUTOINCREMENT,TOPIC TEXT,DATANAME TEXT,DATAVALUE TEXT,EXPIRE TEXT,CLAIM_TOKEN TEXT DEFAULT '',CLAIM_UNTIL TEXT,ATTEMPTS INTEGER DEFAULT 0);
@@ -138,7 +140,7 @@ PHP);
             INSERT OR IGNORE INTO properties VALUES (1,'level',1,0);
             INSERT OR IGNORE INTO scripts VALUES (1,'Test script');
             INSERT OR IGNORE INTO methods (ID,TITLE,CLASS_ID,CODE) VALUES (1,'run',1,'return ' || char(36) || 'params[\"value\"] ?? 7;');
-            INSERT OR IGNORE INTO users VALUES (1,'Tester','test');
+            INSERT OR IGNORE INTO users (ID,NAME,USERNAME) VALUES (1,'Tester','test');
             INSERT OR IGNORE INTO locations VALUES (1,'Кухня',10);
             INSERT OR IGNORE INTO locations VALUES (2,'Спальня',20);
             INSERT OR IGNORE INTO fixture_values VALUES ('Lamp.level','0');");
