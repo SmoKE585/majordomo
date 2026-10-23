@@ -334,6 +334,7 @@ final class PanelController
                 'restore_instructions' => $this->restoreAgent(),
                 'save_qdrant' => $this->saveQdrant(),
                 'save_index_settings' => $this->saveIndexSettings(),
+                'save_knowledge' => $this->saveKnowledge(),
                 'delete_index' => $this->deleteIndex(),
                 default => throw new InvalidArgumentException('Неизвестное действие.'),
             };
@@ -449,6 +450,26 @@ final class PanelController
             'REVISION' => $current['REVISION'],
         ), $this->models);
         $this->redirect($this->urlPrefix() . '/knowledge.html', 'Параметры индекса сохранены.');
+    }
+
+    /** Одна кнопка сохраняет Qdrant, модель и параметры коллекции. */
+    private function saveKnowledge(): void
+    {
+        $current = $this->knowledgeSettings->get();
+        $input = array(
+            'QDRANT_URL' => $this->post('qdrant_url'), 'TIMEOUT' => $this->post('timeout'),
+            'EMBEDDING_MODEL_ID' => $this->post('embedding_model_id') === '' ? 0 : $this->post('embedding_model_id'),
+            'CHUNK_SIZE' => $this->post('chunk_size'), 'CHUNK_OVERLAP' => $this->post('chunk_overlap'),
+            'TOP_K' => $this->post('top_k'), 'MAX_CONTEXT' => $this->post('max_context'),
+            'VECTOR_NAME' => $this->post('vector_name'), 'VECTOR_SIZE' => $this->post('vector_size'),
+            'DISTANCE' => $this->post('distance'), 'HNSW_M' => $this->post('hnsw_m'),
+            'HNSW_EF_CONSTRUCT' => $this->post('hnsw_ef_construct'),
+            'REVISION' => $current['REVISION'],
+        );
+        if ($this->post('clear_token') === '1') $input['TOKEN'] = '';
+        elseif ($this->post('token') !== '') $input['TOKEN'] = $this->post('token');
+        $this->knowledgeSettings->saveAll($input, $this->models);
+        $this->redirect($this->urlPrefix() . '/knowledge.html', 'Настройки Qdrant и индекса сохранены.');
     }
 
     private function deleteIndex(): void

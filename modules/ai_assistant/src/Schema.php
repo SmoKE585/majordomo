@@ -12,6 +12,7 @@ use RuntimeException;
  * Версия собственных таблиц ИИ-помощника и их безопасное обновление.
  *
  * Изменения:
+ * 2026-10-23 — параметры коллекции Qdrant: имя вектора, размерность, метрика и HNSW.
  * 2026-10-23 — диалоги, сообщения, запуски и обслуживаемый индекс знаний.
  * 2026-10-23 — опциональный Qdrant, режим знаний агента и порядок эмбеддингов.
  * 2026-10-23 — агенты, ревизии и начальные профили без перезаписи пользовательских данных.
@@ -20,7 +21,7 @@ use RuntimeException;
  */
 final class Schema
 {
-    public const VERSION = 5;
+    public const VERSION = 6;
     public const DELETE_CONFIRMATION = 'DELETE ai_assistant';
 
     public static function install(Database $db, bool $sqlite = false): void
@@ -125,6 +126,20 @@ final class Schema
                 . "' WHERE ID=1 AND INSTALL_KEY=''");
             $db->requireExec('UPDATE ai_assistant_settings SET SCHEMA_VERSION=5 WHERE ID=1 AND SCHEMA_VERSION<5');
         }
+        if ($version < 6) {
+            // Параметры коллекции Qdrant хранятся рядом с настройками знаний:
+            // имя вектора (пусто = безымянный), размерность и метрика, HNSW.
+            foreach (array(
+                'VECTOR_NAME' => "varchar(64) NOT NULL DEFAULT ''",
+                'VECTOR_SIZE' => 'int NOT NULL DEFAULT 3072',
+                'DISTANCE' => "varchar(16) NOT NULL DEFAULT 'Cosine'",
+                'HNSW_M' => 'int NOT NULL DEFAULT 16',
+                'HNSW_EF_CONSTRUCT' => 'int NOT NULL DEFAULT 100',
+            ) as $field => $definition) {
+                self::addColumn($db, $sqlite, 'ai_assistant_knowledge', $field, $definition);
+            }
+            $db->requireExec('UPDATE ai_assistant_settings SET SCHEMA_VERSION=6 WHERE ID=1 AND SCHEMA_VERSION<6');
+        }
         // Ручного выключателя больше нет; старые установки включаются при обновлении.
         $db->requireExec('UPDATE ai_assistant_settings SET ENABLED=1 WHERE ID=1 AND INSTALLED=1 AND ENABLED<>1');
         // Колонки staging-индекса появились после первой версии схемы 5.
@@ -134,6 +149,12 @@ final class Schema
             'PREVIOUS_STATUS' => "varchar(16) NOT NULL DEFAULT ''",
             'PREVIOUS_ACTIVE' => 'int NOT NULL DEFAULT 0',
             'PREVIOUS_DIMENSION' => 'int NOT NULL DEFAULT 0',
+            'VECTOR_NAME' => "varchar(64) NOT NULL DEFAULT ''",
+            'VECTOR_SIZE' => 'int NOT NULL DEFAULT 0',
+            'DISTANCE' => "varchar(16) NOT NULL DEFAULT 'Cosine'",
+            'HNSW_M' => 'int NOT NULL DEFAULT 16',
+            'HNSW_EF_CONSTRUCT' => 'int NOT NULL DEFAULT 100',
+            'PREVIOUS_VECTOR_NAME' => "varchar(64) NOT NULL DEFAULT ''",
         ) as $field => $definition) {
             self::addColumn($db, $sqlite, 'ai_assistant_indexes', $field, $definition);
         }
@@ -179,8 +200,12 @@ final class Schema
             ACTIVE int NOT NULL DEFAULT 0, DOCUMENTS int NOT NULL DEFAULT 0,
             CHUNKS int NOT NULL DEFAULT 0, PROCESSED int NOT NULL DEFAULT 0,
             CHECKSUM varchar(64) NOT NULL DEFAULT '', ERROR varchar(500) NOT NULL DEFAULT '',
+            VECTOR_NAME varchar(64) NOT NULL DEFAULT '', VECTOR_SIZE int NOT NULL DEFAULT 0,
+            DISTANCE varchar(16) NOT NULL DEFAULT 'Cosine', HNSW_M int NOT NULL DEFAULT 16,
+            HNSW_EF_CONSTRUCT int NOT NULL DEFAULT 100,
             PREVIOUS_COLLECTION varchar(190) NOT NULL DEFAULT '', PREVIOUS_STATUS varchar(16) NOT NULL DEFAULT '',
             PREVIOUS_ACTIVE int NOT NULL DEFAULT 0, PREVIOUS_DIMENSION int NOT NULL DEFAULT 0,
+            PREVIOUS_VECTOR_NAME varchar(64) NOT NULL DEFAULT '',
             CREATED_AT bigint NOT NULL DEFAULT 0, UPDATED_AT bigint NOT NULL DEFAULT 0
         )$tail");
         foreach (array(
@@ -188,6 +213,12 @@ final class Schema
             'PREVIOUS_STATUS' => "varchar(16) NOT NULL DEFAULT ''",
             'PREVIOUS_ACTIVE' => 'int NOT NULL DEFAULT 0',
             'PREVIOUS_DIMENSION' => 'int NOT NULL DEFAULT 0',
+            'VECTOR_NAME' => "varchar(64) NOT NULL DEFAULT ''",
+            'VECTOR_SIZE' => 'int NOT NULL DEFAULT 0',
+            'DISTANCE' => "varchar(16) NOT NULL DEFAULT 'Cosine'",
+            'HNSW_M' => 'int NOT NULL DEFAULT 16',
+            'HNSW_EF_CONSTRUCT' => 'int NOT NULL DEFAULT 100',
+            'PREVIOUS_VECTOR_NAME' => "varchar(64) NOT NULL DEFAULT ''",
         ) as $field => $definition) {
             self::addColumn($db, $sqlite, 'ai_assistant_indexes', $field, $definition);
         }

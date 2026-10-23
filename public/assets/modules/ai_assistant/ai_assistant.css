@@ -637,3 +637,27 @@ body.md-admin-shell .md-ai-hero {
 body.md-admin-shell .md-ai-narrow {
     max-width: 100%;
 }
+
+/* 2026-10-23 — секции единой формы Qdrant и индекса. */
+body.md-admin-shell .md-ai-form-section {
+    margin: 6px 0 -2px;
+    padding-top: 12px;
+    border-top: 1px solid var(--md-ui-border);
+}
+body.md-admin-shell .md-ai-form-section:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+body.md-admin-shell .md-ai-form-section h3 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--md-ui-text);
+}
+body.md-admin-shell .md-ai-form-section p {
+    margin: 0;
+    color: var(--md-ui-text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}

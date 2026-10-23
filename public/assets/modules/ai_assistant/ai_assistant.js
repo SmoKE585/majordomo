@@ -401,6 +401,19 @@
             }
         });
         page.addEventListener('click', async function (event) {
+            var presetButton = event.target.closest('[data-ai-vector-preset]');
+            if (presetButton) {
+                event.preventDefault();
+                var form = presetButton.closest('form');
+                if (form && form.elements) {
+                    if (form.elements.vector_name) form.elements.vector_name.value = '';
+                    if (form.elements.vector_size) form.elements.vector_size.value = '3072';
+                    if (form.elements.distance) form.elements.distance.value = 'Cosine';
+                    if (form.elements.hnsw_m) form.elements.hnsw_m.value = '16';
+                    if (form.elements.hnsw_ef_construct) form.elements.hnsw_ef_construct.value = '100';
+                    toast('info', 'Параметры OpenAI Large подставлены', 'Проверьте остальные поля и нажмите «Сохранить всё».');
+                }
+            }
             var startButton = event.target.closest('[data-ai-index-start]');
             if (startButton) {
                 event.preventDefault();

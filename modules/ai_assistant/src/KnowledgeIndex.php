@@ -19,6 +19,9 @@ use Throwable;
  * ключом установки, а выдача — фильтром аудитории.
  *
  * Изменения:
+ * 2026-10-23 — параметры вектора и HNSW фиксируются в строке индекса.
+ *
+ * Изменения:
  * 2026-10-23 — пошаговая индексация, версия модели/размерности и поиск RAG.
  */
 final class KnowledgeIndex
@@ -67,6 +70,7 @@ final class KnowledgeIndex
             throw new RuntimeException('Сборка этого индекса уже идёт. Дождитесь завершения или остановите её.');
         }
         $previousActive = $existing !== null && (int)$existing['ACTIVE'] === 1 && (string)$existing['STATUS'] === 'ready';
+        $vector = $this->settings->get();
         $record = array(
             'MODEL_ID' => $modelId,
             'COLLECTION' => $collection,
@@ -78,11 +82,18 @@ final class KnowledgeIndex
             'DOCUMENTS' => count($this->documents()),
             'CHUNKS' => $total,
             'PROCESSED' => 0,
-            'CHECKSUM' => $hash,            'ERROR' => '',
+            'CHECKSUM' => $hash,
+            'ERROR' => '',
+            'VECTOR_NAME' => (string)$vector['VECTOR_NAME'],
+            'VECTOR_SIZE' => (int)$vector['VECTOR_SIZE'],
+            'DISTANCE' => (string)$vector['DISTANCE'],
+            'HNSW_M' => (int)$vector['HNSW_M'],
+            'HNSW_EF_CONSTRUCT' => (int)$vector['HNSW_EF_CONSTRUCT'],
             'PREVIOUS_COLLECTION' => $previousActive ? (string)$existing['COLLECTION'] : '',
             'PREVIOUS_STATUS' => $previousActive ? 'ready' : '',
             'PREVIOUS_ACTIVE' => $previousActive ? 1 : 0,
             'PREVIOUS_DIMENSION' => $previousActive ? (int)$existing['DIMENSION'] : 0,
+            'PREVIOUS_VECTOR_NAME' => $previousActive ? (string)($existing['VECTOR_NAME'] ?? '') : '',
             'CREATED_AT' => time(),
             'UPDATED_AT' => time(),
         );
@@ -128,6 +139,10 @@ final class KnowledgeIndex
                 $vector = $embedded[$index]->getEmbedding() ?? array();
                 if ($vector === array()) throw new ProviderFailure('invalid_response', 'Провайдер вернул пустой вектор.');
                 $dimension = count($vector);
+                if ((int)$row['VECTOR_SIZE'] > 0 && (int)$row['VECTOR_SIZE'] !== $dimension) {
+                    throw new ProviderFailure('invalid_vector', 'Модель вернула ' . $dimension . ' измерений, а в настройках указано '
+                        . (int)$row['VECTOR_SIZE'] . '. Исправьте размерность или укажите 0 для автоопределения.');
+                }
                 if ((int)$row['DIMENSION'] > 0 && (int)$row['DIMENSION'] !== $dimension) {
                     throw new ProviderFailure('invalid_vector', 'Размерность векторов изменилась. Запустите пересборку с новой моделью.');
                 }
@@ -147,11 +162,13 @@ final class KnowledgeIndex
                     ));
             }
             if ((int)$row['DIMENSION'] === 0) {
-                $this->qdrant->createCollection($connection, (string)$row['COLLECTION'], $dimension);
+                $this->qdrant->createCollection($connection, (string)$row['COLLECTION'], $dimension,
+                    (string)$row['VECTOR_NAME'], (string)$row['DISTANCE'],
+                    array('m' => (int)$row['HNSW_M'], 'ef_construct' => (int)$row['HNSW_EF_CONSTRUCT']));
                 $this->db->requireExec('UPDATE ai_assistant_indexes SET DIMENSION=' . $dimension
                     . ' WHERE MODEL_ID=' . $modelId);
             }
-            $this->qdrant->upsert($connection, (string)$row['COLLECTION'], $points);
+            $this->qdrant->upsert($connection, (string)$row['COLLECTION'], $points, (string)$row['VECTOR_NAME']);
             $processed = (int)$row['PROCESSED'] + count($slice);
             $this->db->requireExec('UPDATE ai_assistant_indexes SET PROCESSED=' . $processed
                 . ',UPDATED_AT=' . time() . ' WHERE MODEL_ID=' . $modelId);
@@ -181,7 +198,8 @@ final class KnowledgeIndex
             if ((int)$row['PREVIOUS_ACTIVE'] === 1 && (string)$row['PREVIOUS_COLLECTION'] !== '') {
                 $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='ready',ACTIVE=1,COLLECTION='"
                     . $this->db->escape((string)$row['PREVIOUS_COLLECTION']) . "',DIMENSION=" . (int)$row['PREVIOUS_DIMENSION']
-                    . ",ERROR='Сборка отменена; работает предыдущий индекс',PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,UPDATED_AT="
+                    . ",VECTOR_NAME='" . $this->db->escape((string)$row['PREVIOUS_VECTOR_NAME'])
+                    . "',ERROR='Сборка отменена; работает предыдущий индекс',PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,PREVIOUS_VECTOR_NAME='',UPDATED_AT="
                     . time() . ' WHERE MODEL_ID=' . $modelId);
             } else {
                 $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='cancelled',ACTIVE=0,ERROR='Сборка отменена',UPDATED_AT="
@@ -224,8 +242,9 @@ final class KnowledgeIndex
             try {
                 $vector = $this->providers->embeddings((int)$row['MODEL_ID'])->embedText($query);
                 $collection = $row['STATUS'] === 'ready' ? (string)$row['COLLECTION'] : (string)$row['PREVIOUS_COLLECTION'];
+                $vectorName = $row['STATUS'] === 'ready' ? (string)$row['VECTOR_NAME'] : (string)$row['PREVIOUS_VECTOR_NAME'];
                 $found = $this->qdrant->search($connection, $collection, $vector,
-                    max(1, min(20, $topK)), $this->settings->installKey(), $sources);
+                    max(1, min(20, $topK)), $this->settings->installKey(), $sources, $vectorName);
                 foreach ($found as $item) {
                     $payload = $item['payload'];
                     $all[] = array(
@@ -262,7 +281,7 @@ final class KnowledgeIndex
             . " AND (ACTIVE=1 OR PREVIOUS_ACTIVE=1)");
         $this->db->requireExec('UPDATE ai_assistant_indexes SET ACTIVE=0 WHERE MODEL_ID<>' . $modelId);
         $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='ready',ACTIVE=1,PROCESSED=CHUNKS,ERROR='',"
-            . "PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,UPDATED_AT="
+            . "PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,PREVIOUS_VECTOR_NAME='',UPDATED_AT="
             . time() . ' WHERE MODEL_ID=' . $modelId);
         $this->saveSources((int)$row['ID'], $plan);
         try {
@@ -292,7 +311,8 @@ final class KnowledgeIndex
             // остаётся видимой в строке, чтобы её можно было исправить.
             $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='ready',ACTIVE=1,COLLECTION='"
                 . $this->db->escape((string)$row['PREVIOUS_COLLECTION']) . "',DIMENSION=" . (int)$row['PREVIOUS_DIMENSION']
-                . ",ERROR='" . $safe . "',PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,UPDATED_AT="
+                . ",VECTOR_NAME='" . $this->db->escape((string)$row['PREVIOUS_VECTOR_NAME']) . "',ERROR='" . $safe
+                . "',PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,PREVIOUS_VECTOR_NAME='',UPDATED_AT="
                 . time() . ' WHERE MODEL_ID=' . $modelId);
             return;
         }

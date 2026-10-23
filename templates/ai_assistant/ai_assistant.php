@@ -18,8 +18,8 @@ $activeTab = in_array($view, array('agent_edit'), true) ? 'agents'
     : (in_array($view, array('model_edit'), true) ? 'models'
     : (in_array($view, array('provider_edit'), true) ? 'providers' : $view));
 ?>
-<link rel="stylesheet" href="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.css?v=20261023-6">
-<script src="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.js?v=20261023-6" defer></script>
+<link rel="stylesheet" href="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.css?v=20261023-8">
+<script src="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.js?v=20261023-8" defer></script>
 
 <div class="md-ui-page md-ui-page--stack md-ai-page" data-md-ai-panel
      data-ai-endpoint="<?= $e(ROOTHTML) ?>panel/ai_assistant.html?ajax=1"

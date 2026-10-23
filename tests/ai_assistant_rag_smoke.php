@@ -119,6 +119,20 @@ try {
     $models->saveProvider($provider, $providerInput);
     rejects(fn() => $models->saveModel(0, $modelInput + array('EMBEDDING_PRIORITY' => 0)), 'EMBEDDING_PRIORITY');
     check($rag->status()['available'], 'Пустой доступный Qdrant и включённая embedding-модель разрешают создание RAG-агента до индексирования.');
+    $current = $settings->get();
+    $settings->saveAll(array(
+        'QDRANT_URL' => $current['QDRANT_URL'], 'TOKEN' => '', 'TIMEOUT' => 1,
+        'EMBEDDING_MODEL_ID' => $third, 'CHUNK_SIZE' => 900, 'CHUNK_OVERLAP' => 100,
+        'TOP_K' => 4, 'MAX_CONTEXT' => 9000, 'VECTOR_NAME' => 'text',
+        'VECTOR_SIZE' => 3072, 'DISTANCE' => 'Cosine', 'HNSW_M' => 16, 'HNSW_EF_CONSTRUCT' => 100,
+        'REVISION' => $current['REVISION'],
+    ), $models);
+    $saved = $settings->get();
+    check((int)$saved['EMBEDDING_MODEL_ID'] === $third && (int)$saved['CHUNK_SIZE'] === 900
+        && $saved['VECTOR_NAME'] === 'text' && (int)$saved['VECTOR_SIZE'] === 3072
+        && $saved['DISTANCE'] === 'Cosine' && (int)$saved['HNSW_M'] === 16
+        && (int)$saved['HNSW_EF_CONSTRUCT'] === 100 && (int)$saved['HAS_TOKEN'] === 0,
+        'Одна форма сохраняет Qdrant, модель, вектор и параметры коллекции.');
     $application = new MajorDoMo\Core\Console\Application($fixture);
     $command = new MajorDoMo\Core\Console\Commands\AiRagCheckCommand(fn() => $rag);
     $stdout = fopen('php://temp', 'w+');
@@ -150,7 +164,7 @@ try {
     }
 
     $http->response = new HttpResponse(200, '{"status":"ok","result":{"collections":[]}}');
-    $input['REVISION'] = 4;
+    $input['REVISION'] = $settings->get()['REVISION'];
     $input['QDRANT_URL'] = '';
     $settings->save($input);
     check($rag->status()['reason'] === 'not_configured', 'Отключённый Qdrant блокирует ранее настроенный RAG.');

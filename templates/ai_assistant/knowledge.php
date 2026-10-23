@@ -1,12 +1,15 @@
 <?php
-// 2026-10-23 — подключение Qdrant и управление индексом знаний.
-$hasModel = false;
-foreach ($embeddingModels as $model) if ((int)$model['ID'] === (int)$settings['EMBEDDING_MODEL_ID']) $hasModel = true;
+// 2026-10-23 — подключение Qdrant, вектор и управление индексом знаний.
 $reasonLabels = array('not_configured' => 'не подключён', 'embeddings_missing' => 'нет модели эмбеддингов',
     'authentication' => 'ключ отклонён', 'timeout' => 'таймаут', 'network' => 'нет связи',
     'invalid_response' => 'неверный ответ', 'redirect' => 'перенаправление');
 $ragReason = (string)($ragStatus['reason'] ?? '');
 $statusTone = !empty($ragStatus['available']) ? 'success' : ($ragReason === 'not_configured' ? 'info' : 'warning');
+$embeddingIds = array_map(static fn(array $model): int => (int)$model['ID'], $embeddingModels);
+$selectedModelId = (int)$settings['EMBEDDING_MODEL_ID'];
+if (!in_array($selectedModelId, $embeddingIds, true)) $selectedModelId = $embeddingIds[0] ?? 0;
+$hasSelectedModel = in_array($selectedModelId, $embeddingIds, true);
+$canIndex = $hasSelectedModel && !empty($ragStatus['available']);
 ?>
 <div class="md-ai-knowledge">
     <div class="md-ui-kpi-grid">
@@ -23,79 +26,95 @@ $statusTone = !empty($ragStatus['available']) ? 'success' : ($ragReason === 'not
 
     <?= MDJUI::alert($statusTone, !empty($ragStatus['available']) ? 'RAG доступен' : ($ragReason === 'not_configured' ? 'Qdrant не подключён' : 'RAG недоступен'),
         (string)($ragStatus['hint'] ?? 'Qdrant не обязателен: обычные агенты используют текстовый поиск.'),
-        array('actions' => MDJUI::button('Проверить снова', array('type' => 'button', 'variant' => 'secondary', 'size' => 'sm', 'icon' => 'refresh',
+        array('actions' => MDJUI::button('Индексировать базу', array('type' => 'button', 'variant' => 'secondary', 'size' => 'sm',
+            'icon' => 'database-plus', 'disabled' => !$canIndex,
+            'attrs' => array('data-ai-index-start' => (string)$selectedModelId)))
+            . MDJUI::button('Проверить снова', array('type' => 'button', 'variant' => 'secondary', 'size' => 'sm', 'icon' => 'refresh',
             'attrs' => array('data-ai-rag-probe' => ''))) . MDJUI::button('К моделям', array('href' => $url('/models'), 'variant' => 'secondary', 'size' => 'sm', 'icon' => 'cpu')))) ?>
 
-    <div class="md-ai-split">
-        <?php ob_start(); ?>
-        <form method="post" action="<?= $e($url('/knowledge')) ?>" class="md-ui-form md-ui-form-stack" autocomplete="off">
-            <input type="hidden" name="_token" value="<?= $e($token) ?>">
-            <input type="hidden" name="operation" value="save_qdrant">
-            <?= MDJUI::input(array('name' => 'qdrant_url', 'type' => 'url', 'label' => 'Адрес API Qdrant',
-                'value' => $settings['QDRANT_URL'], 'placeholder' => 'http://127.0.0.1:6333',
-                'description' => 'Пусто — Qdrant отключён. Коллекции создаются автоматически.')) ?>
+    <?php
+    $modelOptions = array('' => 'Выберите модель эмбеддингов');
+    foreach ($embeddingModels as $model) {
+        $modelOptions[(string)$model['ID']] = $model['TITLE'] . ' · ' . $model['MODEL'] . ' · приоритет ' . (int)$model['EMBEDDING_PRIORITY'];
+    }
+    ob_start();
+    ?>
+    <form method="post" action="<?= $e($url('/knowledge')) ?>" class="md-ui-form md-ui-form-stack" autocomplete="off">
+        <input type="hidden" name="_token" value="<?= $e($token) ?>">
+        <input type="hidden" name="operation" value="save_knowledge">
+        <div class="md-ai-form-section">
+            <h3>Подключение</h3>
+            <p>Qdrant — один сервис. «Инстансы» и отдельные коллекции вручную создавать не нужно: рабочая коллекция появится при индексации.</p>
+        </div>
+        <?= MDJUI::input(array('name' => 'qdrant_url', 'type' => 'url', 'label' => 'Адрес API Qdrant',
+            'value' => $settings['QDRANT_URL'], 'placeholder' => 'http://127.0.0.1:6333',
+            'description' => 'Пусто — Qdrant отключён. Коллекция создаётся автоматически при первой сборке.')) ?>
+        <div class="md-ui-form-grid">
             <?= MDJUI::input(array('name' => 'token', 'type' => 'password', 'label' => 'API-ключ Qdrant',
-                'description' => !empty($settings['HAS_TOKEN']) ? 'Ключ сохранён. Пустое поле не меняет его; при смене адреса ключ нужно задать заново.' : 'Необязателен для локального Qdrant.',
+                'description' => !empty($settings['HAS_TOKEN']) ? 'Ключ сохранён. Пустое поле не меняет его.' : 'Необязателен для локального Qdrant.',
                 'password_toggle' => true)) ?>
             <?= MDJUI::input(array('name' => 'timeout', 'type' => 'number', 'label' => 'Таймаут, секунд',
                 'value' => $settings['TIMEOUT'], 'min' => 1, 'max' => 30, 'required' => true)) ?>
-            <div class="md-ui-form-actions">
-                <?= MDJUI::button('Сохранить подключение', array('type' => 'submit', 'icon' => 'device-floppy')) ?>
-            </div>
-        </form>
-        <?php $qdrantForm = ob_get_clean(); ?>
-        <?= MDJUI::card(array('title' => 'Подключение Qdrant', 'icon' => 'database', 'compact' => true,
-            'subtitle' => 'Отдельный сервис; в стандартную поставку не входит.'), $qdrantForm) ?>
-
-        <?php if ($embeddingModels === array()): ?>
-            <?= MDJUI::card(array('title' => 'Параметры индекса', 'icon' => 'adjustments-horizontal', 'compact' => true,
-                'subtitle' => 'Изменение модели или разбиения требует новой сборки.'), MDJUI::emptyState(array(
-                'icon' => 'vector',
-                'title' => 'Сначала добавьте модель эмбеддингов',
-                'text' => 'Создайте модель с возможностью «Эмбеддинги» и приоритетом, затем выберите её здесь.',
-                'action' => MDJUI::button('Добавить модель', array('href' => $url('/models/add'), 'icon' => 'plus')),
-                'compact' => true,
-            ))) ?>
-        <?php else: ?>
-        <?php ob_start(); ?>
-        <form method="post" action="<?= $e($url('/knowledge')) ?>" class="md-ui-form md-ui-form-stack">
-            <input type="hidden" name="_token" value="<?= $e($token) ?>">
-            <input type="hidden" name="operation" value="save_index_settings">
-            <?php
-            $options = array('' => 'Выберите модель эмбеддингов');
-            foreach ($embeddingModels as $model) {
-                $options[(string)$model['ID']] = $model['TITLE'] . ' · ' . $model['MODEL'] . ' · приоритет ' . (int)$model['EMBEDDING_PRIORITY'];
-            }
-            ?>
-            <?= MDJUI::select(array('name' => 'embedding_model_id', 'label' => 'Модель эмбеддингов', 'selected' => (string)$settings['EMBEDDING_MODEL_ID'],
-                'options' => $options, 'searchable' => true,
-                'description' => 'Модель должна быть включена и иметь возможность «Эмбеддинги».')) ?>
-            <div class="md-ui-form-grid">
-                <?= MDJUI::input(array('name' => 'chunk_size', 'type' => 'number', 'label' => 'Размер фрагмента, символов',
-                    'value' => $settings['CHUNK_SIZE'], 'min' => 300, 'max' => 4000, 'required' => true)) ?>
-                <?= MDJUI::input(array('name' => 'chunk_overlap', 'type' => 'number', 'label' => 'Перекрытие, символов',
-                    'value' => $settings['CHUNK_OVERLAP'], 'min' => 0, 'max' => 800, 'required' => true)) ?>
-                <?= MDJUI::input(array('name' => 'top_k', 'type' => 'number', 'label' => 'Фрагментов в ответе',
-                    'value' => $settings['TOP_K'], 'min' => 1, 'max' => 20, 'required' => true)) ?>
-                <?= MDJUI::input(array('name' => 'max_context', 'type' => 'number', 'label' => 'Предел контекста, символов',
-                    'value' => $settings['MAX_CONTEXT'], 'min' => 1000, 'max' => 60000, 'required' => true)) ?>
-            </div>
-            <div class="md-ui-form-actions">
-                <?= MDJUI::button('Сохранить параметры', array('type' => 'submit', 'icon' => 'device-floppy')) ?>
-            </div>
-        </form>
-        <?php $indexForm = ob_get_clean(); ?>
-        <?= MDJUI::card(array('title' => 'Параметры индекса', 'icon' => 'adjustments-horizontal', 'compact' => true,
-            'subtitle' => 'Изменение модели или разбиения требует новой сборки.'), $indexForm) ?>
+        </div>
+        <?php if (!empty($settings['HAS_TOKEN'])): ?>
+            <?= MDJUI::checkbox(array('name' => 'clear_token', 'value' => '1', 'label' => 'Очистить сохранённый ключ Qdrant')) ?>
         <?php endif; ?>
-    </div>
+
+        <div class="md-ai-form-section">
+            <h3>Модель и коллекция</h3>
+            <p>Для OpenAI <code>text-embedding-3-large</code>: размерность 3072, Cosine, HNSW m=16, ef_construct=100. Имя вектора можно оставить пустым — тогда используется безымянный вектор Qdrant.</p>
+        </div>
+        <?= MDJUI::select(array('name' => 'embedding_model_id', 'label' => 'Модель эмбеддингов', 'selected' => (string)$selectedModelId,
+            'options' => $modelOptions, 'searchable' => true,
+            'description' => 'Модель должна быть включена и иметь возможность «Эмбеддинги».')) ?>
+        <div class="md-ui-form-grid">
+            <?= MDJUI::input(array('name' => 'vector_name', 'label' => 'Имя вектора', 'value' => $settings['VECTOR_NAME'],
+                'placeholder' => 'default (безымянный)', 'maxlength' => 64,
+                'description' => 'Пусто — стандартный безымянный вектор. Нужно только для нескольких векторов в коллекции.')) ?>
+            <?= MDJUI::input(array('name' => 'vector_size', 'type' => 'number', 'label' => 'Размерность вектора',
+                'value' => $settings['VECTOR_SIZE'], 'min' => 0, 'max' => 65536, 'required' => true,
+                'description' => '0 — определить по ответу модели. Для text-embedding-3-large — 3072.')) ?>
+            <?= MDJUI::select(array('name' => 'distance', 'label' => 'Метрика', 'selected' => (string)$settings['DISTANCE'],
+                'options' => array('Cosine' => 'Cosine', 'Dot' => 'Dot', 'Euclid' => 'Euclid', 'Manhattan' => 'Manhattan'),
+                'description' => 'Для OpenAI-эмбеддингов используется Cosine.')) ?>
+            <?= MDJUI::input(array('name' => 'hnsw_m', 'type' => 'number', 'label' => 'HNSW m',
+                'value' => $settings['HNSW_M'], 'min' => 4, 'max' => 128, 'required' => true,
+                'description' => 'Число связей на узел. Стандарт Qdrant — 16.')) ?>
+            <?= MDJUI::input(array('name' => 'hnsw_ef_construct', 'type' => 'number', 'label' => 'HNSW ef_construct',
+                'value' => $settings['HNSW_EF_CONSTRUCT'], 'min' => 4, 'max' => 1024, 'required' => true,
+                'description' => 'Глубина построения графа. Стандарт Qdrant — 100.')) ?>
+        </div>
+        <div class="md-ai-form-section">
+            <h3>Разбиение и выдача</h3>
+        </div>
+        <div class="md-ui-form-grid">
+            <?= MDJUI::input(array('name' => 'chunk_size', 'type' => 'number', 'label' => 'Размер фрагмента, символов',
+                'value' => $settings['CHUNK_SIZE'], 'min' => 300, 'max' => 4000, 'required' => true)) ?>
+            <?= MDJUI::input(array('name' => 'chunk_overlap', 'type' => 'number', 'label' => 'Перекрытие, символов',
+                'value' => $settings['CHUNK_OVERLAP'], 'min' => 0, 'max' => 800, 'required' => true)) ?>
+            <?= MDJUI::input(array('name' => 'top_k', 'type' => 'number', 'label' => 'Фрагментов в ответе',
+                'value' => $settings['TOP_K'], 'min' => 1, 'max' => 20, 'required' => true)) ?>
+            <?= MDJUI::input(array('name' => 'max_context', 'type' => 'number', 'label' => 'Предел контекста, символов',
+                'value' => $settings['MAX_CONTEXT'], 'min' => 1000, 'max' => 60000, 'required' => true)) ?>
+        </div>
+        <div class="md-ui-form-actions">
+            <?= MDJUI::button('Сохранить всё', array('type' => 'submit', 'icon' => 'device-floppy')) ?>
+            <?= MDJUI::button('Параметры OpenAI Large', array('type' => 'button', 'variant' => 'secondary', 'icon' => 'wand',
+                'attrs' => array('data-ai-vector-preset' => ''))) ?>
+        </div>
+    </form>
+    <?php $knowledgeForm = ob_get_clean(); ?>
+    <?= MDJUI::card(array('title' => 'Qdrant и индекс знаний', 'icon' => 'database', 'compact' => true,
+        'subtitle' => 'Одна форма сохраняет подключение, модель и параметры коллекции.'), $knowledgeForm) ?>
 
     <?= MDJUI::card(array(
         'title' => 'Индексы',
         'subtitle' => 'Новый индекс собирается в отдельной коллекции; рабочий переключается только после успеха.',
         'icon' => 'vector',
         'flush' => true,
-    ), (function () use ($indexes, $embeddingModels, $settings, $url, $e, $token) {
+        'actions' => MDJUI::button('Индексировать базу', array('type' => 'button', 'size' => 'sm', 'icon' => 'database-plus',
+            'disabled' => !$canIndex, 'attrs' => array('data-ai-index-start' => (string)$selectedModelId))),
+    ), (function () use ($indexes, $embeddingModels, $settings, $selectedModelId, $canIndex, $url, $e, $token) {
         if ($embeddingModels === array()) {
             return MDJUI::emptyState(array('icon' => 'vector', 'title' => 'Нет модели эмбеддингов',
                 'text' => 'Создайте модель с возможностью «Эмбеддинги» и отметьте её в параметрах индекса.',
@@ -106,6 +125,8 @@ $statusTone = !empty($ragStatus['available']) ? 'success' : ($ragReason === 'not
             <?php if ($indexes === array()): ?>
                 <div class="md-ai-index-empty"><?= MDJUI::emptyState(array('icon' => 'database', 'title' => 'Индекс ещё не собран',
                     'text' => 'Выберите модель и запустите сборку. Это можно сделать повторно после изменения документации.',
+                    'action' => $canIndex ? MDJUI::button('Индексировать базу', array('type' => 'button', 'icon' => 'database-plus',
+                        'attrs' => array('data-ai-index-start' => (string)$selectedModelId))) : '',
                     'compact' => true)) ?></div>
             <?php endif; ?>
             <?php foreach ($indexes as $row): ?>
@@ -114,8 +135,12 @@ $statusTone = !empty($ragStatus['available']) ? 'success' : ($ragReason === 'not
                     <div class="md-ai-index__head">
                         <div>
                             <strong><?= $e($row['MODEL_TITLE']) ?></strong>
+                            <?php $vectorName = (string)($row['VECTOR_NAME'] ?? ''); ?>
                             <div class="md-ai-muted">
                                 Коллекция <code><?= $e($row['COLLECTION']) ?></code> · размерность <?= (int)$row['DIMENSION'] ?>
+                                · вектор <?= $e($vectorName !== '' ? $vectorName : 'default') ?>
+                                · <?= $e((string)($row['DISTANCE'] ?? 'Cosine')) ?>
+                                · HNSW <?= (int)($row['HNSW_M'] ?? 16) ?>/<?= (int)($row['HNSW_EF_CONSTRUCT'] ?? 100) ?>
                             </div>
                         </div>
                         <div class="md-ai-index__badges">

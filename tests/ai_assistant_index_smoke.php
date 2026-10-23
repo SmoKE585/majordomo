@@ -113,7 +113,9 @@ try {
     $settings->save(array('QDRANT_URL' => 'http://127.0.0.1:4919/qdrant', 'TIMEOUT' => 1,
         'REVISION' => $settings->get()['REVISION'], 'TOKEN' => ''));
     $settings->saveIndex(array('EMBEDDING_MODEL_ID' => $model, 'CHUNK_SIZE' => 300, 'CHUNK_OVERLAP' => 40,
-        'TOP_K' => 3, 'MAX_CONTEXT' => 5000, 'REVISION' => $settings->get()['REVISION']), $models);
+        'TOP_K' => 3, 'MAX_CONTEXT' => 5000, 'VECTOR_NAME' => '', 'VECTOR_SIZE' => 0,
+        'DISTANCE' => 'Cosine', 'HNSW_M' => 16, 'HNSW_EF_CONSTRUCT' => 100,
+        'REVISION' => $settings->get()['REVISION']), $models);
 
     $http = new AiIndexHttp();
     $index = new KnowledgeIndex($database, $settings, $models,
@@ -128,6 +130,16 @@ try {
     } while ($progress['status'] === 'building' && $guard < 100);
     check($progress['status'] === 'ready' && $progress['active'] === true, 'Индекс собран и активен.');
     check($progress['dimension'] === 4, 'Размерность вектора зафиксирована.');
+    $built = $index->rows()[0];
+    check($built['DISTANCE'] === 'Cosine' && (int)$built['HNSW_M'] === 16 && (int)$built['HNSW_EF_CONSTRUCT'] === 100,
+        'Параметры коллекции сохранены в строке индекса.');
+    $createdRequests = array_values(array_filter($http->requests, static fn($request): bool =>
+        $request->method->value === 'PUT' && str_contains($request->uri, '/collections/mdai_')
+        && !str_contains($request->uri, '/points')));
+    check(isset($createdRequests[0])
+        && ($createdRequests[0]->body['hnsw_config']['m'] ?? 0) === 16
+        && ($createdRequests[0]->body['hnsw_config']['ef_construct'] ?? 0) === 100,
+        'HNSW передан в Qdrant при создании коллекции.');
     check(count($http->points) > 0, 'Точки записаны в Qdrant.');
     foreach ($http->points as $point) {
         check(($point['payload']['install'] ?? '') === $settings->installKey(), 'Каждая точка содержит ключ установки.');

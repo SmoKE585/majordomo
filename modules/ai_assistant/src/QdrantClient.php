@@ -14,6 +14,7 @@ use NeuronAI\HttpClient\HttpRequest;
  * Проверяет отдельный Qdrant через API; локальная установка сервиса не обязательна.
  *
  * Изменения:
+ * 2026-10-23 — именованный вектор, метрика и HNSW при создании коллекции.
  * 2026-10-23 — коллекции, точки и поиск для staging-индекса знаний.
  * 2026-10-23 — диагностика доступа без редиректов, передачи документов и утечки ключа.
  */
@@ -69,33 +70,50 @@ final class QdrantClient
     }
 
     /** Создать коллекцию под конкретную модель эмбеддингов и её размерность. */
-    public function createCollection(array $connection, string $collection, int $dimension): void
+    public function createCollection(array $connection, string $collection, int $dimension,
+        string $vectorName = '', string $distance = 'Cosine', array $hnsw = array()): void
     {
         if ($dimension < 1 || $dimension > 65536) throw new ProviderFailure('invalid_vector', 'Модель вернула вектор недопустимой размерности.');
+        if (!in_array($distance, array('Cosine', 'Dot', 'Euclid', 'Manhattan'), true)) {
+            throw new ProviderFailure('invalid_vector', 'Метрика Qdrant должна быть Cosine, Dot, Euclid или Manhattan.');
+        }
+        $vector = array('size' => $dimension, 'distance' => $distance);
+        $vectors = $vectorName !== '' ? array($vectorName => $vector) : $vector;
+        $body = array('vectors' => $vectors);
+        if ($hnsw !== array()) {
+            $m = ModelCatalog::integer($hnsw, 'm', 4, 128);
+            $ef = ModelCatalog::integer($hnsw, 'ef_construct', 4, 1024);
+            $body['hnsw_config'] = array('m' => $m, 'ef_construct' => $ef);
+        }
         $this->send($connection, HttpRequest::put($this->uri($connection, '/collections/' . rawurlencode($collection)),
-            array('vectors' => array('size' => $dimension, 'distance' => 'Cosine'))), 16 * 1024 * 1024);
+            $body), 16 * 1024 * 1024);
     }
 
     /** @param list<array{id:string,vector:list<float>,payload:array}> $points */
-    public function upsert(array $connection, string $collection, array $points): void
+    public function upsert(array $connection, string $collection, array $points, string $vectorName = ''): void
     {
         if ($points === array()) return;
+        if ($vectorName !== '') {
+            foreach ($points as &$point) $point['vector'] = array($vectorName => $point['vector']);
+            unset($point);
+        }
         $this->send($connection, HttpRequest::put(
             $this->uri($connection, '/collections/' . rawurlencode($collection) . '/points?wait=true'),
             array('points' => $points)), 16 * 1024 * 1024);
     }
 
     /** @return list<array{score:float,payload:array}> */
-    public function search(array $connection, string $collection, array $vector, int $limit, string $installKey, array $sources): array
+    public function search(array $connection, string $collection, array $vector, int $limit, string $installKey, array $sources, string $vectorName = ''): array
     {
         $must = array(array('key' => 'install', 'match' => array('value' => $installKey)));
         $audience = array();
         if (in_array('core', $sources, true)) $audience[] = 'core';
         if (in_array('modules', $sources, true)) $audience[] = 'modules';
         if ($audience !== array()) $must[] = array('key' => 'audience', 'match' => array('any' => $audience));
+        $queryVector = $vectorName !== '' ? array($vectorName => array_values($vector)) : array_values($vector);
         $data = $this->send($connection, HttpRequest::post(
             $this->uri($connection, '/collections/' . rawurlencode($collection) . '/points/search'),
-            array('vector' => array_values($vector), 'limit' => max(1, min(20, $limit)),
+            array('vector' => $queryVector, 'limit' => max(1, min(20, $limit)),
                 'with_payload' => true, 'filter' => array('must' => $must))), 4 * 1024 * 1024);
         $result = $data['result'] ?? null;
         if (!is_array($result) || !array_is_list($result)) throw new ProviderFailure('invalid_response', 'Qdrant вернул результат поиска неизвестного формата.');
