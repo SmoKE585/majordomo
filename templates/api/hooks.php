@@ -1,4 +1,5 @@
 <?php
+// 2026-10-23 — назначение webhook показывается без встраивания пользовательского кода в список.
 if (!isset($hooks, $csrf) || !class_exists('MDJUI', false)) {
     http_response_code(404);
     return;
@@ -8,7 +9,7 @@ if ($hooks === array()) {
     echo MDJUI::emptyState(array(
         'icon' => 'webhook',
         'title' => 'Входящих webhook пока нет',
-        'text' => 'Создайте вход, выберите установленный модуль и PHP-файл обработчика. Внешний сервис будет вызывать этот файл по секретной ссылке.',
+        'text' => 'Создайте вход для модуля, сценария или собственного PHP-кода. Внешний сервис будет вызывать его по секретной ссылке.',
         'compact' => true,
     ));
     return;
@@ -39,8 +40,9 @@ if ($hooks === array()) {
                     <div class="md-field__hint">#<?= (int)$hook['ID'] ?><?php if (!empty($hook['HEADER_NAME'])): ?> · заголовок <code><?= $e($hook['HEADER_NAME']) ?></code><?php endif; ?></div>
                 </td>
                 <td>
-                    <code><?= $e($hook['MODULE']) ?>/<?= $e($hook['HANDLER']) ?></code>
-                    <?php if (!$available): ?><div class="md-field__hint"><?= MDJUI::badge('Файл недоступен', 'warning') ?></div><?php endif; ?>
+                    <div><?= MDJUI::badge($hook['TYPE_LABEL'], 'neutral') ?></div>
+                    <div class="md-field__hint"><code><?= $e($hook['TARGET_LABEL']) ?></code></div>
+                    <?php if (!$available): ?><div class="md-field__hint"><?= MDJUI::badge('Обработчик недоступен', 'warning') ?></div><?php endif; ?>
                 </td>
                 <td>
                     <div class="md-api-methods">
@@ -69,11 +71,6 @@ if ($hooks === array()) {
                             'attrs' => array(
                                 'data-hook-edit' => '',
                                 'data-hook-id' => (int)$hook['ID'],
-                                'data-hook-name' => (string)$hook['NAME'],
-                                'data-hook-module' => (string)$hook['MODULE'],
-                                'data-hook-handler' => (string)$hook['HANDLER'],
-                                'data-hook-methods' => implode(',', $hook['METHODS_LIST'] ?? array()),
-                                'data-hook-header' => (string)($hook['HEADER_NAME'] ?? ''),
                                 'aria-label' => 'Изменить webhook «' . $hook['NAME'] . '»',
                             ),
                         )) ?>

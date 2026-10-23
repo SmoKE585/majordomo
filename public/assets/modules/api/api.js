@@ -1,3 +1,4 @@
+// 2026-10-23 — редактор webhook загружает код отдельно и синхронизирует CodeMirror перед сохранением.
 (function (window, document) {
     'use strict';
 
@@ -141,6 +142,41 @@
                 if (!current || current.disabled) handlerSelect.value = '';
             }
 
+            function hookEditor(form) {
+                var wrapper = form ? form.querySelector('[data-code-editor]') : null;
+                return wrapper && window.MDCodeEditor && window.MDCodeEditor.getEditor ? window.MDCodeEditor.getEditor(wrapper) : null;
+            }
+
+            function setHookCode(form, code) {
+                if (!form || !form.elements.code) return;
+                form.elements.code.value = code;
+                var editor = hookEditor(form);
+                if (editor) { editor.setValue(code); editor.save(); }
+            }
+
+            function initHookCode(form) {
+                if (!form || !form.elements.handler_type || form.elements.handler_type.value !== 'code' || !window.MDCodeEditor) return;
+                window.requestAnimationFrame(function () {
+                    Promise.resolve(window.MDCodeEditor.init(form)).catch(function () {
+                        showHookError('Не удалось загрузить редактор кода. Обновите страницу.', form);
+                    });
+                });
+            }
+
+            function setHookType(form, type) {
+                form.elements.handler_type.value = type;
+                form.elements.handler_type.dispatchEvent(new Event('change', {bubbles: true}));
+            }
+
+            function showHookError(message, form) {
+                var localError = form ? form.querySelector('[data-hook-edit-error]') : null;
+                var box = localError || hookFeedback;
+                if (localError) localError.textContent = message;
+                else if (hookFeedbackText) hookFeedbackText.textContent = message;
+                if (box) { box.hidden = false; box.focus(); }
+                announce(message);
+            }
+
             function updateCounts(stats, hookStats, labels) {
                 if (stats) {
                     page.querySelectorAll('[data-api-stat]').forEach(function (card) {
@@ -197,17 +233,22 @@
             async function perform(form) {
                 if (busy) return;
                 busy = true;
-                var button = form.querySelector('[type="submit"]');
+                var button = form.querySelector('[type="submit"]') || (form.id ? page.querySelector('[type="submit"][form="' + form.id + '"]') : null);
                 var operation = form.elements.operation ? form.elements.operation.value : '';
                 var isHook = operation.indexOf('hook_') === 0;
                 var activeFeedback = isHook ? hookFeedback : feedback;
                 var activeFeedbackText = isHook ? hookFeedbackText : feedbackText;
+                var localError = form.querySelector('[data-hook-edit-error]');
+                if (localError) { localError.hidden = true; activeFeedback = localError; activeFeedbackText = localError; }
                 if (feedback) feedback.hidden = true;
                 if (hookFeedback) hookFeedback.hidden = true;
                 setBusy(button, true);
                 if (list) list.setAttribute('aria-busy', 'true');
                 if (hookList) hookList.setAttribute('aria-busy', 'true');
                 try {
+                    var editor = hookEditor(form);
+                    if (editor) editor.save();
+                    if (form.elements.handler_type && form.elements.handler_type.value === 'code' && form.elements.code.value.trim() === '') throw new Error('Введите PHP-код обработчика.');
                     var response = await fetch(form.action, {
                         method: 'POST',
                         body: new FormData(form),
@@ -257,6 +298,9 @@
                     if (operation === 'issue' || operation === 'hook_create') {
                         form.reset();
                         if (operation === 'hook_create') {
+                            setHookCode(form, '');
+                            if (form.elements.script_id.tomselect) form.elements.script_id.tomselect.clear(true);
+                            setHookType(form, 'module');
                             filterHandlers(page.querySelector('#md-api-hook-module'), page.querySelector('#md-api-hook-handler'), '');
                         }
                     }
@@ -295,23 +339,44 @@
                 }
             }
 
-            function openHookEditor(button) {
-                if (!hookEditForm || !hookModal) return;
-                hookEditForm.elements.id.value = button.getAttribute('data-hook-id') || '';
-                hookEditForm.elements.name.value = button.getAttribute('data-hook-name') || '';
-                hookEditForm.elements.module.value = button.getAttribute('data-hook-module') || '';
-                hookEditForm.elements.header_name.value = button.getAttribute('data-hook-header') || '';
-                filterHandlers(
-                    hookEditForm.querySelector('[data-hook-module-select]'),
-                    hookEditForm.querySelector('[data-hook-handler-select]'),
-                    button.getAttribute('data-hook-handler') || ''
-                );
-                var methods = (button.getAttribute('data-hook-methods') || '').split(',');
-                hookEditForm.querySelectorAll('input[name="methods[]"]').forEach(function (checkbox) {
-                    checkbox.checked = methods.indexOf(checkbox.value) !== -1;
-                });
-                hookModal.show();
+            async function openHookEditor(button) {
+                if (!hookEditForm || !hookModal || busy) return;
+                busy = true;
+                setBusy(button, true);
+                if (hookFeedback) hookFeedback.hidden = true;
+                var localError = hookEditForm.querySelector('[data-hook-edit-error]');
+                if (localError) localError.hidden = true;
+                try {
+                    var body = new FormData();
+                    body.set('_token', hookEditForm.elements._token.value);
+                    body.set('operation', 'hook_details');
+                    body.set('id', button.getAttribute('data-hook-id') || '');
+                    var response = await fetch(hookEditForm.action, {method: 'POST', body: body, credentials: 'same-origin', cache: 'no-store', headers: {'Accept': 'application/json'}});
+                    var payload = await response.json();
+                    if (!response.ok || !payload.ok) throw new Error(payload.message || 'Не удалось загрузить обработчик.');
+                    var hook = payload.hook;
+                    hookEditForm.elements.id.value = String(hook.ID);
+                    hookEditForm.elements.name.value = hook.NAME;
+                    hookEditForm.elements.module.value = hook.MODULE;
+                    hookEditForm.elements.header_name.value = hook.HEADER_NAME || '';
+                    var script = hookEditForm.elements.script_id;
+                    if (script.tomselect) script.tomselect.setValue(hook.SCRIPT_ID ? String(hook.SCRIPT_ID) : '', true);
+                    else script.value = hook.SCRIPT_ID ? String(hook.SCRIPT_ID) : '';
+                    setHookCode(hookEditForm, hook.CODE || '');
+                    setHookType(hookEditForm, hook.HANDLER_TYPE);
+                    filterHandlers(hookEditForm.querySelector('[data-hook-module-select]'), hookEditForm.querySelector('[data-hook-handler-select]'), hook.HANDLER || '');
+                    var methods = (hook.METHODS || '').split(',');
+                    hookEditForm.querySelectorAll('input[name="methods[]"]').forEach(function (checkbox) { checkbox.checked = methods.indexOf(checkbox.value) !== -1; });
+                    hookModal.show();
+                } catch (error) {
+                    showHookError(error.message || 'Не удалось загрузить обработчик.');
+                } finally {
+                    busy = false;
+                    setBusy(button, false);
+                }
             }
+
+            if (hookModalElement) hookModalElement.addEventListener('shown.bs.modal', function () { initHookCode(hookEditForm); });
 
             page.addEventListener('click', function (event) {
                 var edit = event.target.closest('[data-hook-edit]');
@@ -319,6 +384,8 @@
             });
 
             page.addEventListener('change', function (event) {
+                var type = event.target.closest('[data-hook-type-select]');
+                if (type) { initHookCode(type.closest('form')); return; }
                 var select = event.target.closest('[data-hook-module-select]');
                 if (!select) return;
                 var form = select.closest('form');

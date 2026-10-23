@@ -1,4 +1,5 @@
 // Real browser verification against api_http_smoke.php's isolated fixture.
+// 2026-10-23 — переключение module/script/code, CodeMirror и сохранение PHP через модалку.
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import {writeFile} from 'node:fs/promises';
@@ -140,6 +141,68 @@ try {
     await waitFor('!document.querySelector("#md-api-hook-edit").classList.contains("show") && document.querySelector("[data-api-hook-list]").textContent.includes("UI fixture renamed")');
     check(await evaluate('document.querySelector("[data-api-hook-secret]").hidden'), 'Secret is cleared after a later action');
     check(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1'), 'Hooks tab has no horizontal overflow at 390 px');
+    await evaluate(`(() => {
+        const form = document.querySelector('#md-api-hooks form[data-api-action]');
+        form.elements.handler_type.value = 'code';
+        form.elements.handler_type.dispatchEvent(new Event('change', {bubbles:true}));
+    })()`);
+    await waitFor(`(() => { const f = document.querySelector('#md-api-hooks form[data-api-action]'); return f.querySelector('[data-hook-target="module"]').disabled && !f.querySelector('[data-hook-target="code"]').disabled && !!window.MDCodeEditor?.getEditor?.(f.querySelector('[data-code-editor]')); })()`);
+    check(await evaluate(`document.querySelector('#md-api-hooks form[data-api-action] [data-hook-target="script"]').disabled`), 'Inactive targets are disabled, including required fields');
+    await evaluate(`(() => {
+        const form = document.querySelector('#md-api-hooks form[data-api-action]');
+        form.elements.name.value = 'UI custom PHP';
+        window.MDCodeEditor.getEditor(form.querySelector('[data-code-editor]')).setValue('return array("ui" => true);');
+        form.requestSubmit();
+    })()`);
+    await waitFor('document.querySelector("[data-api-hook-list]").textContent.includes("UI custom PHP")');
+    check(await evaluate('!document.querySelector("[data-api-hook-list]").innerHTML.includes("return array")'), 'List omits source code');
+    check(await evaluate(`document.querySelector('#md-api-hooks form[data-api-action]').elements.handler_type.value === 'module'`), 'Successful create resets handler type');
+    await evaluate('[...document.querySelectorAll("[data-api-hook-list] tr")].find(r => r.textContent.includes("UI custom PHP")).querySelector("[data-hook-edit]").click()');
+    await waitFor('document.querySelector("#md-api-hook-edit").classList.contains("show")');
+    await waitFor(`(() => { const f = document.querySelector('#md-api-hook-edit-form'); return f.elements.handler_type.value === 'code' && !!window.MDCodeEditor.getEditor(f.querySelector('[data-code-editor]')); })()`);
+    check(await evaluate(`window.MDCodeEditor.getEditor(document.querySelector('#md-api-hook-edit-form [data-code-editor]')).getValue() === 'return array("ui" => true);'`), 'Edit fetches code and restores CodeMirror value');
+    await pause(350);
+    await evaluate(`(() => {
+        const form = document.querySelector('#md-api-hook-edit-form');
+        window.MDCodeEditor.getEditor(form.querySelector('[data-code-editor]')).setValue('return array(');
+        form.requestSubmit();
+    })()`);
+    await waitFor('!document.querySelector("[data-hook-edit-error]").hidden');
+    check(await evaluate('document.querySelector("#md-api-hook-edit").classList.contains("show") && document.querySelector("[data-hook-edit-error]").textContent.includes("синтаксиса")'), 'Invalid PHP keeps modal open with local error');
+    await evaluate(`(() => {
+        const form = document.querySelector('#md-api-hook-edit-form');
+        form.elements.name.value = 'UI custom updated';
+        window.MDCodeEditor.getEditor(form.querySelector('[data-code-editor]')).setValue('echo "<p>UI</p>";');
+        form.requestSubmit();
+    })()`);
+    await waitFor('!document.querySelector("#md-api-hook-edit").classList.contains("show") && document.querySelector("[data-api-hook-list]").textContent.includes("UI custom updated")');
+    await pause(350);
+    await evaluate('[...document.querySelectorAll("[data-api-hook-list] tr")].find(r => r.textContent.includes("UI custom updated")).querySelector("[data-hook-edit]").click()');
+    await waitFor('document.querySelector("#md-api-hook-edit").classList.contains("show")');
+    check(await evaluate(`window.MDCodeEditor.getEditor(document.querySelector('#md-api-hook-edit-form [data-code-editor]')).getValue() === 'echo "<p>UI</p>";'`), 'Updated source survives reopening editor');
+    await pause(350);
+    await evaluate(`(() => {
+        const form = document.querySelector('#md-api-hook-edit-form');
+        form.elements.handler_type.value = 'script';
+        form.elements.handler_type.dispatchEvent(new Event('change', {bubbles:true}));
+        if (form.elements.script_id.tomselect) form.elements.script_id.tomselect.setValue('1');
+        else form.elements.script_id.value = '1';
+    })()`);
+    await pause(100);
+    await evaluate('document.querySelector("#md-api-hook-edit-form").requestSubmit()');
+    await waitFor('!document.querySelector("#md-api-hook-edit").classList.contains("show")');
+    check(await evaluate('[...document.querySelectorAll("[data-api-hook-list] tr")].find(r => r.textContent.includes("UI custom updated")).textContent.includes("Test script")'), 'Scenario selection replaces code target');
+    for (const theme of ['light', 'dark']) {
+        for (const width of [1440, 390]) {
+            await send('Emulation.setDeviceMetricsOverride', {width, height: 1000, deviceScaleFactor: 1, mobile: false});
+            await evaluate(`document.documentElement.setAttribute('data-bs-theme', ${JSON.stringify(theme)})`);
+            await evaluate(`(() => { const t = document.querySelector('#md-api-hooks form[data-api-action]').elements.handler_type; t.value = 'code'; t.dispatchEvent(new Event('change', {bubbles:true})); })()`);
+            await pause(250);
+            check(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1'), theme + ' ' + width + ': code form has no horizontal overflow');
+            const shot = await send('Page.captureScreenshot', {format:'png', captureBeyondViewport:false});
+            await writeFile(path.join(fixtureRoot, 'api-hooks-' + theme + '-' + width + '.png'), Buffer.from(shot.data,'base64'));
+        }
+    }
     await send('Page.navigate', {url: base + '/preview'});
     await waitFor('document.querySelector("[data-md-api]")?.dataset.apiBound === "1"');
     check(await evaluate('document.querySelector("[data-api-secret]").hidden && !/mdm_[a-f0-9]{64}/.test(document.body.textContent)'), 'Reload never redisplays plaintext token');

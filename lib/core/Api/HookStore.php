@@ -14,6 +14,7 @@ use MajorDoMo\Core\Config;
  * путь из внешнего запроса для этого не используются.
  *
  * Изменения: 2026-10-22 — добавлен реестр входов для /api/hooks/<secret>.
+ * Изменения: 2026-10-23 — назначения module/script/code и отдельное чтение кода для редактора.
  */
 final class HookStore
 {
@@ -54,8 +55,9 @@ final class HookStore
     public function all(): array
     {
         return $this->rows(
-            'SELECT ID,NAME,MODULE,HANDLER,METHODS,HEADER_NAME,ENABLED,CREATED_AT,UPDATED_AT,LAST_USED_AT,LAST_STATUS,LAST_METHOD '
-            . 'FROM api_hooks ORDER BY ID DESC'
+            'SELECT h.ID,h.NAME,h.MODULE,h.HANDLER,h.HANDLER_TYPE,h.SCRIPT_ID,h.METHODS,h.HEADER_NAME,h.ENABLED,h.CREATED_AT,h.UPDATED_AT,h.LAST_USED_AT,h.LAST_STATUS,h.LAST_METHOD, '
+            . 's.TITLE AS SCRIPT_TITLE,CASE WHEN h.CODE IS NOT NULL AND h.CODE<>\'\' THEN 1 ELSE 0 END AS HAS_CODE '
+            . 'FROM api_hooks h LEFT JOIN scripts s ON s.ID=h.SCRIPT_ID ORDER BY h.ID DESC'
         );
     }
 
@@ -68,6 +70,24 @@ final class HookStore
         return $rows[0];
     }
 
+    /** Код читается только для защищённой формы редактирования, не для списка. */
+    public function editable(int $id): array
+    {
+        return array_intersect_key($this->find($id), array_flip(array('ID', 'NAME', 'MODULE', 'HANDLER', 'HANDLER_TYPE', 'SCRIPT_ID', 'CODE', 'METHODS', 'HEADER_NAME')));
+    }
+
+    public function scriptOptions(): array
+    {
+        $options = array();
+        foreach ($this->rows('SELECT ID,TITLE FROM scripts ORDER BY TITLE,ID') as $row) $options[(int)$row['ID']] = $row['TITLE'];
+        return $options;
+    }
+
+    public function scriptExists(int $id): bool
+    {
+        return $id > 0 && $this->rows('SELECT ID FROM scripts WHERE ID=?', array($id)) !== array();
+    }
+
     /** Поиск для публичного входа: сам секрет в SQL не передаётся. */
     public function findBySecret(string $secret): ?array
     {
@@ -75,7 +95,7 @@ final class HookStore
             return null;
         }
         $rows = $this->rows(
-            'SELECT ID,NAME,MODULE,HANDLER,METHODS,HEADER_NAME,HEADER_SECRET_HASH,ENABLED,LAST_USED_AT,LAST_STATUS,LAST_METHOD '
+            'SELECT ID,NAME,MODULE,HANDLER,HANDLER_TYPE,SCRIPT_ID,CODE,METHODS,HEADER_NAME,HEADER_SECRET_HASH,ENABLED,LAST_USED_AT,LAST_STATUS,LAST_METHOD '
             . 'FROM api_hooks WHERE SECRET_HASH=?',
             array(hash('sha256', $secret))
         );
@@ -86,20 +106,18 @@ final class HookStore
      * @param string[] $methods
      * @return array{id:int,secret:string,header_name:string,header_secret:?string}
      */
-    public function create(string $name, string $module, string $handler, array $methods, string $headerName = ''): array
+    public function create(string $name, string $module, string $handler, array $methods, string $headerName = '', string $type = 'module', int $scriptId = 0, string $code = ''): array
     {
         $name = self::name($name);
-        $module = self::module($module);
-        $handler = self::handler($handler);
+        [$module, $handler, $scriptId, $code] = $this->destination($type, $module, $handler, $scriptId, $code);
         $methods = self::normalizeMethods($methods);
         $headerName = self::headerName($headerName);
-        $this->assertDestination($module, $handler);
         $now = time();
         $secret = self::secret();
         $headerSecret = $headerName !== '' ? self::secret() : null;
         $this->execute(
-            'INSERT INTO api_hooks (NAME,MODULE,HANDLER,SECRET_HASH,SECRET_PREFIX,METHODS,HEADER_NAME,HEADER_SECRET_HASH,ENABLED,CREATED_AT,UPDATED_AT) '
-            . 'VALUES (?,?,?,?,?,?,?,?,1,?,?)',
+            'INSERT INTO api_hooks (NAME,MODULE,HANDLER,SECRET_HASH,SECRET_PREFIX,METHODS,HEADER_NAME,HEADER_SECRET_HASH,ENABLED,CREATED_AT,UPDATED_AT,HANDLER_TYPE,SCRIPT_ID,CODE) '
+            . 'VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?,?)',
             array(
                 $name,
                 $module,
@@ -111,6 +129,9 @@ final class HookStore
                 $headerSecret !== null ? hash('sha256', $headerSecret) : null,
                 $now,
                 $now,
+                $type,
+                $scriptId,
+                $code,
             )
         );
         return array(
@@ -129,15 +150,13 @@ final class HookStore
      * @param string[] $methods
      * @return array{header_name:string,header_secret:?string}
      */
-    public function update(int $id, string $name, string $module, string $handler, array $methods, string $headerName = ''): array
+    public function update(int $id, string $name, string $module, string $handler, array $methods, string $headerName = '', string $type = 'module', int $scriptId = 0, string $code = ''): array
     {
         $record = $this->find($id);
         $name = self::name($name);
-        $module = self::module($module);
-        $handler = self::handler($handler);
+        [$module, $handler, $scriptId, $code] = $this->destination($type, $module, $handler, $scriptId, $code);
         $methods = self::normalizeMethods($methods);
         $headerName = self::headerName($headerName);
-        $this->assertDestination($module, $handler);
 
         $headerSecret = null;
         $headerHash = null;
@@ -151,8 +170,8 @@ final class HookStore
         }
 
         $this->execute(
-            'UPDATE api_hooks SET NAME=?,MODULE=?,HANDLER=?,METHODS=?,HEADER_NAME=?,HEADER_SECRET_HASH=?,UPDATED_AT=? WHERE ID=?',
-            array($name, $module, $handler, implode(',', $methods), $headerName !== '' ? $headerName : null, $headerHash, time(), $id)
+            'UPDATE api_hooks SET NAME=?,MODULE=?,HANDLER=?,METHODS=?,HEADER_NAME=?,HEADER_SECRET_HASH=?,UPDATED_AT=?,HANDLER_TYPE=?,SCRIPT_ID=?,CODE=? WHERE ID=?',
+            array($name, $module, $handler, implode(',', $methods), $headerName !== '' ? $headerName : null, $headerHash, time(), $type, $scriptId, $code, $id)
         );
         return array('header_name' => $headerName, 'header_secret' => $headerSecret);
     }
@@ -266,6 +285,34 @@ final class HookStore
             HookRegistry::resolve($this->root, $module, $handler);
         } catch (\Throwable $error) {
             throw new \InvalidArgumentException('Выберите установленный модуль и существующий PHP-файл обработчика.');
+        }
+    }
+
+    private function destination(string $type, string $module, string $handler, int $scriptId, string $code): array
+    {
+        if ($type === 'module') {
+            $module = self::module($module);
+            $handler = self::handler($handler);
+            $this->assertDestination($module, $handler);
+            return array($module, $handler, null, null);
+        }
+        if ($type === 'script') {
+            if (!$this->scriptExists($scriptId)) throw new \InvalidArgumentException('Выберите существующий сценарий.');
+            return array('', '', $scriptId, null);
+        }
+        if ($type !== 'code') throw new \InvalidArgumentException('Неизвестный тип обработчика.');
+        self::validateCode($code);
+        return array('', '', null, $code);
+    }
+
+    /** Проверка синтаксиса не запускает пользовательский PHP. */
+    public static function validateCode(string $code): void
+    {
+        if (trim($code) === '' || strlen($code) > 65535 || str_contains($code, "\0")) throw new \InvalidArgumentException('Введите PHP-код без тегов, не более 65535 байт.');
+        try { $tokens = token_get_all("<?php\n" . $code, TOKEN_PARSE); }
+        catch (\ParseError $error) { throw new \InvalidArgumentException('Ошибка синтаксиса PHP в строке ' . max(1, $error->getLine() - 1) . '.'); }
+        foreach (array_slice($tokens, 1) as $token) {
+            if (is_array($token) && in_array($token[0], array(T_OPEN_TAG, T_OPEN_TAG_WITH_ECHO, T_CLOSE_TAG, T_INLINE_HTML), true)) throw new \InvalidArgumentException('Пишите PHP без открывающих и закрывающих тегов. HTML выводите через echo.');
         }
     }
 

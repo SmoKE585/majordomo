@@ -6,6 +6,7 @@ use MajorDoMo\Core\Database;
 
 /**
  * DDL для API-токенов и публичных webhook-входов.
+ * Изменения: 2026-10-23 — тип webhook, сценарий и собственный PHP-код.
  * Изменения: 2026-10-23 — отдельная таблица пользовательских сеансов.
  * Изменения: 2026-10-22 — добавлена схема api_hooks.
  */
@@ -39,6 +40,9 @@ final class Schema
                 NAME varchar(190) NOT NULL,
                 MODULE varchar(100) NOT NULL,
                 HANDLER varchar(255) NOT NULL,
+                HANDLER_TYPE varchar(16) NOT NULL DEFAULT 'module',
+                SCRIPT_ID int unsigned DEFAULT NULL,
+                CODE text DEFAULT NULL,
                 SECRET_HASH char(64) NOT NULL UNIQUE,
                 SECRET_PREFIX varchar(16) NOT NULL,
                 METHODS varchar(64) NOT NULL DEFAULT 'POST',
@@ -83,6 +87,14 @@ final class Schema
     {
         foreach (self::hooksStatements() as $statement) {
             $db->requireExec($statement);
+        }
+    }
+
+    public static function upgradeHookHandlers(Database $db): void
+    {
+        $columns = array_column($db->select('SHOW COLUMNS FROM api_hooks'), 'Field');
+        foreach (array('HANDLER_TYPE' => "varchar(16) NOT NULL DEFAULT 'module'", 'SCRIPT_ID' => 'int unsigned DEFAULT NULL', 'CODE' => 'text DEFAULT NULL') as $name => $definition) {
+            if (!in_array($name, $columns, true)) $db->requireExec('ALTER TABLE api_hooks ADD COLUMN ' . $name . ' ' . $definition);
         }
     }
 }

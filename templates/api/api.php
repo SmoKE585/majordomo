@@ -1,7 +1,8 @@
 <?php
+// 2026-10-23 — единая форма назначения webhook: модуль, сценарий или PHP-код.
 require_once ROOT . 'modules/api/lib/ApiDocs.php';
 require_once ROOT . 'modules/api/lib/ApiHooks.php';
-if (!isset($operations, $tokens, $csrf, $spec, $hooks, $hookStats, $modules, $handlerOptions) || !class_exists('MDJUI', false)) { http_response_code(404); return; }
+if (!isset($operations, $tokens, $csrf, $spec, $hooks, $hookStats, $modules, $handlerOptions, $scriptOptions) || !class_exists('MDJUI', false)) { http_response_code(404); return; }
 $e = static fn($value) => MDJUI::e((string)($value ?? ''));
 $json = static fn($value) => json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 $base = rtrim(ROOTHTML, '/') . '/api/v1';
@@ -69,6 +70,9 @@ $renderHookHandlerOptions = static function (array $handlerOptions) use ($e): st
     }
     return $html;
 };
+$renderHookTarget = static function (string $hookPrefix) use ($modules, $handlerOptions, $scriptOptions, $renderHookHandlerOptions): string {
+    ob_start(); require ROOT . 'templates/api/hook_target.php'; return (string)ob_get_clean();
+};
 $renderHookMethods = static function (string $prefix, array $selected) use ($hookMethods): string {
     $html = '';
     foreach ($hookMethods as $method) {
@@ -83,8 +87,8 @@ $renderHookMethods = static function (string $prefix, array $selected) use ($hoo
     return $html;
 };
 ?>
-<link rel="stylesheet" href="<?= $e(ROOTHTML) ?>assets/modules/api/api.css?v=20261023-1">
-<script src="<?= $e(ROOTHTML) ?>assets/modules/api/api.js?v=20261023-1" defer></script>
+<link rel="stylesheet" href="<?= $e(ROOTHTML) ?>assets/modules/api/api.css?v=20261023-2">
+<script src="<?= $e(ROOTHTML) ?>assets/modules/api/api.js?v=20261023-2" defer></script>
 <div class="md-ui-page md-ui-page--stack md-api-page" data-md-api>
     <?= MDJUI::sectionHeading(array(
         'level' => 1,
@@ -304,11 +308,12 @@ $renderHookMethods = static function (string $prefix, array $selected) use ($hoo
                 : 'Все входы отключены'; ?>
             <?= MDJUI::hint(array(
                 'title' => 'Секретная ссылка — это доступ',
-                'text' => 'Вход вызывает сохранённый PHP-файл установленного модуля. Общий API-токен, локальная сеть и сессия администратора здесь не действуют.',
+                'text' => 'Вход запускает выбранный обработчик: файл модуля, сценарий или собственный PHP-код. Общий API-токен, локальная сеть и сессия администратора здесь не действуют.',
                 'points' => array(
                     'Ссылка вида /api/hooks/<секрет> показывается только при создании или перевыпуске. В базе хранится хеш.',
                     'По умолчанию разрешён POST. Метод, размер тела до 1 МиБ и частота обращений проверяются до запуска обработчика.',
-                    'Обработчик получает исходные query, форму, файлы, тело php://input и заголовки. Ответ, статус и Content-Type не оборачиваются в JSON.',
+                    'Штатные функции MajorDoMo доступны. Исходные query, форма, файлы, тело php://input и заголовки сохраняются.',
+                    'Файл модуля отвечает как раньше. Для сценария и своего кода: return массива — JSON без обёртки API, echo — HTML.',
                     'Секрет может попасть в access-log nginx и внешнего proxy. Настройте журналирование на своей стороне.',
                 ),
             )) ?>
@@ -316,7 +321,7 @@ $renderHookMethods = static function (string $prefix, array $selected) use ($hoo
                 <?= MDJUI::kpi(array('label' => 'Всего входов', 'value' => $hookStats['total'], 'icon' => 'webhook', 'meta' => 'Публичные ссылки', 'attrs' => array('data-api-hook-stat' => 'total'))) ?>
                 <?= MDJUI::kpi(array('label' => 'Включены', 'value' => $hookStats['active'], 'tone' => 'success', 'icon' => 'circle-check', 'meta' => $hookActiveMeta, 'attrs' => array('data-api-hook-stat' => 'active'))) ?>
                 <?= MDJUI::kpi(array('label' => 'Отключены', 'value' => $hookStats['disabled'], 'tone' => 'neutral', 'icon' => 'player-pause', 'meta' => 'Ссылка не работает', 'attrs' => array('data-api-hook-stat' => 'disabled'))) ?>
-                <?= MDJUI::kpi(array('label' => 'Требуют внимания', 'value' => $hookStats['attention'], 'tone' => $hookStats['attention'] > 0 ? 'warning' : 'neutral', 'icon' => 'alert-triangle', 'meta' => 'Ошибки или нет файла', 'attrs' => array('data-api-hook-stat' => 'attention'))) ?>
+                <?= MDJUI::kpi(array('label' => 'Требуют внимания', 'value' => $hookStats['attention'], 'tone' => $hookStats['attention'] > 0 ? 'warning' : 'neutral', 'icon' => 'alert-triangle', 'meta' => 'Ошибки или нет обработчика', 'attrs' => array('data-api-hook-stat' => 'attention'))) ?>
             </div>
             <?php ob_start(); ?>
             <form method="post" action="<?= $e(ROOTHTML) ?>panel/api.html" class="md-ui-form-stack" data-api-action>
@@ -324,31 +329,16 @@ $renderHookMethods = static function (string $prefix, array $selected) use ($hoo
                 <input type="hidden" name="operation" value="hook_create">
                 <div class="md-ui-form-grid">
                     <?= MDJUI::input(array('id' => 'md-api-hook-name', 'name' => 'name', 'label' => 'Название', 'required' => true, 'placeholder' => 'Telegram — бот дома', 'attrs' => array('maxlength' => 190, 'autocomplete' => 'off'))) ?>
-                    <?= MDJUI::select(array(
-                        'id' => 'md-api-hook-module',
-                        'name' => 'module',
-                        'label' => 'Установленный модуль',
-                        'options' => $modules,
-                        'placeholder' => 'Выберите модуль',
-                        'required' => true,
-                        'attrs' => array('data-hook-module-select' => ''),
-                    )) ?>
-                    <?= MDJUI::field(
-                        array('label' => 'PHP-обработчик', 'for' => 'md-api-hook-handler', 'description' => 'Файл внутри модуля, например webhook.php. Внешний URL и произвольный прокси не принимаются.'),
-                        '<select class="md-select" id="md-api-hook-handler" name="handler" required data-hook-handler-select>'
-                        . '<option value="">Сначала выберите модуль</option>'
-                        . $renderHookHandlerOptions($handlerOptions)
-                        . '</select>'
-                    ) ?>
                     <?= MDJUI::input(array('id' => 'md-api-hook-header', 'name' => 'header_name', 'label' => 'Дополнительный заголовок', 'optional' => true, 'placeholder' => 'X-Telegram-Bot-Api-Secret-Token', 'hint' => 'Необязательно. Для этого заголовка будет сгенерирован отдельный секрет.', 'attrs' => array('maxlength' => 100, 'autocomplete' => 'off'))) ?>
                 </div>
+                <?= $renderHookTarget('md-api-hook') ?>
                 <?= MDJUI::field(
                     array('label' => 'Разрешённые HTTP-методы', 'description' => 'По умолчанию POST. Остальные методы получат 405 и заголовок Allow.'),
                     '<div class="md-api-method-checks">' . $renderHookMethods('md-api-hook-method-', array('POST')) . '</div>'
                 ) ?>
                 <div><?= MDJUI::button('Создать вход', array('type' => 'submit', 'icon' => 'webhook')) ?></div>
             </form>
-            <?php echo MDJUI::card(array('title' => 'Новый входящий webhook', 'subtitle' => 'Модуль и файл проверяются на сервере при сохранении и при каждом вызове.'), ob_get_clean()); ?>
+            <?php echo MDJUI::card(array('title' => 'Новый входящий webhook', 'subtitle' => 'Тип и назначение проверяются на сервере. Сохранение PHP-кода не запускает его.'), ob_get_clean()); ?>
             <div class="md-ui-note md-ui-note--warning md-api-feedback" data-api-hook-feedback role="alert" tabindex="-1" hidden>
                 <?= MDJUI::icon('alert-circle') ?><span data-api-hook-feedback-text></span>
             </div>
@@ -367,23 +357,9 @@ $renderHookMethods = static function (string $prefix, array $selected) use ($hoo
             <input type="hidden" name="_token" value="<?= $e($csrf) ?>">
             <input type="hidden" name="operation" value="hook_update">
             <input type="hidden" name="id" value="">
+            <div class="md-ui-note md-ui-note--warning" data-hook-edit-error role="alert" tabindex="-1" hidden></div>
             <?= MDJUI::input(array('id' => 'md-api-hook-edit-name', 'name' => 'name', 'label' => 'Название', 'required' => true, 'attrs' => array('maxlength' => 190, 'autocomplete' => 'off'))) ?>
-            <?= MDJUI::select(array(
-                'id' => 'md-api-hook-edit-module',
-                'name' => 'module',
-                'label' => 'Установленный модуль',
-                'options' => $modules,
-                'placeholder' => 'Выберите модуль',
-                'required' => true,
-                'attrs' => array('data-hook-module-select' => ''),
-            )) ?>
-            <?= MDJUI::field(
-                array('label' => 'PHP-обработчик', 'for' => 'md-api-hook-edit-handler', 'description' => 'Файл внутри выбранного модуля.'),
-                '<select class="md-select" id="md-api-hook-edit-handler" name="handler" required data-hook-handler-select>'
-                . '<option value="">Сначала выберите модуль</option>'
-                . $renderHookHandlerOptions($handlerOptions)
-                . '</select>'
-            ) ?>
+            <?= $renderHookTarget('md-api-hook-edit') ?>
             <?= MDJUI::field(
                 array('label' => 'Разрешённые HTTP-методы'),
                 '<div class="md-api-method-checks">' . $renderHookMethods('md-api-hook-edit-method-', array()) . '</div>'
@@ -395,6 +371,7 @@ $renderHookMethods = static function (string $prefix, array $selected) use ($hoo
             array(
                 'id' => 'md-api-hook-edit',
                 'title' => 'Настройки входящего webhook',
+                'size' => 'lg',
                 'footer' => MDJUI::button('Отмена', array('variant' => 'secondary', 'attrs' => array('data-bs-dismiss' => 'modal')))
                     . MDJUI::button('Сохранить', array('type' => 'submit', 'icon' => 'device-floppy', 'attrs' => array('form' => 'md-api-hook-edit-form'))),
             ),

@@ -1,5 +1,6 @@
 <?php
 /** Loopback HTTP lifecycle for /api/hooks/<secret> and the admin tab. */
+// 2026-10-23 — return/echo, сценарии, штатные функции и редактирование разных назначений.
 putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:');
 putenv('DB_HOST='); putenv('DB_NAME='); putenv('USE_REDIS=false');
 require_once dirname(__DIR__) . '/lib/core.class.php';
@@ -202,6 +203,88 @@ try {
     [$status] = request('POST', $path, '{}', array('Content-Type' => 'text/plain', 'X-Fixture-Secret' => $header));
     check($status === 404, 'Deleted entry rejected immediately');
 
+    $code = <<<'PHP'
+header('X-Webhook-Mode: custom');
+http_response_code(201);
+return array('value' => getGlobal('Lamp.level'), 'query' => $_GET, 'form' => $_POST,
+    'raw' => file_get_contents('php://input'), 'method' => $params['method'], 'path' => $params['path'], 'uri' => $_SERVER['REQUEST_URI']);
+PHP;
+    $custom = $store->create('Custom code fixture', '', '', array('GET', 'POST'), 'X-Custom-Secret', 'code', 0, $code);
+    $customPath = '/api/hooks/' . $custom['secret'];
+    $customHeaders = array('X-Custom-Secret' => $custom['header_secret'], 'Content-Type' => 'application/json');
+    [$status, $raw, $headers, $json] = request('POST', $customPath . '/events/item?a=1&handler_type=module&script_id=999', '{"x":2}', $customHeaders);
+    check($status === 201 && str_starts_with($headers['content-type'], 'application/json') && $json['raw'] === '{"x":2}' && !isset($json['ok']), 'Custom return array is plain JSON, with original body and status');
+    check($json['value'] === 0 && $json['method'] === 'POST' && $json['path'] === '/events/item' && $json['query']['a'] === '1' && $headers['x-webhook-mode'] === 'custom', 'Core functions, metadata, PATH_INFO and custom headers are available');
+    check(!str_contains($json['uri'], $custom['secret']), 'Custom handler never sees secret in REQUEST_URI');
+    [$status] = request('POST', $customPath, '{}', array('Content-Type' => 'application/json'));
+    check($status === 401, 'Custom handler requires its own header secret');
+    [$status] = request('DELETE', $customPath, null, $customHeaders);
+    check($status === 405, 'Custom handler respects allowed methods');
+    [$status] = request('POST', $customPath, str_repeat('x', 1048577), $customHeaders);
+    check($status === 413, 'Custom handler respects body limit');
+    [$status, $raw, $headers, $json] = request('POST', '/panel/api.html', http_build_query(array('operation' => 'hook_details', 'id' => $custom['id'])));
+    check($status === 403 && !str_contains($raw, 'file_get_contents'), 'Reading custom code requires CSRF');
+    [$status, $raw, , $json] = request('POST', '/panel/api.html', http_build_query(array('_token' => $csrf, 'operation' => 'hook_details', 'id' => $custom['id'])));
+    check($status === 200 && $json['hook']['CODE'] === $code && !isset($json['hook']['SECRET_HASH'], $json['hook']['HEADER_SECRET_HASH']), 'Protected editor loads saved code without secrets');
+    [$status, $raw, , $json] = request('POST', '/panel/api.html', http_build_query(array('_token' => $csrf, 'operation' => 'hook_update', 'id' => $custom['id'], 'name' => 'Custom code fixture', 'handler_type' => 'code', 'code' => 'return array(', 'methods' => array('POST'))));
+    check($status === 422 && str_contains($json['message'], 'синтаксиса') && $store->find($custom['id'])['CODE'] === $code, 'Syntax error does not overwrite saved code');
+    $setCode = static function (string $newCode) use ($store, $custom): void {
+        $store->update($custom['id'], 'Custom code fixture', '', '', array('GET', 'POST'), 'X-Custom-Secret', 'code', 0, $newCode);
+    };
+    foreach (array(
+        'echo "<h1>Привет</h1>";' => '<h1>Привет</h1>',
+        'echo "0";' => '0',
+        'echo "<p>HTML</p>"; return array("ignored" => true);' => '<p>HTML</p>',
+        'ob_start(); echo "<b>nested</b>"; return array("ignored" => true);' => '<b>nested</b>',
+    ) as $newCode => $expected) {
+        $setCode($newCode);
+        [$status, $raw, $headers] = request('POST', $customPath, '{}', $customHeaders);
+        check($status === 200 && $raw === $expected && str_starts_with($headers['content-type'], 'text/html'), 'Echo returns only HTML: ' . $expected);
+    }
+    $setCode('setGlobal("Lamp.level", 9); return array("value" => getGlobal("Lamp.level"));');
+    [$status, , , $json] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 200 && $json['value'] === 9, 'Custom code calls standard property helpers');
+    $setCode('return array();');
+    [$status, $raw] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 200 && $raw === '[]', 'Empty returned array stays a JSON array');
+    $setCode('return null;');
+    [$status, $raw] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 200 && $raw === '', 'No output and no result is an empty response');
+    $setCode('return false;');
+    [$status, $raw, , $json] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 500 && $json['error']['code'] === 'invalid_webhook_result' && (int)$store->find($custom['id'])['LAST_STATUS'] === 500, 'Scalar return fails explicitly and updates diagnostics');
+    $setCode('return array("resource" => fopen("php://memory", "r"));');
+    [$status, $raw, , $json] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 500 && $json['error']['code'] === 'internal_error' && !str_contains($raw, 'fopen'), 'Unserializable array fails without exposing code');
+    $setCode('throw new RuntimeException("private-code-detail");');
+    [$status, $raw, , $json] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 500 && !str_contains($raw, 'private-code-detail'), 'Custom exceptions do not expose implementation details');
+    $setCode('http_response_code(202); echo "<p>accepted</p>"; exit;');
+    [$status, $raw, $headers] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 202 && $raw === '<p>accepted</p>' && str_starts_with($headers['content-type'], 'text/html') && (int)$store->find($custom['id'])['LAST_STATUS'] === 202, 'Exit preserves HTML and records diagnostics');
+    $setCode('http_response_code(204); return array("ignored" => true);');
+    [$status, $raw] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 204 && $raw === '', '204 never emits a response body');
+    $store->setEnabled($custom['id'], false);
+    [$status] = request('POST', $customPath, '{}', $customHeaders);
+    check($status === 404, 'Disabled custom handler cannot run');
+    $store->setEnabled($custom['id'], true);
+
+    $scenario = $store->create('Scenario fixture', '', '', array('POST'), '', 'script', 1);
+    $scenarioPath = '/api/hooks/' . $scenario['secret'];
+    $statement = $pdo->prepare('UPDATE scripts SET CODE=? WHERE ID=1');
+    $statement->execute(array('return array("scenario" => 1, "value" => getGlobal("Lamp.level"), "method" => $params["method"], "body" => file_get_contents("php://input"));'));
+    [$status, $raw, $headers, $json] = request('POST', $scenarioPath, '{"event":"changed"}', array('Content-Type' => 'application/json'));
+    check($status === 200 && str_starts_with($headers['content-type'], 'application/json') && $json === array('scenario' => 1, 'value' => 9, 'method' => 'POST', 'body' => '{"event":"changed"}'), 'Selected scenario receives runtime, original request and safe params');
+    $statement->execute(array('echo "<p>scenario updated</p>"; return array("ignored" => true);'));
+    [$status, $raw, $headers] = request('POST', $scenarioPath, '{}', array('Content-Type' => 'application/json'));
+    check($status === 200 && $raw === '<p>scenario updated</p>' && str_starts_with($headers['content-type'], 'text/html'), 'Scenario changes apply immediately, with echo taking priority');
+    $pdo->exec('DELETE FROM scripts WHERE ID=1');
+    [$status] = request('POST', $scenarioPath, '{}', array('Content-Type' => 'application/json'));
+    check($status === 404, 'Deleted scenario cannot be executed');
+    [$status, $html] = request('GET', '/panel/api.html?tab=hooks');
+    check($status === 200 && str_contains($html, 'Обработчик недоступен') && !str_contains($html, 'private-code-detail'), 'Admin marks missing scenario and never renders custom code in list');
+
     // Rate limit on a second isolated server with a small bucket.
     $rateHook = $store->create('Rate fixture', 'fixturehook', 'webhook.php', array('POST'));
     if (!is_dir($root . '/var/security')) mkdir($root . '/var/security', 0777, true);
@@ -228,7 +311,7 @@ try {
     foreach ($servers as $server) {
         if (is_resource($server)) { proc_terminate($server); proc_close($server); }
     }
-    unset($pdo, $store);
+    unset($statement, $setCode, $pdo, $store);
     gc_collect_cycles();
     ApiFixture::remove($root);
 }

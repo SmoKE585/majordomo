@@ -7,13 +7,27 @@ use MajorDoMo\Core\Api\HookRegistry;
  *
  * Хранение и исполнение живут в Core\Api\HookStore / WebhookRunner; этот класс
  * только превращает строки БД в подписи и списки для шаблонов админки.
+ * Изменения: 2026-10-23 — подписи и доступность module/script/code без чтения кода.
  */
 final class ApiHooks
 {
     public static function decorate(array $hooks, string $root): array
     {
         foreach ($hooks as &$hook) {
-            $hook['AVAILABLE'] = HookRegistry::available($root, (string)$hook['MODULE'], (string)$hook['HANDLER']);
+            $type = $hook['HANDLER_TYPE'];
+            $hook['AVAILABLE'] = match ($type) {
+                'module' => HookRegistry::available($root, (string)$hook['MODULE'], (string)$hook['HANDLER']),
+                'script' => $hook['SCRIPT_TITLE'] !== null,
+                'code' => !empty($hook['HAS_CODE']),
+                default => false,
+            };
+            $hook['TYPE_LABEL'] = match ($type) { 'module' => 'Модуль', 'script' => 'Сценарий', 'code' => 'PHP-код', default => 'Неизвестный тип' };
+            $hook['TARGET_LABEL'] = match ($type) {
+                'module' => $hook['MODULE'] . '/' . $hook['HANDLER'],
+                'script' => $hook['SCRIPT_TITLE'] ?? ('Сценарий #' . (int)$hook['SCRIPT_ID']),
+                'code' => 'Собственный PHP-код',
+                default => 'Обработчик недоступен',
+            };
             $hook['STATUS_LABEL'] = self::statusLabel($hook['LAST_STATUS'] ?? null);
             $hook['STATUS_TONE'] = self::statusTone($hook['LAST_STATUS'] ?? null);
             $hook['LAST_USED_LABEL'] = empty($hook['LAST_USED_AT'])

@@ -2,14 +2,17 @@
 
 namespace MajorDoMo\Core\Api;
 
+use MajorDoMo\Core\Core;
+
 /**
  * Исполняет один проверенный вызов публичного webhook.
  *
- * Запрос передаётся сохранённому обработчику модуля без разбора как JSON API:
+ * Запрос передаётся сохранённому обработчику без разбора как JSON API:
  * метод, query, форма, файлы, сырой php://input и заголовки остаются как есть.
  * Ответ обработчика отправляется без обёртки; обычный JSON-конверт API
  * используется только для ошибок самой границы webhook.
  *
+ * Изменения: 2026-10-23 — сценарии и PHP-код: массив return → JSON, echo → HTML.
  * Изменения: 2026-10-22 — добавлен исполнитель публичных webhook.
  */
 final class WebhookRunner
@@ -67,7 +70,11 @@ final class WebhookRunner
         $this->assertBodySize();
 
         try {
-            $this->handlerPath = HookRegistry::resolve($this->root, (string)$record['MODULE'], (string)$record['HANDLER']);
+            $type = $record['HANDLER_TYPE'];
+            if ($type === 'module') $this->handlerPath = HookRegistry::resolve($this->root, (string)$record['MODULE'], (string)$record['HANDLER']);
+            elseif ($type === 'script') {
+                if (!$this->store->scriptExists((int)$record['SCRIPT_ID'])) throw new \RuntimeException('Script is not available');
+            } elseif ($type !== 'code' || trim((string)$record['CODE']) === '') throw new \RuntimeException('Handler is not available');
         } catch (\Throwable $error) {
             error_log('MajorDoMo webhook handler unavailable: ' . get_class($error));
             $this->reject(404, 'not_found', 'Обработчик входа недоступен.');
@@ -85,7 +92,12 @@ final class WebhookRunner
             // разрешение текущего процесса.
             $this->prepareServer($pathInfo);
             $boot();
-            include $this->handlerPath;
+            if ($record['HANDLER_TYPE'] === 'module') include $this->handlerPath;
+            else {
+                // Служебный вывод загрузчика не должен смешиваться с ответом кода.
+                ob_clean();
+                $this->executeCode($record);
+            }
             $this->finish($this->statusCode());
             while (ob_get_level() > $level) {
                 ob_end_flush();
@@ -166,6 +178,23 @@ final class WebhookRunner
     private function prepareServer(string $pathInfo = ''): void
     {
         $root = rtrim(str_replace('\\', '/', $this->root), '/');
+        if ($this->hook['HANDLER_TYPE'] !== 'module') {
+            $_SERVER['SCRIPT_FILENAME'] = $root . '/public/api.php';
+            $_SERVER['SCRIPT_NAME'] = rtrim(\MajorDoMo\Core\Config::string('ROOTHTML'), '/') . '/api.php';
+            $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $pathInfo;
+            $_SERVER['DOCUMENT_ROOT'] = $root . '/public';
+            $query = (string)($_SERVER['QUERY_STRING'] ?? '');
+            unset($_SERVER['ORIG_PATH_INFO'], $_SERVER['PATH_TRANSLATED']);
+            if ($pathInfo !== '') {
+                $_SERVER['PATH_INFO'] = $pathInfo;
+                $_SERVER['REQUEST_URI'] = $pathInfo . ($query !== '' ? '?' . $query : '');
+            } else {
+                unset($_SERVER['PATH_INFO']);
+                $_SERVER['REQUEST_URI'] = (string)preg_replace('#(/api(?:\.php)?/hooks/)[a-f0-9]{64}#i', '$1[redacted]', (string)($_SERVER['REQUEST_URI'] ?? ''));
+            }
+            chdir($this->root);
+            return;
+        }
         $moduleRoot = $root . '/modules/' . (string)$this->hook['MODULE'];
         $relative = 'modules/' . (string)$this->hook['MODULE'] . '/' . (string)$this->hook['HANDLER'];
         $_SERVER['SCRIPT_FILENAME'] = $this->handlerPath;
@@ -200,6 +229,41 @@ final class WebhookRunner
         // Легаси-обработчики MajorDoMo ищут config.php/lib/loader.php от корня
         // приложения — так же, как публичные точки входа.
         chdir($this->root);
+    }
+
+    private function executeCode(array $record): void
+    {
+        header('Content-Type: text/html; charset=utf-8');
+        header('Cache-Control: no-store');
+        // Тела и заголовки не передаём в params: runScript сохраняет параметры
+        // в аудите. Сам код читает $_GET/$_POST/$_FILES и php://input напрямую.
+        $params = array('webhook_id' => (int)$record['ID'], 'method' => (string)($_SERVER['REQUEST_METHOD'] ?? 'GET'), 'path' => (string)($_SERVER['PATH_INFO'] ?? ''));
+        $level = ob_get_level();
+        ob_start();
+        try {
+            if ($record['HANDLER_TYPE'] === 'script') $result = runScript((int)$record['SCRIPT_ID'], $params);
+            else {
+                $variables = array('params' => $params);
+                $result = Core::code()->evaluate($this, (string)$record['CODE'], $variables);
+            }
+            while (ob_get_level() > $level + 1) ob_end_flush();
+            $output = (string)ob_get_clean();
+        } catch (\Throwable $error) {
+            while (ob_get_level() > $level) ob_end_clean();
+            throw $error;
+        }
+        if (in_array($this->statusCode(), array(204, 304), true)) return;
+        if ($output !== '') {
+            // Вывод важнее return: никогда не дописываем JSON к HTML.
+            header('Content-Type: text/html; charset=utf-8');
+            echo $output;
+            return;
+        }
+        if ($result === null) return;
+        if (!is_array($result)) throw new ApiException(500, 'invalid_webhook_result', 'Обработчик должен возвращать массив для JSON или выводить HTML через echo.');
+        $json = json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        header('Content-Type: application/json; charset=utf-8');
+        echo $json;
     }
 
     private function reject(int $status, string $code, string $message, array $headers = array()): never

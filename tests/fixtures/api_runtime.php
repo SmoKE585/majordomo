@@ -1,5 +1,6 @@
 <?php
 /** Isolated API dependencies. Never loaded by an application entry point. */
+// 2026-10-23 — код сценариев и SHOW COLUMNS для изолированной проверки webhook/миграции.
 // 2026-10-23 — схема пользовательских сеансов и профиль пользователя для HTTP-проверок.
 
 use MajorDoMo\Core\{Config, Core, Database, MetadataCache, RedisConnection, Methods, CodeExecutor, PropertyAudit};
@@ -11,7 +12,12 @@ final class ApiFixtureConnection
     public function __construct(public PDO $dbh) {}
     public function DbSafe1($value): string { return str_replace("'", "''", (string)$value); }
     public function DbSafe($value): string { return $this->DbSafe1($value); }
-    public function Select(string $sql): array { return $this->dbh->query($sql)->fetchAll(PDO::FETCH_ASSOC); }
+    public function Select(string $sql): array {
+        if (preg_match('/^SHOW COLUMNS FROM (\w+)$/D', $sql, $match)) {
+            return array_map(static fn($row) => array('Field' => $row['name']), $this->dbh->query('PRAGMA table_info(' . $match[1] . ')')->fetchAll(PDO::FETCH_ASSOC));
+        }
+        return $this->dbh->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    }
     public function SelectOne(string $sql): array
     {
         if (stripos($sql, 'information_schema.TABLES') !== false) {
@@ -128,7 +134,7 @@ PHP);
             CREATE TABLE IF NOT EXISTS classes (ID INTEGER PRIMARY KEY,TITLE TEXT,PARENT_ID INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS properties (ID INTEGER PRIMARY KEY,TITLE TEXT,CLASS_ID INTEGER,OBJECT_ID INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS methods (ID INTEGER PRIMARY KEY,TITLE TEXT,CLASS_ID INTEGER,OBJECT_ID INTEGER DEFAULT 0,CODE TEXT,CALL_PARENT INTEGER DEFAULT 0,SCRIPT_ID INTEGER DEFAULT 0,EXECUTED TEXT,EXECUTED_SRC TEXT,EXECUTED_PARAMS TEXT);
-            CREATE TABLE IF NOT EXISTS scripts (ID INTEGER PRIMARY KEY,TITLE TEXT);
+            CREATE TABLE IF NOT EXISTS scripts (ID INTEGER PRIMARY KEY,TITLE TEXT,CODE TEXT DEFAULT NULL);
             CREATE TABLE IF NOT EXISTS users (ID INTEGER PRIMARY KEY,NAME TEXT,USERNAME TEXT,PASSWORD TEXT DEFAULT '',IS_ADMIN INTEGER DEFAULT 0,IS_DEFAULT INTEGER DEFAULT 0,LINKED_OBJECT TEXT DEFAULT '');
             CREATE TABLE IF NOT EXISTS shouts (ID INTEGER PRIMARY KEY AUTOINCREMENT,MEMBER_ID INTEGER,ADDED TEXT,MESSAGE TEXT);
             CREATE TABLE IF NOT EXISTS fixture_values (NAME TEXT PRIMARY KEY,VALUE TEXT);
@@ -138,7 +144,7 @@ PHP);
             INSERT OR IGNORE INTO classes VALUES (1,'Fixture',0);
             INSERT OR IGNORE INTO objects VALUES (1,'Lamp',1,0);
             INSERT OR IGNORE INTO properties VALUES (1,'level',1,0);
-            INSERT OR IGNORE INTO scripts VALUES (1,'Test script');
+            INSERT OR IGNORE INTO scripts (ID,TITLE) VALUES (1,'Test script');
             INSERT OR IGNORE INTO methods (ID,TITLE,CLASS_ID,CODE) VALUES (1,'run',1,'return ' || char(36) || 'params[\"value\"] ?? 7;');
             INSERT OR IGNORE INTO users (ID,NAME,USERNAME) VALUES (1,'Tester','test');
             INSERT OR IGNORE INTO locations VALUES (1,'Кухня',10);
@@ -194,7 +200,11 @@ function getObjectsByClass($class): array { return $GLOBALS['db']->Select('SELEC
 function getRoomObjectByLocation($id, $auto = 0): string { return 'Room' . $id; }
 function processTitle($value) { return $value; }
 function registerEvent($name, $params): int { $GLOBALS['fixture_event'] = array($name, $params); return 41; }
-function runScript($id, $params) { return array('id' => $id, 'params' => $params); }
+function runScript($id, $params) {
+    $record = $GLOBALS['db']->SelectOne('SELECT CODE FROM scripts WHERE ID=' . (int)$id);
+    if (isset($record['CODE'])) return eval($record['CODE']);
+    return array('id' => $id, 'params' => $params);
+}
 function getHistory($name, $period) { return array(array('VALUE' => getGlobal($name), 'ADDED' => '2026-10-22 10:00:00')); }
 function getHistoryMax($name, $period) { return 100; }
 function getHistoryMin($name, $period) { return 0; }

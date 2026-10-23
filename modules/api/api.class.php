@@ -5,6 +5,7 @@ use MajorDoMo\Core\Api\{Contract, Schema};
 
 /**
  * Только транспорт админки. Реализация API, токены и входы живут в Core\Api.
+ * Изменения: 2026-10-23 — выбор module/script/code и защищённое чтение кода редактора.
  * Изменения: 2026-10-22 — вкладка входящих webhook и её AJAX-операции.
  */
 class api extends module
@@ -35,6 +36,12 @@ class api extends module
                 $operation = self::posted('operation');
                 $issued = null;
                 $hookIssued = null;
+                if ($operation === 'hook_details') {
+                    $payload = array('ok' => true, 'hook' => $hookStore->editable(self::postedId()));
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+                    exit;
+                }
                 if ($operation === 'issue') {
                     $expires = self::posted('expires'); $expiresAt = null;
                     if ($expires !== '') {
@@ -53,7 +60,10 @@ class api extends module
                         self::posted('module'),
                         self::posted('handler'),
                         self::postedArray('methods'),
-                        self::posted('header_name')
+                        self::posted('header_name'),
+                        self::posted('handler_type') ?: 'module',
+                        self::postedScriptId(),
+                        self::posted('code')
                     );
                 } elseif ($operation === 'hook_update') {
                     $hookIssued = $hookStore->update(
@@ -62,7 +72,10 @@ class api extends module
                         self::posted('module'),
                         self::posted('handler'),
                         self::postedArray('methods'),
-                        self::posted('header_name')
+                        self::posted('header_name'),
+                        self::posted('handler_type') ?: 'module',
+                        self::postedScriptId(),
+                        self::posted('code')
                     );
                 } elseif ($operation === 'hook_rotate') {
                     $hookIssued = $hookStore->rotate(self::postedId());
@@ -119,6 +132,7 @@ class api extends module
         $hookStats = ApiHooks::stats($hooks);
         $modules = ApiHooks::moduleOptions(Config::root());
         $handlerOptions = ApiHooks::handlerOptions(Config::root());
+        $scriptOptions = $hookStore->scriptOptions();
         ob_start(); require ROOT . 'templates/api/api.php'; $this->result = $this->parseLinks(ob_get_clean());
     }
 
@@ -141,6 +155,14 @@ class api extends module
         $id = self::posted('id');
         if (!ctype_digit($id) || (int)$id < 1) throw new InvalidArgumentException('Некорректный ID.');
         return (int)$id;
+    }
+
+    private static function postedScriptId(): int
+    {
+        $value = self::posted('script_id');
+        if ($value === '') return 0;
+        if (!ctype_digit($value) || (int)$value < 1 || strlen($value) > 10 || (int)$value > 2147483647) throw new InvalidArgumentException('Некорректный ID сценария.');
+        return (int)$value;
     }
 
     private static function tokenList(array $tokens, string $csrf): string
