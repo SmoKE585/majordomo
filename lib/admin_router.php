@@ -1,5 +1,7 @@
 <?php
 
+// 2026-10-23 — AJAX-маршруты принимают query-параметры без ложного 404 в nf.php.
+
 /**
  * MajorDoMo admin routing helpers.
  *
@@ -223,9 +225,10 @@ function mdj_admin_route_table($rootHtml = null)
         '/^' . $root . 'panel\/?$/is'
             => '',
 
-        // Temporary admin AJAX aliases; all requests require an admin session.
-        '/^' . $root . 'ajax\/([a-zA-Z0-9_]+)\.html$/s' => '?action=\1&ajax=1',
-        '/^' . $root . 'getlatestnote\.html$/s' => '?action=getlatestnote',
+        // nf.php сопоставляет полный REQUEST_URI: после имени страницы допустимы
+        // параметры операции, но не произвольное продолжение пути.
+        '/^' . $root . 'ajax\/([a-zA-Z0-9_]+)\.html(?=\?|$)/s' => '?action=\1&ajax=1',
+        '/^' . $root . 'getlatestnote\.html(?=\?|$)/s' => '?action=getlatestnote',
     );
 }
 

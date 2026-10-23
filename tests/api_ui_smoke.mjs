@@ -2,12 +2,16 @@
 // 2026-10-23 — переключение module/script/code, CodeMirror и сохранение PHP через модалку.
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
-import {writeFile} from 'node:fs/promises';
+import {mkdir, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
 import {createServer} from 'node:net';
 import path from 'node:path';
 
 const [base, fixtureRoot] = process.argv.slice(2);
 if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(base || '') || !/^mjd-api-[a-f0-9]+$/.test(path.basename(fixtureRoot || ''))) throw new Error('Only isolated loopback fixture is allowed');
+const captureRoot = process.env.MJD_API_UI_CAPTURE_DIR || fixtureRoot;
+if (captureRoot !== fixtureRoot && (path.resolve(path.dirname(captureRoot)) !== path.resolve(tmpdir()) || !path.basename(captureRoot).startsWith('mjd-api-ui-'))) throw new Error('Screenshots require a dedicated temporary output directory');
+await mkdir(captureRoot, {recursive:true});
 const chrome = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find(existsSync);
 if (!chrome) throw new Error('Chrome/Edge unavailable');
 const listener = createServer();
@@ -198,9 +202,10 @@ try {
             await evaluate(`document.documentElement.setAttribute('data-bs-theme', ${JSON.stringify(theme)})`);
             await evaluate(`(() => { const t = document.querySelector('#md-api-hooks form[data-api-action]').elements.handler_type; t.value = 'code'; t.dispatchEvent(new Event('change', {bubbles:true})); })()`);
             await pause(250);
+            await evaluate(`document.querySelector('#md-api-hooks form[data-api-action] [data-hook-target="code"]').scrollIntoView({block:'center'})`);
             check(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1'), theme + ' ' + width + ': code form has no horizontal overflow');
             const shot = await send('Page.captureScreenshot', {format:'png', captureBeyondViewport:false});
-            await writeFile(path.join(fixtureRoot, 'api-hooks-' + theme + '-' + width + '.png'), Buffer.from(shot.data,'base64'));
+            await writeFile(path.join(captureRoot, 'api-hooks-' + theme + '-' + width + '.png'), Buffer.from(shot.data,'base64'));
         }
     }
     await send('Page.navigate', {url: base + '/preview'});

@@ -6,6 +6,7 @@
 use MajorDoMo\Core\{Config, Core, Database, MetadataCache, RedisConnection, Methods, CodeExecutor, PropertyAudit};
 use MajorDoMo\Core\Api\{Schema, TokenStore};
 
+/** Тестовое соединение SQLite. 2026-10-23 — SHOW COLUMNS для миграций webhook. */
 final class ApiFixtureConnection
 {
     public int $affected = 0;
@@ -49,6 +50,7 @@ final class ApiFixtureConnection
     public function getLastError(): array { return array('message' => 'fixture failure', 'code' => 1); }
 }
 
+/** Изолированное окружение API. 2026-10-23 — сценарии с исполняемым тестовым кодом. */
 final class ApiFixture
 {
     public static function initialize(string $root, string $project): void

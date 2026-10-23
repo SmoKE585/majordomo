@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+// 2026-10-23 — проверка AJAX-запросов маркета с параметрами и границ маршрутов.
+
 /**
  * Routing contract tests.
  *
@@ -161,6 +163,28 @@ foreach ($cases as $path => $expected) {
 
 // Unknown *.html must not fall through to a fake "docs" page any more.
 routingCheck(mdj_admin_resolve_path('/nonexistent.html') === null, '[404] /nonexistent.html must not match any route');
+
+// Полный REQUEST_URI, как в nf.php: параметры не должны превращать AJAX в 404.
+$ajaxRequests = [
+    '/ajax/market.html',
+    '/ajax/market.html?op=list&category_id=installed&search=',
+    '/ajax/market.html?op=list&category_id=all&search=zigbee%20mqtt',
+    '/ajax/market.html?op=commits&name=mqtt',
+    '/ajax/market.html?op=check_updates',
+];
+foreach ($ajaxRequests as $uri) {
+    routingCheck(
+        routingResolve($uri) === ['action' => 'market', 'ajax' => '1'],
+        '[AJAX] market request must reach the existing module: ' . $uri
+    );
+}
+routingCheck(
+    routingResolve('/getlatestnote.html?_=123') === ['action' => 'getlatestnote'],
+    '[AJAX] latest note accepts cache-busting params'
+);
+foreach (['/ajax/market.html/extra', '/ajax/market.html.bak', '/getlatestnote.html/extra'] as $uri) {
+    routingCheck(mdj_admin_resolve_path($uri) === null, '[404] invalid AJAX suffix: ' . $uri);
+}
 
 // --- Outbound: legacy query -> pretty path --------------------------------
 

@@ -2,6 +2,8 @@
 /**
  * Scripts
  *
+ * Изменения: 2026-10-23 — ошибки сценария webhook доходят до HTTP-границы вместо пустого ответа 200.
+ *
  * Scripts
  *
  * @package MajorDoMo
@@ -189,6 +191,10 @@ class scripts extends module
                     } catch (Exception $e) {
                         //getLogger($this)->error(sprintf('Error in script "%s"', $rec['TITLE']), $e);
                         $auditError = $e;
+                        // Новые обработчики webhook должны сообщить о сбое.
+                        // Старые файлы модулей и другие запуски сохраняют прежний контракт.
+                        $hook = \MajorDoMo\Core\Api\HookContext::hook();
+                        if (in_array($hook['HANDLER_TYPE'] ?? 'module', array('script', 'code'), true)) throw $e;
                         registerError('script', sprintf('Error in script "%s": ' . $e->getMessage(), $rec['TITLE']));
                     }
                 }

@@ -1,5 +1,6 @@
 <?php
 /** Core API, tokens, compatibility and UI on a disposable SQLite database. */
+// 2026-10-23 — список сценариев передаётся общей форме назначения webhook.
 putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:');
 putenv('DB_HOST='); putenv('DB_NAME='); putenv('USE_REDIS=false');
 require_once dirname(__DIR__) . '/lib/core.class.php';
@@ -193,6 +194,7 @@ try {
     $hookStats = ApiHooks::stats($hooks);
     $modules = ApiHooks::moduleOptions($root);
     $handlerOptions = ApiHooks::handlerOptions($root);
+    $scriptOptions = Core::apiHooks()->scriptOptions();
     ob_start(); require ROOT . 'templates/api/api.php'; $html = ob_get_clean();
     check(substr_count($html, 'data-api-operation=') === count($operations) && str_contains($html, 'data-api-token-list'), 'Full admin template renders all operations');
     check(!str_contains($html, $secret) && !str_contains($html, $rotated['token']), 'Admin initial HTML contains no stored plaintext secret');
