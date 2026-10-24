@@ -212,7 +212,7 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
 | `docs/agents/DESIGN_SYSTEM.md` | Обязательная документация дизайн-системы |
 | `resources/js/modules/admin_panel/` | Модули shell: core, drawer, search, console, notifications, init, dashboard, controls, header search, objects, data table, alpine, shared UI components, dashboard charts |
 | `resources/js/modules/admin_panel/100_chart_runtime.js` | Общий lazy-loader ApexCharts (`window.MDJCharts`) для дашборда и истории |
-| `resources/js/modules/admin_panel/101_dashboard_charts.js` | Графики дашборда поверх общего chart runtime |
+| `public/assets/modules/panel/dashboard.js`, `dashboard-charts.js` | Дашборд и его графики, загружаются только на главной поверх общего chart runtime |
 | `public/assets/js/admin/ui_kit.js` | Page-only JS UI Kit: каталог иконок, copy, scrollspy; подключается только на `?action=ui_kit` |
 | `public/assets/js/admin/panel.js` | Legacy-глобалы shell (`partLoad`, фильтр меню, file browser) |
 | `public/assets/js/scripts.js` | Legacy-глобальные хелперы старых шаблонов |
@@ -428,7 +428,7 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - `resources/css/admin_panel.css` — ~8 тыс. строк, много дублей и «финальных полировок».
 - `public/assets/js/scripts.js` и `public/assets/js/admin/panel.js` — глобальные legacy-скрипты.
 - CSS/JS части модулей (`public/assets/modules/settings/settings.css`, `public/assets/modules/scripts/scripts.js` и т.д.) сознательно остаются локальными: подключаются только на страницах своих модулей, чтобы не грузить код всех модулей сразу. В общий бандл их не переносить.
-- `100_dashboard.js` и `110_objects.js` пока остаются в общем бандле как часть текущего shell/objects; это существующий долг, а не паттерн для новых модулей. При переделке этих модулей их page-specific JS выносить локально.
+- `110_objects.js` пока остаётся в общем бандле как часть текущего shell/objects; это существующий долг, а не паттерн для новых модулей. При переделке его page-specific JS выносить локально. Дашборд вынесен в `public/assets/modules/panel/`.
 - В `templates/objects/objects_edit_properties.html` остаётся большой inline-скрипт (редактирование значений, WebSocket) — кандидат на вынос в module UI.
 - Тёмная тема не проверена на отдельных legacy-страницах вне текущего этапа (старые вкладки и служебные модули).
 - ApexCharts грузится отдельным чанком `public/assets/admin/charts.js` через общий `100_chart_runtime.js`; на страницах без графиков чарт-рантайм не скачивается.

@@ -27,7 +27,9 @@ Define("EQ_DELIMITER", "qz_");
 
 /**
  * Module class
- * Изменения: 2026-10-23 — событие MODULE_INSTALLED для фоновых подписчиков.
+ * Изменения:
+ * 2026-10-24 — установка распознаёт индексы по колонкам, не создавая дубликаты.
+ * 2026-10-23 — событие MODULE_INSTALLED для фоновых подписчиков.
  * @category Modules
  * @package Framework
  * @author Serge Dzheigalo <jey@activeunit.com>
@@ -480,6 +482,12 @@ class module
     {
         $need_optimzation = array();
         $table_defined = array();
+        $tbl_indexes = array();
+        $indexes_retrieved = array();
+        $normalize_index_columns = static function (string $columns): string {
+            $columns = preg_replace('/\s+ASC\b/i', '', $columns);
+            return strtolower(preg_replace('/[\s`]+/', '', $columns));
+        };
 
         $sql = "";
 
@@ -527,23 +535,50 @@ class module
             } elseif ((strtolower($field) == 'key') || (strtolower($field) == 'index') || (strtolower($field) == 'fulltext')) {
                 if (!isset($indexes_retrieved[$table])) {
                     $result = SQLGetIndexes($table);
+                    $existing_indexes = array();
                     foreach ($result as $row) {
-                        $tbl_indexes[$table][$row['Key_name']] = 1;
+                        $column = $row['Column_name'];
+                        if (!empty($row['Sub_part'])) {
+                            $column .= '(' . (int)$row['Sub_part'] . ')';
+                        }
+                        if (($row['Collation'] ?? '') === 'D') {
+                            $column .= ' DESC';
+                        }
+                        $existing_indexes[$row['Key_name']]['columns'][(int)$row['Seq_in_index']] = $column;
+                        $existing_indexes[$row['Key_name']]['type'] = strtoupper($row['Index_type']) === 'FULLTEXT' ? 'fulltext:' : 'index:';
+                        if (!empty($row['Sub_part']) && ($row['Collation'] ?? '') !== 'D'
+                            && strcasecmp($row['Key_name'], $row['Column_name']) === 0) {
+                            $existing_indexes[$row['Key_name']]['legacy_prefix'] = $row['Column_name'];
+                        }
                     }
-
-
+                    // Имя может быть любым: сравниваем полный состав индекса,
+                    // сохраняя порядок колонок, длины префиксов и тип FULLTEXT.
+                    foreach ($existing_indexes as $index) {
+                        ksort($index['columns']);
+                        $signature = $index['type'] . $normalize_index_columns(implode(',', $index['columns']));
+                        $tbl_indexes[$table][$signature] = 1;
+                        // Старые INDEX (PATH) уже могли быть установлены с префиксом
+                        // и именем PATH. Сохраняем прежнее распознавание: полный
+                        // индекс длинного VARCHAR на таких серверах недопустим.
+                        if (count($index['columns']) === 1 && isset($index['legacy_prefix'])) {
+                            $tbl_indexes[$table][$index['type'] . $normalize_index_columns($index['legacy_prefix'])] = 1;
+                        }
+                    }
                     $indexes_retrieved[$table] = 1;
                 }
 
-                preg_match('/\((.+?)\)/', $definition, $matches);
-
-                $key_name = trim($matches[1], " `");
+                if (!preg_match('/\((.+)\)/', $definition, $matches)) {
+                    throw new InvalidArgumentException('Некорректное описание индекса таблицы ' . $table . ': ' . $definition);
+                }
+                $index_type = strtolower($field) === 'fulltext' ? 'fulltext:' : 'index:';
+                $key_name = $index_type . $normalize_index_columns($matches[1]);
 
                 if (!isset($tbl_indexes[$table][$key_name])) {
-                    $definition = str_replace('`', '', $definition);
                     $sql = "ALTER TABLE $table ADD $definition;";
-                    SQLExec($sql);
-                    $to_optimize[] = $table;
+                    if (SQLExec($sql)) {
+                        $tbl_indexes[$table][$key_name] = 1;
+                        $to_optimize[] = $table;
+                    }
                 }
             } elseif (!isset($tbl_fields[$table][$field])) {
                 // new field

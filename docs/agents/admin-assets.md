@@ -39,7 +39,7 @@ npm run watch:highlight # пересборка подсветки примеро
 
 `codeeditor.js` не входит в основной бандл. `resources/js/codeeditor/loader.js` загружает его только когда на странице есть `[data-code-editor]` (или когда открывается консоль). Поэтому dashboard и другие страницы без редактора не скачивают CodeMirror и языковые парсеры.
 
-`charts.js` не входит в основной бандл. Общий загрузчик `resources/js/modules/admin_panel/100_chart_runtime.js` скачивает его при первом построении графика; используют его дашборд (`101_dashboard_charts.js`) и drawer истории свойства (`40_history.js`), поэтому остальные страницы не скачивают ApexCharts.
+`charts.js` не входит в основной бандл. Общий загрузчик `resources/js/modules/admin_panel/100_chart_runtime.js` скачивает его при первом построении графика; используют его дашборд (`public/assets/modules/panel/dashboard-charts.js`) и drawer истории свойства (`40_history.js`), поэтому остальные страницы не скачивают ApexCharts. Логика главной — `public/assets/modules/panel/dashboard.js`; оба скрипта подключены только в `templates/panel_default.html` и сохраняют один runtime при повторном partLoad.
 
 `codehighlight.js` не входит в основной бандл. `resources/js/modules/admin_panel/123_code_sample.js` загружает его только при наличии `[data-md-code-sample]`; вкладки и копирование при этом работают сразу из основного бандла.
 
@@ -57,7 +57,7 @@ npm run watch:highlight # пересборка подсветки примеро
 - загрузчик редактора `resources/js/codeeditor/loader.js` (сам редактор — отдельный lazy-chunk);
 - `apexcharts` — отдельный lazy-chunk `public/assets/admin/charts.js` + `charts.css` для дашборда и истории свойства;
 - `highlight.js` — отдельный lazy-chunk `public/assets/admin/codehighlight.js` + `codehighlight.css` для `MDJUI::codeSample()`;
-- admin shell modules из `resources/js/modules/admin_panel/`, включая `101_dashboard_charts.js` (графики дашборда), `120_linkedobject.js` (компонент связей объектов) и `123_code_sample.js` (вкладки/копирование примеров кода);
+- admin shell modules из `resources/js/modules/admin_panel/`, включая общий chart runtime, `120_linkedobject.js` (компонент связей объектов) и `123_code_sample.js` (вкладки/копирование примеров кода);
 - `resources/css/admin_panel.css` (legacy), `resources/css/ui-v2.css` (shell/dashboard) и `resources/css/ui-system.css` (дизайн-система, включая LinkedObject).
 
 ## Что пока не в бандле

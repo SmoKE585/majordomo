@@ -1,5 +1,6 @@
 <?php
 
+// 2026-10-24 — реальные события аудита с шагом 10 минут и мониторинг Redis.
 // 2026-10-23 — повышенная нагрузка от 350 запросов/с, высокая — выше 500;
 // пороги использования соединений и активных запросов сохранены.
 
@@ -400,62 +401,47 @@ function mdj_dashboard_errors()
 }
 
 /**
- * Hourly activity slice for the last 24 hours.
- *
- * Uses the last update/execution timestamp, so the chart is bounded by the
- * number of properties and scripts instead of scanning a potentially huge
- * history table on every dashboard poll.
- *
- * @return array{labels:array<int,string>,properties:array<int,int>,scripts:array<int,int>,properties_total:int,scripts_total:int}
+ * Фактические изменения свойств и запуски методов/сценариев за последние сутки.
+ * Крайние интервалы неполные; время на графике соответствует часовому поясу системы.
  */
-function mdj_dashboard_activity()
+function mdj_dashboard_activity($now = null)
 {
+    $now = $now ?? time();
+    $from = $now - 86400;
+    $bucket = (int)floor($now / 600) * 600;
     $labels = array();
     $keys = array();
-    $properties = array();
-    $scripts = array();
-    $hour = (int)floor(time() / 3600) * 3600;
+    $ranges = array();
+    $series = array('properties' => array(), 'methods' => array(), 'scripts' => array());
 
-    for ($i = 23; $i >= 0; $i--) {
-        $timestamp = $hour - ($i * 3600);
-        $keys[] = date('Y-m-d H:00:00', $timestamp);
-        $labels[] = date('H:00', $timestamp);
-        $properties[] = 0;
-        $scripts[] = 0;
+    for ($i = 144; $i >= 0; $i--) {
+        $timestamp = $bucket - ($i * 600);
+        $keys[] = date('Y-m-d H:i:s', $timestamp);
+        $labels[] = date('H:i', $timestamp);
+        $ranges[] = date('d.m H:i:s', max($from, $timestamp)) . '–' . date('H:i:s', min($now, $timestamp + 600));
+        foreach ($series as &$values) $values[] = 0;
+        unset($values);
     }
 
     $index = array_flip($keys);
-    $from = date('Y-m-d H:i:s', $hour - (23 * 3600));
-
-    $propertyRows = SQLSelect("SELECT DATE_FORMAT(UPDATED, '%Y-%m-%d %H:00:00') AS HOUR_KEY, COUNT(*) AS C FROM pvalues WHERE UPDATED >= '" . DBSafe($from) . "' GROUP BY HOUR_KEY");
-    if (!is_array($propertyRows)) {
-        $propertyRows = array();
-    }
-    foreach ($propertyRows as $row) {
-        if (isset($index[$row['HOUR_KEY']])) {
-            $position = $index[$row['HOUR_KEY']];
-            $properties[$position] = (int)$row['C'];
+    $rows = \MajorDoMo\Core\Core::audit()->activityByTenMinutes($from, $now);
+    $types = array('property' => 'properties', 'method' => 'methods', 'script' => 'scripts');
+    foreach ($rows ?? array() as $row) {
+        $key = $row['BUCKET_KEY'] . '0:00';
+        if (isset($index[$key], $types[$row['TYPE']])) {
+            $series[$types[$row['TYPE']]][$index[$key]] += (int)$row['C'];
         }
     }
 
-    $scriptRows = SQLSelect("SELECT DATE_FORMAT(EXECUTED, '%Y-%m-%d %H:00:00') AS HOUR_KEY, COUNT(*) AS C FROM scripts WHERE EXECUTED >= '" . DBSafe($from) . "' GROUP BY HOUR_KEY");
-    if (!is_array($scriptRows)) {
-        $scriptRows = array();
-    }
-    foreach ($scriptRows as $row) {
-        if (isset($index[$row['HOUR_KEY']])) {
-            $position = $index[$row['HOUR_KEY']];
-            $scripts[$position] = (int)$row['C'];
-        }
-    }
-
-    return array(
+    return array_merge($series, array(
         'labels' => $labels,
-        'properties' => $properties,
-        'scripts' => $scripts,
-        'properties_total' => array_sum($properties),
-        'scripts_total' => array_sum($scripts),
-    );
+        'ranges' => $ranges,
+        'interval_minutes' => 10,
+        'available' => $rows !== null,
+        'properties_total' => array_sum($series['properties']),
+        'methods_total' => array_sum($series['methods']),
+        'scripts_total' => array_sum($series['scripts']),
+    ));
 }
 
 /**
@@ -467,7 +453,7 @@ function mdj_dashboard_activity()
 function mdj_dashboard_collect($fresh = false)
 {
     $now = time();
-    $cacheFile = mdj_dashboard_cache_dir() . 'dashboard_payload.json';
+    $cacheFile = mdj_dashboard_cache_dir() . 'dashboard_payload_v2.json';
     $cacheTtl = 20;
     if (!$fresh && is_readable($cacheFile)) {
         $cached = json_decode((string)@file_get_contents($cacheFile), true);
@@ -591,6 +577,8 @@ function mdj_dashboard_collect($fresh = false)
     $cycles = mdj_dashboard_cycles();
     $errors = mdj_dashboard_errors();
     $activity = mdj_dashboard_activity();
+    $redis = \MajorDoMo\Core\Core::redis()->diagnostics();
+    $redis['uptime_label'] = mdj_dashboard_format_uptime($redis['uptime']);
     $uptime = mdj_dashboard_uptime_seconds();
 
     $attention = array();
@@ -604,6 +592,13 @@ function mdj_dashboard_collect($fresh = false)
             'action_url' => $actionUrl,
         );
     };
+
+    if ($redis['enabled'] && $redis['level'] !== 'ok') {
+        $addAttention(
+            $redis['level'], 'database', 'Redis: ' . $redis['status_text'],
+            $redis['note'], 'Общие настройки', '?action=settings'
+        );
+    }
 
     if (file_exists(ROOT . 'reboot')) {
         $started = @filemtime(ROOT . 'reboot');
@@ -769,6 +764,7 @@ function mdj_dashboard_collect($fresh = false)
             'uptime' => (int)$dbUptime,
         ),
         'counts' => $counts,
+        'redis' => $redis,
         'cycles' => $cycles,
         'errors' => $errors,
         'activity' => $activity,

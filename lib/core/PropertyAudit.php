@@ -17,6 +17,7 @@ use \Throwable;
  * is intentionally no on/off switch; only retention is configurable.
  *
  * Изменения:
+ * 2026-10-24 — счётчики фактических событий по десятиминутным интервалам для дашборда.
  * 2026-10-23 — снимки выполняемого кода, родительские шаги и корректный JSON при обрезке.
  * 2026-10-23 — поиск ошибки запуска идёт по TRACE_ID (покрыт индексом), а не по RUN_ID:
  *              запрос по RUN_ID не мог использовать индекс и давал полный скан журнала.
@@ -317,6 +318,20 @@ final class PropertyAudit
             $this->reportFailure($e, 'query_property');
             return $empty;
         }
+    }
+
+    /** Возвращает события по 10 минут; null означает, что журнал ещё не создан. */
+    public function activityByTenMinutes(int $from, int $to): ?array
+    {
+        if (!$this->db->tableExists('property_audit_events')) return null;
+
+        // TYPE + ADDED покрыты индексом: читаем только счётчики, без значений и кода шагов.
+        return $this->db->select(
+            "SELECT SUBSTR(ADDED,1,15) AS BUCKET_KEY, TYPE, COUNT(*) AS C FROM property_audit_events"
+            . " WHERE TYPE IN ('property','method','script') AND ADDED >= '"
+            . $this->db->escape(date('Y-m-d H:i:s', $from)) . "' AND ADDED <= '"
+            . $this->db->escape(date('Y-m-d H:i:s', $to)) . "' GROUP BY TYPE, BUCKET_KEY"
+        );
     }
 
     /**

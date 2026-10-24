@@ -1,6 +1,9 @@
 (function (window, document) {
     'use strict';
 
+    // 2026-10-24 — события по 10 минут; повторный partLoad использует прежний runtime.
+    if (window.MDJDashboardCharts) return;
+
     /**
      * Dashboard charts.
      *
@@ -38,6 +41,7 @@
     }
 
     function createOrUpdate(key, element, options) {
+        options.chart.id = 'md-dashboard-' + key;
         var existing = charts[key];
         if (existing && existing.element === element && existing.instance) {
             existing.instance.updateOptions(options, false, true);
@@ -67,9 +71,12 @@
             var palette = colors();
             var labels = Array.isArray(data.labels) ? data.labels : [];
             var properties = Array.isArray(data.properties) ? data.properties : [];
+            var methods = Array.isArray(data.methods) ? data.methods : [];
             var scripts = Array.isArray(data.scripts) ? data.scripts : [];
             var total = properties.reduce(function (sum, value) { return sum + Number(value || 0); }, 0)
+                + methods.reduce(function (sum, value) { return sum + Number(value || 0); }, 0)
                 + scripts.reduce(function (sum, value) { return sum + Number(value || 0); }, 0);
+            if (data.available === false) total = 0;
             var options = merge(baseOptions(), {
                 chart: {
                     type: 'area',
@@ -77,17 +84,18 @@
                     sparkline: { enabled: false }
                 },
                 series: total > 0 ? [
-                    { name: 'Свойства', data: properties },
-                    { name: 'Скрипты', data: scripts }
+                    { name: 'Изменения свойств', data: properties },
+                    { name: 'Вызовы методов', data: methods },
+                    { name: 'Запуски сценариев', data: scripts }
                 ] : [],
                 noData: {
-                    text: 'За последние 24 часа активности нет',
+                    text: data.available === false ? 'Журнал событий ещё недоступен' : 'За последние 24 часа активности нет',
                     align: 'center',
                     verticalAlign: 'middle',
                     style: { color: palette.muted, fontSize: '13px' }
                 },
-                colors: [palette.primary, palette.warning],
-                stroke: { curve: 'smooth', width: 2, lineCap: 'round' },
+                colors: [palette.primary, palette.success, palette.warning],
+                stroke: { curve: 'straight', width: 2, dashArray: [0, 4, 2], lineCap: 'round' },
                 fill: {
                     type: 'gradient',
                     gradient: {
@@ -128,6 +136,11 @@
                 tooltip: {
                     shared: true,
                     intersect: false,
+                    x: {
+                        formatter: function (value, context) {
+                            return (data.ranges || [])[context.dataPointIndex] || String(value);
+                        }
+                    },
                     y: {
                         formatter: function (value) {
                             return value + ' ' + (value === 1 ? 'событие' : 'событий');

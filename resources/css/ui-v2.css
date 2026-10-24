@@ -1,5 +1,6 @@
 /*
  * MajorDoMo admin UI 2.0
+ * 2026-10-24 — третья серия активности использует цвет success из токенов.
  * 2026-10-22 — горизонтальный логотип в тёмной боковой панели.
  * Clean layer that sits on top of Bootstrap 5 and gradually replaces the
  * legacy admin_panel.css rules. Keep new component classes namespaced.
@@ -1773,6 +1774,7 @@ body.md-admin-shell .md-admin-sidebar__profile-logout i {
 }
 
 .md-dash-chart__dot--primary { background: var(--md-ui-primary); }
+.md-dash-chart__dot--success { background: var(--md-ui-success); }
 .md-dash-chart__dot--warning { background: var(--md-ui-warning); }
 
 .md-dash-chart__hint {

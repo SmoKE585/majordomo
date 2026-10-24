@@ -2,6 +2,9 @@
     'use strict';
 
     var admin = window.MDJAdminPanel = window.MDJAdminPanel || {};
+    // 2026-10-24 — мониторинг Redis и реальные счётчики событий; один runtime при partLoad.
+    if (admin.dashboardRegistered) return;
+    admin.dashboardRegistered = true;
     var state = admin.state = admin.state || {};
 
     var runtime = {
@@ -930,6 +933,27 @@
         }
     }
 
+    function applyRedis(redis) {
+        var status = runtime.node.querySelector('[data-md-dash-redis-status]');
+        if (status) {
+            var tone = redis.level === 'ok' ? 'success' : (redis.level || 'neutral');
+            status.className = 'md-badge md-badge--' + tone;
+            status.textContent = redis.status_text || 'Нет данных';
+        }
+        function metric(value, suffix) {
+            return value === null || typeof value === 'undefined' ? '—' : formatNumber(value, 2) + (suffix || '');
+        }
+        setField('redis-latency', metric(redis.latency_ms, ' мс'));
+        setField('redis-ops', metric(redis.ops, ' оп/с'));
+        setField('redis-clients', metric(redis.clients));
+        setField('redis-keys', metric(redis.keys));
+        setField('redis-memory', formatBytes(redis.memory_used));
+        setField('redis-limit', redis.memory_max === 0 ? 'Без лимита' : formatBytes(redis.memory_max));
+        setField('redis-uptime', redis.uptime_label || '—');
+        setField('redis-evicted', metric(redis.evicted_keys));
+        setField('redis-note', redis.note || 'Нет данных мониторинга Redis.');
+    }
+
     function applySystem(system) {
         if (!system) {
             return;
@@ -952,6 +976,7 @@
 
         applyCounts(data.counts || {});
         applyDb(data.db || {});
+        applyRedis(data.redis || {});
         applySystem(data.system || {});
         renderResources(data.system || {});
         renderCycles(data.cycles || {});
@@ -961,8 +986,9 @@
         updateUpdatedAt(data.generated_at);
 
         var activity = data.activity || {};
-        setField('activity-properties', formatNumber(activity.properties_total));
-        setField('activity-scripts', formatNumber(activity.scripts_total));
+        setField('activity-properties', activity.available === false ? '—' : formatNumber(activity.properties_total));
+        setField('activity-methods', activity.available === false ? '—' : formatNumber(activity.methods_total));
+        setField('activity-scripts', activity.available === false ? '—' : formatNumber(activity.scripts_total));
         if (window.MDJDashboardCharts) {
             window.MDJDashboardCharts.renderActivity(activity);
         }

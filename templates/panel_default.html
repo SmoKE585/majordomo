@@ -1,3 +1,5 @@
+<script src="<#ROOTHTML#>assets/modules/panel/dashboard-charts.js?v=2026-10-24-activity" defer></script>
+<script src="<#ROOTHTML#>assets/modules/panel/dashboard.js?v=2026-10-24-activity" defer></script>
 <div class="md-dash" data-md-dashboard>
     <header class="md-dash__header">
         <div class="md-dash__heading">
@@ -97,7 +99,7 @@
                 <header class="md-dash-card__head">
                     <div>
                         <h2 class="md-dash-card__title" id="mdDashActivityChartTitle">Активность за 24 часа</h2>
-                        <p class="md-dash-card__subtitle">Свойства с обновлением и скрипты с запуском в каждом часе</p>
+                        <p class="md-dash-card__subtitle">Изменения свойств, вызовы методов и запуски сценариев · шаг 10 минут</p>
                     </div>
                     <a class="md-dash-card__link" href="?action=xray">
                         X-Ray <i class="ti ti-arrow-up-right" aria-hidden="true"></i>
@@ -117,13 +119,17 @@
                     <div class="md-dash-chart__summary">
                         <span class="md-dash-chart__metric">
                             <span class="md-dash-chart__dot md-dash-chart__dot--primary" aria-hidden="true"></span>
-                            Свойства <strong data-md-dash-field="activity-properties">—</strong>
+                            Изменения свойств <strong data-md-dash-field="activity-properties">—</strong>
+                        </span>
+                        <span class="md-dash-chart__metric">
+                            <span class="md-dash-chart__dot md-dash-chart__dot--success" aria-hidden="true"></span>
+                            Вызовы методов <strong data-md-dash-field="activity-methods">—</strong>
                         </span>
                         <span class="md-dash-chart__metric">
                             <span class="md-dash-chart__dot md-dash-chart__dot--warning" aria-hidden="true"></span>
-                            Скрипты <strong data-md-dash-field="activity-scripts">—</strong>
+                            Запуски сценариев <strong data-md-dash-field="activity-scripts">—</strong>
                         </span>
-                        <span class="md-dash-chart__hint">За последние 24 часа</span>
+                        <span class="md-dash-chart__hint">За последние 24 часа · текущий интервал неполный</span>
                     </div>
                 </div>
             </section>
@@ -177,7 +183,7 @@
             <section class="md-dash-card" aria-labelledby="mdDashDbTitle">
                 <header class="md-dash-card__head">
                     <div>
-                        <h2 class="md-dash-card__title" id="mdDashDbTitle">База данных</h2>
+                        <h2 class="md-dash-card__title" id="mdDashDbTitle">MySQL / MariaDB</h2>
                         <p class="md-dash-card__subtitle">Нагрузка, соединения и размер</p>
                     </div>
                     <span class="md-dash-badge" data-md-dash-db-status>—</span>
@@ -207,6 +213,8 @@
                     <p class="md-dash-note" data-md-dash-db-note>Ожидание данных…</p>
                 </div>
             </section>
+
+            [#inc panel_redis.php#]
 
             <section class="md-dash-card" aria-labelledby="mdDashErrorsTitle">
                 <header class="md-dash-card__head">
