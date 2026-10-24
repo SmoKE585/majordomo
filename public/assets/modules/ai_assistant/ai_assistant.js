@@ -454,7 +454,32 @@
         } catch (error) {
             if (text) text.textContent = error.message;
             toast('danger', 'Сборка индекса прервана', error.message);
+            // Сервер сохранил статус ошибки и уже обработанные порции. Обновляем
+            // карточку, чтобы не оставлять устаревший процент после сбоя запроса.
+            window.setTimeout(function () { window.location.reload(); }, 900);
         }
+    }
+
+    function watchIndexProgress(page) {
+        var cards = Array.prototype.slice.call(page.querySelectorAll('[data-ai-index][data-status="building"]'));
+        if (!cards.length) return;
+        window.setTimeout(async function poll() {
+            try {
+                var result = await post('index_status', {});
+                var changed = cards.some(function (card) {
+                    var id = parseInt(card.getAttribute('data-model-id'), 10);
+                    var row = (result.indexes || []).find(function (item) { return parseInt(item.MODEL_ID, 10) === id; });
+                    return row && (row.STATUS !== 'building' || parseInt(row.PROCESSED, 10) !== parseInt(card.querySelector('[data-ai-index-processed]').textContent, 10));
+                });
+                if (changed) {
+                    window.location.reload();
+                    return;
+                }
+            } catch (error) {
+                // Временная ошибка опроса не прерывает фоновую сборку.
+            }
+            watchIndexProgress(page);
+        }, 5000);
     }
 
     function init(root) {
@@ -467,6 +492,7 @@
             page.dataset.aiInitialized = '1';
             initChat(page);
             initProbes(page);
+            watchIndexProgress(page);
         });
     }
 

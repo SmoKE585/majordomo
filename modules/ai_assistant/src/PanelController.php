@@ -16,6 +16,7 @@ use Throwable;
  * Контроллер раздела «ИИ-помощник»: настройки, чат и служебные AJAX-операции.
  *
  * Изменения:
+ * 2026-10-24 — запуск и отображение фоновой сборки индекса после обновления страницы.
  * 2026-10-23 — восстановление результата по ID запуска после обрыва SSE.
  * 2026-10-23 — компактный drawer, состояние запуска, подтверждения и защита аварийного завершения.
  * 2026-10-23 — единый экран вместо заглушки: провайдеры, модели, агенты,
@@ -735,9 +736,11 @@ final class PanelController
         $this->state->requireEnabled();
         $modelId = (int)$this->post('model_id');
         $row = $this->index->start($modelId);
+        KnowledgeSync::schedule();
         return array('index' => array('status' => $row['STATUS'], 'model_id' => (int)$row['MODEL_ID'],
             'documents' => (int)$row['DOCUMENTS'], 'chunks' => (int)$row['CHUNKS'],
-            'processed' => (int)$row['PROCESSED'], 'percent' => 0, 'error' => ''));
+            'processed' => (int)$row['PROCESSED'], 'percent' => (int)$row['CHUNKS'] > 0
+                ? min(100, (int)round((int)$row['PROCESSED'] / (int)$row['CHUNKS'] * 100)) : 0, 'error' => ''));
     }
 
     private function ajaxIndexStep(): array
@@ -756,7 +759,16 @@ final class PanelController
 
     private function ajaxIndexStatus(): array
     {
-        return array('indexes' => $this->index->rows(), 'status' => $this->safeRagStatus());
+        $indexes = $this->index->rows();
+        foreach ($indexes as $row) {
+            if ($row['STATUS'] === 'building') {
+                // Подхватываем сборки, начатые до появления фонового запуска:
+                // после обновления страницы они не останутся на старом проценте.
+                KnowledgeSync::schedule();
+                break;
+            }
+        }
+        return array('indexes' => $indexes, 'status' => $this->safeRagStatus());
     }
 
     private function ajaxTestSearch(): array

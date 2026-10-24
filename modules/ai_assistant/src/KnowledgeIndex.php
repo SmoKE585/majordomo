@@ -19,6 +19,7 @@ use Throwable;
  * ключом установки, а выдача — фильтром аудитории.
  *
  * Изменения:
+ * 2026-10-24 — неудачная сборка сохраняет staging-коллекцию и продолжается с обработанного фрагмента.
  * 2026-10-23 — сверка коллекции по файлам, стабильные ID, подпись модели и блокировка обслуживания.
  * 2026-10-23 — параметры вектора и HNSW фиксируются в строке индекса.
  *
@@ -63,6 +64,25 @@ final class KnowledgeIndex
         $this->settings->connection();
         $probe = $this->qdrant->probe($this->settings->connection());
         if (!$probe['available']) throw new RuntimeException($probe['hint']);
+        $existing = $this->row($modelId);
+        if ($existing !== null && $existing['STATUS'] === 'building') {
+            throw new RuntimeException('Сборка этого индекса уже идёт. Дождитесь завершения или остановите её.');
+        }
+        if ($existing !== null && $this->canResume($existing, $modelId)) {
+            return $this->resumeBuild($modelId);
+        }
+        if ($existing !== null && $existing['STATUS'] === 'error') {
+            // Новый план делает частично собранную коллекцию непригодной: удаляем её
+            // только при осознанном перезапуске, а не при временной ошибке провайдера.
+            $this->dropPlan($modelId, (string)$existing['CHECKSUM']);
+            try {
+                if ((string)$existing['COLLECTION'] !== '') {
+                    $this->qdrant->deleteCollection($this->settings->connection(), (string)$existing['COLLECTION']);
+                }
+            } catch (Throwable) {
+                // Недоступный Qdrant не мешает начать новую сборку в другой коллекции.
+            }
+        }
         $plan = $this->plan();
         $total = 0;
         foreach ($plan as $chunk) $total++;
@@ -71,11 +91,16 @@ final class KnowledgeIndex
         $this->storePlan($modelId, $hash, $plan);
         $suffix = bin2hex(random_bytes(4));
         $collection = 'mdai_' . substr($this->settings->installKey(), 0, 12) . '_' . $modelId . '_' . $suffix;
-        $existing = $this->db->one('SELECT * FROM ai_assistant_indexes WHERE MODEL_ID=' . $modelId);
-        if ($existing !== null && $existing['STATUS'] === 'building') {
-            throw new RuntimeException('Сборка этого индекса уже идёт. Дождитесь завершения или остановите её.');
-        }
-        $previousActive = $existing !== null && (int)$existing['ACTIVE'] === 1 && (string)$existing['STATUS'] === 'ready';
+        $previousActive = $existing !== null && ((int)$existing['ACTIVE'] === 1 && (string)$existing['STATUS'] === 'ready'
+            || (int)$existing['PREVIOUS_ACTIVE'] === 1 && (string)$existing['PREVIOUS_COLLECTION'] !== '');
+        $previousCollection = $existing !== null && (string)$existing['STATUS'] === 'ready'
+            ? (string)$existing['COLLECTION'] : (string)($existing['PREVIOUS_COLLECTION'] ?? '');
+        $previousDimension = $existing !== null && (string)$existing['STATUS'] === 'ready'
+            ? (int)$existing['DIMENSION'] : (int)($existing['PREVIOUS_DIMENSION'] ?? 0);
+        $previousVectorName = $existing !== null && (string)$existing['STATUS'] === 'ready'
+            ? (string)($existing['VECTOR_NAME'] ?? '') : (string)($existing['PREVIOUS_VECTOR_NAME'] ?? '');
+        $previousSignature = $existing !== null && (string)$existing['STATUS'] === 'ready'
+            ? (string)($existing['MODEL_SIGNATURE'] ?? '') : (string)($existing['PREVIOUS_MODEL_SIGNATURE'] ?? '');
         $vector = $this->settings->get();
         $record = array(
             'MODEL_ID' => $modelId,
@@ -96,12 +121,12 @@ final class KnowledgeIndex
             'DISTANCE' => (string)$vector['DISTANCE'],
             'HNSW_M' => (int)$vector['HNSW_M'],
             'HNSW_EF_CONSTRUCT' => (int)$vector['HNSW_EF_CONSTRUCT'],
-            'PREVIOUS_COLLECTION' => $previousActive ? (string)$existing['COLLECTION'] : '',
+            'PREVIOUS_COLLECTION' => $previousActive ? $previousCollection : '',
             'PREVIOUS_STATUS' => $previousActive ? 'ready' : '',
             'PREVIOUS_ACTIVE' => $previousActive ? 1 : 0,
-            'PREVIOUS_DIMENSION' => $previousActive ? (int)$existing['DIMENSION'] : 0,
-            'PREVIOUS_VECTOR_NAME' => $previousActive ? (string)($existing['VECTOR_NAME'] ?? '') : '',
-            'PREVIOUS_MODEL_SIGNATURE' => $previousActive ? (string)($existing['MODEL_SIGNATURE'] ?? '') : '',
+            'PREVIOUS_DIMENSION' => $previousActive ? $previousDimension : 0,
+            'PREVIOUS_VECTOR_NAME' => $previousActive ? $previousVectorName : '',
+            'PREVIOUS_MODEL_SIGNATURE' => $previousActive ? $previousSignature : '',
             'CREATED_AT' => time(),
             'UPDATED_AT' => time(),
         );
@@ -112,6 +137,29 @@ final class KnowledgeIndex
             $this->db->insert('ai_assistant_indexes', $record);
         }
         return $this->row($modelId);
+    }
+
+    /** Возобновить прерванную сборку, не повторяя записанные в Qdrant фрагменты. */
+    private function resumeBuild(int $modelId): array
+    {
+        $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='building',ERROR='',UPDATED_AT=" . time()
+            . ' WHERE MODEL_ID=' . $modelId);
+        return $this->row($modelId);
+    }
+
+    /** Проверить, что сохранённый план можно безопасно продолжить. */
+    private function canResume(array $row, int $modelId): bool
+    {
+        if ($row['STATUS'] !== 'error' || (string)$row['COLLECTION'] === '' || (int)$row['CHUNKS'] < 1
+            || (int)$row['PROCESSED'] < 0 || (int)$row['PROCESSED'] > (int)$row['CHUNKS'] || $this->needsRebuild($modelId)) {
+            return false;
+        }
+        $plan = $this->loadPlan($modelId, (string)$row['CHECKSUM']);
+        if ($plan !== null) return true;
+        $plan = $this->plan();
+        if ($this->planHash($plan) !== (string)$row['CHECKSUM']) return false;
+        $this->storePlan($modelId, (string)$row['CHECKSUM'], $plan);
+        return true;
     }
 
     /** Обработать порцию фрагментов; вызывается повторно, пока статус building. */
@@ -332,20 +380,12 @@ final class KnowledgeIndex
     private function markError(int $modelId, string $message): void
     {
         $row = $this->row($modelId);
-        if ($row !== null) $this->dropPlan($modelId, (string)$row['CHECKSUM']);
         $safe = $this->db->escape(mb_substr(SensitiveData::text($message), 0, 480));
-        if ($row !== null && (int)$row['PREVIOUS_ACTIVE'] === 1 && (string)$row['PREVIOUS_COLLECTION'] !== '') {
-            // Неудачная пересборка возвращает прежний рабочий индекс; ошибка
-            // остаётся видимой в строке, чтобы её можно было исправить.
-            $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='ready',ACTIVE=1,COLLECTION='"
-                . $this->db->escape((string)$row['PREVIOUS_COLLECTION']) . "',DIMENSION=" . (int)$row['PREVIOUS_DIMENSION']
-                . ",MODEL_SIGNATURE='" . $this->db->escape((string)$row['PREVIOUS_MODEL_SIGNATURE'])
-                . "',VECTOR_NAME='" . $this->db->escape((string)$row['PREVIOUS_VECTOR_NAME']) . "',ERROR='" . $safe
-                . "',PREVIOUS_COLLECTION='',PREVIOUS_STATUS='',PREVIOUS_ACTIVE=0,PREVIOUS_DIMENSION=0,PREVIOUS_VECTOR_NAME='',UPDATED_AT="
-                . time() . ' WHERE MODEL_ID=' . $modelId);
-            return;
-        }
-        $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='error',ACTIVE=0,ERROR='"
+        // План, PROCESSED и staging-коллекция остаются на месте. Предыдущая
+        // рабочая коллекция выбирается поиском через PREVIOUS_*, пока повтор
+        // не завершится успешно.
+        $active = $row !== null && (int)$row['PREVIOUS_ACTIVE'] === 1 ? 1 : 0;
+        $this->db->requireExec("UPDATE ai_assistant_indexes SET STATUS='error',ACTIVE=" . $active . ",ERROR='"
             . $safe . "',UPDATED_AT=" . time() . ' WHERE MODEL_ID=' . $modelId);
     }
 

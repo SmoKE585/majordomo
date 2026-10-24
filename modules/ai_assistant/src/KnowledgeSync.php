@@ -9,6 +9,7 @@ use MajorDoMo\Core\Core;
 /**
  * Фоновая сверка справки после установки модулей и обновления системы.
  * Изменения:
+ * 2026-10-24 — незавершённая сборка продолжается штатным таймером после закрытия страницы.
  * 2026-10-23 — штатный именованный таймер объединяет серию установок в одну проверку.
  */
 final class KnowledgeSync
@@ -36,6 +37,9 @@ final class KnowledgeSync
         $rows = array_column($index->rows(), null, 'MODEL_ID');
         $row = $rows[$modelId] ?? null;
         try {
+            // Ошибку провайдера не повторяем бесконечно: пользователь может
+            // продолжить сохранённую сборку после восстановления соединения.
+            if ($row !== null && $row['STATUS'] === 'error') return;
             if ($row === null || $row['STATUS'] !== 'building'
                 && ($row['STATUS'] !== 'ready' || (int)$row['ACTIVE'] !== 1 || $index->needsRebuild($modelId))) {
                 $index->start($modelId);

@@ -150,6 +150,7 @@ $canIndex = $hasSelectedModel && !empty($ragStatus['available']);
                                 'ready' => 'success', 'building' => 'info', 'error' => 'danger', 'cancelled' => 'warning', default => 'neutral',
                             }, array('dot' => true)) ?>
                             <?php if ((int)$row['ACTIVE'] === 1 && $row['STATUS'] === 'ready'): ?><?= MDJUI::badge('Рабочий', 'primary') ?><?php endif; ?>
+                            <?php if ((int)$row['PREVIOUS_ACTIVE'] === 1 && $row['STATUS'] !== 'ready'): ?><?= MDJUI::badge('Работает предыдущий', 'primary') ?><?php endif; ?>
                         </div>
                     </div>
                     <div class="md-ai-index__stats">
@@ -161,15 +162,16 @@ $canIndex = $hasSelectedModel && !empty($ragStatus['available']);
                     <?= MDJUI::progress($percent, array('size' => 'sm', 'tone' => $row['STATUS'] === 'error' ? 'danger' : 'primary',
                         'label' => 'Прогресс сборки', 'show_value' => true, 'attrs' => array('data-ai-index-progress' => ''))) ?>
                     <?php if ($row['ERROR'] !== ''): ?>
-                        <?= MDJUI::alert('danger', 'Сборка не завершена', $row['ERROR']) ?>
+                        <?= MDJUI::alert('danger', 'Сборка не завершена', $row['ERROR'] . ($row['STATUS'] === 'error'
+                            ? ' Обработанные фрагменты сохранены: после восстановления подключения нажмите «Продолжить».' : '')) ?>
                     <?php endif; ?>
                     <div class="md-ai-index__actions">
                         <?php if ($row['STATUS'] === 'building'): ?>
                             <?= MDJUI::button('Остановить', array('type' => 'button', 'variant' => 'secondary', 'size' => 'sm',
                                 'icon' => 'player-stop', 'attrs' => array('data-ai-index-cancel' => (int)$row['MODEL_ID']))) ?>
                         <?php else: ?>
-                            <?= MDJUI::button($row['STATUS'] === 'ready' ? 'Пересобрать' : 'Собрать', array('type' => 'button', 'size' => 'sm',
-                                'icon' => 'refresh', 'attrs' => array('data-ai-index-start' => (int)$row['MODEL_ID']))) ?>
+                            <?= MDJUI::button($row['STATUS'] === 'ready' ? 'Пересобрать' : ($row['STATUS'] === 'error' ? 'Продолжить' : 'Собрать'), array('type' => 'button', 'size' => 'sm',
+                                'icon' => $row['STATUS'] === 'error' ? 'player-play' : 'refresh', 'attrs' => array('data-ai-index-start' => (int)$row['MODEL_ID']))) ?>
                         <?php endif; ?>
                         <?php if ((int)$row['ACTIVE'] !== 1 && $row['STATUS'] !== 'building'): ?>
                             <form method="post" action="<?= $e($url('/knowledge')) ?>" class="md-ai-inline-form">
@@ -186,7 +188,7 @@ $canIndex = $hasSelectedModel && !empty($ragStatus['available']);
         </div>
         <div class="md-ai-muted md-ai-index-foot">
             <?= MDJUI::icon('info-circle') ?>
-            Индексация выполняется порциями из админки. Закрытие страницы не ломает готовый индекс; сборку можно запустить заново.
+            Индексация продолжается штатным фоновым таймером. При ошибке провайдера прогресс сохраняется и доступно продолжение с того же фрагмента.
         </div>
         <?php return (string)ob_get_clean();
     })()) ?>

@@ -36,6 +36,7 @@ final class AiIndexHttp implements HttpClientInterface
     /** @var array<string,array> */
     public array $points = array();
     public bool $failEmbeddings = false;
+    public bool $emptyEmbeddings = false;
 
     public function request(HttpRequest $request): HttpResponse
     {
@@ -46,7 +47,8 @@ final class AiIndexHttp implements HttpClientInterface
             $input = $request->body['input'] ?? array();
             $items = array();
             foreach ((array)$input as $index => $text) {
-                $items[] = array('index' => $index, 'embedding' => array(1.0, 0.5, 0.25, 0.125));
+                $items[] = array('index' => $index, 'embedding' => $this->emptyEmbeddings && is_array($input)
+                    ? array() : array(1.0, 0.5, 0.25, 0.125));
             }
             return new HttpResponse(200, json_encode(array('data' => $items), JSON_THROW_ON_ERROR));
         }
@@ -214,16 +216,26 @@ try {
     check($deleted !== array(), 'Старая коллекция удалена после переключения.');
     check($http->points !== array(), 'Точки нового индекса записаны.');
 
-    // Ошибка сборки не должна выключать рабочий индекс.
-    $http->failEmbeddings = true;
-    file_put_contents($fixture . '/docs/user/light.md', "---\ntitle: Свет\n---\n# Свет\nЕщё одно изменение текста.\n");
+    // Пустой вектор не теряет уже записанную часть staging-коллекции.
+    file_put_contents($fixture . '/docs/user/light.md', "---\ntitle: Свет\n---\n# Свет\nЕщё одно изменение текста.\n"
+        . str_repeat('Дополнительный фрагмент для возобновляемой индексации. ', 40));
     $index->start($model);
+    $index->step($model, 1);
+    $partial = $index->rows()[0];
+    $http->emptyEmbeddings = true;
     $failed = false;
-    try { $index->step($model, 8); } catch (RuntimeException) { $failed = true; }
-    check($failed, 'Ошибка эмбеддингов останавливает сборку.');
-    $active = array_values(array_filter($index->rows(), static fn(array $row): bool => (int)$row['ACTIVE'] === 1));
-    check(count($active) === 1 && $active[0]['STATUS'] === 'ready', 'Рабочий индекс сохранён при ошибке.');
-    $http->failEmbeddings = false;
+    try { $index->step($model, 1); } catch (RuntimeException $failure) { $failed = $failure->getMessage() === 'API вернул некорректный вектор.'; }
+    check($failed, 'Пустой вектор останавливает сборку с понятной ошибкой.');
+    $interrupted = $index->rows()[0];
+    check($interrupted['STATUS'] === 'error' && $interrupted['COLLECTION'] === $partial['COLLECTION']
+        && (int)$interrupted['PROCESSED'] === (int)$partial['PROCESSED'], 'Ошибка сохраняет коллекцию и обработанный прогресс.');
+    check((int)$interrupted['PREVIOUS_ACTIVE'] === 1 && $interrupted['PREVIOUS_COLLECTION'] !== '', 'Предыдущий рабочий индекс остаётся доступен во время ошибки.');
+    $http->emptyEmbeddings = false;
+    $resumed = $index->start($model);
+    check($resumed['STATUS'] === 'building' && $resumed['COLLECTION'] === $partial['COLLECTION']
+        && (int)$resumed['PROCESSED'] === (int)$partial['PROCESSED'], 'Повторный запуск продолжает сохранённую сборку без повторных фрагментов.');
+    do { $progress = $index->step($model, 8); } while ($progress['status'] === 'building');
+    check($progress['status'] === 'ready' && $index->rows()[0]['COLLECTION'] === $partial['COLLECTION'], 'Продолженная сборка переключает готовую staging-коллекцию.');
 
     // Отмена сборки не трогает рабочий индекс.
     $index->start($model);
