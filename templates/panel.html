@@ -265,11 +265,27 @@
 				</div>
 				<div class="md-admin-topbar__actions">
 					[#if HIDE_LEFT_PANEL="1"#]
-					<!-- Меню скрыто — профиля внизу нет, поэтому выход остаётся в шапке. -->
+					<!-- Меню скрыто — профиль и выбор темы остаются доступны в шапке. -->
 					<form method="post" action="<#ROOTHTML#>admin.php?auth=logout">
 						<input type="hidden" name="_md_csrf" value="[#AUTH_CSRF|html#]">
 						<button type="submit" class="md-topbar-action" title="[#AUTH_USERNAME|html#]" aria-label="Выйти из системы"><i class="ti ti-logout" aria-hidden="true"></i><span>Выйти</span></button>
 					</form>
+					<div class="md-topbar-theme" role="group" aria-label="Тема оформления">
+						<input class="btn-check" type="radio" name="topbarTheme" id="topbarThemeLight" value="light" data-md-theme-choice="light">
+						<label for="topbarThemeLight" title="Светлая тема"><i class="ti ti-sun" aria-hidden="true"></i><span class="visually-hidden">Светлая тема</span></label>
+						<input class="btn-check" type="radio" name="topbarTheme" id="topbarThemeDark" value="dark" data-md-theme-choice="dark">
+						<label for="topbarThemeDark" title="Тёмная тема"><i class="ti ti-moon-stars" aria-hidden="true"></i><span class="visually-hidden">Тёмная тема</span></label>
+					</div>
+					[#endif#]
+					[#if AI_ASSISTANT_LINK#]
+					<a class="md-topbar-action md-topbar-action--ai [#if AI_ASSISTANT_SELECTED#]is-active[#endif#]"
+					   href="[#AI_ASSISTANT_LINK#]"
+					   [#if AI_ASSISTANT_READY#]data-ai-open aria-haspopup="dialog"[#endif#]
+					   aria-label="[#AI_ASSISTANT_READY#][#AI_ASSISTANT_TITLE#]: открыть быстрый чат[#else#][#AI_ASSISTANT_TITLE#]: открыть настройки[#endif#]">
+						<i class="ti ti-sparkles" aria-hidden="true"></i>
+						<span>[#AI_ASSISTANT_TITLE#]</span>
+						<span class="md-topbar-action__ai-dot [#if AI_ASSISTANT_READY#]is-ready[#endif#]" aria-hidden="true"></span>
+					</a>
 					[#endif#]
 					<div class="md-admin-topbar__time">
 						<div class="md-admin-topbar__clock" data-md-header-clock>--:--</div>
@@ -281,12 +297,6 @@
 					<a class="md-topbar-action" href="?action=xray" aria-label="X-Ray">
 						<i class="ti ti-activity" aria-hidden="true"></i><span>X-Ray</span>
 					</a>
-					<div class="md-topbar-theme" role="group" aria-label="Тема оформления">
-						<input class="btn-check" type="radio" name="topbarTheme" id="topbarThemeLight" value="light" data-md-theme-choice="light">
-						<label for="topbarThemeLight" title="Светлая тема"><i class="ti ti-sun" aria-hidden="true"></i><span class="visually-hidden">Светлая тема</span></label>
-						<input class="btn-check" type="radio" name="topbarTheme" id="topbarThemeDark" value="dark" data-md-theme-choice="dark">
-						<label for="topbarThemeDark" title="Тёмная тема"><i class="ti ti-moon-stars" aria-hidden="true"></i><span class="visually-hidden">Тёмная тема</span></label>
-					</div>
 				</div>
 			</section>
 			[#endif PRINT#]

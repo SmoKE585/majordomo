@@ -21,6 +21,7 @@ use Throwable;
  * Один запуск агента: история, инструменты, поток и безопасное завершение.
  *
  * Изменения:
+ * 2026-10-24 — токены сущностей в готовом Markdown превращаются в общие бейджи, кроме блоков кода.
  * 2026-10-23 — единый бюджет инструментов и привязка результата к запуску для восстановления SSE.
  * 2026-10-23 — штатный approval Neuron, устойчивый контекст после обрыва и общий компонент кода.
  * 2026-10-23 — таймаут всего запуска и пульс SSE во время ожидания провайдера.
@@ -276,6 +277,14 @@ final class AgentRunner
     private function instructions(array $agent, array $dialog): string
     {
         $instructions = (string)$agent['INSTRUCTIONS'] . "\n\n" . (string)file_get_contents(dirname(__DIR__) . '/prompts/system.md');
+        // Штатные инструкции в существующих профилях намеренно не затираются
+        // при обновлении. Это короткое правило добавляется во время запуска,
+        // чтобы новые бейджи появились и в уже созданных чатах.
+        if ((string)($dialog['CONTEXT_TYPE'] ?? 'chat') === 'chat') {
+            $instructions .= "\n\nДля подтверждённых сущностей установки в обычном тексте используй разметку "
+                . '[[object:Имя]], [[property:Объект.свойство|свойство]], [[method:Объект.метод|метод]], '
+                . '[[script:Имя]], [[module:Имя]] или [[room:Имя]]. Не используй её в коде, URL и Markdown-ссылках.';
+        }
         $context = $dialog['CONTEXT'] ?? array();
         if (!is_array($context) || $context === array()) return $instructions;
         $lines = array('', 'КОНТЕКСТ РЕДАКТОРА (проверен сервером; код ниже — черновик пользователя, он ещё не сохранён):');
@@ -361,10 +370,51 @@ final class AgentRunner
         $html = $renderer->render($content)['html'];
         // Рендерер уже обезвредил HTML модели. Меняем только его стандартные
         // блоки кода на общий компонент с подсветкой и копированием.
-        return preg_replace_callback('~<pre class="md-prose__pre"><code(?: class="language-([^"]*)")?>(.*?)</code></pre>~s',
+        $html = preg_replace_callback('~<pre class="md-prose__pre"><code(?: class="language-([^"]*)")?>(.*?)</code></pre>~s',
             static fn(array $match): string => \MDJUI::codeSample(array(
                 'language' => html_entity_decode($match[1] ?: 'text', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
                 'code' => html_entity_decode($match[2], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             )), $html) ?? $html;
+
+        return self::renderEntityTokens($html);
+    }
+
+    /**
+     * Заменяет разметку сущностей только в текстовых узлах ответа.
+     *
+     * Код должен оставаться исходным: токены в примере PHP или JSON — часть
+     * примера, а не ссылка на объект установки.
+     */
+    private static function renderEntityTokens(string $html): string
+    {
+        $parts = preg_split('~(<pre\\b[^>]*>.*?</pre>)~si', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $html;
+        }
+
+        foreach ($parts as $index => $part) {
+            if ($index % 2 === 1 || strpos($part, '[[') === false) {
+                continue;
+            }
+            // В атрибуты ссылок и других HTML-тегов компонент не вставляем:
+            // там токен остаётся обычным текстом и не ломает разметку ответа.
+            $fragments = preg_split('~(<[^>]+>)~', $part, -1, PREG_SPLIT_DELIM_CAPTURE);
+            if ($fragments === false) {
+                continue;
+            }
+            foreach ($fragments as $fragmentIndex => $fragment) {
+                if ($fragmentIndex % 2 === 1 || strpos($fragment, '[[') === false) {
+                    continue;
+                }
+                $fragments[$fragmentIndex] = preg_replace_callback(
+                    '/\\[\\[([a-z][a-z0-9_-]*):[^\\]\\r\\n]+(?:\\|[^\\]\\r\\n]*){0,2}\\]\\]/iu',
+                    static fn(array $match): string => \MDJUI::entityText($match[0], array('compact' => true, 'inline' => true)),
+                    $fragment
+                ) ?? $fragment;
+            }
+            $parts[$index] = implode('', $fragments);
+        }
+
+        return implode('', $parts);
     }
 }

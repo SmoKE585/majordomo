@@ -292,6 +292,14 @@ body.md-admin-shell .md-ai-composer__actions {
     flex: 0 0 auto;
 }
 
+/* 2026-10-24 — активная запись заметна без опоры только на цвет кнопки. */
+body.md-admin-shell .md-ai-composer__voice.is-recording {
+    border-color: color-mix(in srgb, var(--md-ui-danger) 46%, var(--md-ui-border));
+    background: var(--md-ui-danger-soft);
+    color: var(--md-ui-danger);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-ui-danger) 14%, transparent);
+}
+
 body.md-admin-shell .md-ai-composer.is-busy .md-ai-composer__input {
     opacity: .72;
 }

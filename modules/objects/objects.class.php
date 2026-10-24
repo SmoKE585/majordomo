@@ -2,7 +2,8 @@
 /**
  * Objects
  *
- * Изменения: 2026-10-23 — ссылки журнала ведут к объекту фактически изменённого свойства.
+ * Изменения: 2026-10-24 — журнал изменений показывает причинную схему запуска поверх подробного списка шагов.
+ * 2026-10-23 — ссылки журнала ведут к объекту фактически изменённого свойства.
  * Objects
  *
  * @package MajorDoMo
@@ -664,6 +665,7 @@ class objects extends module
             }
             unset($event);
             $run['target_property_name'] = $object['TITLE'] . '.' . $property['TITLE'];
+            $run['flow_html'] = $this->buildTraceRunFlow($run);
         }
         unset($run);
 
@@ -707,6 +709,125 @@ class objects extends module
             'stop_time' => $stop_time,
             'start_time' => $stop_time - $definitions[$range]['seconds'],
         );
+    }
+
+    /**
+     * Собирает дерево фактически выполненных шагов для общего компонента схемы.
+     *
+     * Список журнала хранится в порядке записи, а parent_event_id связывает
+     * вложенные вызовы. Схема использует эту связь, не пытаясь угадать путь по
+     * названию метода или свойства.
+     */
+    function buildTraceRunFlow($run)
+    {
+        if (!class_exists('MDJUI', false) && defined('ROOT')) {
+            require_once ROOT . 'lib/ui/MDJUI.php';
+        }
+        if (!class_exists('MDJUI', false)) {
+            return '';
+        }
+
+        $events = isset($run['events']) && is_array($run['events']) ? $run['events'] : array();
+        if ($events === array()) {
+            return '';
+        }
+
+        $eventIds = array();
+        foreach ($events as $event) {
+            if (is_array($event) && !empty($event['id'])) {
+                $eventIds[(int)$event['id']] = true;
+            }
+        }
+
+        $children = array();
+        foreach ($events as $event) {
+            if (!is_array($event)) {
+                continue;
+            }
+            $parent = (int)($event['parent_event_id'] ?? 0);
+            if ($parent < 1 || empty($eventIds[$parent])) {
+                $parent = 0;
+            }
+            $children[$parent][] = $event;
+        }
+
+        $kindMap = array(
+            'trigger' => 'event', 'job' => 'timer', 'method' => 'method',
+            'script' => 'script', 'module' => 'module', 'property' => 'property',
+            'error' => 'error', 'warning' => 'note', 'chain' => 'action',
+        );
+        $statusMap = array('done' => 'ok', 'success' => 'ok', 'failed' => 'error');
+        $formatDuration = static function ($milliseconds) {
+            $milliseconds = max(0, (int)$milliseconds);
+            if ($milliseconds < 1) {
+                return '';
+            }
+            return $milliseconds < 1000 ? $milliseconds . ' мс' : number_format($milliseconds / 1000, 1, ',', '') . ' с';
+        };
+
+        $makeNodes = null;
+        $makeNodes = function ($parent) use (&$makeNodes, $children, $kindMap, $statusMap, $formatDuration) {
+            $nodes = array();
+            foreach ($children[$parent] ?? array() as $event) {
+                $type = strtolower((string)($event['type'] ?? 'note'));
+                $kind = $kindMap[$type] ?? 'note';
+                $status = strtolower((string)($event['status'] ?? ''));
+                $status = $statusMap[$status] ?? $status;
+                $title = trim((string)($event['title'] ?? ''));
+                $links = isset($event['links']) && is_array($event['links']) ? $event['links'] : array();
+                $href = isset($links[0]['url']) ? (string)$links[0]['url'] : '';
+                $entityType = in_array($type, array('method', 'script', 'module', 'property'), true) ? $type : '';
+                $node = array(
+                    'kind' => $kind,
+                    'title' => $title,
+                    'href' => $href,
+                    'time' => (string)($event['time_label'] ?? ''),
+                    'duration' => $formatDuration($event['duration_ms'] ?? 0),
+                    'status' => $status,
+                    'note' => trim(implode(' · ', array_filter(array(
+                        (string)($event['subtitle'] ?? ''), (string)($event['source'] ?? ''),
+                    )))),
+                    'detail' => (string)($event['error'] ?? ''),
+                    'detail_label' => 'Ошибка',
+                    'children' => $makeNodes((int)($event['id'] ?? 0)),
+                );
+                if ($entityType !== '' && $title !== '') {
+                    $node['entity'] = array('type' => $entityType, 'name' => $title, 'href' => $href);
+                    unset($node['title'], $node['href']);
+                }
+                $payload = array_filter(array(
+                    'Входные параметры' => $event['params'] ?? null,
+                    'Результат' => $event['result'] ?? null,
+                    'Параметры после выполнения' => $event['out_params'] ?? null,
+                ), static fn($value) => $value !== null && $value !== array());
+                if ($payload !== array()) {
+                    $node['payload'] = $payload;
+                    $node['payload_label'] = 'Данные шага';
+                }
+                $nodes[] = $node;
+            }
+            return $nodes;
+        };
+
+        $duration = max(0, (int)($run['duration_seconds'] ?? 0));
+        $durationLabel = $duration < 60 ? $duration . ' с' : floor($duration / 60) . ' мин ' . ($duration % 60) . ' с';
+        $targetChanges = count(array_filter($events, static fn($event) => !empty($event['is_target'])));
+        return MDJUI::callFlow(array(
+            'eyebrow' => 'Схема запуска',
+            'title' => (string)($run['trigger_title'] ?? 'Цепочка изменений'),
+            'subtitle' => (string)($run['trigger_label'] ?? ''),
+            'status' => $statusMap[strtolower((string)($run['status'] ?? ''))] ?? (string)($run['status'] ?? ''),
+            'status_label' => (string)($run['status_label'] ?? ''),
+            'started_at' => (string)($run['started_label'] ?? ''),
+            'duration' => $durationLabel,
+            'stats' => array(
+                array('label' => 'Шагов', 'value' => (string)count($events)),
+                array('label' => 'Изменений', 'value' => (string)$targetChanges),
+            ),
+            'nodes' => $makeNodes(0),
+            'compact' => true,
+            'legend' => true,
+        ));
     }
 
     function buildTraceEventLinks($event, $object, $property)

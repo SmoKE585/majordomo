@@ -9,29 +9,6 @@
             </a>
         </div>
 
-        [#if AI_ASSISTANT_LINK#]
-        <!-- ИИ-помощник: аккуратная карточка-кнопка в левом меню над категориями -->
-        <a class="md-admin-sidebar__ai [#if AI_ASSISTANT_SELECTED#]is-active[#endif#]"
-           href="[#AI_ASSISTANT_LINK#]"
-           [#if AI_ASSISTANT_READY#]data-ai-open aria-haspopup="dialog"[#endif#]
-           data-md-admin-sidebar-close
-           aria-label="ИИ-помощник">
-            <span class="md-admin-sidebar__ai-icon" aria-hidden="true">
-                <i class="ti ti-sparkles"></i>
-            </span>
-            <span class="md-admin-sidebar__ai-content">
-                <span class="md-admin-sidebar__ai-title">
-                    [#AI_ASSISTANT_TITLE#]
-                </span>
-                <span class="md-admin-sidebar__ai-meta">
-                    <span class="md-admin-sidebar__ai-dot [#if AI_ASSISTANT_READY#]is-ready[#endif#]" aria-hidden="true"></span>
-                    <span class="md-admin-sidebar__ai-status">[#if AI_ASSISTANT_READY#]Спросить о доме и коде[#else#]Настроить помощника[#endif#]</span>
-                </span>
-            </span>
-            <i class="ti ti-chevron-right md-admin-sidebar__ai-chevron" aria-hidden="true"></i>
-        </a>
-        [#endif#]
-
         <div class="md-admin-sidebar__scroll">
             <nav class="md-admin-sidebar__nav" aria-label="Admin modules">
                 [#begin SUB_MODULES#]
@@ -81,25 +58,45 @@
         </div>
 
         [#if AUTH_USERNAME!=""#]
-        <!-- Профиль закреплён внизу меню: сверху он отнимал место у поиска и действий. -->
+        <!-- Профиль закреплён внизу меню: меню открывается вверх и не обрезается. -->
         <div class="md-admin-sidebar__profile">
-            <a class="md-admin-sidebar__account"
-               href="[#AUTH_USER_PROFILE_URL#]"
-               data-md-admin-sidebar-close
-               title="[#AUTH_USERNAME|html#] — профиль">
-                <span class="md-admin-sidebar__avatar" aria-hidden="true">[#AUTH_USER_INITIALS|html#]</span>
-                <span class="md-admin-sidebar__account-text">
-                    <span class="md-admin-sidebar__account-name">[#AUTH_USER_NAME|html#]</span>
-                    [#if AUTH_USER_ROLE!=""#]<span class="md-admin-sidebar__account-role">[#AUTH_USER_ROLE#]</span>[#endif#]
-                </span>
-                <i class="ti ti-settings md-admin-sidebar__account-icon" aria-hidden="true"></i>
-            </a>
-            <form class="md-admin-sidebar__account-logout" method="post" action="<#ROOTHTML#>admin.php?auth=logout">
-                <input type="hidden" name="_md_csrf" value="[#AUTH_CSRF|html#]">
-                <button type="submit" class="md-admin-sidebar__logout" title="Выйти из системы" aria-label="Выйти из системы">
-                    <i class="ti ti-logout" aria-hidden="true"></i>
+            <div class="dropup md-admin-sidebar__profile-dropdown">
+                <button type="button" class="md-admin-sidebar__account" data-bs-toggle="dropdown" aria-expanded="false"
+                        aria-label="Профиль [#AUTH_USERNAME|html#]">
+                    <span class="md-admin-sidebar__avatar" aria-hidden="true">[#AUTH_USER_INITIALS|html#]</span>
+                    <span class="md-admin-sidebar__account-text">
+                        <span class="md-admin-sidebar__account-name">[#AUTH_USER_NAME|html#]</span>
+                        [#if AUTH_USER_ROLE!=""#]<span class="md-admin-sidebar__account-role">[#AUTH_USER_ROLE#]</span>[#endif#]
+                    </span>
+                    <i class="ti ti-chevron-up md-admin-sidebar__account-icon" aria-hidden="true"></i>
                 </button>
-            </form>
+                <ul class="dropdown-menu md-menu md-admin-sidebar__profile-menu">
+                    <li>
+                        <a class="dropdown-item" href="[#AUTH_USER_PROFILE_URL#]" data-md-admin-sidebar-close>
+                            <i class="ti ti-settings" aria-hidden="true"></i><span>Настройки профиля</span>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li class="md-admin-sidebar__profile-section">Тема оформления</li>
+                    <li>
+                        <div class="md-admin-sidebar__theme" role="group" aria-label="Тема оформления">
+                            <input class="btn-check" type="radio" name="sidebarTheme" id="sidebarThemeLight" value="light" data-md-theme-choice="light">
+                            <label for="sidebarThemeLight"><i class="ti ti-sun" aria-hidden="true"></i><span>Светлая</span></label>
+                            <input class="btn-check" type="radio" name="sidebarTheme" id="sidebarThemeDark" value="dark" data-md-theme-choice="dark">
+                            <label for="sidebarThemeDark"><i class="ti ti-moon-stars" aria-hidden="true"></i><span>Тёмная</span></label>
+                        </div>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="<#ROOTHTML#>admin.php?auth=logout">
+                            <input type="hidden" name="_md_csrf" value="[#AUTH_CSRF|html#]">
+                            <button type="submit" class="dropdown-item md-admin-sidebar__profile-logout">
+                                <i class="ti ti-logout" aria-hidden="true"></i><span>Выйти из системы</span>
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
         </div>
         [#endif#]
     </div>

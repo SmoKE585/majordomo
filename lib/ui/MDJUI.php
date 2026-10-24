@@ -16,6 +16,7 @@
  * local interactive state.
  *
  * Изменения:
+ * 2026-10-23 — добавлены компоненты ИИ-чата: бейджи сущностей и схема вызова.
  * 2026-10-22 — добавлен `logo()`: логотип с переключением по теме в одном месте.
  */
 
@@ -172,6 +173,28 @@ class MDJUI
     public static function e($value)
     {
         return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    /**
+     * Безопасная ссылка для данных, которые пришли из ответа ИИ.
+     *
+     * Разрешает только админские пути, query, якоря и http(s). Протокол-
+     * относительные (`//host`), `javascript:`, `data:` и управляющие символы
+     * отбрасываются: бейдж не должен становиться переходом на чужой сайт.
+     */
+    public static function safeHref($href)
+    {
+        $href = is_scalar($href) ? trim((string)$href) : '';
+        if ($href === '') {
+            return '';
+        }
+        if (strpos($href, '//') === 0 || strpos($href, '\\') !== false || preg_match('/[\x00-\x20]/', $href)) {
+            return '';
+        }
+        if (!preg_match('~^(?:https?://|/|\?|#)~i', $href)) {
+            return '';
+        }
+        return $href;
     }
 
     /**
@@ -461,6 +484,72 @@ class MDJUI
     public static function codeSample(array $props = array())
     {
         return self::render('code-sample', $props);
+    }
+
+    // ---------------------------------------------------------------------
+    // AI chat: entities and call flow
+    // ---------------------------------------------------------------------
+
+    /**
+     * Справочник сущностей для бейджей ИИ-чата.
+     *
+     * Тип задаёт подпись, иконку, тон и раздел админки по умолчанию. Точная
+     * ссылка (например, на карточку объекта из результата инструмента ИИ)
+     * передаётся в `href` и важнее раздела по умолчанию.
+     *
+     * @return array<string, array{label:string, icon:string, tone:string, href:string}>
+     */
+    public static function entityTypes()
+    {
+        $root = defined('ROOTHTML') ? (string)ROOTHTML : '/';
+
+        return array(
+            'object' => array('label' => 'Объект', 'icon' => 'box-seam', 'tone' => 'primary', 'href' => $root . 'panel/objects.html'),
+            'class' => array('label' => 'Класс', 'icon' => 'hierarchy', 'tone' => 'info', 'href' => $root . 'panel/classes.html'),
+            'property' => array('label' => 'Свойство', 'icon' => 'variable', 'tone' => 'success', 'href' => $root . 'panel/objects.html'),
+            'method' => array('label' => 'Метод', 'icon' => 'function', 'tone' => 'warning', 'href' => $root . 'panel/objects.html'),
+            'script' => array('label' => 'Сценарий', 'icon' => 'file-code', 'tone' => 'warning', 'href' => $root . 'panel/scripts.html'),
+            'module' => array('label' => 'Модуль', 'icon' => 'puzzle', 'tone' => 'neutral', 'href' => $root . 'panel/market.html'),
+            'room' => array('label' => 'Комната', 'icon' => 'map-pin', 'tone' => 'info', 'href' => $root . 'panel/locations.html'),
+            'topic' => array('label' => 'Топик', 'icon' => 'broadcast', 'tone' => 'neutral', 'href' => $root . 'panel/mqtt.html'),
+            'code' => array('label' => 'Код', 'icon' => 'code', 'tone' => 'neutral', 'href' => ''),
+            'reference' => array('label' => 'Ссылка', 'icon' => 'link', 'tone' => 'neutral', 'href' => ''),
+        );
+    }
+
+    /**
+     * Бейдж сущности: имя + тип + переход в админку.
+     *
+     * Один компонент на объект, класс, свойство, метод, сценарий, модуль,
+     * комнату и топик. В чате такой бейдж отделяет имя от обычного текста и
+     * подсказывает, что это за сущность.
+     */
+    public static function entity($name, $type = 'object', array $props = array())
+    {
+        return self::render('entity', array_merge($props, array('name' => $name, 'type' => $type)));
+    }
+
+    /**
+     * Текст с сущностями ИИ: `[[тип:имя|подпись|ссылка]]` превращается в бейджи.
+     *
+     * Разметка нужна, чтобы модель могла размечать имена прямо в ответе, а
+     * сервер — безопасно экранировать остальной текст. Неизвестный тип токена
+     * остаётся видимым текстом, чтобы ошибку разметки было легко заметить.
+     */
+    public static function entityText($text, array $props = array())
+    {
+        return self::render('entity-text', array_merge($props, array('text' => is_scalar($text) ? (string)$text : '')));
+    }
+
+    /**
+     * Схема вызова: что за чем вызвалось, какие были ветки и сколько заняло.
+     *
+     * Компонент строит дерево на `<ol>`/`<details>` без JS: узлы, ветки
+     * условий и таймеры остаются доступными с клавиатуры и на телефоне.
+     */
+    public static function callFlow(array $props = array())
+    {
+        return self::render('call-flow', $props);
     }
 
     // ---------------------------------------------------------------------
@@ -968,6 +1057,222 @@ class MDJUI
             ),
         );
 
+        // Демо-схема включения: показывает ветки условий и побочные вызовы
+        // свойства (обработчик, MQTT, интеграция), а не только линейный список.
+        $callFlowOn = array(
+            'eyebrow' => 'Схема вызова',
+            'title' => 'Свет в туалете по движению',
+            'subtitle' => 'MS_Toilet.data → Motion.data → Light_Toilet.status',
+            'icon' => 'route',
+            'status' => 'ok',
+            'status_label' => 'Выполнено',
+            'started_at' => '23:41:07.120',
+            'duration' => '64 мс',
+            'stats' => array(
+                array('label' => 'шагов', 'value' => '9'),
+                array('label' => 'ответвления', 'value' => '2'),
+                array('label' => 'действия', 'value' => '2'),
+            ),
+            'nodes' => array(
+                array(
+                    'kind' => 'event',
+                    'entity' => array('type' => 'method', 'name' => 'MS_Toilet.data'),
+                    'time' => '23:41:07.120',
+                    'duration' => '3 мс',
+                    'note' => 'Датчик движения · NEW_VALUE = 1',
+                    'detail' => 'Событие датчика движения. Значение NEW_VALUE = 1 запускает объектный метод MS_Toilet.data, который передаёт управление родительскому Motion.data.',
+                    'payload' => array('NEW_VALUE' => 1, 'OBJECT' => 'MS_Toilet', 'PROPERTY' => 'data'),
+                    'children' => array(
+                        array(
+                            'kind' => 'method',
+                            'entity' => array('type' => 'method', 'name' => 'Motion.data'),
+                            'time' => '23:41:07.123',
+                            'offset' => '+3 мс',
+                            'duration' => '2 мс',
+                            'note' => 'Объектный метод вызывает родительский обработчик',
+                            'children' => array(
+                                array(
+                                    'kind' => 'condition',
+                                    'title' => 'Можно включать свет',
+                                    'time' => '23:41:07.125',
+                                    'offset' => '+5 мс',
+                                    'expression' => 'Toilet.turnOnWhenMotion == 1 && Security.status == 0',
+                                    'note' => 'Все условия выполнены',
+                                    'branches' => array(
+                                        array(
+                                            'label' => 'да',
+                                            'taken' => true,
+                                            'note' => 'turnOnWhenMotion = 1 · Security.status = 0',
+                                            'nodes' => array(
+                                                array(
+                                                    'kind' => 'condition',
+                                                    'title' => 'Ночной режим',
+                                                    'time' => '23:41:07.127',
+                                                    'offset' => '+7 мс',
+                                                    'expression' => 'Toilet.nightMode_status == 1',
+                                                    'branches' => array(
+                                                        array(
+                                                            'label' => 'да',
+                                                            'taken' => false,
+                                                            'note' => 'nightMode_status = 0',
+                                                            'nodes' => array(
+                                                                array(
+                                                                    'kind' => 'property',
+                                                                    'entity' => array('type' => 'property', 'name' => 'Light_ToiletNochnik.status'),
+                                                                    'status' => 'skipped',
+                                                                    'note' => 'Ночник не включался',
+                                                                ),
+                                                            ),
+                                                        ),
+                                                        array(
+                                                            'label' => 'нет',
+                                                            'taken' => true,
+                                                            'nodes' => array(
+                                                                array(
+                                                                    'kind' => 'action',
+                                                                    'entity' => array('type' => 'code', 'name' => "sg('Light_Toilet.status', '1')"),
+                                                                    'time' => '23:41:07.131',
+                                                                    'offset' => '+11 мс',
+                                                                    'duration' => '2 мс',
+                                                                    'note' => 'Системная функция SetGlobal',
+                                                                    'children' => array(
+                                                                        array(
+                                                                            'kind' => 'property',
+                                                                            'entity' => array('type' => 'property', 'name' => 'Light_Toilet.status'),
+                                                                            'time' => '23:41:07.133',
+                                                                            'offset' => '+13 мс',
+                                                                            'duration' => '41 мс',
+                                                                            'status' => 'ok',
+                                                                            'note' => '0 → 1',
+                                                                            'children' => array(
+                                                                                array(
+                                                                                    'kind' => 'method',
+                                                                                    'entity' => array('type' => 'method', 'name' => 'Light_Toilet.statusChanges', 'label' => 'statusChanges'),
+                                                                                    'time' => '23:41:07.136',
+                                                                                    'offset' => '+16 мс',
+                                                                                    'duration' => '8 мс',
+                                                                                    'note' => 'Обработчик изменения свойства',
+                                                                                ),
+                                                                                array(
+                                                                                    'kind' => 'module',
+                                                                                    'entity' => array('type' => 'module', 'name' => 'mqtt'),
+                                                                                    'time' => '23:41:07.141',
+                                                                                    'offset' => '+21 мс',
+                                                                                    'duration' => '12 мс',
+                                                                                    'note' => 'Публикация Light/TualetON/STATE → ON',
+                                                                                ),
+                                                                                array(
+                                                                                    'kind' => 'module',
+                                                                                    'entity' => array('type' => 'module', 'name' => 'yandexhome'),
+                                                                                    'time' => '23:41:07.153',
+                                                                                    'offset' => '+33 мс',
+                                                                                    'duration' => '31 мс',
+                                                                                    'note' => 'Уведомление Yandex Home',
+                                                                                ),
+                                                                            ),
+                                                                        ),
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        ),
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                        array(
+                                            'label' => 'нет',
+                                            'taken' => false,
+                                            'note' => 'turnOnWhenMotion = 0',
+                                            'empty_text' => 'Свет остаётся выключенным, действие не запускается',
+                                        ),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        );
+
+        // Демо-схема выключения: таймер — это пауза между вызовами, поэтому
+        // рядом с узлом важно видеть и задержку, и отмену по движению.
+        $callFlowOff = array(
+            'eyebrow' => 'Схема вызова',
+            'title' => 'Выключение по отсутствию движения',
+            'subtitle' => 'Toilet.someBodyHere → таймер someBodyToilet → Toilet.onIdle',
+            'icon' => 'route',
+            'status' => 'ok',
+            'status_label' => 'Выполнено',
+            'started_at' => '23:45:02.310',
+            'duration' => '60,05 с',
+            'stats' => array(
+                array('label' => 'шагов', 'value' => '5'),
+                array('label' => 'ожидание', 'value' => '60 с'),
+            ),
+            'nodes' => array(
+                array(
+                    'kind' => 'method',
+                    'entity' => array('type' => 'method', 'name' => 'Toilet.someBodyHere'),
+                    'time' => '23:45:02.310',
+                    'duration' => '1 мс',
+                    'note' => 'Движение в туалете прекратилось',
+                    'children' => array(
+                        array(
+                            'kind' => 'timer',
+                            'entity' => array('type' => 'code', 'name' => 'someBodyToilet', 'label' => 'someBodyToilet'),
+                            'time' => '23:45:02.315',
+                            'offset' => '+5 мс',
+                            'duration' => '60 с',
+                            'note' => 'Таймер на Toilet.idle_delay',
+                            'branches' => array(
+                                array(
+                                    'label' => 'истёк',
+                                    'taken' => true,
+                                    'note' => '60 секунд без движения',
+                                    'nodes' => array(
+                                        array(
+                                            'kind' => 'method',
+                                            'entity' => array('type' => 'method', 'name' => 'Toilet.onIdle'),
+                                            'time' => '23:46:02.320',
+                                            'offset' => '+60,005 с',
+                                            'duration' => '2 мс',
+                                            'note' => 'Таймер сработал',
+                                            'children' => array(
+                                                array(
+                                                    'kind' => 'action',
+                                                    'entity' => array('type' => 'code', 'name' => "sg('Light_Toilet.status', '0')"),
+                                                    'time' => '23:46:02.323',
+                                                    'offset' => '+60,008 с',
+                                                    'duration' => '1 мс',
+                                                    'children' => array(
+                                                        array(
+                                                            'kind' => 'property',
+                                                            'entity' => array('type' => 'property', 'name' => 'Light_Toilet.status'),
+                                                            'time' => '23:46:02.325',
+                                                            'offset' => '+60,010 с',
+                                                            'duration' => '3 мс',
+                                                            'status' => 'ok',
+                                                            'note' => '1 → 0',
+                                                        ),
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                                array(
+                                    'label' => 'движение вернулось',
+                                    'taken' => false,
+                                    'note' => 'someBodyHere перезапускает таймер',
+                                    'empty_text' => 'Таймер отменяется, свет остаётся включённым',
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        );
+
         self::$demoData = array(
             'devices' => $devices,
             'scenes' => $scenes,
@@ -976,6 +1281,8 @@ class MDJUI
             'palette_items' => $paletteItems,
             'automations' => $automations,
             'activity' => $activity,
+            'call_flow_on' => $callFlowOn,
+            'call_flow_off' => $callFlowOff,
             'energy' => array(
                 'today' => '8,4 кВт·ч',
                 'yesterday' => '9,1 кВт·ч',

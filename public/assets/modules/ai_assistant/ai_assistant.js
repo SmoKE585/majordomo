@@ -1,5 +1,5 @@
 /*
- * 2026-10-23 — ИИ-помощник: чат с SSE, диагностика, сборка индекса.
+ * 2026-10-24 — ИИ-помощник: чат с SSE, диагностика, сборка индекса и голосовой ввод.
  * Без jQuery; повторная инициализация после partLoad.
  */
 (function (window, document) {
@@ -44,10 +44,13 @@
         var prompt = chat.querySelector('[data-ai-prompt]');
         var send = chat.querySelector('[data-ai-send]');
         var stop = chat.querySelector('[data-ai-stop]');
+        var voiceButton = chat.querySelector('[data-ai-voice]');
         var status = chat.querySelector('[data-ai-status]');
         var select = chat.querySelector('[data-ai-agent]');
         var dialogId = Number(chat.dataset.dialogId || 0);
         var runId = '', controller = null, busy = false, closed = false;
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var voiceSession = null;
         var actions = chat.querySelector('[data-ai-actions]');
         var recovered = chat.querySelector('[data-ai-recovery]');
         var initialActions = JSON.parse(chat.dataset.actions || '[]');
@@ -58,12 +61,87 @@
             busy = value;
             prompt.disabled = value || !select.value;
             send.disabled = value || !select.value;
+            if (voiceButton) voiceButton.disabled = value || !select.value;
             select.disabled = value;
             stop.hidden = !value;
             stop.classList.toggle('is-hidden', !value);
             if (text) status.textContent = text;
             messages.setAttribute('aria-busy', value ? 'true' : 'false');
             page.querySelectorAll('[data-ai-new-dialog]').forEach(function (button) { button.disabled = value; });
+        }
+        function appendVoiceText(base, text) {
+            if (!text) return base;
+            return base !== '' && !/\s$/.test(base) ? base + ' ' + text : base + text;
+        }
+        function setVoiceState(active) {
+            if (!voiceButton) return;
+            var label = active ? 'Остановить голосовой ввод' : 'Начать голосовой ввод';
+            voiceButton.classList.toggle('is-recording', active);
+            voiceButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+            voiceButton.setAttribute('aria-label', label);
+            voiceButton.setAttribute('data-bs-title', label);
+        }
+        function finishVoice(session, message) {
+            if (!session || voiceSession !== session) return;
+            if (prompt.value === session.rendered) {
+                var completed = appendVoiceText(session.base, session.finalText);
+                if (prompt.value !== completed) {
+                    prompt.value = completed;
+                    prompt.dispatchEvent(new window.Event('input', {bubbles: true}));
+                }
+            }
+            voiceSession = null;
+            setVoiceState(false);
+            if (!busy && select.value) status.textContent = message || 'Голосовой ввод завершён. Проверьте текст и отправьте.';
+        }
+        function stopVoice(abort) {
+            var session = voiceSession;
+            if (!session) return;
+            try {
+                if (abort) session.recognition.abort();
+                else session.recognition.stop();
+            } catch (error) {
+                finishVoice(session);
+            }
+        }
+        function startVoice() {
+            if (!SpeechRecognition || busy || !select.value || voiceSession) return;
+            var recognition = new SpeechRecognition();
+            var session = {recognition: recognition, base: prompt.value, finalText: '', rendered: prompt.value};
+            voiceSession = session;
+            recognition.lang = document.documentElement.lang || 'ru-RU';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            recognition.onresult = function (event) {
+                var finalText = '', interimText = '';
+                if (prompt.value !== session.rendered) {
+                    session.base = prompt.value;
+                    session.finalText = '';
+                }
+                for (var index = event.resultIndex; index < event.results.length; index++) {
+                    var transcript = event.results[index][0].transcript;
+                    if (event.results[index].isFinal) finalText += transcript;
+                    else interimText += transcript;
+                }
+                session.finalText += finalText;
+                session.rendered = appendVoiceText(session.base, session.finalText + interimText);
+                prompt.value = session.rendered;
+                prompt.dispatchEvent(new window.Event('input', {bubbles: true}));
+            };
+            recognition.onerror = function (event) {
+                var messages = {
+                    'not-allowed': 'Браузер не дал доступ к микрофону.',
+                    'service-not-allowed': 'Браузер не дал доступ к микрофону.',
+                    'no-speech': 'Речь не распознана. Попробуйте ещё раз.'
+                };
+                session.errorMessage = messages[event.error] || 'Не удалось распознать речь. Попробуйте ещё раз.';
+            };
+            recognition.onend = function () { finishVoice(session, session.errorMessage); };
+            setVoiceState(true);
+            status.textContent = 'Слушаю… Говорите, затем нажмите кнопку микрофона для остановки.';
+            try { recognition.start(); }
+            catch (error) { finishVoice(session, 'Не удалось начать голосовой ввод. Попробуйте ещё раз.'); }
         }
         function failure(text) {
             recovered.hidden = false;
@@ -219,6 +297,13 @@
         });
         select.addEventListener('change', function () { setBusy(busy); });
         stop.addEventListener('click', stopGeneration);
+        if (voiceButton) {
+            voiceButton.hidden = typeof SpeechRecognition !== 'function';
+            voiceButton.addEventListener('click', function () {
+                if (voiceSession) stopVoice(false);
+                else startVoice();
+            });
+        }
         page.addEventListener('click', async function (event) {
             var link = event.target.closest('[data-dialog-id]');
             if (link && link !== chat) {
@@ -242,6 +327,7 @@
         var drawer = page.closest('.md-ai-drawer');
         if (drawer) drawer.addEventListener('ai:close', function () {
             closed = true;
+            stopVoice(true);
             if (controller) { controller.abort(); ai.request('cancel', {run_id: runId, dialog_id: dialogId}).catch(function () {}); }
         }, {once: true});
         if (dialogId) {

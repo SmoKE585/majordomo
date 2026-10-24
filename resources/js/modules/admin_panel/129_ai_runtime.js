@@ -1,4 +1,4 @@
-/* 2026-10-23 — восстановление результата оборванного SSE без повторного запуска. */
+/* 2026-10-24 — восстановление результата оборванного SSE и подключение чата с голосовым вводом. */
 (function (window, document) {
     'use strict';
     var labels = {
@@ -269,9 +269,9 @@
     function loadPage() {
         if (window.MDAIPage) return Promise.resolve();
         if (!pageScript) pageScript = new Promise(function (resolve, reject) {
-            var link = el('link'); link.rel = 'stylesheet'; link.href = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.css?v=20261023-11';
+            var link = el('link'); link.rel = 'stylesheet'; link.href = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.css?v=20261024-12';
             document.head.appendChild(link);
-            var script = el('script'); script.src = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.js?v=20261023-11';
+            var script = el('script'); script.src = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.js?v=20261024-12';
             script.onload = resolve;
             script.onerror = function () { pageScript = null; script.remove(); reject(new Error('Не удалось загрузить чат. Повторите открытие.')); };
             document.head.appendChild(script);

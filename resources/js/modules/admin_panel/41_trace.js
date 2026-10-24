@@ -441,6 +441,13 @@
         var result = renderDetails('Результат запуска', run.result);
         var error = run.error ? '<div class="md-trace__error">' + escapeHtml(run.error) + '</div>' : '';
         var events = (run.events || []).map(renderEvent).join('');
+        // Схему сервер собирает тем же MDJUI::callFlow, что и в UI Kit. HTML
+        // содержит только экранированные записи аудита, поэтому его можно
+        // вставить до подробного списка без повторного построения дерева в JS.
+        var flow = run.flow_html ? '<div class="md-trace__flow">' + run.flow_html + '</div>' : '';
+        var details = events
+            ? '<details class="md-trace__details"><summary>Подробный журнал шагов</summary><ol class="md-trace__chain">' + events + '</ol></details>'
+            : '';
         return '<details class="md-trace__run"' + (index === 0 ? ' open' : '') + ' data-md-trace-run="' + escapeHtml(run.id) + '">'
             + '<summary class="md-trace__run-head">'
             + '<span class="md-trace__run-id">#' + escapeHtml(run.id) + '</span>'
@@ -461,8 +468,7 @@
             + renderFact('Кто', actor)
             + renderFact('Запрос', run.request_uri ? escapeHtml(run.request_uri) : '')
             + '</div>'
-            + params + result + error
-            + '<ol class="md-trace__chain">' + events + '</ol>'
+            + params + result + error + flow + details
             + '</div></details>';
     }
 

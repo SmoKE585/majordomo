@@ -19,7 +19,7 @@ require_once __DIR__ . '/fixtures/ai_assistant_database.php';
 
 use MajorDoMo\Core\Config;
 use MajorDoMo\Core\Database;
-use MajorDoMo\Modules\AiAssistant\{AgentCatalog, ChatStore, Dashboard, ModelCatalog, ModuleState, PanelController, Schema, SecretVault};
+use MajorDoMo\Modules\AiAssistant\{AgentCatalog, AgentRunner, ChatStore, Dashboard, ModelCatalog, ModuleState, PanelController, Schema, SecretVault};
 
 $checks = 0;
 function check(bool $condition, string $message): void
@@ -158,6 +158,9 @@ try {
     $_POST = array('dialog_id' => $recoveryDialog, 'run_id' => $recoveryRun);
     $recoveredRun = $statusEndpoint->invoke($recoveryController);
     check($recoveredRun['run']['STATUS'] === 'done' && str_contains($recoveredRun['result']['html'], 'data-md-code-sample'), 'Потерянный SSE восстанавливает готовый код в общем компоненте.');
+    $entityHtml = AgentRunner::render("Свойство [[property:Light.status|status]].\n\n```php\n[[property:Light.status]]\n```");
+    check(str_contains($entityHtml, 'data-md-entity="property"') && str_contains($entityHtml, 'data-md-code-sample')
+        && str_contains($entityHtml, '[[property:Light.status]]'), 'Сущность становится бейджем только в тексте, а пример кода остаётся исходным.');
     $_POST['dialog_id'] = $longDialog;
     rejects(fn() => $statusEndpoint->invoke($recoveryController), 'не принадлежит');
     $_POST['dialog_id'] = $recoveryDialog;

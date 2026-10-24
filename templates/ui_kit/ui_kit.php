@@ -115,6 +115,7 @@ function md_ui_label($text)
             <a class="md-ui-docs__nav-link" href="#blocks" data-md-doc-link><?= MDJUI::icon('code') ?>Лента и код</a>
             <a class="md-ui-docs__nav-link" href="#smarthome" data-md-doc-link><?= MDJUI::icon('house-gear') ?>Умный дом</a>
             <a class="md-ui-docs__nav-link" href="#patterns" data-md-doc-link><?= MDJUI::icon('rulers') ?>Паттерны</a>
+            <a class="md-ui-docs__nav-link" href="#ai_chat" data-md-doc-link><?= MDJUI::icon('robot') ?>ИИ-чат</a>
         </nav>
 
         <main class="md-ui-docs__main">
@@ -129,6 +130,7 @@ function md_ui_label($text)
             <?php include __DIR__ . '/sections/blocks.php'; ?>
             <?php include __DIR__ . '/sections/smarthome.php'; ?>
             <?php include __DIR__ . '/sections/patterns.php'; ?>
+            <?php include __DIR__ . '/sections/ai_chat.php'; ?>
         </main>
     </div>
 

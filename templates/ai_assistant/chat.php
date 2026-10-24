@@ -118,12 +118,15 @@ $agentJson = array_map(static fn(array $agent): array => array(
                           placeholder="Спросите о доме или коде…" data-ai-prompt
                           <?= $readyAgents === array() ? 'disabled' : '' ?>></textarea>
                 <div class="md-ai-composer__bar">
-                    <div class="md-ai-composer__status" data-ai-status>
+                    <div class="md-ai-composer__status" data-ai-status role="status">
                         <?= $readyAgents !== array()
                             ? 'Enter — отправить, Shift+Enter — новая строка'
                             : 'Сначала назначьте модель включённому агенту' ?>
                     </div>
                     <div class="md-ai-composer__actions">
+                        <?= MDJUI::iconButton('microphone', array('label' => 'Начать голосовой ввод', 'variant' => 'ghost', 'size' => 'sm',
+                            'class' => 'md-ai-composer__voice',
+                            'attrs' => array('data-ai-voice' => '', 'aria-pressed' => 'false', 'hidden' => true))) ?>
                         <?= MDJUI::button('Остановить', array('type' => 'button', 'variant' => 'secondary',
                             'icon' => 'player-stop', 'size' => 'sm', 'class' => 'is-hidden',
                             'attrs' => array('data-ai-stop' => '', 'hidden' => true))) ?>

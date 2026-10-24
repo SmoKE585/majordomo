@@ -1,4 +1,4 @@
-// 2026-10-23 — свёрнутые этапы, прокрутка потока и единый фон кода в обеих темах.
+// 2026-10-24 — голосовой ввод, свёрнутые этапы, прокрутка потока и единый фон кода в обеих темах.
 import assert from 'node:assert/strict';
 import {execFileSync, spawn} from 'node:child_process';
 import {createServer} from 'node:http';
@@ -68,7 +68,7 @@ const server = createServer(async (req, res) => {
             const host = (await readFile(path.join(root, 'templates/panel.html'), 'utf8')).match(/<aside class="md-admin-drawer md-drawer"[\s\S]*?<\/aside>/)[0];
             const scripts = ['20_drawer', '123_code_sample', '129_ai_runtime', '130_ai_editor'].map(name => `<script src="/resources/js/modules/admin_panel/${name}.js"></script>`).join('');
             res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
-            return res.end(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="md-csrf-token" content="fixture"><link rel="stylesheet" href="/assets/admin/admin.css"></head><body class="md-admin-shell"><div class="md-admin-drawer-backdrop" hidden></div>${host}<main style="padding:16px"><a href="/panel/ai_assistant.html" data-ai-open>Спросить помощника</a>${fixture.page}</main><script>window.ROOTHTML='/';window.MDJAdminPanel={addBootTask(n,fn){window.drawerInit=fn}};window.MDJAdminUI={registerModuleUI(n,ui){ui.init(document)},openDrawer(o){return window.MDJAdminDrawerHost.open(o)},closeDrawer(){return window.MDJAdminDrawerHost.close()}};</script>${scripts}<script>window.drawerInit(document);</script></body></html>`);
+            return res.end(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="md-csrf-token" content="fixture"><link rel="stylesheet" href="/assets/admin/admin.css"></head><body class="md-admin-shell"><div class="md-admin-drawer-backdrop" hidden></div>${host}<main style="padding:16px"><a href="/panel/ai_assistant.html" data-ai-open>Спросить помощника</a>${fixture.page}</main><script>class SpeechRecognitionFixture { constructor() { window.lastSpeechRecognition=this; } start() {} stop() { this.onend(); } abort() { this.onend(); } emit(text, isFinal) { this.onresult({resultIndex: 0, results: [{0: {transcript: text}, isFinal: isFinal}]}); } } window.SpeechRecognition=SpeechRecognitionFixture;window.webkitSpeechRecognition=SpeechRecognitionFixture;window.ROOTHTML='/';window.MDJAdminPanel={addBootTask(n,fn){window.drawerInit=fn}};window.MDJAdminUI={registerModuleUI(n,ui){ui.init(document)},openDrawer(o){return window.MDJAdminDrawerHost.open(o)},closeDrawer(){return window.MDJAdminDrawerHost.close()}};</script>${scripts}<script>window.drawerInit(document);</script></body></html>`);
         }
         const relative = decodeURIComponent(url.pathname).replace(/^\//, '');
         const base = relative.startsWith('assets/') ? path.join(root, 'public') : root;
@@ -118,6 +118,14 @@ try {
     await call('Page.navigate', {url: address});
     await waitFor('window.MDAIPage && document.querySelector("[data-ai-send]") && !document.querySelector("[data-ai-send]").disabled');
     assert.ok(await evaluate('document.querySelector("[data-md-code-sample]") !== null'));
+    assert.equal(await evaluate('document.querySelector("[data-ai-voice]").hidden'), false, 'Голосовой ввод доступен в поддерживаемом браузере.');
+    assert.equal(await evaluate('typeof window.webkitSpeechRecognition'), 'function');
+    assert.equal(await evaluate('document.querySelector("[data-ai-voice]").disabled'), false);
+    await evaluate('document.querySelector("[data-ai-prompt]").value="сохрани ";document.querySelector("[data-ai-voice]").click()');
+    assert.equal(await evaluate('document.querySelector("[data-ai-voice]").getAttribute("aria-pressed")'), 'true');
+    await evaluate('window.lastSpeechRecognition.emit("включи свет", true);window.lastSpeechRecognition.stop()');
+    await waitFor('document.querySelector("[data-ai-voice]").getAttribute("aria-pressed") === "false"');
+    assert.equal(await evaluate('document.querySelector("[data-ai-prompt]").value'), 'сохрани включи свет');
     await evaluate('document.querySelector("[data-ai-action] .md-btn--primary").click()');
     await waitFor('document.querySelector(".md-ai-action__status").textContent.includes("Создано")');
     assert.equal(decisionCount, 1);
