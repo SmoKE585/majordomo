@@ -104,7 +104,12 @@ final class ProcessRunner
                 $this->closeProcess($slot, true);
                 return array('success' => false, 'error' => 'Worker execution timeout');
             }
-            usleep(10000);
+            // Linux будит родителя при появлении результата, без задержки опроса.
+            $read = array_values(array_filter(array($slot['pipes'][1], $slot['pipes'][2]), static fn($pipe) => !feof($pipe)));
+            if ($read) {
+                $write = $except = null;
+                stream_select($read, $write, $except, 0, (int)max(1, min(100000, ($deadline - microtime(true)) * 1000000)));
+            } else usleep(1000);
         } while (true);
         $this->readOutput($slot);
         $this->closeProcess($slot);

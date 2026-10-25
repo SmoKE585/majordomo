@@ -250,7 +250,23 @@ for _,id in ipairs(redis.call('ZRANGEBYSCORE',KEYS[2],'-inf',now,'LIMIT',0,limit
 end
 local result = {}
 local scanLimit = mode == 'name' and math.max(20,limit * 10) or limit
-for _,id in ipairs(redis.call('ZRANGEBYSCORE',KEYS[1],'-inf',now,'LIMIT',0,scanLimit)) do
+local candidates = redis.call('ZRANGEBYSCORE',KEYS[1],'-inf',now,'LIMIT',0,scanLimit)
+if mode == 'global' then
+    candidates = {}
+    while true do
+        local head = redis.call('ZRANGE',KEYS[8],0,0)[1]
+        if not head then break end
+        local previous = redis.call('HGET',KEYS[3],head)
+        local old = previous and cjson.decode(previous) or nil
+        if old and tonumber(old.EXPIRES or 0) > now then
+            local score = redis.call('ZSCORE',KEYS[1],head)
+            if score and tonumber(score) <= now then candidates = {head} end
+            break
+        end
+        forget(head,old)
+    end
+end
+for _,id in ipairs(candidates) do
     local raw = redis.call('HGET',KEYS[3],id)
     if raw then
         local data = cjson.decode(raw)

@@ -35,8 +35,18 @@ namespace {
     if (getenv('APP_ENV') !== 'testing' || $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') throw new RuntimeException('Isolation failed');
     $pdo->exec('PRAGMA foreign_keys=ON');
     $adapter = new class($pdo) {
+        public int $ddl = 0;
         public function __construct(public PDO $pdo) {}
         public function Select($sql) {
+            if ($sql === 'SHOW INDEX FROM zigbee_bindings') {
+                $rows = array();
+                foreach ($this->pdo->query('PRAGMA index_list(zigbee_bindings)') as $index) {
+                    foreach ($this->pdo->query("PRAGMA index_info('" . $index['name'] . "')") as $column) {
+                        $rows[] = array('Key_name' => $index['name'], 'Seq_in_index' => $column['seqno'] + 1, 'Column_name' => $column['name']);
+                    }
+                }
+                return $rows;
+            }
             if ($sql === 'SHOW COLUMNS FROM zigbee_devices') return array_map(static fn($row) => array('Field' => $row['name'], 'Default' => trim((string)$row['dflt_value'], "'")), $this->pdo->query('PRAGMA table_info(zigbee_devices)')->fetchAll(PDO::FETCH_ASSOC));
             return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
         }
@@ -48,6 +58,10 @@ namespace {
         public function DbSafe1($value) { return str_replace("'", "''", (string)$value); }
         public function DbSafe($value) { return str_replace(array('%', '_'), array('\\%', '\\_'), (string)$value); }
         public function Exec($sql, $ignore = false) {
+            if (preg_match('/^(CREATE|ALTER|DROP) /', $sql)) $this->ddl++;
+            if ($sql === 'ALTER TABLE zigbee_bindings ADD INDEX idx_zigbee_binding_target (LINKED_OBJECT,LINKED_PROPERTY,ENABLED,WRITE_ENABLED)') {
+                $sql = 'CREATE INDEX idx_zigbee_binding_target ON zigbee_bindings (LINKED_OBJECT,LINKED_PROPERTY,ENABLED,WRITE_ENABLED)';
+            }
             if (str_starts_with($sql, 'CREATE TABLE IF NOT EXISTS zigbee_health_')) return true; // created with SQLite schema below
             $this->pdo->exec($sql === 'START TRANSACTION' ? 'BEGIN' : $sql); return true;
         }
@@ -375,5 +389,15 @@ namespace {
     $route = mdj_admin_pretty_url('/admin.php?action=zigbee&md=zigbee&view_mode=monitoring&device_id=' . $sensorId);
     check(str_contains((string)$route, '/panel/zigbee/monitoring.html') && str_contains((string)$route, 'device_id=' . $sensorId), 'Monitoring route preserves device scope');
 
+    $plan = $pdo->query("EXPLAIN QUERY PLAN SELECT * FROM zigbee_bindings WHERE ENABLED=1 AND WRITE_ENABLED=1 AND LINKED_OBJECT='Lamp' AND LINKED_PROPERTY='status'")->fetchAll(PDO::FETCH_ASSOC);
+    check(str_contains(json_encode($plan), 'idx_zigbee_binding_target'), 'Исходящая команда использует индекс привязки');
+    $before = $adapter->ddl;
+    (new zigbee())->propertySetHandle('MissingFixtureObject', 'status', 1);
+    (new zigbee())->propertySetHandle('MissingFixtureObject', 'status', 1);
+    check($adapter->ddl === $before, 'Повторные обработчики не выполняют DDL');
+    $pdo->exec('DROP INDEX idx_zigbee_binding_target');
+    Schema::upgrade(Core::database());
+    Schema::upgrade(Core::database());
+    check((int)$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_zigbee_binding_target'")->fetchColumn() === 1, 'Обновление старой схемы идемпотентно создаёт индекс');
     echo 'Zigbee smoke tests passed: ' . $checks . " checks; SQLite :memory:, no external connections.\n";
 }

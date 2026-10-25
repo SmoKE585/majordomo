@@ -40,6 +40,7 @@ foreach (array('USE_REDIS', 'REDIS_PORT', 'REDIS_DB', 'REDIS_PREFIX', 'MQTT_ASYN
 (new ReflectionProperty(Config::class, 'present'))->setValue(null, $present);
 
 $pdo = new PDO('sqlite::memory:', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+$pdo->sqliteCreateFunction('IF', static fn($condition, $yes, $no) => $condition ? $yes : $no);
 $pdo->exec('CREATE TABLE mqtt (ID INTEGER PRIMARY KEY AUTOINCREMENT, PATH TEXT, TITLE TEXT DEFAULT "", VALUE TEXT DEFAULT "", UPDATED TEXT,
     PATH_WRITE TEXT DEFAULT "", LINKED_OBJECT TEXT DEFAULT "", LINKED_PROPERTY TEXT DEFAULT "", LINKED_METHOD TEXT DEFAULT "",
     LOGGING INTEGER DEFAULT 0, ONLY_NEW_VALUE INTEGER DEFAULT 0, REPLACE_LIST TEXT DEFAULT "", READONLY INTEGER DEFAULT 0,
@@ -168,6 +169,7 @@ foreach (array(false, 0) as $rejected) {
 }
 $pdo->exec("INSERT INTO mqtt(PATH,LINKED_OBJECT,LINKED_METHOD,ONLY_NEW_VALUE) VALUES ('audit/method','Button','press',1)");
 MqttRuntime::invalidate();
+$native->getRuntimeIndex()->load();
 $methodOutcome = false;
 $caught = false;
 try { $native->processRuntimeMessage('audit/method', 'press'); } catch (RuntimeException $error) { $caught = true; }

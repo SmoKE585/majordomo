@@ -268,4 +268,17 @@ check(count($logs) === $beforeLogs + 1 && str_contains($logs[$beforeLogs]['messa
     && $logs[$beforeLogs]['source'] === 'mqtt' && $logs[$beforeLogs]['severity'] === 'warning',
     'Redis fallback must be reported once through the unified warning channel');
 
+$values['USE_REDIS'] = false;
+$configValues->setValue(null, $values);
+$pdo->exec("INSERT INTO mqtt(PATH,VALUE,LINKED_OBJECT,LINKED_PROPERTY,ONLY_NEW_VALUE) VALUES ('legacy/reject','0','Lamp','status',1)");
+$mqtt->expireLookup();
+$bindingFailure = true;
+for ($i = 0; $i < 2; $i++) {
+    $caught = false;
+    try { $mqtt->processMessage('legacy/reject', '1', false, array()); } catch (RuntimeException $error) { $caught = true; }
+    check($caught && $pdo->query("SELECT VALUE FROM mqtt WHERE PATH='legacy/reject'")->fetchColumn() === '0', 'Синхронный MQTT не подтверждает отклонённую привязку');
+}
+$bindingFailure = false;
+$mqtt->processMessage('legacy/reject', '1', false, array());
+check($pdo->query("SELECT VALUE FROM mqtt WHERE PATH='legacy/reject'")->fetchColumn() === '1', 'Повтор синхронного MQTT применяется после устранения ошибки');
 echo 'MQTT smoke tests passed: ' . $checks . ' checks; 30,000 repeated topics: 0 SQL queries.' . PHP_EOL;
