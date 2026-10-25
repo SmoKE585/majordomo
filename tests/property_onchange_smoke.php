@@ -3,6 +3,7 @@
 /**
  * Запись свойств на SQLite :memory: с подменой внешних операций, без загрузки приложения.
  * 2026-10-23 — проверка отсутствия повторов WebSocket при сохранении обработчиков.
+ * 2026-10-25 — входящие события и NO_LINKED разных модулей не блокируют следующую привязку.
  */
 namespace MajorDoMo\Core {
     class Config { public static function bool($key) { return false; } }
@@ -99,13 +100,21 @@ namespace {
     $pdo->exec("INSERT INTO pvalues VALUES (2,2,1,'0','','','Sensor.cmd','zigbee,yandexhome')");
     MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.motion'), 'zigbee', 'property:Sensor.motion');
     $queued = array(); $before = count($object->calls);
-    try { $properties->set($object, 'cmd', 1, array('zigbee' => 0), 'zigbee'); } finally { MajorDoMo\Core\PropertyChain::leave(); }
+    $inherited = MajorDoMo\Core\PropertyChain::scopedExclusions(array('zigbee' => 0), array('zigbee' => 'property:Sensor.motion'));
+    try { $properties->set($object, 'cmd', 1, $inherited, 'zigbee'); } finally { MajorDoMo\Core\PropertyChain::leave(); }
     check($queued === array(array('modulepropertyset', 'zigbee'), array('modulepropertyset', 'yandexhome')),
         'Source module stays subscribed to another property in the same chain');
     check(count($object->calls) === $before + 1 && !isset(end($object->calls)[1]['NO_LINKED']['zigbee']),
         'Nested ONCHANGE does not inherit the source module exclusion');
     check((end($object->calls)[1]['_delivery'] ?? null) === array('module' => 'zigbee', 'point' => 'property:Sensor.motion'),
         'ONCHANGE receives the delivery point needed for cross-process echo scoping');
+
+    foreach (array('', 'zigbee') as $sourceModule) {
+        MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.motion'), $sourceModule, 'property:Sensor.motion', array('zigbee' => 'property:Sensor.motion'));
+        $queued = array();
+        try { $properties->set($object, 'cmd', 1, array('zigbee' => 0)); } finally { MajorDoMo\Core\PropertyChain::leave(); }
+        check($queued === array(array('modulepropertyset', 'yandexhome')), 'Новое явное исключение не снимается контекстом предыдущего свойства');
+    }
 
     // Собственное эхо по тому же свойству по-прежнему гасится.
     MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.other'), 'zigbee', 'property:Sensor.cmd');
@@ -123,6 +132,54 @@ namespace {
     $properties->set($object, 'cmd', true);
     check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=2')->fetchColumn() === '1',
         'Boolean true is stored as 1');
+
+    // Правило одинаково для любого модуля, включая прямую запись MQTT вне воркера.
+    foreach (array('zigbee', 'mqtt', 'fixturemodule') as $module) {
+        $pdo->exec("UPDATE pvalues SET LINKED_MODULES='" . $module . ",yandexhome'");
+        MajorDoMo\Core\PropertyChain::enter(array(), $module);
+        $queued = array();
+        $properties->set($object, 'cmd', 1);
+        check($queued === array(array('modulepropertyset', $module), array('modulepropertyset', 'yandexhome')),
+            'Входящее событие не исключает свой модуль: ' . $module);
+        MajorDoMo\Core\PropertyChain::leave();
+
+        foreach (array('', $module) as $sourceModule) {
+            MajorDoMo\Core\PropertyChain::enter(array(), $sourceModule);
+            $queued = array();
+            $properties->set($object, 'motion', 0, array($module => 0));
+            $onchange = end($object->calls)[1];
+            check($queued === array(array('modulepropertyset', 'yandexhome')) && $onchange['NEW_VALUE'] === '0',
+                'Входящий ноль не отражается источнику, но доставляется другим подписчикам');
+            check($onchange['_delivery']['exclusions'] === array($module => 'property:Sensor.motion'),
+                'NO_LINKED получает область исходного свойства');
+            MajorDoMo\Core\PropertyChain::leave();
+
+            $delivery = $onchange['_delivery'];
+            MajorDoMo\Core\PropertyChain::enter($onchange['_chain'], $delivery['module'], $delivery['point'], $delivery['exclusions']);
+            $queued = array();
+            $properties->set($object, 'cmd', 1, $onchange['NO_LINKED']);
+            check($queued === array(array('modulepropertyset', $module), array('modulepropertyset', 'yandexhome')),
+                'Унаследованный NO_LINKED не блокирует другое свойство: ' . $module);
+            check(!isset(end($object->calls)[1]['NO_LINKED'][$module]), 'Следующий ONCHANGE не наследует снятое исключение');
+            MajorDoMo\Core\PropertyChain::leave();
+            check(MajorDoMo\Core\PropertyChain::exclusions() === array(), 'Контекст исключений очищен между доставками');
+        }
+    }
+    $pdo->exec("UPDATE pvalues SET LINKED_MODULES='zigbee,mqtt,yandexhome'");
+    $queued = array();
+    $properties->set($object, 'motion', 0, array('zigbee' => 0, 'mqtt' => false, 'yandexhome' => null));
+    $onchange = end($object->calls)[1];
+    check($queued === array(array('modulepropertyset', 'yandexhome')),
+        'Несколько явных исключений распознают 0 и false, но не null');
+    check($onchange['_delivery']['exclusions'] === array('zigbee' => 'property:Sensor.motion', 'mqtt' => 'property:Sensor.motion'),
+        'Область содержит все исключённые модули и пропускает null');
+    MajorDoMo\Core\PropertyChain::enter($onchange['_chain'], '', '', $onchange['_delivery']['exclusions']);
+    $queued = array();
+    $properties->set($object, 'cmd', 1, $onchange['NO_LINKED']);
+    check($queued === array(array('modulepropertyset', 'zigbee'), array('modulepropertyset', 'mqtt'), array('modulepropertyset', 'yandexhome')),
+        'Все унаследованные исключения сняты на другом свойстве');
+    MajorDoMo\Core\PropertyChain::leave();
+    $pdo->exec("UPDATE pvalues SET LINKED_MODULES='zigbee,yandexhome' WHERE ID=2");
 
     // Тип входного значения не меняет состояние, но разные строки остаются разными:
     // '01' и '1' нельзя склеивать нестрогим числовым сравнением.

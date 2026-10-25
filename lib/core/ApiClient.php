@@ -6,6 +6,7 @@ namespace MajorDoMo\Core;
  * Внутренний клиент API: ставит операции в очередь или выполняет их в процессе.
  *
  * Изменения:
+ * 2026-10-25 — внутренние вызовы сохраняют область NO_LINKED без модуля-источника.
  * 2026-10-22 — причина неуспешного внутреннего вызова сохраняется в lastError(),
  *              чтобы журнал фоновых операций показывал путь и код ошибки.
  */
@@ -72,7 +73,7 @@ final class ApiClient
         $params = array_replace($query, $params);
         PropertyAudit::attach($params);
         if (!isset($params['_chain']) && PropertyChain::current()) $params['_chain'] = PropertyChain::current();
-        if (!isset($params['_delivery']) && PropertyChain::source() !== '') $params['_delivery'] = PropertyChain::delivery();
+        if (!isset($params['_delivery']) && (PropertyChain::source() !== '' || PropertyChain::exclusions())) $params['_delivery'] = PropertyChain::delivery();
         $path = (string)($uri['path'] ?? '');
         $resource = strtolower(explode('/', trim(preg_replace('#^/api(?:\.php)?/#', '', $path), '/'))[0] ?? '');
         if (!$wait && preg_match('#^/api/(method|modulePropertySet)/([^/?]+)$#i', $path, $match)) {

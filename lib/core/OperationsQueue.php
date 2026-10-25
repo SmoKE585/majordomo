@@ -7,6 +7,8 @@ use \RuntimeException;
 /**
  * Персистентная очередь и постановка внутренних фоновых операций.
  * Изменения:
+ * 2026-10-25 — MQTT сохраняет порядок команд топика при повторе; последовательный core не пропускает старое задание.
+ * 2026-10-25 — область NO_LINKED передаётся и без модуля-источника (прямой вход MQTT).
  * 2026-10-22 — вместе с цепочкой передаётся точка доставки: вложенный вызов
  *              знает, какой модуль и по какому свойству его запустил.
  * 2026-10-22 — внутренние операции ставятся без HTTP и API.
@@ -65,7 +67,7 @@ final class OperationsQueue
     {
         PropertyAudit::attach($params);
         if (!isset($params['_chain']) && PropertyChain::current()) $params['_chain'] = PropertyChain::current();
-        if (!isset($params['_delivery']) && PropertyChain::source() !== '') $params['_delivery'] = PropertyChain::delivery();
+        if (!isset($params['_delivery']) && (PropertyChain::source() !== '' || PropertyChain::exclusions())) $params['_delivery'] = PropertyChain::delivery();
         $target ??= (string)($params['event'] ?? $operation);
         $payload = array('target' => $target, 'path' => 'core:' . $operation . '/' . $target, 'params' => $params);
         return $this->enqueueRuntimePayload($operation, $payload);
@@ -131,9 +133,11 @@ final class OperationsQueue
     public function migrateLegacyRuntime(int $limit = 200): int
     {
         if (!$this->parallelEnabled()) return 0;
-        $items = $this->claim('core_runtime', $limit, 60);
         $moved = 0;
-        foreach ($items as $item) {
+        for ($i = 0; $i < $limit; $i++) {
+            $items = $this->claim('core_runtime', 1, 60);
+            if (!$items) break;
+            $item = $items[0];
             try {
                 $this->lanes->push(array(
                     'TOPIC' => 'core_runtime',
@@ -156,6 +160,11 @@ final class OperationsQueue
         return array($base . 'ready', $base . 'processing', $base . 'payload', $base . 'unique', $base . 'sequence', $base . 'receipts');
     }
 
+    private function orderKey(string $topic): string
+    {
+        return $this->redis->key('queue:v2:') . hash('sha256', $topic) . ':order';
+    }
+
     public function enqueue($topic, $name, $value = '', $unique = false, $ttl = 60)
     {
         $expires = time() + max(0, (int)$ttl);
@@ -168,6 +177,7 @@ if ARGV[3] == '1' then
         if redis.call('ZREM',KEYS[1],old) == 1 then
             redis.call('HDEL',KEYS[3],old)
             redis.call('SREM',KEYS[7],old)
+            redis.call('ZREM',KEYS[8],old)
         end
     end
     redis.call('HSET',KEYS[4],ARGV[4],id)
@@ -175,9 +185,10 @@ end
 redis.call('SADD',KEYS[7],id)
 redis.call('HSET',KEYS[3],id,ARGV[1])
 redis.call('ZADD',KEYS[1],ARGV[2],id)
+if ARGV[5] == '1' then redis.call('ZADD',KEYS[8],0,id) end
 return id
 LUA;
-            $id = $this->redis->requireConnection()->eval($lua, array_merge($this->keys($topic), array($this->redis->key('queue:v2:') . hash('sha256', (string)$topic) . ':names:' . sha1((string)$name)), array($payload, microtime(true), $unique ? '1' : '0', (string)$name)), 7);
+            $id = $this->redis->requireConnection()->eval($lua, array_merge($this->keys($topic), array($this->redis->key('queue:v2:') . hash('sha256', (string)$topic) . ':names:' . sha1((string)$name), $this->orderKey((string)$topic)), array($payload, microtime(true), $unique ? '1' : '0', (string)$name, $topic === 'core_runtime' ? '1' : '0')), 8);
             if ($id === false) throw new RuntimeException('Operation was not queued');
             return $id;
         }
@@ -203,6 +214,18 @@ LUA;
         if (Config::get('USE_REDIS')) {
         $lua = <<<'LUA'
 local now, limit = tonumber(ARGV[1]), tonumber(ARGV[2])
+local mode = ARGV[6]
+local function forget(id, data)
+    redis.call('ZREM',KEYS[1],id)
+    redis.call('ZREM',KEYS[2],id)
+    redis.call('HDEL',KEYS[3],id)
+    redis.call('HDEL',KEYS[6],id)
+    redis.call('ZREM',KEYS[8],id)
+    if data and data.NAME_KEY then redis.call('SREM',data.NAME_KEY,id) end
+end
+if mode == 'global' and redis.call('SET',KEYS[8] .. ':layout','1','NX') then
+    for _,id in ipairs(redis.call('HKEYS',KEYS[3])) do redis.call('ZADD',KEYS[8],0,id) end
+end
 -- Import the old list atomically during an upgrade; old producers may still be exiting.
 for n=1,limit do
     local raw = redis.call('LPOP',KEYS[7])
@@ -213,9 +236,12 @@ for n=1,limit do
         data = {DATANAME=split and string.sub(raw,1,split-1) or raw,DATAVALUE=split and string.sub(raw,split+1) or ''}
     end
     data.TOPIC, data.EXPIRES = ARGV[5], now + 60
+    data.NAME_KEY = data.NAME_KEY or string.sub(KEYS[8],1,#KEYS[8]-5) .. 'names:' .. redis.sha1hex(data.DATANAME)
     local id = string.format('%020d',redis.call('INCR',KEYS[5]))
+    redis.call('SADD',data.NAME_KEY,id)
     redis.call('HSET',KEYS[3],id,cjson.encode(data))
     redis.call('ZADD',KEYS[1],now,id)
+    if mode == 'global' then redis.call('ZADD',KEYS[8],0,id) end
 end
 for _,id in ipairs(redis.call('ZRANGEBYSCORE',KEYS[2],'-inf',now,'LIMIT',0,limit)) do
     redis.call('ZREM',KEYS[2],id)
@@ -223,13 +249,35 @@ for _,id in ipairs(redis.call('ZRANGEBYSCORE',KEYS[2],'-inf',now,'LIMIT',0,limit
     redis.call('ZADD',KEYS[1],now,id)
 end
 local result = {}
-for _,id in ipairs(redis.call('ZRANGEBYSCORE',KEYS[1],'-inf',now,'LIMIT',0,limit)) do
+local scanLimit = mode == 'name' and math.max(20,limit * 10) or limit
+for _,id in ipairs(redis.call('ZRANGEBYSCORE',KEYS[1],'-inf',now,'LIMIT',0,scanLimit)) do
     local raw = redis.call('HGET',KEYS[3],id)
-    redis.call('ZREM',KEYS[1],id)
     if raw then
         local data = cjson.decode(raw)
         local newest = redis.call('HGET',KEYS[4],data.DATANAME)
         if tonumber(data.EXPIRES) > now and (not data.UNIQUE or not newest or newest == id) then
+            local blocked = false
+            if mode == 'global' then
+                while true do
+                    local head = redis.call('ZRANGE',KEYS[8],0,0)[1]
+                    if not head or head == id then break end
+                    local previous = redis.call('HGET',KEYS[3],head)
+                    local old = previous and cjson.decode(previous) or nil
+                    if old and tonumber(old.EXPIRES or 0) > now then blocked = true; break end
+                    forget(head,old)
+                end
+            elseif mode == 'name' and data.NAME_KEY then
+                for _,previousId in ipairs(redis.call('SMEMBERS',data.NAME_KEY)) do
+                    if previousId < id then
+                        local previous = redis.call('HGET',KEYS[3],previousId)
+                        local old = previous and cjson.decode(previous) or nil
+                        if old and tonumber(old.EXPIRES or 0) > now then blocked = true; break end
+                        forget(previousId,old)
+                    end
+                end
+            end
+            if not blocked then
+            redis.call('ZREM',KEYS[1],id)
             data.ATTEMPTS = (data.ATTEMPTS or 0) + 1
             raw = cjson.encode(data)
             redis.call('HSET',KEYS[3],id,raw)
@@ -237,20 +285,25 @@ for _,id in ipairs(redis.call('ZRANGEBYSCORE',KEYS[1],'-inf',now,'LIMIT',0,limit
             redis.call('HSET',KEYS[6],id,ARGV[4])
             table.insert(result,id)
             table.insert(result,raw)
+            if #result >= limit * 2 then break end
+            end
         else
-            redis.call('HDEL',KEYS[3],id)
+            forget(id,data)
             if data.NAME_KEY then
                 redis.call('SREM',data.NAME_KEY,id)
                 if redis.call('SCARD',data.NAME_KEY) == 0 then redis.call('DEL',data.NAME_KEY) end
             end
             if newest == id then redis.call('HDEL',KEYS[4],data.DATANAME) end
         end
+    else
+        forget(id,nil)
     end
 end
 return result
 LUA;
-            $keys = array_merge($this->keys($topic), array('mjd:queue:' . $topic));
-            $rows = $this->redis->requireConnection()->eval($lua, array_merge($keys, array(microtime(true), $limit, $lease, $token, (string)$topic)), 7);
+            $keys = array_merge($this->keys($topic), array('mjd:queue:' . $topic, $this->orderKey((string)$topic)));
+            $mode = $topic === 'core_runtime' ? 'global' : ($topic === 'mqtt_queue' ? 'name' : '');
+            $rows = $this->redis->requireConnection()->eval($lua, array_merge($keys, array(microtime(true), $limit, $lease, $token, (string)$topic, $mode)), 8);
             $result = array();
             for ($i = 0; $i < count($rows); $i += 2) {
                 $row = json_decode($rows[$i + 1], true, 512, JSON_THROW_ON_ERROR);
@@ -262,7 +315,18 @@ LUA;
         }
         $now = date('Y-m-d H:i:s');
         $this->db->exec("DELETE FROM operations_queue WHERE EXPIRE<='" . $now . "' LIMIT " . $limit);
-        $this->db->exec("UPDATE operations_queue SET ATTEMPTS=ATTEMPTS+1,CLAIM_TOKEN='" . $token . "',CLAIM_UNTIL='" . date('Y-m-d H:i:s', time() + $lease) . "' WHERE TOPIC='" . $this->db->escape($topic) . "' AND EXPIRE>'" . $now . "' AND (CLAIM_TOKEN='' OR CLAIM_UNTIL<='" . $now . "') ORDER BY ID LIMIT " . $limit);
+        $scope = "TOPIC='" . $this->db->escape($topic) . "' AND EXPIRE>'" . $now . "' AND (CLAIM_TOKEN='' OR CLAIM_UNTIL<='" . $now . "')";
+        if (in_array($topic, array('core_runtime', 'mqtt_queue'), true)) {
+            $sameName = $topic === 'mqtt_queue' ? ' AND older.DATANAME=q.DATANAME' : '';
+            $candidates = $this->db->select("SELECT q.ID FROM operations_queue q WHERE q.TOPIC='" . $this->db->escape($topic)
+                . "' AND q.EXPIRE>'" . $now . "' AND (q.CLAIM_TOKEN='' OR q.CLAIM_UNTIL<='" . $now . "')"
+                . " AND NOT EXISTS (SELECT 1 FROM operations_queue older WHERE older.TOPIC=q.TOPIC" . $sameName
+                . " AND older.ID<q.ID AND older.EXPIRE>'" . $now . "') ORDER BY q.ID LIMIT " . $limit);
+            if (!$candidates) return array();
+            $scope .= ' AND ID IN (' . implode(',', array_map(static fn($row) => (int)$row['ID'], $candidates)) . ')';
+            $tail = '';
+        } else $tail = ' ORDER BY ID LIMIT ' . $limit;
+        $this->db->exec("UPDATE operations_queue SET ATTEMPTS=ATTEMPTS+1,CLAIM_TOKEN='" . $token . "',CLAIM_UNTIL='" . date('Y-m-d H:i:s', time() + $lease) . "' WHERE " . $scope . $tail);
         return $this->db->select("SELECT *,ID AS QUEUE_ID FROM operations_queue WHERE CLAIM_TOKEN='" . $token . "' ORDER BY ID");
     }
 
@@ -282,10 +346,11 @@ end
 redis.call('ZREM',KEYS[2],ARGV[1])
 redis.call('HDEL',KEYS[3],ARGV[1])
 redis.call('HDEL',KEYS[6],ARGV[1])
+redis.call('ZREM',KEYS[7],ARGV[1])
 if redis.call('HGET',KEYS[4],ARGV[3]) == ARGV[1] then redis.call('HDEL',KEYS[4],ARGV[3]) end
 return 1
 LUA;
-            return $this->redis->requireConnection()->eval($lua, array_merge($this->keys($item['TOPIC']), array($item['QUEUE_ID'], $item['CLAIM_TOKEN'], $item['DATANAME'])), 6);
+            return $this->redis->requireConnection()->eval($lua, array_merge($this->keys($item['TOPIC']), array($this->orderKey((string)$item['TOPIC'])), array($item['QUEUE_ID'], $item['CLAIM_TOKEN'], $item['DATANAME'])), 7);
         }
         return $this->db->exec("DELETE FROM operations_queue WHERE ID=" . (int)$item['QUEUE_ID'] . " AND CLAIM_TOKEN='" . $this->db->escape($item['CLAIM_TOKEN']) . "'");
     }

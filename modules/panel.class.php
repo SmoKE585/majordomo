@@ -7,6 +7,7 @@
  * Оболочка админки: навигация, уведомления и содержимое модулей.
  *
  * Изменения:
+ * 2026-10-25 — уведомления получает общий сервис ядра.
  * 2026-10-24 — быстрый чат ИИ-помощника перенесён из меню в шапку панели.
  * 2026-10-23 — обычный переход в модуль ИИ-помощника возвращён в категории меню.
  * 2026-10-23 — ИИ-помощник вынесен отдельной карточкой в меню и блоком на главной.
@@ -286,13 +287,7 @@ class panel extends module
         $last_allow = 0;
         $modulesCnt = count($modules);
 
-        $notifications = array();
-        if (SQLTableExists('module_notifications')) {
-            $getNotifications = SQLSelect("select * from module_notifications WHERE IS_READ = 0 ORDER BY ADDED DESC");
-            foreach ($getNotifications as $notification) {
-                $notifications[$notification['MODULE_NAME']][] = $notification;
-            }
-        }
+        $notificationSummary = \MajorDoMo\Core\Core::notifications()->summary();
 
         for ($i = 0; $i < $modulesCnt; $i++) {
             if ($modules[$i]['NAME'] == $this->action) {
@@ -314,30 +309,8 @@ class panel extends module
                 $last_allow = $i;
             }
 
-            if (isset($notifications[$modules[$i]["NAME"]])) {
-                $modules[$i]["NOTIFICATIONS"] = $notifications[$modules[$i]["NAME"]];
-                $modules[$i]["NOTIFICATIONS_COUNT"] = count($modules[$i]["NOTIFICATIONS"]);
-                $modules[$i]["NOTIFICATIONS_TYPE"] = $modules[$i]["NOTIFICATIONS"][0]['TYPE'];
-                $notyForJs = array();
-                foreach ($modules[$i]["NOTIFICATIONS"] as $noty) {
-                    $notyType = $noty['TYPE'];
-                    if ($notyType == 'default') {
-                        $notyType = 'info';
-                    }
-                    $notyForJs[] = array(
-                        'id'   => (int)$noty['ID'],
-                        'type' => $notyType,
-                        'msg'  => $noty['MESSAGE'],
-                        'time' => date('d.m.Y H:i:s', strtotime($noty['ADDED']))
-                    );
-                }
-                $modules[$i]["NOTIFICATIONS_JSON"] = htmlspecialchars(
-                    json_encode($notyForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                    ENT_QUOTES, 'UTF-8'
-                );
-            } else {
-                $modules[$i]["NOTIFICATIONS_COUNT"] = 0;
-            }
+            $modules[$i]['NOTIFICATIONS_COUNT'] = $notificationSummary['counts'][$modules[$i]['NAME']] ?? 0;
+            $modules[$i]['NOTIFICATIONS_TYPE'] = $notificationSummary['levels'][$modules[$i]['NAME']] ?? 'info';
 
             if (file_exists(ROOT . 'public/assets/img/modules/' . $modules[$i]['NAME'] . '.png')) {
                 $modules[$i]['ICON_SM'] = ROOTHTML . 'assets/img/modules/' . $modules[$i]['NAME'] . '.png';
@@ -350,47 +323,6 @@ class panel extends module
         }
         $modules[$last_allow]['LAST_IN_CATEGORY'] = 1;
         $out["SUB_MODULES"] = $modules;
-
-        if ($this->action && isset($notifications[$this->action])) {
-            $total = count($notifications[$this->action]);
-            $notificationIcons = array(
-                'info' => 'info-circle',
-                'success' => 'circle-check',
-                'warning' => 'alert-triangle',
-                'danger' => 'alert-circle',
-            );
-            $moduleTitle = isset($out['NAV_MODULE_NAME']) && $out['NAV_MODULE_NAME'] !== ''
-                ? $out['NAV_MODULE_NAME']
-                : $this->action;
-            for ($i = 0; $i < $total; $i++) {
-                $notification = $notifications[$this->action][$i];
-                $timestamp = strtotime((string)$notification['ADDED']);
-
-                $type = strtolower((string)$notification['TYPE']);
-                if ($type === 'default') {
-                    $type = 'info';
-                }
-                if (!isset($notificationIcons[$type])) {
-                    $type = 'info';
-                }
-
-                $notifications[$this->action][$i]['TYPE'] = $type;
-                $notifications[$this->action][$i]['ICON'] = $notificationIcons[$type];
-                $notifications[$this->action][$i]['ROLE'] = in_array($type, array('warning', 'danger'), true)
-                    ? 'alert'
-                    : 'status';
-                $notifications[$this->action][$i]['MODULE_TITLE'] = htmlspecialchars(
-                    (string)$moduleTitle,
-                    ENT_QUOTES,
-                    'UTF-8'
-                );
-                $notifications[$this->action][$i]['ADDED_ISO'] = $timestamp ? date('c', $timestamp) : '';
-                $notifications[$this->action][$i]['ADDED'] = $timestamp
-                    ? date('d.m.Y H:i:s', $timestamp)
-                    : (string)$notification['ADDED'];
-            }
-            $out['MODULE_NOTIFICATIONS'] = $notifications[$this->action];
-        }
 
         if (is_dir(DIR_MODULES . 'app_tdwiki')) {
             $out['APP_TDWIKI_INSTALLED'] = 1;

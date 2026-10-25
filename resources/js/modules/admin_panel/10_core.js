@@ -597,95 +597,17 @@
         });
     }
 
+    // 2026-10-25 — старое имя оставлено для сторонних модулей;
+    // счётчики теперь открывают центр уведомлений без автоматического прочтения.
     function initSidebarNotificationBadges(scope) {
         scope.querySelectorAll('.md-admin-sidebar__badge[data-md-module]').forEach(function (badge) {
             if (badge.dataset.mdNotyBound === '1') return;
             badge.dataset.mdNotyBound = '1';
-
-            badge.style.cursor = 'pointer';
-
             badge.addEventListener('click', function (event) {
                 event.preventDefault();
                 event.stopPropagation();
-
-                var raw = badge.getAttribute('data-md-notifications');
-                if (!raw) return;
-
-                var notifications;
-                try {
-                    notifications = JSON.parse(raw);
-                } catch (e) {
-                    return;
-                }
-                if (!Array.isArray(notifications) || notifications.length === 0) return;
-
-                var html = '<div class="md-admin-noty-list">';
-                for (var i = 0; i < notifications.length; i++) {
-                    var noty = notifications[i];
-                    html +=
-                        '<div class="md-admin-noty-item">' +
-                        '<div class="md-admin-noty-item__msg">' + admin.escapeHtml(noty.msg) + '</div>' +
-                        '<div class="md-admin-noty-item__meta">' + admin.escapeHtml(noty.time) + '</div>' +
-                        '</div>';
-                }
-                html += '</div>';
-
-                var popoverInstance = window.bootstrap && window.bootstrap.Popover.getInstance(badge);
-                if (popoverInstance) {
-                    popoverInstance.setContent({ '.popover-body': html });
-                } else if (window.bootstrap) {
-                    popoverInstance = new window.bootstrap.Popover(badge, {
-                        html: true,
-                        content: html,
-                        placement: badge.getAttribute('data-bs-placement') || 'right',
-                        container: 'body',
-                        trigger: 'manual',
-                        customClass: 'md-admin-noty-popover'
-                    });
-                }
-                if (popoverInstance) {
-                    popoverInstance.show();
-                }
-
-                clearTimeout(badge._mdNotyHideTimer);
-                badge._mdNotyHideTimer = setTimeout(function () {
-                    if (popoverInstance) popoverInstance.hide();
-                }, 8000);
-
-                var moduleName = badge.getAttribute('data-md-module');
-                if (window.MDJAdminApi) {
-                    window.MDJAdminApi.dismissModuleNotifications(moduleName).then(function () {
-                        badge.style.transition = 'opacity .25s ease, transform .25s ease';
-                        badge.style.opacity = '0';
-                        badge.style.transform = 'scale(0.7)';
-                        setTimeout(function () {
-                            if (badge.parentNode) badge.remove();
-                        }, 280);
-                    }).catch(function () {
-                        if (popoverInstance) popoverInstance.hide();
-                    });
-                } else if (popoverInstance) {
-                    popoverInstance.hide();
-                }
+                if (window.MDJModuleNotifications) window.MDJModuleNotifications.open(badge.dataset.mdModule);
             });
-        });
-    }
-
-    function initNotificationPopoverDismiss() {
-        if (document.body.dataset.mdNotyDismissBound === '1') return;
-        document.body.dataset.mdNotyDismissBound = '1';
-
-        document.addEventListener('click', function (event) {
-            var clickedOnBadge = event.target.closest('.md-admin-sidebar__badge[data-md-module]');
-            var clickedInPopover = event.target.closest('.md-admin-noty-popover');
-            if (!clickedOnBadge && !clickedInPopover) {
-                document.querySelectorAll('.md-admin-sidebar__badge[data-md-module]').forEach(function (badge) {
-                    if (window.bootstrap) {
-                        var instance = window.bootstrap.Popover.getInstance(badge);
-                        if (instance) instance.hide();
-                    }
-                });
-            }
         });
     }
 
@@ -700,7 +622,6 @@
         initCheckboxToggles(scope);
         initBootstrapWidgets(scope);
         initSidebarNotificationBadges(scope);
-        initNotificationPopoverDismiss();
         initAdminSidebarSections(scope);
         initPersistentCollapses(scope);
         initToggleTargets(scope);

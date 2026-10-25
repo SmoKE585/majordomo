@@ -3,42 +3,112 @@
 namespace MajorDoMo\Core;
 
 
+/**
+ * Изолированный процесс на задание с таймаутом и предварительной загрузкой ядра.
+ * 2026-10-25 — следующий исполнитель готовится заранее; пользовательские задания не делят процесс.
+ */
 final class ProcessRunner
 {
+    private ?array $prepared = null;
+
     public function __construct(private ?string $root = null) {}
+
+    /** Подготовленный процесс ждёт одно задание; настройки читает после его получения. */
+    public function prepare(): bool
+    {
+        if ($this->prepared !== null) {
+            $this->readOutput($this->prepared);
+            if (proc_get_status($this->prepared['process'])['running']) return true;
+            $this->closeProcess($this->prepared);
+            $this->prepared = null;
+        }
+        $root = $this->root ?? ROOT;
+        if (!is_file($root . 'scripts/core_worker.php')) return false;
+        $this->prepared = $this->start(array('--standby'));
+        return $this->prepared !== null;
+    }
+
+    private function start(array $arguments): ?array
+    {
+        $root = $this->root ?? ROOT;
+        $command = array_merge(array(defined('PATH_TO_PHP') ? PATH_TO_PHP : PHP_BINARY, $root . 'scripts/core_worker.php'), $arguments);
+        $process = proc_open($command, array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, $root);
+        if (!is_resource($process)) return null;
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+        return array('process' => $process, 'pipes' => $pipes, 'output' => '');
+    }
+
+    private function readOutput(array &$slot): void
+    {
+        $slot['output'] = substr($slot['output'] . stream_get_contents($slot['pipes'][1]), -65536);
+        $errors = stream_get_contents($slot['pipes'][2]);
+        if ($errors !== '') DebMes('Worker stderr: ' . substr($errors, -4096), 'core_worker', 'error');
+    }
+
+    private function closeProcess(array $slot, bool $terminate = false): void
+    {
+        if ($terminate && proc_get_status($slot['process'])['running']) {
+            proc_terminate($slot['process']);
+            usleep(100000);
+            if (proc_get_status($slot['process'])['running']) proc_terminate($slot['process'], 9);
+        }
+        foreach ($slot['pipes'] as $pipe) if (is_resource($pipe)) fclose($pipe);
+        proc_close($slot['process']);
+    }
+
+    public function __destruct()
+    {
+        if ($this->prepared !== null) $this->closeProcess($this->prepared, true);
+    }
 
     public function run($kind, $id, $token, $timeout = 300)
     {
-        $root = $this->root ?? ROOT;
-        $command = array(defined('PATH_TO_PHP') ? PATH_TO_PHP : PHP_BINARY, $root . 'scripts/core_worker.php', $kind, (string)$id, (string)$token);
-        $process = proc_open($command, array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, $root);
-        if (!is_resource($process)) return array('success' => false, 'error' => 'Cannot start worker process');
-        fclose($pipes[0]);
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-        $output = '';
+        if ($this->prepared !== null && !proc_get_status($this->prepared['process'])['running']) {
+            $this->closeProcess($this->prepared);
+            $this->prepared = null;
+        }
+        if ($kind === 'operation' && $this->prepared !== null) {
+            $slot = $this->prepared;
+            $this->prepared = null;
+            $message = json_encode(array('kind' => $kind, 'id' => (string)$id, 'token' => (string)$token), JSON_THROW_ON_ERROR) . "\n";
+            $offset = 0;
+            set_error_handler(static function ($severity, $message) { throw new \RuntimeException($message); });
+            try {
+                while ($offset < strlen($message)) {
+                    $written = fwrite($slot['pipes'][0], substr($message, $offset));
+                    if (!$written) throw new \RuntimeException('Prepared worker did not accept the operation');
+                    $offset += $written;
+                }
+            } catch (\Throwable $error) {
+                $this->closeProcess($slot, true);
+                return array('success' => false, 'error' => 'Prepared worker request failed: ' . $error->getMessage());
+            } finally {
+                restore_error_handler();
+            }
+            fclose($slot['pipes'][0]);
+            // Загрузка следующего ядра перекрывается с работой текущего задания.
+            // Следующий процесс ещё не выполняет пользовательский код.
+            $this->prepare();
+        } else {
+            $slot = $this->start(array($kind, (string)$id, (string)$token));
+            if ($slot === null) return array('success' => false, 'error' => 'Cannot start worker process');
+            fclose($slot['pipes'][0]);
+        }
         $deadline = microtime(true) + max(1, (int)$timeout);
         do {
-            $output = substr($output . stream_get_contents($pipes[1]), -65536);
-            // Drain stderr to prevent a full pipe from blocking the worker.
-            $errors = stream_get_contents($pipes[2]);
-            if ($errors !== '') DebMes('Worker stderr: ' . substr($errors, -4096), 'core_worker', 'error');
-            $status = proc_get_status($process);
+            $this->readOutput($slot);
+            $status = proc_get_status($slot['process']);
             if (!$status['running']) break;
             if (microtime(true) >= $deadline) {
-                proc_terminate($process);
-                usleep(100000);
-                if (proc_get_status($process)['running']) proc_terminate($process, 9);
-                foreach (array(1, 2) as $pipe) fclose($pipes[$pipe]);
-                proc_close($process);
+                $this->closeProcess($slot, true);
                 return array('success' => false, 'error' => 'Worker execution timeout');
             }
             usleep(10000);
         } while (true);
-        $output .= stream_get_contents($pipes[1]);
-        foreach (array(1, 2) as $pipe) fclose($pipes[$pipe]);
-        proc_close($process);
-        if (preg_match('/^MJD_WORKER_RESULT (\{[^\r\n]*\})\r?$/m', $output, $match)) {
+        $this->readOutput($slot);
+        $this->closeProcess($slot);
+        if (preg_match('/^MJD_WORKER_RESULT (\{[^\r\n]*\})\r?$/m', $slot['output'], $match)) {
             $result = json_decode($match[1], true);
             if (is_array($result) && array_key_exists('success', $result)) return $result;
         }

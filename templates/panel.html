@@ -30,6 +30,7 @@
 		</template>
 	</div>
 	<div class="md-admin-drawer-backdrop" data-md-drawer-close hidden></div>
+	[#inc panel_notifications_drawer.php#]
 	<aside class="md-admin-drawer md-drawer" id="mdAdminDrawerHost" aria-labelledby="mdAdminDrawerTitle" aria-hidden="true" tabindex="-1" hidden>
 		<div class="md-admin-drawer__header md-drawer__header">
 			<div>
@@ -265,6 +266,7 @@
 				</div>
 				<div class="md-admin-topbar__actions">
 					[#if HIDE_LEFT_PANEL="1"#]
+					[#inc panel_notifications_bell.php#]
 					<!-- Меню скрыто — профиль и выбор темы остаются доступны в шапке. -->
 					<form method="post" action="<#ROOTHTML#>admin.php?auth=logout">
 						<input type="hidden" name="_md_csrf" value="[#AUTH_CSRF|html#]">
@@ -358,25 +360,7 @@
 				[#if ACTION!=""#]
 
 
-	[#if MODULE_NOTIFICATIONS#]
-	<div class="d-flex flex-column gap-2 mb-3" aria-live="polite">
-		[#begin MODULE_NOTIFICATIONS#]
-		<div class="md-alert md-alert--[#TYPE#]" id="notification[#ID#]" role="[#ROLE#]">
-			<i class="ti ti-[#ICON#] md-alert__icon" aria-hidden="true"></i>
-			<div class="md-alert__body">
-				<div class="d-flex flex-wrap align-items-center gap-2 mb-1 small text-body-secondary">
-					<span class="md-badge md-badge--outline">[#MODULE_TITLE#]</span>
-					<time datetime="[#ADDED_ISO#]">[#ADDED#]</time>
-				</div>
-				<div class="md-alert__text text-break">[#MESSAGE#]</div>
-			</div>
-			<button type="button" class="md-alert__close" onclick="return dismissNotification([#ID#]);" aria-label="Отметить уведомление прочитанным" title="Скрыть уведомление">
-				<i class="ti ti-x" aria-hidden="true"></i>
-			</button>
-		</div>
-		[#end MODULE_NOTIFICATIONS#]
-	</div>
-	[#endif MODULE_NOTIFICATIONS#]
+	<div class="md-notifications-list mb-3" data-md-notifications-module="[#ACTION|html#]" aria-live="polite" hidden></div>
 
 	[#if RUNNING_WITH_ERRORS#]
 	<div class="md-alert md-alert--danger" role="alert">

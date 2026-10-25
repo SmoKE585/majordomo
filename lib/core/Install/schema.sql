@@ -2,6 +2,19 @@
 -- Generated from docs/dev/db_terminal.sql: schema only, no demo data.
 -- The setup wizard imports this file only into an empty database.
 
+-- 2026-10-25 — общий центр уведомлений, совместимый с sendNotification().
+CREATE TABLE IF NOT EXISTS `module_notifications` (
+  `ID` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `MODULE_NAME` char(50) NOT NULL DEFAULT '',
+  `MESSAGE` varchar(255) NOT NULL DEFAULT '',
+  `TYPE` char(20) NOT NULL DEFAULT 'info',
+  `IS_READ` int NOT NULL DEFAULT 0,
+  `ADDED` datetime DEFAULT NULL,
+  `NOTIFICATION_KEY` varchar(190) NOT NULL DEFAULT '',
+  `PAYLOAD` text DEFAULT NULL,
+  KEY `idx_notifications_unread` (`IS_READ`, `MODULE_NAME`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 CREATE TABLE IF NOT EXISTS `actions_log` (
   `ID` int(10) UNSIGNED NOT NULL,
   `ADDED` datetime DEFAULT NULL,

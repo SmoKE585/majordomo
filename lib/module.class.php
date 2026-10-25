@@ -28,6 +28,7 @@ Define("EQ_DELIMITER", "qz_");
 /**
  * Module class
  * Изменения:
+ * 2026-10-25 — уведомления делегируются ядру; повторы не сохраняются и не логируются.
  * 2026-10-24 — установка распознаёт индексы по колонкам, не создавая дубликаты.
  * 2026-10-23 — событие MODULE_INSTALLED для фоновых подписчиков.
  * @category Modules
@@ -903,59 +904,11 @@ class module
 
     public function sendNotification($str, $type = 'default')
     {
-
-        if (!SQLTableExists('module_notifications')) {
-            return json_encode(array('status' => false));
-        }
-
-        if ($type != 'info' && $type != 'danger' && $type != 'warning' && $type != 'success' && $type != 'default') {
-            $type = 'default';
-        }
-
-        $rec["ADDED"] = date('Y-m-d H:i:s');
-        $rec["TYPE"] = $type;
-        $rec["MODULE_NAME"] = $this->name;
-        $rec["MESSAGE"] = htmlspecialchars(strip_tags($str));
-
-        DebMes($this->name . ' (' . $rec["TYPE"] . '): ' . $rec["MESSAGE"], 'module_notifications', $type);
-
-        $unreadRec = SQLSelectOne("SELECT COUNT(*) AS TOTAL_UNREAD FROM `module_notifications` WHERE `MODULE_NAME` = '" . $rec["MODULE_NAME"] . "' AND `IS_READ` = '0'");
-        if (isset($unreadRec['TOTAL_UNREAD']) && $unreadRec['TOTAL_UNREAD'] > 10) {
-            return json_encode(array('status' => false, 'error' => 'More than 10 notifications in the unread status.'));
-        }
-
-        $ifExist = SQLSelectOne("SELECT ID FROM `module_notifications` WHERE `MODULE_NAME` = '" . $rec["MODULE_NAME"] . "' AND`MESSAGE` = '" . DBSafe($rec['MESSAGE']) . "' AND TYPE='" . DBSafe($rec['TYPE']) . "' AND `IS_READ` = '0'");
-        if (!empty($ifExist) && is_array($ifExist)) {
-            return json_encode(array('status' => false, 'error' => 'Notification already exists. ID: ' . $ifExist['ID'], 'id' => $ifExist['ID']));
-        }
-
-        $rec["ID"] = SQLInsert("module_notifications", $rec);
-
-
-        return json_encode(array('status' => true, 'id' => $rec["ID"]));
-
+        return json_encode(\MajorDoMo\Core\Core::notifications()->send((string)$this->name, (string)$str, (string)$type));
     }
 
     public function readNotification($notification_id)
     {
-        if (!SQLTableExists('module_notifications')) {
-            return json_encode(array('status' => false));
-        }
-        if (is_int($notification_id)) {
-            $rec["ID"] = $notification_id;
-        } else {
-            $rec = SQLSelectOne("SELECT * FROM `module_notifications` WHERE `MODULE_NAME` = '" . $this->name . "' AND `MESSAGE` = '" . DBSafe($notification_id) . "' AND IS_READ=0");
-        }
-        $rec["IS_READ"] = 1;
-
-        $checkRec = SQLSelectOne("SELECT ID FROM `module_notifications` WHERE `ID` = '" . (int)$rec["ID"] . "' AND `IS_READ` = '0'");
-        if (empty($checkRec['ID'])) {
-            return json_encode(array('status' => false, 'error' => 'No such noty found'));
-        }
-        SQLUpdate("module_notifications", $rec);
-
-        DebMes($this->name . ' (' . $rec["TYPE"] . ' - marked as read): ' . $rec["MESSAGE"], 'module_notifications');
-
-        return json_encode(array('status' => true));
+        return json_encode(\MajorDoMo\Core\Core::notifications()->readLegacy((string)$this->name, $notification_id));
     }
 }

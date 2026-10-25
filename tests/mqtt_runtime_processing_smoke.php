@@ -73,7 +73,8 @@ function SQLUpdate($table, $row)
 function SQLExec($query) { global $pdo; return $pdo->exec($query) !== false; }
 function DBSafe($value) { return str_replace("'", "''", (string)$value); }
 function DebMes($message, $source = '', $severity = '') { $GLOBALS['logs'][] = array($message, $source, $severity); }
-function callMethod($name, $parameters) { $GLOBALS['actions'][] = array($name, $parameters['NEW_VALUE']); }
+function callMethod($name, $parameters) { $GLOBALS['actions'][] = array($name, $parameters['NEW_VALUE']); return $GLOBALS['methodOutcome'] ?? null; }
+function setGlobal($name, $value, $noLinked = 0, $source = '') { $GLOBALS['writeAttempts']++; return $GLOBALS['writeOutcome']; }
 function startMeasure($name) {}
 function endMeasure($name) {}
 function check($condition, $message) { if (!$condition) throw new RuntimeException($message); }
@@ -142,4 +143,36 @@ check((string)$pdo->query("SELECT VALUE FROM mqtt WHERE PATH='home/unlinked'")->
 check(\MqttRuntime::flushHistory(100) >= 3, 'Linked messages must produce history events');
 check((int)$pdo->query('SELECT COUNT(*) FROM mqtt_history')->fetchColumn() >= 3, 'History rows must be stored');
 
-echo 'MQTT runtime processing smoke tests passed: 12 checks on real Redis + SQLite.' . PHP_EOL;
+$writeAttempts = 0;
+foreach (array(false, 0) as $rejected) {
+    $path = 'audit/reject/' . ($rejected === false ? 'validation' : 'object');
+    $pdo->prepare('INSERT INTO mqtt(PATH,LINKED_OBJECT,LINKED_PROPERTY,ONLY_NEW_VALUE,VALUE) VALUES (?,?,?,?,?)')
+        ->execute(array($path, 'Lamp', 'status', 1, '0'));
+    MqttRuntime::invalidate();
+    $native = new class extends mqtt {
+        public function __construct() { $this->config = array('MQTT_STRIPMODE' => 0, 'DEBUG_MODE' => 0); }
+        public function getConfig() { return $this->config; }
+    };
+    $writeOutcome = $rejected;
+    $before = $writeAttempts;
+    for ($attempt = 0; $attempt < 2; $attempt++) {
+        $caught = false;
+        try { $native->processRuntimeMessage($path, '1'); } catch (RuntimeException $error) { $caught = true; }
+        check($caught && MqttRuntime::state($path) === null, 'Отказ записи не подтверждает входящее сообщение');
+    }
+    check($writeAttempts === $before + 2, 'Повтор после отказа снова вызывает запись');
+    $writeOutcome = null;
+    $native->processRuntimeMessage($path, '1');
+    $native->processRuntimeMessage($path, '1');
+    check($writeAttempts === $before + 3 && MqttRuntime::value($path) === '1', 'Дедупликация включается после успешной записи');
+}
+$pdo->exec("INSERT INTO mqtt(PATH,LINKED_OBJECT,LINKED_METHOD,ONLY_NEW_VALUE) VALUES ('audit/method','Button','press',1)");
+MqttRuntime::invalidate();
+$methodOutcome = false;
+$caught = false;
+try { $native->processRuntimeMessage('audit/method', 'press'); } catch (RuntimeException $error) { $caught = true; }
+check($caught && MqttRuntime::state('audit/method') === null, 'Отказ метода не подтверждает входящий пакет');
+$methodOutcome = 0;
+$native->processRuntimeMessage('audit/method', 'press');
+check(MqttRuntime::value('audit/method') === 'press', 'Явный результат метода 0 остаётся допустимым');
+echo 'MQTT runtime processing smoke tests passed: 22 checks on real Redis + SQLite.' . PHP_EOL;

@@ -150,7 +150,16 @@ PHP);
         methodRow(1, 1, 0, $order, '');
         methodRow(2, 0, 1, 0, 'return false;');
         check($methods->call($object, 'data') === false, 'Отказ родителя не превращается в успех при порядке ' . $order);
+        resetMethods();
+        methodRow(1, 1, 0, $order, '$this->seen[] = "child"; return true;');
+        methodRow(2, 0, 1, 0, 'return false;');
+        check($methods->call($object, 'data') === false, 'Явный успех дочернего метода не маскирует отказ родителя');
+        check($object->seen === ($order === 1 ? array() : array('child')), 'После отказа родителя до объекта дочерние действия не выполняются');
     }
+    resetMethods();
+    methodRow(1, 1, 0, 2, 'return false;');
+    methodRow(2, 0, 1, 0, '$this->seen[] = "parent";');
+    check($methods->call($object, 'data') === false && !$object->seen, 'Отказ объекта не запускает родителя после него');
 
     resetMethods();
     methodRow(1, 1, 0, 1, '$this->seen[] = "must not run";');

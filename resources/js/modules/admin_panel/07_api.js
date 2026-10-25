@@ -137,6 +137,9 @@
         websocketTicket: function () {
             return get('/websocket-ticket');
         },
+        notifications: function (module, offset) {
+            return get('/notifications', {module: module || '', offset: offset || 0});
+        },
         dismissNotification: function (id) {
             return post('/notifications/dismiss', {id: id});
         },

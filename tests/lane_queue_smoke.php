@@ -42,9 +42,11 @@ $present = (new ReflectionProperty(Config::class, 'present'))->getValue();
 foreach (array('USE_REDIS', 'REDIS_PORT', 'REDIS_DB', 'REDIS_PREFIX') as $key) $present[$key] = true;
 (new ReflectionProperty(Config::class, 'present'))->setValue(null, $present);
 
+$checks = 0;
 function check($condition, $message)
 {
     if (!$condition) throw new RuntimeException($message);
+    $GLOBALS['checks']++;
 }
 
 $connection = new RedisConnection();
@@ -94,6 +96,7 @@ $queue->push(array('n' => 'E1'), 'object:E');
 $stuck = $queue->claim(1, 1)[0];
 check($name($stuck) === 'E1', 'E1 must be claimed');
 sleep(2);
+check($queue->claim(1, 2) === array(), 'Истёкшая аренда не разрешает следующей команде обогнать голову до reap');
 check($queue->reap(10) >= 1, 'Expired lease must be reaped');
 $recovered = $queue->claim(1, 2);
 check(count($recovered) === 1 && $name($recovered[0]) === 'E1', 'Reaped event must keep its position and payload');
@@ -134,4 +137,70 @@ check(count($h2) === 1 && $name($h2[0]) === 'H2', 'H2 must follow H1');
 $queue->acknowledge($h2[0]);
 
 check($queue->size() === 0, 'Queue must be empty at the end');
-echo 'Lane queue smoke tests passed: 24 checks on real Redis.' . PHP_EOL;
+
+// Отложенный повтор удерживает своё место, но не блокирует другое устройство.
+$queue->push(array('n' => 'ON'), 'object:RetryLamp');
+$queue->push(array('n' => 'OFF'), 'object:RetryLamp');
+$on = $queue->claim()[0];
+$queue->release($on, 1);
+$queue->push(array('n' => 'Other'), 'object:Other');
+$other = $queue->claim()[0];
+check($name($other) === 'Other', 'Ошибка лампы не блокирует независимую полосу');
+$queue->acknowledge($other);
+check($queue->claim() === array(), 'OFF не может обогнать отложенный ON');
+usleep(1100000);
+$retry = $queue->claim()[0];
+check($name($retry) === 'ON' && $retry['ATTEMPTS'] === 2, 'Повтор выполняется первым без ожидания периодического promote');
+$queue->acknowledge($retry);
+$off = $queue->claim()[0];
+check($name($off) === 'OFF', 'OFF выполняется после завершения ON');
+$queue->acknowledge($off);
+check($queue->promoteDelayed() === 0 && $queue->delayedCount() === 0, 'Завершённый повтор не воскресает через promote');
+
+// Отложенный serial удерживает только свою полосу.
+$queue->push(array('n' => 'SerialRetry'), 'serial');
+$serial = $queue->claim()[0];
+$queue->release($serial, 1);
+$queue->push(array('n' => 'LampNow'), 'object:FastLamp');
+$lamp = $queue->claim()[0];
+check($name($lamp) === 'LampNow', 'Задержка serial не задерживает готовый свет');
+$queue->acknowledge($lamp);
+usleep(1100000);
+$queue->promoteDelayed();
+$serial = $queue->claim()[0];
+check($name($serial) === 'SerialRetry', 'Отложенный serial восстановлен ровно один раз');
+$queue->acknowledge($serial);
+
+// Непрерывные входящие события не вытесняют команды устройствам.
+$queue->push(array('n' => 'Light'), 'object:FairLamp');
+$queue->push(array('n' => 'Sensor'), 'serial');
+$seen = array();
+for ($i = 0; $i < 4; $i++) {
+    $item = $queue->claim()[0];
+    $seen[] = $name($item);
+    $queue->push(array('n' => 'Sensor'), 'serial');
+    $queue->acknowledge($item);
+}
+check(in_array('Light', array_slice($seen, 0, 2), true), 'Свет получил очередь между входящими событиями');
+while ($items = $queue->claim()) $queue->acknowledge($items[0]);
+check($queue->size() === 0 && $queue->inflightCount() === 0, 'Счётчики согласованы после повторов и чередования');
+
+// Задания старого формата переносятся перед более новыми командами.
+$legacy = new LaneEventQueue($connection, 'legacy_verify', 2);
+$base = $connection->key('lanes:legacy_verify:');
+$raw = json_encode(array('id' => 'old-on', 'at' => microtime(true) - 1, 'lane' => 'object:Legacy', 'attempts' => 1,
+    'expires' => time() + 60, 'data' => array('n' => 'OldON')));
+$redis = $connection->requireConnection();
+$redis->hSet($base . 'delayed:data', 'old-on', $raw);
+$redis->zAdd($base . 'delayed', round(microtime(true) * 1000) + 1000, 'old-on');
+$redis->incr($base . 'count');
+$legacy->push(array('n' => 'NewOFF'), 'object:Legacy');
+check($legacy->claim() === array(), 'Старое отложенное задание не пропускает новую команду вперёд');
+usleep(1100000);
+$old = $legacy->claim()[0];
+check($name($old) === 'OldON', 'После обновления сначала выполнен старый повтор');
+$legacy->acknowledge($old);
+$new = $legacy->claim()[0];
+check($name($new) === 'NewOFF', 'Новая команда сохранила своё место');
+$legacy->acknowledge($new);
+echo 'Lane queue smoke tests passed: ' . $checks . ' checks on real Redis.' . PHP_EOL;

@@ -13,6 +13,9 @@ use \RuntimeException;
  * изменений не даёт автоматизации зациклиться.
  *
  * Изменения:
+ * 2026-10-25 — явный NO_LINKED больше не отменяется областью предыдущего обработчика.
+ * 2026-10-25 — входящее событие не блокирует команды своему модулю;
+ *              NO_LINKED ограничен исходным свойством через очередь.
  * 2026-10-23 — одинаковые сохранённые значения не создают повторов в WebSocket
  *              из-за различия типов строки и числа.
  * 2026-10-22 — boolean-значение сохраняется как '0'/'1', а не как пустая строка:
@@ -88,14 +91,21 @@ final class Properties
     {
         if (!is_array($no_linked)) return $no_linked;
         $module = PropertyChain::source();
-        if ($module === '') return $no_linked;
         $point = PropertyChain::point();
-        // Пустая точка — старый вызов без сведений о доставке: поведение
-        // прежнее, исключаем источник для всех записей.
-        if ($point === '' || $point === $target_token) {
-            $no_linked[$module] = 0;
-        } else {
-            unset($no_linked[$module]);
+        // Только переданный из ONCHANGE массив несёт область исходной записи.
+        // Новый массив пользователя — явное исключение, даже внутри цепочки.
+        $scope = is_array($no_linked[PropertyChain::EXCLUSION_SCOPE] ?? null)
+            ? $no_linked[PropertyChain::EXCLUSION_SCOPE] : array();
+        unset($no_linked[PropertyChain::EXCLUSION_SCOPE]);
+        foreach ($scope as $excluded_module => $excluded_point) {
+            if ($excluded_point !== $target_token) unset($no_linked[$excluded_module]);
+        }
+        // Само событие модуля не является эхом свойства: оно может запустить
+        // команду другому устройству этого же модуля.
+        if ($module !== '' && $point !== '') {
+            if ($point === $target_token) {
+                $no_linked[$module] = 0;
+            }
         }
         return $no_linked;
     }
@@ -246,7 +256,7 @@ final class Properties
         }
 
         if (!$source && is_array($no_linked)) {
-            $source = implode(',', array_keys($no_linked));
+            $source = implode(',', array_diff(array_keys($no_linked), array(PropertyChain::EXCLUSION_SCOPE)));
         }
 
         if (!$source && is_string($no_linked)) {
@@ -580,7 +590,12 @@ final class Properties
                     // Обработчик выполнится, возможно, в другом процессе:
                     // передаём ему точку доставки, чтобы и там исключение
                     // модуля-источника действовало только на одно свойство.
-                    $params['_delivery'] = PropertyChain::delivery();
+                    $params['_delivery'] = PropertyChain::deliveryForProperty($chain_token,
+                        is_array($no_linked) ? $no_linked : array());
+                    if (is_array($no_linked)) {
+                        $params['NO_LINKED'] = PropertyChain::scopedExclusions($no_linked,
+                            $params['_delivery']['exclusions'] ?? array());
+                    }
                     PropertyAudit::attach($params);
                     try {
                         // Always enqueue: a web request must not wait for user code,

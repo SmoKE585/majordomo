@@ -4,6 +4,7 @@ namespace MajorDoMo\Core\Api;
 
 /**
  * Общий каталог маршрутов, валидации и OpenAPI.
+ * Изменения: 2026-10-25 — общий список непрочитанных уведомлений панели.
  * Изменения: 2026-10-23 — вход, профиль и выход пользователя по временному токену.
  * Изменения: 2026-10-22 — внешние операции сообщений и подписок вместо /objects/.
  * Изменения: 2026-10-22 — служебные маршруты панели /api/v1/panel/*.
@@ -71,6 +72,7 @@ final class Contract
             array('GET', '/panel/search', 'panelSearch', 'Поиск по панели', true),
             array('GET', '/panel/websocket-ticket', 'panelWebsocket', 'Билет WebSocket панели', true),
             array('POST', '/panel/console', 'panelConsole', 'Выполнить код в консоли X-Ray', true),
+            array('GET', '/panel/notifications', 'panelNotificationList', 'Непрочитанные уведомления модулей', true),
             array('POST', '/panel/notifications/dismiss', 'panelNotifications', 'Отметить уведомления прочитанными', true),
             array('GET', '/panel/xray/content', 'panelXrayContent', 'Данные режима X-Ray', true),
             array('GET', '/panel/xray/services', 'panelXrayServices', 'Список циклов X-Ray', true),

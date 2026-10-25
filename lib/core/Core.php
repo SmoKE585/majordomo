@@ -4,6 +4,7 @@ namespace MajorDoMo\Core;
 
 /**
  * The legacy loader owns the connection; new code receives explicit dependencies.
+ * 2026-10-25 — общий сервис уведомлений модулей.
  * 2026-10-23 — общий сервис создания сущностей с обновлением метаданных.
  * Изменения: 2026-10-22 — добавлен сервис apiHooks() для реестра webhook.
  */
@@ -17,6 +18,7 @@ final class Core
     }
 
     public static function code(): CodeExecutor { return self::service(__FUNCTION__, fn() => new CodeExecutor()); }
+    public static function notifications(): ModuleNotifications { return self::service(__FUNCTION__, fn() => new ModuleNotifications(self::database())); }
 
     public static function users(): Users\UserAccounts { return self::service(__FUNCTION__, fn() => Users\UserAccounts::connect()); }
     public static function session(?string $root = null): Http\Session

@@ -6,6 +6,7 @@ use MajorDoMo\Core\{Core, Database};
 
 /**
  * Данные и действия панели администрирования.
+ * 2026-10-25 — список и явное прочтение через общий сервис уведомлений.
  *
  * 2026-10-22 — служебный AJAX панели переведён на /api/v1/panel: дашборд,
  * поиск, консоль, уведомления, билет WebSocket и запросы X-Ray. Маршруты
@@ -75,16 +76,24 @@ final class Panel
             if ($id === false || (int)$id < 1) {
                 throw new ApiException(422, 'validation_failed', 'Некорректный ID уведомления.');
             }
-            $this->db->exec('UPDATE module_notifications SET IS_READ=1 WHERE ID=' . (int)$id);
-            return array('dismissed' => $this->db->affectedRows());
+            return array('dismissed' => (new \MajorDoMo\Core\ModuleNotifications($this->db))->dismiss((int)$id));
         }
 
         $module = $params['module'] ?? $params['module_name'] ?? null;
         if (!is_string($module) || trim($module) === '' || mb_strlen($module) > 255) {
             throw new ApiException(422, 'validation_failed', 'Передайте ID уведомления или имя модуля.');
         }
-        $this->db->exec("UPDATE module_notifications SET IS_READ=1 WHERE MODULE_NAME='" . $this->db->escape($module) . "' AND IS_READ=0");
-        return array('dismissed' => $this->db->affectedRows());
+        return array('dismissed' => (new \MajorDoMo\Core\ModuleNotifications($this->db))->dismiss(null, $module));
+    }
+
+    public function notifications(array $params): array
+    {
+        $module = $params['module'] ?? '';
+        $offset = $params['offset'] ?? 0;
+        if (!is_string($module) || mb_strlen($module) > 50 || filter_var($offset, FILTER_VALIDATE_INT) === false || (int)$offset < 0) {
+            throw new ApiException(422, 'validation_failed', 'Некорректный модуль или смещение списка уведомлений.');
+        }
+        return (new \MajorDoMo\Core\ModuleNotifications($this->db))->listing($module, (int)$offset);
     }
 
     public function xrayContent(array $params): array

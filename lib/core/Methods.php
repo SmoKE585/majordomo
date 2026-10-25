@@ -12,6 +12,7 @@ use \Throwable;
  * вызывающему коду.
  *
  * Изменения:
+ * 2026-10-25 — отказ любого уровня наследования останавливает цепочку и не скрывается дочерним результатом.
  * 2026-10-23 — наследование сохраняет параметры, проверяет циклы и пишет снимок кода в аудит.
  * 2026-10-22 — фоновый вызов ставится напрямую в очередь ядра, без API.
  * 2026-10-22 — фоновый вызов метода кодирует путь через rawurlencode: пробелы
@@ -160,6 +161,11 @@ final class Methods
                 }
             }
 
+            if ($parent_success === false) {
+                $success = false;
+                return false;
+            }
+
             if ($method['SCRIPT_ID']) {
                 /*
                  $script=$this->db->one("SELECT * FROM scripts WHERE ID='".$method['SCRIPT_ID']."'");
@@ -193,6 +199,7 @@ final class Methods
             }
             endMeasure('callMethod', 1);
             endMeasure('callMethod (' . $original_method_name . ')', 1);
+            if (isset($success) && $success === false) return false;
             if ($method['OBJECT_ID'] && $method['CALL_PARENT'] == 2) {
                 startMeasure('callParentMethod');
                 $parent_success = $this->execute($object, $name, $params, $object->class_id, $ancestors);
@@ -206,6 +213,10 @@ final class Methods
                 }
             }
 
+            if ($parent_success === false) {
+                $success = false;
+                return false;
+            }
             if (isset($success)) {
                 return $success;
             } else {

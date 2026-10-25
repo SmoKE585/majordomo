@@ -4,6 +4,7 @@
 */
 
 /**
+ * 2026-10-25 — схема метаданных уведомлений для новых установок модуля.
  * @package project
  * @author Serge Dzheigalo <jey@unit.local>
  */
@@ -303,6 +304,8 @@ class control_modules extends module
    module_notifications: TYPE char(20) NOT NULL DEFAULT 'info'
    module_notifications: IS_READ int(3) NOT NULL DEFAULT 0
    module_notifications: ADDED datetime 
+   module_notifications: NOTIFICATION_KEY varchar(190) NOT NULL DEFAULT ''
+   module_notifications: PAYLOAD text
 
 EOD;
         parent::dbInstall($data);

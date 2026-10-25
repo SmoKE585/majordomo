@@ -16,7 +16,10 @@ require_once __DIR__ . '/HealthMonitor.php';
 require_once __DIR__ . '/Repository.php';
 require_once __DIR__ . '/Service.php';
 
-/** Standard distribution module. The MQTT module owns its network transport. */
+/**
+ * Модуль Zigbee использует общий транспорт MQTT.
+ * 2026-10-25 — обработчики событий больше не выполняют DDL при создании сервиса.
+ */
 class zigbee extends module
 {
     private ?Service $zigbeeService = null;
@@ -32,7 +35,6 @@ class zigbee extends module
     public function service(): Service
     {
         if (!$this->zigbeeService) {
-            Schema::upgrade(Core::database());
             $subscription = Core::database()->one("SELECT VALUE FROM settings WHERE NAME='HOOK_EVENT_MINUTELY'");
             $registry = json_decode($subscription['VALUE'] ?? '{}', true, 64, JSON_THROW_ON_ERROR);
             if (!array_key_exists($this->name, $registry)) subscribeToEvent($this->name, 'MINUTELY');

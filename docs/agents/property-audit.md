@@ -105,6 +105,13 @@ order: 20
 какому модулю и по какому свойству принадлежит текущий шаг, чтобы его эхо
 гасилось только на этом свойстве.
 
+С 25.10.2026 `_delivery` также может содержать `exclusions` — соответствие
+«модуль → свойство» для переданного `NO_LINKED`. Оно сохраняется даже без
+модуля-источника (например, при прямой входящей записи MQTT). Входящее событие
+модуля с пустой `point` не подавляет уведомления этому модулю: метод или
+сценарий может отправить команду другому его устройству. Защита от повторного
+свойства в `_chain` при этом остаётся включённой.
+
 `OperationWorker` вызывает `PropertyAudit::enter($traceId)` для продолжения
 родительского запуска и `PropertyAudit::begin()` только если trace отсутствует
 (старые записи в очереди, внешние вызовы).
@@ -257,6 +264,7 @@ php tests/method_inheritance_smoke.php
 php tests/operation_result_smoke.php
 node tests/property_trace_ui_smoke.mjs
 php tests/property_onchange_smoke.php
+php tests/property_delivery_smoke.php
 php tests/stale_module_bindings_smoke.php
 ```
 

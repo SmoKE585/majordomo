@@ -60,6 +60,7 @@ import './modules/admin_panel/41_trace.js';
 import './modules/admin_panel/50_console.js';
 import './modules/admin_panel/60_notifications.js';
 import './modules/admin_panel/99_init.js';
+import './modules/admin_panel/61_module_notifications.js';
 import './modules/admin_panel/70_controls.js';
 import './modules/admin_panel/80_header_search.js';
 import './modules/admin_panel/100_chart_runtime.js';

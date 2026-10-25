@@ -99,6 +99,7 @@ class TestMqtt extends mqtt
     function getConfig() { $this->configReads++; return $this->config; }
     function setLinkedPropertyFromMqtt($object, $property, $value, $source_url)
     {
+        if (!empty($GLOBALS['bindingFailure'])) throw new RuntimeException('fixture rejected binding');
         $GLOBALS['actions'][] = array($object . '.' . $property, $value);
     }
     function expireLookup() { $this->lookup_cache_updated = 0; }

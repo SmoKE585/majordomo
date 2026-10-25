@@ -6,6 +6,7 @@ use MajorDoMo\Core\{Core, Database};
 
 /**
  * Обработчики API делегируют выполнение функциям и сервисам ядра.
+ * Изменения: 2026-10-25 — общий список уведомлений только в сеансе администратора.
  * Изменения: 2026-10-23 — пользовательский вход обрабатывается только HTTP-границей.
  * Изменения: 2026-10-22 — сообщения и подписки доступны внешним клиентам v1.
  * Изменения: 2026-10-22 — служебные операции панели только по сеансу админа.
@@ -77,6 +78,7 @@ final class Dispatcher
             'panelConsole' => $panel->console($params),
             'panelWebsocket' => $panel->websocketTicket(),
             'panelNotifications' => $panel->dismiss($params),
+            'panelNotificationList' => $panel->notifications($params),
             'panelXrayContent' => $panel->xrayContent($params),
             'panelXrayServices' => $panel->xrayContent(array('view' => 'services', 'mode' => $params['mode'] ?? '')),
             'panelXrayService' => $panel->xrayService((string)$route['cycle']),

@@ -1,6 +1,7 @@
 <?php
 /**
  * MQTT
+ * 2026-10-25 — отказ связанного свойства или метода не подтверждает входящее сообщение.
  *
  * Mqtt
  * 2026-10-22 — клиент MQTT загружается Composer без ручного include.
@@ -328,19 +329,19 @@ class mqtt extends module
         }
 
         if ($this->setglobal_supports_source) {
-            setGlobal($object . '.' . $property, $value, array('mqtt' => '0'), $source_url);
-            return;
-        }
-
-        $has_request_uri = isset($_SERVER['REQUEST_URI']);
-        $old_request_uri = $has_request_uri ? $_SERVER['REQUEST_URI'] : '';
-        $_SERVER['REQUEST_URI'] = $source_url;
-        setGlobal($object . '.' . $property, $value, array('mqtt' => '0'));
-        if ($has_request_uri) {
-            $_SERVER['REQUEST_URI'] = $old_request_uri;
+            $result = setGlobal($object . '.' . $property, $value, array('mqtt' => '0'), $source_url);
         } else {
-            unset($_SERVER['REQUEST_URI']);
+            $has_request_uri = isset($_SERVER['REQUEST_URI']);
+            $old_request_uri = $has_request_uri ? $_SERVER['REQUEST_URI'] : '';
+            $_SERVER['REQUEST_URI'] = $source_url;
+            try {
+                $result = setGlobal($object . '.' . $property, $value, array('mqtt' => '0'));
+            } finally {
+                if ($has_request_uri) $_SERVER['REQUEST_URI'] = $old_request_uri;
+                else unset($_SERVER['REQUEST_URI']);
+            }
         }
+        if ($result === false || $result === 0) throw new RuntimeException('Запись связанного свойства отклонена: ' . $object . '.' . $property);
     }
 
     function pathToTree($array)
@@ -807,11 +808,6 @@ class mqtt extends module
                     $rec['VALUE'] = mb_substr($rec['VALUE'], 0, 255);
                 }
                 $rec['UPDATED'] = date('Y-m-d H:i:s');
-                if (!SQLUpdate('mqtt', array('ID' => $rec['ID'], 'VALUE' => $rec['VALUE'], 'UPDATED' => $rec['UPDATED']))) {
-                    throw new RuntimeException('Unable to update MQTT topic');
-                }
-                $this->lookup_by_path[$path] = $rec;
-
                 if ($rec['REPLACE_LIST'] != '') {
                     $list = explode(',', $rec['REPLACE_LIST']);
                     foreach ($list as $pair) {
@@ -841,7 +837,6 @@ class mqtt extends module
                     if ($rec['LINKED_OBJECT'] && $rec['LINKED_PROPERTY']) {
                         $hist['LINKED_DATA'] = $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_PROPERTY'];
                     }
-                    SQLInsert('mqtt_history', $hist);
                 }
 
 
@@ -858,14 +853,23 @@ class mqtt extends module
                     if ($rec['LOGGING']) {
                         DebMes("Calling method " . $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], 'mqtt_topic_' . $rec['ID']);
                     }
-                    callMethod($rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], array(
+                    $method_result = callMethod($rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], array(
                         'VALUE' => $rec['VALUE'],
                         'NEW_VALUE' => $rec['VALUE'],
                         'OLD_VALUE' => $old_value,
                         'SOURCE' => $path,
                         'TITLE' => $rec['TITLE'] ?: $path,
                     ));
+                    if ($method_result === false) throw new RuntimeException('Связанный метод не выполнен: ' . $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD']);
                 }
+
+                // Дедупликация видит новое состояние только после применения
+                // привязок: отклонённый пакет должен оставаться повторяемым.
+                if (!SQLUpdate('mqtt', array('ID' => $rec['ID'], 'VALUE' => $rec['VALUE'], 'UPDATED' => $rec['UPDATED']))) {
+                    throw new RuntimeException('Unable to update MQTT topic');
+                }
+                $this->lookup_by_path[$path] = $rec;
+                if (isset($hist)) SQLInsert('mqtt_history', $hist);
 
             } else {
                 if ($rec['LOGGING']) {
@@ -1016,13 +1020,14 @@ class mqtt extends module
             if ($rec['LOGGING']) {
                 DebMes("Calling method " . $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], 'mqtt_topic_' . $rec['ID']);
             }
-            callMethod($rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], array(
+            $method_result = callMethod($rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD'], array(
                 'VALUE' => $value,
                 'NEW_VALUE' => $value,
                 'OLD_VALUE' => $old_value,
                 'SOURCE' => $path,
                 'TITLE' => $rec['TITLE'] ?: $path,
             ));
+            if ($method_result === false) throw new RuntimeException('Связанный метод не выполнен: ' . $rec['LINKED_OBJECT'] . '.' . $rec['LINKED_METHOD']);
         }
 
         // Состояние и локальный кэш обновляем только после успешной записи

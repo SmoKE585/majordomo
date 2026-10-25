@@ -10319,3 +10319,90 @@ body.md-admin-shell .md-call-flow--compact .md-call-flow__dot {
     transition: none;
   }
 }
+/* 2026-10-25 — уведомления используют общие alert/card/drawer и токены темы. */
+body.md-admin-shell .md-notifications-list {
+  display: grid;
+  gap: var(--md-ui-space-3, 12px);
+}
+
+body.md-admin-shell .md-notification {
+  margin: 0;
+  min-width: 0;
+}
+
+body.md-admin-shell .md-notification__meta,
+body.md-admin-shell .md-notifications-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--md-ui-space-2, 8px);
+  margin-bottom: var(--md-ui-space-3, 12px);
+  color: var(--md-ui-muted);
+}
+
+body.md-admin-shell .md-notification__meta { justify-content: flex-start; }
+body.md-admin-shell .md-notification__text { white-space: pre-wrap; overflow-wrap: anywhere; }
+body.md-admin-shell .md-notification__details { margin-top: var(--md-ui-space-2, 8px); }
+body.md-admin-shell .md-notification__details summary { cursor: pointer; }
+
+body.md-admin-shell .md-notification--preview .md-alert__body {
+  position: relative;
+  padding-inline-end: 44px;
+}
+
+body.md-admin-shell .md-notification--preview .md-notification__meta { margin-bottom: 4px; }
+body.md-admin-shell .md-notification--preview .md-notification__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+body.md-admin-shell .md-notification--preview .md-alert__actions {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: 0;
+  margin: 0;
+}
+
+body.md-admin-shell .md-notification--preview .md-icon-btn { min-width: 44px; min-height: 44px; }
+
+body.md-admin-shell .md-notifications-bell {
+  position: relative;
+  flex: 0 0 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+}
+
+body.md-admin-shell .md-notifications-bell__count {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  pointer-events: none;
+}
+
+body.md-admin-shell .md-admin-sidebar__profile .md-notifications-bell {
+  color: var(--bs-light);
+  margin-inline-end: 8px;
+}
+
+body.md-admin-shell .md-admin-sidebar__item { position: relative; }
+body.md-admin-shell .md-admin-sidebar__item:has(> .md-notifications-module-badge:not([hidden])) > .md-admin-sidebar__link { padding-inline-end: 58px; min-height: 44px; }
+body.md-admin-shell .md-notifications-module-badge {
+  position: absolute;
+  inset-inline-end: 5px;
+  inset-block-start: 0;
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+body.md-admin-shell .md-notifications-module-badge:focus-visible {
+  outline: 2px solid var(--md-ui-primary);
+  outline-offset: -2px;
+}

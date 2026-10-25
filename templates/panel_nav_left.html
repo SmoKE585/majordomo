@@ -37,14 +37,10 @@
                                     <img src="[#ICON_SM#]" alt="" class="md-admin-sidebar__icon">
                                     [#endif#]
                                     <span class="md-admin-sidebar__label">[#TITLE#]</span>
-                                    [#if NOTIFICATIONS_COUNT != 0#]
-                                    <span class="badge md-admin-sidebar__badge alert-[#NOTIFICATIONS_TYPE#]"
-                                          data-bs-container="body" data-bs-toggle="popover" data-bs-trigger="manual"
-                                          data-bs-placement="right" data-bs-html="true" data-bs-custom-class="md-admin-noty-popover"
-                                          data-md-notifications="[#NOTIFICATIONS_JSON#]"
-                                          data-md-module="[#NAME#]">[#NOTIFICATIONS_COUNT#]</span>
-                                    [#endif NOTIFICATIONS_COUNT#]
                                 </a>
+                                <button type="button" class="md-icon-btn md-notifications-module-badge"
+                                        data-md-notifications-module-open="[#NAME|html#]" aria-label="Уведомления: [#TITLE|html#]"
+                                        [#if NOTIFICATIONS_COUNT="0"#]hidden[#endif#]><span class="md-badge md-badge--[#NOTIFICATIONS_TYPE#]">[#NOTIFICATIONS_COUNT#]</span></button>
                             </li>
                             [#endif DENIED#]
 
@@ -60,6 +56,7 @@
         [#if AUTH_USERNAME!=""#]
         <!-- Профиль закреплён внизу меню: меню открывается вверх и не обрезается. -->
         <div class="md-admin-sidebar__profile">
+            [#inc panel_notifications_bell.php#]
             <div class="dropup md-admin-sidebar__profile-dropdown">
                 <button type="button" class="md-admin-sidebar__account" data-bs-toggle="dropdown" aria-expanded="false"
                         aria-label="Профиль [#AUTH_USERNAME|html#]">

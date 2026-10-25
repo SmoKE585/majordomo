@@ -25,6 +25,7 @@ use \RuntimeException;
  * полосами порядок намеренно не определён.
  *
  * 2026-10-23 — добавлена для быстрого пути MQTT и параллельного core_runtime.
+ * 2026-10-25 — повторы сохраняют голову полосы; serial чередуется с объектами и не блокирует их во время задержки.
  */
 final class LaneEventQueue
 {
@@ -98,89 +99,106 @@ LUA;
         $now = (int)round(microtime(true) * 1000);
         $lua = <<<'LUA'
 local out = {}
-local maxAttempts = tonumber(ARGV[1])
-local limit = tonumber(ARGV[2])
-local now = tonumber(ARGV[6])
-local lease = tonumber(ARGV[7])
-local serialKey = ARGV[8]
-redis.call('ZREMRANGEBYSCORE', KEYS[3], '-inf', now)
-for i = 1, maxAttempts do
-    local lane = redis.call('LPOP', KEYS[1])
-    if not lane then break end
-    local h = redis.sha1hex(lane)
-    local lockKey = ARGV[3] .. h
-    local listKey = ARGV[4] .. h
-    local claimToken = ARGV[5] .. ':' .. i
-    local acquired = false
-    if lane == 'serial' then
-        if redis.call('EXISTS', serialKey) == 0 and redis.call('ZCOUNT', KEYS[3], now, '+inf') == 0 then
-            if redis.call('SET', serialKey, claimToken, 'NX', 'PX', lease) then acquired = true end
-        end
-    else
-        if redis.call('EXISTS', serialKey) == 0 and tonumber(redis.call('GET', KEYS[5]) or '0') == 0 then
-            if redis.call('SET', lockKey, claimToken, 'NX', 'PX', lease) then
-                acquired = true
-                redis.call('ZADD', KEYS[3], now + lease, lane)
-            end
+local now, lease = tonumber(ARGV[6]), tonumber(ARGV[7])
+local serialKey, turnKey = ARGV[8], ARGV[9]
+-- Старые отложенные события ещё не лежали в голове полосы. Возвращаем их
+-- туда один раз при обновлении, прежде чем разрешить последующим обгонять их.
+if redis.call('SET', ARGV[10], '2', 'NX') then
+    local lanes = {}
+    for _,raw in ipairs(redis.call('HVALS', KEYS[7])) do
+        local ok,event = pcall(cjson.decode, raw)
+        if ok and type(event) == 'table' and not event.not_before then
+            event.not_before = tonumber(redis.call('ZSCORE', KEYS[6], event.id) or now)
+            local encoded = cjson.encode(event)
+            redis.call('HSET', KEYS[7], event.id, encoded)
+            lanes[event.lane] = lanes[event.lane] or {}
+            table.insert(lanes[event.lane], event)
         end
     end
-    if acquired then
-        local raw = redis.call('LPOP', listKey)
-        if raw then
-            local ok, event = pcall(cjson.decode, raw)
-            if ok and type(event) == 'table' then
-                local expires = tonumber(event.expires or 0)
-                if expires > 0 and expires < math.floor(now / 1000) then
-                    redis.call('DECR', KEYS[2])
-                    if lane == 'serial' then
-                        redis.call('DEL', serialKey)
-                        redis.call('DECR', KEYS[5])
-                    else
-                        redis.call('DEL', lockKey)
-                        redis.call('ZREM', KEYS[3], lane)
-                    end
-                else
-                    event.attempts = (tonumber(event.attempts) or 0) + 1
-                    event.token = claimToken
-                    event.started = now
-                    event.lane = lane
-                    local encoded = cjson.encode(event)
-                    redis.call('HSET', KEYS[4], event.id, encoded)
-                    table.insert(out, encoded)
-                    if #out >= limit then break end
-                end
-            else
-                redis.call('DECR', KEYS[2])
-                if lane == 'serial' then
-                    redis.call('DEL', serialKey)
-                    redis.call('DECR', KEYS[5])
-                else
-                    redis.call('DEL', lockKey)
-                    redis.call('ZREM', KEYS[3], lane)
-                end
-            end
-        else
-            if lane == 'serial' then
-                redis.call('DEL', serialKey)
-            else
-                redis.call('DEL', lockKey)
-                redis.call('ZREM', KEYS[3], lane)
-            end
-        end
-    else
-        -- Полоса занята: токен возвращаем в очередь, иначе событие может
-        -- остаться без пробуждения, пока не придёт следующее сообщение.
+    for lane,events in pairs(lanes) do
+        table.sort(events, function(a,b) return tonumber(a.at or 0) < tonumber(b.at or 0) end)
+        for i=#events,1,-1 do redis.call('LPUSH', ARGV[4] .. redis.sha1hex(lane), cjson.encode(events[i])) end
         redis.call('RPUSH', KEYS[1], lane)
     end
+    -- Блокировка живёт до ACK/reap: истечение TTL не разрешает A2 обогнать
+    -- зависший A1 между истечением аренды и следующим проходом супервизора.
+    for _,raw in ipairs(redis.call('HVALS', KEYS[4])) do
+        local ok,event = pcall(cjson.decode, raw)
+        if ok and type(event) == 'table' then
+            local key = event.lane == 'serial' and serialKey or ARGV[3] .. redis.sha1hex(event.lane)
+            if redis.call('GET', key) == event.token then redis.call('PERSIST', key)
+            else redis.call('SET', key, event.token, 'NX') end
+        end
+    end
+end
+local function due(lane)
+    local raw = redis.call('LINDEX', ARGV[4] .. redis.sha1hex(lane), 0)
+    if not raw then return false end
+    local ok,event = pcall(cjson.decode, raw)
+    if not ok or type(event) ~= 'table' then return true end
+    local expires = tonumber(event.expires or 0)
+    return (expires > 0 and expires < math.floor(now / 1000)) or tonumber(event.not_before or 0) <= now
+end
+local serialReady = due('serial')
+local preferObjects = redis.call('GET', turnKey) == 'object'
+local function take(lane, claimToken)
+    if not due(lane) then return false end
+    local listKey = ARGV[4] .. redis.sha1hex(lane)
+    local lockKey = lane == 'serial' and serialKey or ARGV[3] .. redis.sha1hex(lane)
+    if lane == 'serial' then
+        if redis.call('HLEN', KEYS[4]) > 0 then return false end
+    elseif redis.call('EXISTS', serialKey) == 1 or (serialReady and not preferObjects) then return false end
+    if not redis.call('SET', lockKey, claimToken, 'NX') then return false end
+    local raw = redis.call('LPOP', listKey)
+    local ok,event = pcall(cjson.decode, raw)
+    if not ok or type(event) ~= 'table' or (tonumber(event.expires or 0) > 0 and tonumber(event.expires) < math.floor(now / 1000)) then
+        redis.call('DEL', lockKey)
+        redis.call('DECR', KEYS[2])
+        if lane == 'serial' then redis.call('DECR', KEYS[5]) end
+        if ok and type(event) == 'table' and event.id then
+            redis.call('ZREM', KEYS[6], event.id)
+            redis.call('HDEL', KEYS[7], event.id)
+        end
+        if redis.call('LLEN', listKey) > 0 then redis.call('RPUSH', KEYS[1], lane) end
+        return false
+    end
+    event.attempts = (tonumber(event.attempts) or 0) + 1
+    event.token, event.started, event.lane, event.lease_ms = claimToken, now, lane, lease
+    event.not_before = nil
+    redis.call('ZREM', KEYS[6], event.id)
+    redis.call('HDEL', KEYS[7], event.id)
+    local encoded = cjson.encode(event)
+    redis.call('HSET', KEYS[4], event.id, encoded)
+    if lane ~= 'serial' then redis.call('ZADD', KEYS[3], now + lease, lane) end
+    redis.call('SET', turnKey, lane == 'serial' and 'object' or 'serial')
+    preferObjects = false
+    table.insert(out, encoded)
+    return true
+end
+local sawSerial = false
+for i=1,tonumber(ARGV[1]) do
+    local lane = redis.call('LPOP', KEYS[1])
+    if not lane then break end
+    local taken = false
+    if lane == 'serial' and preferObjects then sawSerial = true
+    else taken = take(lane, ARGV[5] .. ':' .. i) end
+    if not taken and redis.call('LLEN', ARGV[4] .. redis.sha1hex(lane)) > 0 then redis.call('RPUSH', KEYS[1], lane) end
+    if #out >= tonumber(ARGV[2]) then break end
+end
+-- Если объектов, готовых к выполнению, нет, serial не должен ждать пустую фазу.
+if #out == 0 and sawSerial then
+    preferObjects = false
+    if take('serial', ARGV[5] .. ':serial') then redis.call('LREM', KEYS[1], 1, 'serial') end
 end
 return out
 LUA;
         // KEYS: ready, count, active, inflight, serialPending.
         $rows = $this->redis->requireConnection()->eval($lua, array(
             $this->readyKey(), $this->countKey(), $this->activeKey(), $this->inflightKey(), $this->serialPendingKey(),
+            $this->delayedKey(), $this->delayedDataKey(),
             '20', (string)$limit, $this->lockPrefix(), $this->lanePrefix(),
-            $token, (string)$now, (string)$leaseMs, $this->serialKey(),
-        ), 5);
+            $token, (string)$now, (string)$leaseMs, $this->serialKey(), $this->base . 'turn', $this->base . 'layout',
+        ), 7);
         $events = array();
         if ($rows === false) throw new RuntimeException('Lane queue claim failed');
         foreach (is_array($rows) ? $rows : array() as $raw) {
@@ -254,12 +272,13 @@ else
     local lockKey = ARGV[3] .. redis.sha1hex(value.lane)
     if redis.call('GET', lockKey) == ARGV[2] then redis.call('DEL', lockKey) end
 end
+value.not_before = tonumber(ARGV[7]) + tonumber(ARGV[6])
+raw = cjson.encode(value)
+redis.call('LPUSH', ARGV[4] .. redis.sha1hex(value.lane), raw)
+redis.call('RPUSH', KEYS[2], value.lane)
 if tonumber(ARGV[6]) > 0 then
     redis.call('ZADD', KEYS[4], tonumber(ARGV[7]) + tonumber(ARGV[6]), value.id)
     redis.call('HSET', KEYS[5], value.id, raw)
-else
-    redis.call('LPUSH', ARGV[4] .. redis.sha1hex(value.lane), raw)
-    redis.call('RPUSH', KEYS[2], value.lane)
 end
 return 1
 LUA;
@@ -291,7 +310,7 @@ if not ok or type(value) ~= 'table' then
     redis.call('HDEL', KEYS[1], ARGV[1])
     return 0
 end
-if (tonumber(value.started) or 0) + tonumber(ARGV[3]) > tonumber(ARGV[2]) then return 0 end
+if (tonumber(value.started) or 0) + tonumber(value.lease_ms or ARGV[3]) > tonumber(ARGV[2]) then return 0 end
 redis.call('HDEL', KEYS[1], ARGV[1])
 redis.call('ZREM', KEYS[2], value.lane)
 if value.lane == 'serial' then
@@ -326,13 +345,15 @@ LUA;
         $ids = $redis->zRangeByScore($this->delayedKey(), '-inf', $nowMs, array('limit' => array(0, $limit)));
         if (!is_array($ids)) return 0;
         $lua = <<<'LUA'
+local score = tonumber(redis.call('ZSCORE', KEYS[1], ARGV[1]) or '-1')
+if score < 0 or score > tonumber(ARGV[3]) then return 0 end
 local raw = redis.call('HGET', KEYS[2], ARGV[1])
 redis.call('ZREM', KEYS[1], ARGV[1])
 redis.call('HDEL', KEYS[2], ARGV[1])
 if not raw then return 0 end
 local ok, value = pcall(cjson.decode, raw)
 if not ok or type(value) ~= 'table' then return 0 end
-redis.call('LPUSH', ARGV[2] .. redis.sha1hex(value.lane), raw)
+if not value.not_before then redis.call('LPUSH', ARGV[2] .. redis.sha1hex(value.lane), raw) end
 redis.call('RPUSH', KEYS[3], value.lane)
 return 1
 LUA;
@@ -340,7 +361,7 @@ LUA;
         foreach ($ids as $id) {
             $moved += (int)$redis->eval($lua, array(
                 $this->delayedKey(), $this->delayedDataKey(), $this->readyKey(),
-                (string)$id, $this->lanePrefix(),
+                (string)$id, $this->lanePrefix(), $nowMs,
             ), 3);
         }
         return $moved;

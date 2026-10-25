@@ -10,6 +10,8 @@ use \InvalidArgumentException;
  * Выполнение фоновых операций из очереди (методы, модули, сообщения, подписки).
  *
  * Изменения:
+ * 2026-10-25 — исключения NO_LINKED восстанавливаются с областью свойства,
+ *              в том числе у заданий, поставленных прежней версией ядра.
  * 2026-10-23 — явный отказ метода или сценария больше не подтверждается как успешная операция.
  * 2026-10-22 — воркер восстанавливает точку доставки (модуль + свойство), чтобы
  *              исключение эха не распространялось на вложенные привязки.
@@ -43,6 +45,8 @@ final class OperationWorker
             $data = json_decode($item['DATAVALUE'], true, 512, JSON_THROW_ON_ERROR);
             $params = $data['params'];
             $chain = is_array($params['_chain'] ?? null) ? $params['_chain'] : array();
+            $delivery = is_array($params['_delivery'] ?? null) ? $params['_delivery'] : array();
+            $exclusions = is_array($delivery['exclusions'] ?? null) ? $delivery['exclusions'] : array();
             $source = '';
             $point = '';
             if (in_array($item['DATANAME'], array('modulepropertyset', 'moduleevent'), true)) {
@@ -56,11 +60,29 @@ final class OperationWorker
                 // Метод/сценарий продолжает доставку, начатую модулем: точку
                 // нужно сохранить, иначе на следующем уровне модуль-источник
                 // снова выпадет из собственных привязок.
-                $delivery = is_array($params['_delivery'] ?? null) ? $params['_delivery'] : array();
                 $source = (string)($delivery['module'] ?? '');
                 $point = (string)($delivery['point'] ?? '');
             }
-            PropertyChain::enter($chain, $source, $point);
+            // Старые ONCHANGE уже могли попасть в очередь без области NO_LINKED.
+            // Объект метода и PROPERTY позволяют восстановить её без миграции.
+            if ($item['DATANAME'] === 'method' && !isset($delivery['exclusions'])
+                && is_array($params['NO_LINKED'] ?? null)
+                && is_string($params['PROPERTY'] ?? null) && $params['PROPERTY'] !== '') {
+                $target = (string)($data['target'] ?? '');
+                $separator = strrpos($target, '.');
+                if ($separator !== false) {
+                    foreach (array_keys($params['NO_LINKED']) as $module) {
+                        if (isset($params['NO_LINKED'][$module])) {
+                            $exclusions[$module] = PropertyChain::token(substr($target, 0, $separator), (string)$params['PROPERTY']);
+                        }
+                    }
+                }
+            }
+            PropertyChain::enter($chain, $source, $point, $exclusions);
+            if (is_array($params['NO_LINKED'] ?? null)
+                && !isset($params['NO_LINKED'][PropertyChain::EXCLUSION_SCOPE])) {
+                $params['NO_LINKED'] = PropertyChain::scopedExclusions($params['NO_LINKED'], $exclusions);
+            }
             $_GET = $params;
             $_GET['r_s_m'] = 1;
             $_REQUEST = $_GET;
@@ -210,6 +232,7 @@ final class OperationWorker
 
     public function process($execute = null)
     {
+        if ($execute === null) $this->processes->prepare();
         $timeout = defined('CORE_OPERATION_TIMEOUT') ? max(1, (int)CORE_OPERATION_TIMEOUT) : 60;
         // One reservation at a time: no message waits in a local batch while its lease expires.
         // При CORE_WORKERS > 1 очередь выдаёт событие только из свободной полосы.
