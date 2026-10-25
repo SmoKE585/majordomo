@@ -5,6 +5,7 @@ namespace MajorDoMo\Core;
 use \RuntimeException;
 use \Redis;
 
+/** Кеш общих значений. 2026-10-25 — незавершённая транзакция читает SQL и не публикует значения в общий кеш. */
 final class Cache
 {
     public function __construct(
@@ -103,6 +104,7 @@ final class Cache
 
     public function set($key, $value, $only_if_missing = false)
     {
+        if ($this->db->inTransaction()) return false;
         $key = strtolower((string)$key);
         if (is_array($value) || is_object($value) || $value === false) {
             if (!$only_if_missing) $this->delete($key);
@@ -131,6 +133,7 @@ final class Cache
 
     public function get($key)
     {
+        if ($this->db->inTransaction()) return false;
         $key = strtolower((string)$key);
         if (Config::get('USE_REDIS')) return $this->redis->requireConnection()->get($this->redis->key('cache:') . $key);
         if (!$this->ensureSqlTable()) return false;

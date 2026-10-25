@@ -172,6 +172,10 @@ try {
     $orphan = array_values(array_filter($status, static fn(array $row) => $row['version'] === '20261005_orphan'));
     check(count($orphan) === 1 && $orphan[0]['missing_file'] === true, 'запись без файла помечается missing_file');
 
+    migrationFile($directory, '2026_10_06_000001_schema.php', '20261006_z_schema', '$GLOBALS["migration_order"][] = "schema";');
+    migrationFile($directory, '2026_10_06_000002_indexes.php', '20261006_a_indexes', '$GLOBALS["migration_order"][] = "indexes";');
+    $result = $migrations->run();
+    check($result['applied'] === array('20261006_z_schema', '20261006_a_indexes'), 'создание таблицы предшествует индексам независимо от метки версии');
     echo 'Migration smoke tests passed: ' . $checks . ' checks.' . PHP_EOL;
 } finally {
     $remove($directory);

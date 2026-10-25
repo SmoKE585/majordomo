@@ -43,16 +43,26 @@ $present = (new ReflectionProperty(Config::class, 'present'))->getValue();
 foreach (array('USE_REDIS', 'REDIS_PORT', 'REDIS_DB', 'REDIS_PREFIX', 'CORE_WORKERS') as $key) $present[$key] = true;
 (new ReflectionProperty(Config::class, 'present'))->setValue(null, $present);
 
+$checks = 0;
 function check($condition, $message)
 {
     if (!$condition) throw new RuntimeException($message);
+    $GLOBALS['checks']++;
 }
 function DebMes($message, $source = '', $severity = '') {}
 
 $connection = new RedisConnection();
+require __DIR__ . '/fixtures/runtime_queue.php';
+require __DIR__ . '/fixtures/runtime_database.php';
+$pdo = new PDO('sqlite::memory:', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+createRuntimeQueueFixture($pdo);
+$pdo->sqliteCreateFunction('GET_LOCK', fn(...$args) => 1);
+$pdo->sqliteCreateFunction('RELEASE_LOCK', fn(...$args) => 1);
+$pdo->sqliteCreateFunction('NOW', fn() => date('Y-m-d H:i:s'));
+$db = new Database(new RuntimeTestConnection($pdo));
 $lanes = new LaneEventQueue($connection, 'core_verify', 5);
-$queue = new OperationsQueue(new Database(new stdClass()), $connection, $lanes);
-$worker = new OperationWorker(new Database(new stdClass()), $connection, $queue, new ProcessRunner());
+$queue = new OperationsQueue($db, $connection, $lanes);
+$worker = new OperationWorker($db, $connection, $queue, new ProcessRunner());
 check($queue->parallelEnabled(), 'Parallel core queue must be enabled');
 
 $queue->enqueueRuntime('method', array(), 'A.one');
@@ -116,11 +126,41 @@ do {
 } while ($processed > 0 && $iterations < 10);
 check($queue->claimRuntime(1, 10) === array() && $lanes->delayedCount() === 0, 'Retried queue must drain');
 
-// Upgrade compatibility: an item left in the old ZSET is moved into its lane.
+// После потери Redis неподтверждённое задание восстанавливается из SQL.
 $queue->enqueue('core_runtime', 'method', json_encode(array('target' => 'D.one', 'path' => 'core:method/D.one', 'params' => array())), false, 3600);
-check($queue->migrateLegacyRuntime(10) === 1, 'Legacy item must be moved to a lane');
+$redis = $connection->requireConnection();
+$redis->del($connection->key('runtime:dispatch:generation'));
 $migrated = $queue->claimRuntime(1, 10);
 check(count($migrated) === 1 && ($migrated[0]['LANE'] ?? '') === 'object:D', 'Migrated item must keep its object lane');
 $queue->acknowledgeRuntime($migrated[0]);
 
-echo 'Core lane queue smoke tests passed: 11 checks on real Redis.' . PHP_EOL;
+// Redis принял задание, но SQL не успел отметить передачу: повторный push
+// с тем же ID обязан оставить единственный экземпляр в Redis.
+$queue->enqueueRuntime('method', array(), 'F.once');
+$pdo->exec("CREATE TRIGGER fail_dispatch BEFORE UPDATE OF DISPATCH_GENERATION ON core_runtime_queue BEGIN SELECT RAISE(ABORT,'fixture dispatch crash'); END");
+$caught = false;
+try { $queue->claimRuntime(1, 30); } catch (PDOException $error) { $caught = true; }
+$pdo->exec('DROP TRIGGER fail_dispatch');
+check($caught && $lanes->size() === 1, 'Обрыв после Redis push оставляет задание в очереди');
+$once = $queue->claimRuntime(1, 30)[0];
+check($lanes->size() === 1 && $once['ATTEMPTS'] === 1, 'Повтор передачи не создаёт второго экземпляра');
+$queue->acknowledgeRuntime($once);
+
+// Полная потеря служебных ключей только этой одноразовой очереди. SQL
+// удерживает аренду старого процесса; восстановление не запускает дубль.
+$queue->enqueueRuntime('method', array(), 'G.recover');
+$oldOwner = $queue->claimRuntime(1, 30)[0];
+$cursor = null;
+do {
+    $keys = $redis->scan($cursor, $connection->key('lanes:core_verify:') . '*', 100);
+    foreach (is_array($keys) ? $keys : array() as $key) $redis->del($key);
+} while ($cursor !== 0);
+$redis->del($connection->key('runtime:dispatch:generation'));
+check($queue->claimRuntime(1, 30) === array(), 'Потеря Redis не отменяет действующую SQL-аренду');
+$pdo->exec("UPDATE core_runtime_queue SET CLAIM_UNTIL='2000-01-01 00:00:00' WHERE ID=" . (int)$oldOwner['QUEUE_ID']);
+usleep(1100000);
+$recovered = $queue->claimRuntime(1, 30)[0];
+check($recovered['QUEUE_ID'] === $oldOwner['QUEUE_ID'] && $recovered['ATTEMPTS'] === 2, 'После аренды восстанавливается исходное задание из SQL');
+check(!$queue->acknowledgeRuntime($oldOwner), 'Старый процесс не подтверждает восстановленное задание');
+check($queue->acknowledgeRuntime($recovered) && $lanes->size() === 0, 'Восстановленное задание подтверждается в обеих системах');
+echo 'Core lane queue smoke tests passed: ' . $checks . ' checks on SQLite + real Redis.' . PHP_EOL;

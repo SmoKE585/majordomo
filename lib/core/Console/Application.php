@@ -8,6 +8,7 @@ use MajorDoMo\Core\Console\Commands;
  * Единый реестр CLI и обработка вывода команд.
  *
  * Изменения:
+ * 2026-10-25 — зарегистрирована диагностика долговечного журнала заданий ядра.
  * 2026-10-23 — обновление системы из терминала (`deploy:update`) для deploy.sh.
  * 2026-10-23 — сборка индекса знаний ИИ-помощника.
  * 2026-10-23 — зарегистрирована диагностика опционального Qdrant модуля ИИ.
@@ -45,7 +46,7 @@ final class Application
             new Commands\AuthUnblockCommand(), new Commands\AuthResetCommand(),
             new Commands\ModesListCommand(), new Commands\ModesSetCommand(),
             new Commands\ApiTokensCommand(), new Commands\ApiRevokeCommand(), new Commands\ApiSpecCommand(),
-            new Commands\WebSocketsServeCommand(), new Commands\MqttRuntimeCommand(),
+            new Commands\WebSocketsServeCommand(), new Commands\MqttRuntimeCommand(), new Commands\QueueStatusCommand(),
             new Commands\AiRagCheckCommand(), new Commands\AiIndexCommand(),
         ) as $command) $this->register($command);
     }

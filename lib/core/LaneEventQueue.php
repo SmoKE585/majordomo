@@ -25,6 +25,7 @@ use \RuntimeException;
  * полосами порядок намеренно не определён.
  *
  * 2026-10-25 — повторы сохраняют голову полосы; serial чередуется с объектами и не блокирует их во время задержки.
+ * 2026-10-25 — перенос старой очереди ядра в SQL при остановленных исполнителях.
  * 2026-10-23 — добавлена для быстрого пути MQTT и параллельного core_runtime.
  */
 final class LaneEventQueue
@@ -55,21 +56,23 @@ final class LaneEventQueue
      * Ставит событие в полосу. Событие считается принятым только после
      * успешного ответа Redis; при ошибке выбрасывается исключение.
      */
-    public function push(array $data, string $lane = 'default', int $ttl = 3600): string
+    public function push(array $data, string $lane = 'default', int $ttl = 3600, ?string $id = null, ?int $expires = null): string
     {
         $lane = trim($lane);
         if ($lane === '') $lane = 'default';
-        $id = bin2hex(random_bytes(16));
+        $id ??= bin2hex(random_bytes(16));
         $event = array(
             'id' => $id,
             'at' => microtime(true),
             'lane' => $lane,
             'attempts' => 0,
-            'expires' => $ttl > 0 ? time() + $ttl : 0,
+            'expires' => $expires ?? ($ttl > 0 ? time() + $ttl : 0),
             'data' => $data,
         );
         $raw = json_encode($event, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
         $lua = <<<'LUA'
+local event = cjson.decode(ARGV[3])
+if redis.call('HSETNX', KEYS[4], event.id, '1') == 0 then return 0 end
 redis.call('RPUSH', ARGV[1], ARGV[3])
 redis.call('RPUSH', KEYS[1], ARGV[2])
 redis.call('INCR', KEYS[2])
@@ -77,8 +80,8 @@ if ARGV[2] == 'serial' then redis.call('INCR', KEYS[3]) end
 return 1
 LUA;
         $result = $this->redis->requireConnection()->eval($lua, array(
-            $this->readyKey(), $this->countKey(), $this->serialPendingKey(), $this->laneKey($lane), $lane, $raw,
-        ), 3);
+            $this->readyKey(), $this->countKey(), $this->serialPendingKey(), $this->base . 'seen', $this->laneKey($lane), $lane, $raw,
+        ), 4);
         if ($result === false) throw new RuntimeException('Event was not queued');
         return $id;
     }
@@ -156,6 +159,7 @@ local function take(lane, claimToken)
         redis.call('DECR', KEYS[2])
         if lane == 'serial' then redis.call('DECR', KEYS[5]) end
         if ok and type(event) == 'table' and event.id then
+            redis.call('HDEL', ARGV[11], event.id)
             redis.call('ZREM', KEYS[6], event.id)
             redis.call('HDEL', KEYS[7], event.id)
         end
@@ -197,7 +201,7 @@ LUA;
             $this->readyKey(), $this->countKey(), $this->activeKey(), $this->inflightKey(), $this->serialPendingKey(),
             $this->delayedKey(), $this->delayedDataKey(),
             '20', (string)$limit, $this->lockPrefix(), $this->lanePrefix(),
-            $token, (string)$now, (string)$leaseMs, $this->serialKey(), $this->base . 'turn', $this->base . 'layout',
+            $token, (string)$now, (string)$leaseMs, $this->serialKey(), $this->base . 'turn', $this->base . 'layout', $this->base . 'seen',
         ), 7);
         $events = array();
         if ($rows === false) throw new RuntimeException('Lane queue claim failed');
@@ -243,12 +247,13 @@ redis.call('DECR', KEYS[2])
 if redis.call('LLEN', ARGV[4] .. redis.sha1hex(value.lane)) > 0 then
     redis.call('RPUSH', KEYS[3], value.lane)
 end
+redis.call('HDEL', ARGV[6], ARGV[1])
 return 1
 LUA;
         return (bool)$this->redis->requireConnection()->eval($lua, array(
             $this->inflightKey(), $this->countKey(), $this->readyKey(), $this->activeKey(), $this->serialPendingKey(),
             (string)($event['QUEUE_ID'] ?? ''), (string)($event['CLAIM_TOKEN'] ?? ''),
-            $this->lockPrefix(), $this->lanePrefix(), $this->serialKey(),
+            $this->lockPrefix(), $this->lanePrefix(), $this->serialKey(), $this->base . 'seen',
         ), 5);
     }
 
@@ -393,12 +398,13 @@ end
 redis.call('DECR', KEYS[2])
 redis.call('RPUSH', KEYS[4], ARGV[4])
 redis.call('LTRIM', KEYS[4], -1000, -1)
+redis.call('HDEL', ARGV[6], ARGV[1])
 return 1
 LUA;
         $this->redis->requireConnection()->eval($lua, array(
             $this->inflightKey(), $this->countKey(), $this->activeKey(), $this->failedKey(), $this->serialPendingKey(),
             (string)($event['QUEUE_ID'] ?? ''), (string)($event['CLAIM_TOKEN'] ?? ''),
-            $this->lockPrefix(), (string)$record, $this->serialKey(),
+            $this->lockPrefix(), (string)$record, $this->serialKey(), $this->base . 'seen',
         ), 5);
     }
 
@@ -444,6 +450,41 @@ LUA;
     private function laneKey(string $lane): string
     {
         return $this->lanePrefix() . sha1($lane);
+    }
+
+    /** Только миграция остановленной очереди: сначала сохранить SQL, затем убрать Redis. */
+    public function migrateTo(callable $store): int
+    {
+        $redis = $this->redis->requireConnection();
+        $count = 0;
+        // Прерванное задание должно остаться впереди головы своей полосы.
+        foreach (array($this->inflightKey(), $this->delayedDataKey()) as $key) {
+            foreach ($redis->hKeys($key) as $id) {
+                $event = json_decode((string)$redis->hGet($key, $id), true, 512, JSON_THROW_ON_ERROR);
+                $store($event);
+                $count++;
+            }
+        }
+        $cursor = null;
+        do {
+            $keys = $redis->scan($cursor, $this->lanePrefix() . '*', 200);
+            foreach (is_array($keys) ? $keys : array() as $key) {
+                $offset = 0;
+                do {
+                    $rows = $redis->lRange($key, $offset, $offset + 199);
+                    foreach ($rows as $raw) { $store(json_decode($raw, true, 512, JSON_THROW_ON_ERROR)); $count++; }
+                    $offset += count($rows);
+                } while (count($rows) === 200);
+            }
+        } while ($cursor !== 0);
+        // Прежний журнал отказов сохраняется для диагностики; рабочие ключи
+        // очищаем только после успешного переноса всего снимка.
+        $cursor = null;
+        do {
+            $keys = $redis->scan($cursor, $this->base . '*', 200);
+            foreach (is_array($keys) ? $keys : array() as $key) if ($key !== $this->failedKey()) $redis->del($key);
+        } while ($cursor !== 0);
+        return $count;
     }
 
     private function present(array $event): array

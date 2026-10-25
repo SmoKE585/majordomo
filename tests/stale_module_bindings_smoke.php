@@ -125,6 +125,8 @@ $pdo->exec("CREATE TABLE objects (ID INTEGER PRIMARY KEY, TITLE TEXT, CLASS_ID I
         (1,1,1,'current value','2026-10-21 19:00:00','badsubscriber,goodsubscriber'),
         (2,2,1,'other object','2026-10-21 19:00:00','badsubscriber'),
         (3,1,2,'other property','2026-10-21 19:00:00','badsubscriber');");
+require __DIR__ . '/fixtures/runtime_queue.php';
+createRuntimeQueueFixture($pdo);
 $connection = new StaleBindingsTestDatabase($pdo);
 $services = new ReflectionProperty(Core::class, 'services');
 $services->setValue(null, array('database' => new Database($connection), 'redis' => new RedisConnection()));
@@ -154,10 +156,10 @@ function links() { return $GLOBALS['pdo']->query('SELECT LINKED_MODULES FROM pva
 function runModule($module, $attempt = 1, $params = null)
 {
     global $pdo, $worker;
-    $pdo->exec('DELETE FROM operations_queue');
+    $pdo->exec('DELETE FROM core_runtime_queue');
     $params ??= array('object' => 'Lamp', 'property' => 'status', 'value' => 'private value');
     $id = Core::queue()->enqueue('core_runtime', 'modulepropertyset', json_encode(array('target' => $module, 'path' => '/api/modulePropertySet/' . $module, 'params' => $params)), false, 3600);
-    $pdo->exec('UPDATE operations_queue SET ATTEMPTS=' . ($attempt - 1) . ' WHERE ID=' . $id);
+    $pdo->exec('UPDATE core_runtime_queue SET ATTEMPTS=' . ($attempt - 1) . ' WHERE ID=' . $id);
     $result = null;
     $worker->process(static function ($item) use ($worker, &$result) { return $result = $worker->execute($item['QUEUE_ID'], $item['CLAIM_TOKEN']); });
     return $result;
@@ -176,7 +178,7 @@ moduleFixture('echoingsubscriber', 'class echoingsubscriber { public function pr
 setLinks('badsubscriber,goodsubscriber, badsubscriber ,badsubscriber_extra');
 $result = runModule('badsubscriber');
 check($result['success'] && links() === 'goodsubscriber,badsubscriber_extra', 'Remove only the exact stale module, including duplicate/whitespace tokens');
-check((int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 0, 'Cleaned operation must be acknowledged immediately');
+check((int)$pdo->query('SELECT COUNT(*) FROM core_runtime_queue')->fetchColumn() === 0, 'Cleaned operation must be acknowledged immediately');
 check((int)$pdo->query('SELECT COUNT(*) FROM operations_failed')->fetchColumn() === 0, 'Cleaned operation must not enter the failed archive');
 $value = $pdo->query('SELECT VALUE,UPDATED FROM pvalues WHERE ID=1')->fetch(PDO::FETCH_ASSOC);
 check($value === array('VALUE' => 'current value', 'UPDATED' => '2026-10-21 19:00:00'), 'Cleanup must preserve value and update time');
@@ -200,9 +202,9 @@ check(links() === 'goodsubscriber,inheritedsubscriber', 'Working subscribers mus
 // устройством, и команда не уходит.
 $pdo->exec("UPDATE pvalues SET LINKED_MODULES='echoingsubscriber' WHERE ID=3");
 setLinks('echoingsubscriber');
-$pdo->exec('DELETE FROM operations_queue');
+$pdo->exec('DELETE FROM core_runtime_queue');
 $echo = runModule('echoingsubscriber');
-check($echo['success'] && (int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 1
+check($echo['success'] && (int)$pdo->query('SELECT COUNT(*) FROM core_runtime_queue')->fetchColumn() === 1
     && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=3')->fetchColumn() === 'private value',
     'A module writing another property is still notified about that property');
 
@@ -210,7 +212,7 @@ foreach (array('falsesubscriber', 'throwsubscriber', 'constructorfailure', 'brok
     setLinks($module . ',goodsubscriber');
     $result = runModule($module);
     check(!$result['success'] && links() === $module . ',goodsubscriber', 'Execution or load failure must not unlink ' . $module);
-    check((int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 1, 'Transient failure must stay queued for ' . $module);
+    check((int)$pdo->query('SELECT COUNT(*) FROM core_runtime_queue')->fetchColumn() === 1, 'Transient failure must stay queued for ' . $module);
 }
 check(str_contains($result['error'], 'wrongclass') && str_contains($result['error'], 'Lamp') && str_contains($result['error'], 'status'), 'Errors must identify target module and property');
 
@@ -260,15 +262,15 @@ check(!runModule('badsubscriber', 1, array('object' => 'Lamp', 'value' => 'priva
 
 // Missing files must also be queued by ordinary property writes, so they can self-clean.
 setLinks('missingsubscriber');
-$pdo->exec('DELETE FROM operations_queue');
+$pdo->exec('DELETE FROM core_runtime_queue');
 $object = (object)array('id' => 1, 'class_id' => 0, 'object_title' => 'Lamp');
 Core::properties()->set($object, 'status', 'new sensor value');
-$queued = $pdo->query('SELECT DATAVALUE FROM operations_queue')->fetchColumn();
+$queued = $pdo->query('SELECT DATAVALUE FROM core_runtime_queue')->fetchColumn();
 check($queued && json_decode($queued, true)['target'] === 'missingsubscriber', 'Property write must queue a missing subscriber for validation and cleanup');
 runModule('missingsubscriber', 3);
-$pdo->exec('DELETE FROM operations_queue');
+$pdo->exec('DELETE FROM core_runtime_queue');
 Core::properties()->set($object, 'status', 'next sensor value');
-check((int)$pdo->query('SELECT COUNT(*) FROM operations_queue')->fetchColumn() === 0, 'Subsequent property writes must stop queuing the removed subscriber');
+check((int)$pdo->query('SELECT COUNT(*) FROM core_runtime_queue')->fetchColumn() === 0, 'Subsequent property writes must stop queuing the removed subscriber');
 
 // --- subscription registration must be surgical and concurrency-safe ---
 require_once dirname(__DIR__) . '/lib/objects.class.php';

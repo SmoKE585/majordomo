@@ -12,6 +12,10 @@ file_put_contents($fixture . '/load_settings.php', "<?php\n");
 $bootstrap = <<<'PHP'
 <?php
 namespace MajorDoMo\Core {
+    class Config {
+        public static function int($key, $default = 0) { return $key === 'CORE_WORKERS' ? 1 : $default; }
+        public static function get($key) { return false; }
+    }
     class Core {
         public static function worker() {
             return new class {

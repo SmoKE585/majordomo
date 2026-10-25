@@ -8,6 +8,7 @@ use MajorDoMo\Core\Config;
  * Отдельный процесс издателя нужен, чтобы готовая команда свету не ждала
  * разбора пачки датчиков и не открывала TCP-соединение на каждую публикацию.
  *
+ * 2026-10-25 — keepalive обслуживается и без команд; закрытое соединение проверяется до публикации.
  * 2026-10-23 — добавлено для быстрого пути MQTT.
  */
 final class MqttPublisher
@@ -55,12 +56,33 @@ final class MqttPublisher
 
     public function publish(string $topic, string $value, int $qos = 0, int $retain = 0): bool
     {
+        // Проверка чтения обнаруживает FIN закрытого брокером соединения до
+        // записи: успешный fwrite сам по себе не обнаруживал потерю первой команды.
+        $this->tick();
         if ($this->client === null && !$this->connect()) return false;
-        $result = $this->client->publish($topic, $value, $qos, $retain);
+        try { $result = $this->client->publish($topic, $value, $qos, $retain); }
+        catch (Throwable $error) { $this->close(); $this->reportError('MQTT publish failed: ' . $error->getMessage()); return false; }
         if ($result === false || $result === 0) {
             // Соединение могло закрыться между командами; следующий вызов
             // переподключится, а вызывающий вернёт сообщение в очередь.
             $this->reportError('MQTT publish failed for ' . $topic);
+            $this->close();
+            return false;
+        }
+        return true;
+    }
+
+    /** Неблокирующее обслуживание PING/PONG и закрытия сокета даже при пустой очереди. */
+    public function tick(): bool
+    {
+        if ($this->client === null) return false;
+        try { $ok = $this->client->proc(false); }
+        catch (Throwable $error) {
+            $this->reportError('MQTT publisher connection failed: ' . $error->getMessage());
+            $ok = false;
+        }
+        if ($ok === false) {
+            $this->reportError('MQTT publisher connection closed');
             $this->close();
             return false;
         }

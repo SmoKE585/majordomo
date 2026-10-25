@@ -1,6 +1,7 @@
 <?php
 /**
  * MQTT
+ * 2026-10-25 — исходящие команды не фильтруются по значению и не склеиваются; отказ отправки не подтверждает состояние.
  * 2026-10-25 — отказ связанного свойства или метода не подтверждает входящее сообщение.
  *
  * Mqtt
@@ -472,7 +473,7 @@ class mqtt extends module
                 $data['r'] = $retain;
             }
             try {
-                $queued = addToOperationsQueue('mqtt_queue', $topic, json_encode($data), true);
+                $queued = addToOperationsQueue('mqtt_queue', $topic, json_encode($data), false);
                 if ($queued === false) throw new RuntimeException('MQTT command was not queued');
                 MqttRuntime::count('commands_queued');
                 endMeasure('mqttPublish');
@@ -519,7 +520,9 @@ class mqtt extends module
         $tls_ignore_cert = isset($this->config['MQTT_TLS_IGNORE_CERT']) ? (int)$this->config['MQTT_TLS_IGNORE_CERT'] : 0;
 
         // Create MQTT client with TLS support
-        $mqtt_client = new Bluerhinos\phpMQTT($host, $port, $client_name . ' Client');
+        // Разные процессы могут отправлять команды одновременно. Один Client ID
+        // заставлял брокер отключать предыдущее соединение другого исполнителя.
+        $mqtt_client = new Bluerhinos\phpMQTT($host, $port, $client_name . ' Client (#' . getmypid() . ')');
         $mqtt_client->setReadLimits(\MajorDoMo\Core\Config::int('MQTT_MAX_PACKET_BYTES'), \MajorDoMo\Core\Config::float('MQTT_PACKET_TIMEOUT'));
 
         // Set TLS context if TLS is enabled
@@ -600,48 +603,32 @@ class mqtt extends module
         }
 
         $topic = $rec['PATH_WRITE'] ? $rec['PATH_WRITE'] : $rec['PATH'];
-        $old_value = $async
-            ? MqttRuntime::value($rec['PATH'], (string)($rec['VALUE'] ?? ''))
-            : (string)($rec['VALUE'] ?? '');
-
-        if ($rec['ONLY_NEW_VALUE'] && $old_value == $value) {
+        // ONLY_NEW_VALUE относится к входящим состояниям. Каждая запись
+        // связанного свойства — отдельная команда, включая повторную единицу.
+        if ($rec['PATH_WRITE'] && preg_match('/^http:/', $rec['PATH_WRITE'])) {
+            $url = $rec['PATH_WRITE'];
+            $url = str_replace('%VALUE%', $value, $url);
             if ($rec['LOGGING']) {
-                DebMes("Ignoring \"$value\" = \"" . $old_value . "\"", 'mqtt_topic_' . $rec['ID']);
+                DebMes("Publishing \"$value\" to url $url", 'mqtt_topic_' . $rec['ID']);
             }
-            if ($rec['LOGGING'] || $debug) {
-                $this->queueOutgoingHistory($rec, $topic, $value, $original_value, $async);
-            }
-            return 0;
-        }
-
-        $topic = $rec['PATH'];
-        if ($rec['PATH_WRITE']) {
-            $topic = $rec['PATH_WRITE'];
-            if (preg_match('/^http:/', $rec['PATH_WRITE'])) {
-                $url = $rec['PATH_WRITE'];
-                $url = str_replace('%VALUE%', $value, $url);
-                if ($rec['LOGGING']) {
-                    DebMes("Publishing \"$value\" to url $url", 'mqtt_topic_' . $rec['ID']);
-                }
-                getURL($url, 0);
-            } else {
-                if ($rec['LOGGING']) {
-                    DebMes("Publishing \"$value\" to write-path " . $rec['PATH_WRITE'], 'mqtt_topic_' . $rec['ID']);
-                }
-                $this->mqttPublish($rec['PATH_WRITE'], $value, (int)$rec['QOS'], (int)$rec['RETAIN'], (int)$rec['WRITE_TYPE']);
-            }
+            getURL($url, 0);
         } else {
-            if ($rec['LOGGING']) {
-                DebMes("Publishing \"$value\" to " . $rec['PATH'], 'mqtt_topic_' . $rec['ID']);
+            $result = $this->mqttPublish($topic, $value, (int)$rec['QOS'], (int)$rec['RETAIN'], (int)$rec['WRITE_TYPE']);
+            if ($result === false || $result === 0) {
+                DebMes('Не удалось отправить MQTT-команду в ' . $topic, 'mqtt_topic_' . $rec['ID'], 'error');
+                return false;
             }
-            $this->mqttPublish($rec['PATH'], $value, (int)$rec['QOS'], (int)$rec['RETAIN'], (int)$rec['WRITE_TYPE']);
+            if ($rec['LOGGING']) {
+                $stage = $result === 1 ? 'Queued command' : 'Written to connection';
+                DebMes($stage . " \"$value\" to " . $topic, 'mqtt_topic_' . $rec['ID']);
+            }
         }
 
         $updated = date('Y-m-d H:i:s');
         if ($async) {
             // Значение уходит в проекцию; интерфейс читает его из Redis и не
-            // ждёт следующей записи MySQL. Если Redis исчез после публикации,
-            // команда уже отправлена — сохраняем состояние напрямую.
+            // ждёт следующей записи MySQL. Если Redis исчез после приёма команды
+            // на отправку, сохраняем состояние напрямую.
             try {
                 MqttRuntime::stage(array('ID' => (int)$rec['ID'], 'PATH' => (string)$rec['PATH'],
                     'VALUE' => (string)$value, 'UPDATED' => $updated));
@@ -1576,6 +1563,7 @@ class mqtt extends module
 
     function propertySetHandle($object, $property, $value)
     {
+        $failed = false;
         // Exact match: LIKE treats "_" and "%" in object/property titles as wildcards.
         // Индекс (LINKED_OBJECT, LINKED_PROPERTY) добавлен в MqttSchema::ensure().
         $mqtt_properties = SQLSelect("SELECT * FROM mqtt WHERE READONLY=0 AND LINKED_OBJECT='" . DBSafe($object) . "' AND LINKED_PROPERTY='" . DBSafe($property) . "'");
@@ -1587,9 +1575,11 @@ class mqtt extends module
                 }
                 // Передаём уже прочитанную запись: setProperty больше не делает
                 // второй SELECT по ID на каждое изменение свойства.
-                $this->setProperty($mqtt_properties[$i]['ID'], $value, 0, $mqtt_properties[$i]);
+                $result = $this->setProperty($mqtt_properties[$i]['ID'], $value, 0, $mqtt_properties[$i]);
+                if ($result === false || $result === 0) $failed = true;
             }
         }
+        if ($failed) return false;
     }
 
 

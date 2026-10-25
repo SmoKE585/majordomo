@@ -12,11 +12,13 @@ use \Throwable;
  * property writes append steps to it. The trace id is carried through the
  * operations queue in `_trace`, so a chain survives separate PHP processes.
  *
- * Auditing must never break a property write: every database failure is
- * swallowed and reported through ErrorReporter at most once per window. There
- * is intentionally no on/off switch; only retention is configurable.
+ * Ошибки диагностики регистрируются после завершения транзакции. Deadlock и
+ * потеря соединения передаются писателю: продолжать отменённую сервером
+ * транзакцию нельзя. Выключателя нет, настраивается только срок хранения.
  *
  * Изменения:
+ * 2026-10-25 — сбой, отменяющий транзакцию, передаётся писателю свойства; журнал ошибок ждёт её завершения.
+ * 2026-10-25 — запись свойства не запускает DDL, способный неявно зафиксировать её транзакцию.
  * 2026-10-24 — счётчики фактических событий по десятиминутным интервалам для дашборда.
  * 2026-10-23 — снимки выполняемого кода, родительские шаги и корректный JSON при обрезке.
  * 2026-10-23 — поиск ошибки запуска идёт по TRACE_ID (покрыт индексом), а не по RUN_ID:
@@ -374,7 +376,7 @@ final class PropertyAudit
         if (self::$schemaReady) return;
         try {
             if (!$this->db->tableExists('property_audit_runs') || !$this->db->tableExists('property_audit_events')) {
-                if (class_exists(Core::class)) Core::migrations()->ensurePropertyAuditSchema();
+                throw new \RuntimeException('Схема аудита не установлена; требуется штатная миграция ядра');
             }
             self::$schemaReady = true;
         } catch (Throwable $e) {
@@ -721,6 +723,14 @@ final class PropertyAudit
 
     private function reportFailure(Throwable $error, string $scope): void
     {
+        if ($this->db->inTransaction()) {
+            // После deadlock/потери соединения сервер мог уже отменить всю
+            // транзакцию. Продолжение записи заданий дало бы ложный успех.
+            if (in_array((int)$error->getCode(), array(1205, 1213, 2002, 2006, 2013), true)) throw $error;
+            $report = fn() => $this->reportFailure($error, $scope);
+            $this->db->afterTransaction($report, $report);
+            return;
+        }
         $message = 'Не удалось записать журнал изменений свойств (' . $scope . '): ' . $error->getMessage();
         if ($this->errors) {
             try {

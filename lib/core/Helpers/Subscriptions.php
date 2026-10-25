@@ -1,6 +1,6 @@
 <?php
 
-/** Подписки ядра. 2026-10-22 — фоновая обработка через очередь без HTTP. */
+/** Подписки ядра. 2026-10-25 — отказ подписчика в воркере передаётся механизму повторов. */
 
 function processSubscriptionByModule($module_name, $event_name, &$details)
 {
@@ -14,15 +14,19 @@ function processSubscriptionByModule($module_name, $event_name, &$details)
             verbose_log("Processing subscription to [" . $event_name . "] by [" . $module_name . "] (" . (is_array($details) ? json_encode($details) : '') . ")");
             try {
                 $output = $module_object->processSubscription($event_name, $details);
+                if ($output === false && \MajorDoMo\Core\SubscriptionDelivery::isStrict()) throw new RuntimeException('Подписчик ' . $module_name . ' вернул false');
             } catch (Exception $e) {
+                if (\MajorDoMo\Core\SubscriptionDelivery::isStrict()) throw $e;
                 DebMes('Subscription ' . $module_name . '.' . $event_name . ': ' . get_class($e) . ': ' . $e->getMessage(), 'process_subscription', 'error');
             }
             //DebMes("$module_name.processSubscription ($event_name) DONE",'process_subscription');
         } else {
+            if (\MajorDoMo\Core\SubscriptionDelivery::isStrict()) throw new RuntimeException('У модуля ' . $module_name . ' нет обработчика подписки');
             //DebMes("$module_name.processSubscription error (method not found)", 'process_subscription');
         }
         unset($module_object);
     } else {
+        if (\MajorDoMo\Core\SubscriptionDelivery::isStrict()) throw new RuntimeException('Файлы подписчика ' . $module_name . ' недоступны');
         //DebMes("$module_name.processSubscription error (module class not found)", 'process_subscription');
     }
     return $output;

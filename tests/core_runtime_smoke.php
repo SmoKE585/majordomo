@@ -81,7 +81,12 @@ try {
     execTest("INSERT INTO public_calls VALUES (1,'retired')");
     execTest("CREATE TABLE phistory_value_1 LIKE phistory");
     execTest("INSERT INTO phistory_value_1 (VALUE_ID,ADDED,VALUE,SOURCE) VALUES (1,NOW(),'preserved','old separate history')");
+    $legacyRuntime = json_encode(array('target' => 'Legacy.noop', 'path' => 'core:method/Legacy.noop', 'params' => array()));
+    execTest("INSERT INTO operations_queue (TOPIC,DATANAME,DATAVALUE,EXPIRE) VALUES ('core_runtime','method','" . DBSafe($legacyRuntime) . "',NOW()+INTERVAL 1 HOUR)");
+    if (USE_REDIS) mjdGetRedisConnection()->rPush('mjd:queue:core_runtime', json_encode(array('DATANAME' => 'method', 'DATAVALUE' => $legacyRuntime)));
     Core::migrations()->run();
+    check((int)SQLSelectOne("SELECT COUNT(*) AS C FROM core_runtime_queue WHERE DATAVALUE='" . DBSafe($legacyRuntime) . "'")['C'] === (USE_REDIS ? 2 : 1),
+        'migration preserves legacy SQL and Redis runtime tasks before creating the new journal');
     check(!Core::database()->tableExists('public_calls'), 'Connect-only public_calls table removed');
     check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM phistory_value_2')['C'] === 1, 'duplicate consolidation preserves separate history');
     check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM pvalues WHERE PROPERTY_ID=1 AND OBJECT_ID=2')['C'] === 1, 'migration consolidates duplicate property values');
@@ -109,8 +114,9 @@ try {
     $queries = $db->queryCount - $before;
     check((string)gg('Lamp.status') === '0', 'repeated value writes stay current');
     // The always-on property audit adds a run/event write for a real value change.
-    if (USE_REDIS) check($queries <= 10, 'warm sg plus audit stays within ten SQL statements');
     echo 'METRIC warm sg SQL statements: ' . $queries . PHP_EOL;
+    // К прежнему бюджету добавлены BEGIN/COMMIT и две долговечные записи уведомлений.
+    if (USE_REDIS) check($queries <= 14, 'warm sg plus transactional outbox stays within fourteen SQL statements');
     $property = SQLSelectOne("SELECT * FROM properties WHERE TITLE='status'");
     $property['VALIDATION_TYPE'] = 1; $property['VALIDATION_NUM_MIN'] = '10'; $property['VALIDATION_NUM_MAX'] = '20';
     SQLUpdate('properties', $property);
@@ -126,6 +132,33 @@ try {
     sg('Lamp.status',10);
     check(gg('Lamp.status') === 12, 'custom validation retains object context and can transform value');
     $property['VALIDATION_TYPE']=0; SQLUpdate('properties',$property);
+    $beforeValue = SQLSelectOne('SELECT VALUE FROM pvalues WHERE ID=2')['VALUE'];
+    $beforePending = (int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_runtime_queue')['C'];
+    $beforeHistory = (int)SQLSelectOne('SELECT COUNT(*) AS C FROM phistory_queue')['C'];
+    execTest("CREATE TRIGGER fail_runtime_insert BEFORE INSERT ON core_runtime_queue FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture outbox failure'");
+    $outboxFailure = null;
+    try { sg('Lamp.status', 99); } catch (RuntimeException $error) { $outboxFailure = $error; }
+    execTest('DROP TRIGGER fail_runtime_insert');
+    check($outboxFailure !== null && SQLSelectOne('SELECT VALUE FROM pvalues WHERE ID=2')['VALUE'] === $beforeValue,
+        'SQL outbox insert failure rolls back the property value');
+    check((int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_runtime_queue')['C'] === $beforePending
+        && (int)SQLSelectOne('SELECT COUNT(*) AS C FROM phistory_queue')['C'] === $beforeHistory,
+        'SQL outbox insert failure leaves neither partial events nor partial history');
+    execTest("CREATE TRIGGER fail_audit_transaction BEFORE INSERT ON property_audit_events FOR EACH ROW SIGNAL SQLSTATE '40001' SET MYSQL_ERRNO=1213, MESSAGE_TEXT='fixture audit deadlock'");
+    $auditFailure = null;
+    try { sg('Lamp.status', 77); } catch (RuntimeException $error) { $auditFailure = $error; }
+    execTest('DROP TRIGGER fail_audit_transaction');
+    check($auditFailure !== null && $auditFailure->getCode() === 1213
+        && SQLSelectOne('SELECT VALUE FROM pvalues WHERE ID=2')['VALUE'] === $beforeValue
+        && (int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_runtime_queue')['C'] === $beforePending,
+        'audit cannot swallow a deadlock and commit orphaned outbox events');
+    execTest('START TRANSACTION');
+    sg('Lamp.status', 88);
+    check((int)gg('Lamp.status') === 88, 'property reads see their own uncommitted transaction');
+    execTest('ROLLBACK');
+    check((string)gg('Lamp.status') === (string)$beforeValue
+        && (int)SQLSelectOne('SELECT COUNT(*) AS C FROM core_runtime_queue')['C'] === $beforePending,
+        'external transaction rollback restores value and discards outbox events');
     drainCoreRuntime();
     check((bool)callMethodSafe('Lamp.calculate',array('offset'=>1)), 'safe internal method call enters durable queue without HTTP');
     $operation=Core::queue()->claimRuntime(1,30)[0];

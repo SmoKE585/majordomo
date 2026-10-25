@@ -7,6 +7,7 @@ use \RuntimeException;
 /**
  * Персистентная очередь и постановка внутренних фоновых операций.
  * Изменения:
+ * 2026-10-25 — задания core_runtime сохраняются с транзакцией свойства; Redis исполняет их до подтверждения SQL.
  * 2026-10-25 — MQTT сохраняет порядок команд топика при повторе; последовательный core не пропускает старое задание.
  * 2026-10-25 — область NO_LINKED передаётся и без модуля-источника (прямой вход MQTT).
  * 2026-10-22 — вместе с цепочкой передаётся точка доставки: вложенный вызов
@@ -15,6 +16,9 @@ use \RuntimeException;
  */
 final class OperationsQueue
 {
+    private ?RuntimeQueue $runtimeQueue = null;
+    public function runtime(): RuntimeQueue { return $this->runtimeQueue ??= new RuntimeQueue($this->db); }
+    private function runtimeLanes(): LaneEventQueue { return $this->lanes ??= new LaneEventQueue($this->redis, 'core_runtime_durable', 300); }
     public function __construct(
         private Database $db,
         private RedisConnection $redis,
@@ -22,45 +26,16 @@ final class OperationsQueue
     ) {}
 
     /**
-     * Параллельный исполнитель включается только при наличии Redis и
-     * CORE_WORKERS > 1. Иначе остаётся прежний последовательный путь.
+     * Число исполнителей общее для Redis и SQL; один исполнитель сохраняет глобальный порядок.
      */
     public function parallelEnabled(): bool
     {
-        return $this->lanes !== null && Config::int('CORE_WORKERS', 3) > 1
-            && (bool)Config::get('USE_REDIS') && class_exists('Redis');
+        return (int)Config::get('CORE_WORKERS', 3) > 1;
     }
 
     public function lanes(): ?LaneEventQueue
     {
         return $this->lanes;
-    }
-
-    /**
-     * Полоса операции. Метод и уведомление модуля о свойстве относятся к
-     * объекту; сценарии, API, подписки и события модулей — произвольный PHP,
-     * поэтому идут в эксклюзивную полосу serial.
-     */
-    private function laneFor(string $operation, array $params, ?string $target): string
-    {
-        $explicit = (string)($params['_lane'] ?? '');
-        if ($explicit !== '') return mb_substr($explicit, 0, 160, 'UTF-8');
-        if ($operation === 'method') {
-            $object = explode('.', (string)$target, 2)[0];
-            if ($object !== '') return 'object:' . mb_substr($object, 0, 150, 'UTF-8');
-        }
-        if ($operation === 'modulepropertyset') {
-            $object = (string)($params['object'] ?? '');
-            if ($object !== '') return 'object:' . mb_substr($object, 0, 150, 'UTF-8');
-        }
-        return 'serial';
-    }
-
-    private function laneForItem(array $item): string
-    {
-        $payload = json_decode((string)($item['DATAVALUE'] ?? ''), true);
-        $params = is_array($payload['params'] ?? null) ? $payload['params'] : array();
-        return $this->laneFor((string)($item['DATANAME'] ?? ''), $params, $payload['target'] ?? null);
     }
 
     public function enqueueRuntime(string $operation, array $params, ?string $target = null): bool
@@ -80,50 +55,49 @@ final class OperationsQueue
     public function enqueueRuntimePayload(string $operation, array $payload): bool
     {
         $json = json_encode($payload, JSON_THROW_ON_ERROR);
-        if ($this->parallelEnabled()) {
-            $params = is_array($payload['params'] ?? null) ? $payload['params'] : array();
-            $this->lanes->push(array(
-                'TOPIC' => 'core_runtime',
-                'DATANAME' => $operation,
-                'DATAVALUE' => $json,
-            ), $this->laneFor($operation, $params, $payload['target'] ?? null), 3600);
-            return true;
-        }
-        return (bool)$this->enqueue('core_runtime', $operation, $json, false, 3600);
+        return $this->runtime()->enqueue($operation, $json, time() + 3600) > 0;
     }
 
     /** @return array<int,array<string,mixed>> */
     public function claimRuntime(int $limit = 1, int $lease = 300): array
     {
-        if ($this->parallelEnabled()) return $this->lanes->claim($limit, $lease);
-        return $this->claim('core_runtime', $limit, $lease);
+        if (Config::get('USE_REDIS')) {
+            $lanes = $this->runtimeLanes();
+            $this->runtime()->dispatch($this->redis, $lanes, $this->parallelEnabled());
+            $result = array();
+            foreach ($lanes->claim($limit, $lease) as $item) {
+                $reserved = $this->runtime()->reserve($item, $lease, $this->parallelEnabled());
+                if ($reserved) $result[] = $reserved;
+                elseif ($this->runtime()->terminal($item['QUEUE_ID'])) $lanes->acknowledge($item);
+                else $lanes->release($item, 1);
+            }
+            return $result;
+        }
+        return $this->runtime()->claim($limit, $lease, $this->parallelEnabled());
     }
 
     public function acknowledgeRuntime(array $item): bool
     {
-        if ($this->parallelEnabled() && isset($item['LANE'])) return $this->lanes->acknowledge($item);
-        return (bool)$this->acknowledge($item);
+        $ok = $this->runtime()->acknowledge($item);
+        if ($ok && !empty($item['RUNTIME_REDIS'])) $this->runtimeLanes()->acknowledge($item);
+        return $ok;
     }
 
-    public function releaseRuntime(array $item, int $delay = 5): bool
+    public function releaseRuntime(array $item, int $delay = 5, string $error = ''): bool
     {
-        if ($this->parallelEnabled() && isset($item['LANE'])) return $this->lanes->release($item, $delay);
-        return (bool)$this->release($item, $delay);
+        $ok = $this->runtime()->release($item, $delay, $error);
+        if ($ok && !empty($item['RUNTIME_REDIS'])) $this->runtimeLanes()->release($item, $delay);
+        return $ok;
     }
 
     public function failRuntime(array $item, string $error): void
     {
-        if ($this->parallelEnabled() && isset($item['LANE'])) {
-            $this->lanes->fail($item, $error);
-            return;
-        }
-        $this->acknowledge($item);
+        if ($this->runtime()->fail($item, $error) && !empty($item['RUNTIME_REDIS'])) $this->runtimeLanes()->fail($item, $error);
     }
 
     public function claimedRuntime(string $topic, string $id, string $token): array
     {
-        if ($this->parallelEnabled()) return $this->lanes->claimed($id, $token);
-        return $this->claimed($topic, $id, $token);
+        return $this->runtime()->claimed($id, $token);
     }
 
     /**
@@ -132,25 +106,46 @@ final class OperationsQueue
      */
     public function migrateLegacyRuntime(int $limit = 200): int
     {
-        if (!$this->parallelEnabled()) return 0;
         $moved = 0;
-        for ($i = 0; $i < $limit; $i++) {
-            $items = $this->claim('core_runtime', 1, 60);
-            if (!$items) break;
-            $item = $items[0];
+        foreach ($this->db->select("SELECT * FROM operations_queue WHERE TOPIC='core_runtime' ORDER BY ID LIMIT " . max(1, $limit)) as $item) {
+            $unit = $this->db->beginUnit();
             try {
-                $this->lanes->push(array(
-                    'TOPIC' => 'core_runtime',
-                    'DATANAME' => $item['DATANAME'],
-                    'DATAVALUE' => (string)$item['DATAVALUE'],
-                ), $this->laneForItem($item), 3600);
-                $this->acknowledge($item);
+                $this->runtime()->enqueue((string)$item['DATANAME'], (string)$item['DATAVALUE'],
+                    (int)strtotime($item['EXPIRE']), 'sql:' . (int)$item['ID']);
+                $this->db->requireExec('DELETE FROM operations_queue WHERE ID=' . (int)$item['ID']);
+                $this->db->commitUnit($unit);
                 $moved++;
             } catch (\Throwable $error) {
-                $this->release($item, 5);
+                $this->db->rollbackUnit($unit);
                 throw $error;
             }
         }
+        if (!Config::get('USE_REDIS')) return $moved;
+        // Миграция выполняется при остановленных циклах до запуска новых
+        // исполнителей. SOURCE_KEY делает повтор после обрыва безопасным.
+        $moved += (new LaneEventQueue($this->redis, 'core_runtime'))->migrateTo(function (array $event): void {
+            $data = $event['data'];
+            $this->runtime()->enqueue($data['DATANAME'], $data['DATAVALUE'],
+                (int)($event['expires'] ?: (time() + 3600)), 'lane:' . $event['id']);
+        });
+        $redis = $this->redis->requireConnection();
+        while ($redis->lLen('mjd:queue:core_runtime') > 0) $this->legacyClaim('core_runtime', 200, 5);
+        $keys = $this->keys('core_runtime');
+        $ids = $redis->hKeys($keys[2]);
+        sort($ids, SORT_STRING);
+        foreach ($ids as $id) {
+            $raw = $redis->hGet($keys[2], $id);
+            $item = json_decode((string)$raw, true, 512, JSON_THROW_ON_ERROR);
+            $this->runtime()->enqueue($item['DATANAME'], $item['DATAVALUE'], (int)$item['EXPIRES'], 'redis:' . $id);
+            $moved++;
+        }
+        // Удаляются только ключи прежней очереди core_runtime, не кеш и MQTT.
+        $pattern = substr($keys[0], 0, -strlen('ready')) . '*';
+        $cursor = null;
+        do {
+            $found = $redis->scan($cursor, $pattern, 200);
+            foreach (is_array($found) ? $found : array() as $key) $redis->del($key);
+        } while ($cursor !== 0);
         return $moved;
     }
 
@@ -168,6 +163,19 @@ final class OperationsQueue
     public function enqueue($topic, $name, $value = '', $unique = false, $ttl = 60)
     {
         $expires = time() + max(0, (int)$ttl);
+        if ($topic === 'core_runtime') {
+            if (!$unique) return $this->runtime()->enqueue((string)$name, (string)$value, $expires);
+            $unit = $this->db->beginUnit();
+            try {
+                $this->db->requireExec("DELETE FROM core_runtime_queue WHERE STATUS='pending' AND CLAIM_TOKEN='' AND DATANAME='" . $this->db->escape($name) . "'");
+                $id = $this->runtime()->enqueue((string)$name, (string)$value, $expires);
+                $this->db->commitUnit($unit);
+                return $id;
+            } catch (\Throwable $error) {
+                if ($this->db->hasUnit($unit)) $this->db->rollbackUnit($unit);
+                throw $error;
+            }
+        }
         if (Config::get('USE_REDIS')) {
             $payload = json_encode(array('TOPIC' => (string)$topic, 'DATANAME' => (string)$name, 'DATAVALUE' => (string)$value, 'EXPIRES' => $expires, 'UNIQUE' => (bool)$unique, 'NAME_KEY' => $this->redis->key('queue:v2:') . hash('sha256', (string)$topic) . ':names:' . sha1((string)$name)), JSON_THROW_ON_ERROR);
         $lua = <<<'LUA'
@@ -207,6 +215,12 @@ LUA;
     }
 
     public function claim($topic, $limit = 100, $lease = 300)
+    {
+        if ($topic === 'core_runtime') return $this->claimRuntime((int)$limit, (int)$lease);
+        return $this->legacyClaim($topic, $limit, $lease);
+    }
+
+    private function legacyClaim($topic, $limit = 100, $lease = 300)
     {
         $limit = max(1, min(1000, (int)$limit));
         $lease = max(5, (int)$lease);
@@ -348,6 +362,7 @@ LUA;
 
     public function acknowledge($item)
     {
+        if (!empty($item['RUNTIME_SQL'])) return $this->acknowledgeRuntime($item);
         if (Config::get('USE_REDIS')) {
         $lua = <<<'LUA'
 if redis.call('HGET',KEYS[6],ARGV[1]) ~= ARGV[2] then return 0 end
@@ -373,6 +388,7 @@ LUA;
 
     public function release($item, $delay = 5)
     {
+        if (!empty($item['RUNTIME_SQL'])) return $this->releaseRuntime($item, (int)$delay);
         if (Config::get('USE_REDIS')) {
         $lua = <<<'LUA'
 if redis.call('HGET',KEYS[6],ARGV[1]) ~= ARGV[2] then return 0 end
@@ -388,6 +404,7 @@ LUA;
 
     public function claimed($topic, $id, $token)
     {
+        if ($topic === 'core_runtime') return $this->runtime()->claimed((string)$id, (string)$token);
         if (Config::get('USE_REDIS')) {
             $keys = $this->keys($topic);
             $redis = $this->redis->requireConnection();

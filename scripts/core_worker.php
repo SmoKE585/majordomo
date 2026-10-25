@@ -1,16 +1,18 @@
 <?php
-// 2026-10-25 — предварительная загрузка ядра без повторного использования пользовательского процесса.
+// 2026-10-25 — отдельная группа процессов и собственный дедлайн задания на случай гибели родителя.
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(404);
     exit;
 }
+if (function_exists('posix_setsid')) posix_setsid();
 chdir(dirname(__DIR__));
 require_once './config.php';
 require_once './lib/loader.php';
 $kind = $argv[1] ?? '';
 $id = $argv[2] ?? '';
 $token = $argv[3] ?? '';
+$timeout = max(1, (int)($argv[4] ?? 300));
 if ($kind === '--standby') {
     // EOF завершает осиротевший процесс, если родитель был остановлен.
     $line = fgets(STDIN, 65536);
@@ -23,6 +25,12 @@ if ($kind === '--standby') {
     $kind = $request['kind'];
     $id = $request['id'];
     $token = $request['token'];
+    $timeout = max(1, (int)($request['timeout'] ?? 300));
+}
+if (function_exists('pcntl_async_signals') && function_exists('pcntl_alarm')) {
+    pcntl_async_signals(true);
+    pcntl_signal(SIGALRM, static function (): void { exit(124); });
+    pcntl_alarm($timeout);
 }
 require_once './load_settings.php';
 // Discard user output in chunks; keep only the machine-readable completion record.

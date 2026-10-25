@@ -61,6 +61,8 @@ namespace {
     $connection = new class($pdo) {
         public function __construct(private PDO $pdo) {}
         public function SelectOne($sql) { return $this->pdo->query($sql)->fetch(PDO::FETCH_ASSOC); }
+        public function Exec($sql, $ignore = false) { $this->pdo->exec($sql === 'START TRANSACTION' ? 'BEGIN' : $sql); return true; }
+        public function inTransaction() { return $this->pdo->inTransaction(); }
         public function Update($table, $row, $key = 'ID') {
             $id = $row[$key]; unset($row[$key]);
             return $this->pdo->prepare('UPDATE ' . $table . ' SET ' . implode(',', array_map(fn($k) => $k . '=?', array_keys($row))) . ' WHERE ' . $key . '=?')->execute(array_merge(array_values($row), array($id)));
@@ -93,10 +95,10 @@ namespace {
         $failQueue = $failure === 'false'; $throwQueue = $failure === 'exception'; $queued = array();
         $before = count($onchangeCalls); $caught = null;
         try { $properties->set($object, 'motion', 0, array('zigbee' => 0)); } catch (RuntimeException $e) { $caught = $e; }
-        check($caught === null, 'Notification failure does not break the property writer');
-        check(count($onchangeCalls) === $before + 1 && end($onchangeCalls)[2] === '0', 'Notification failure does not suppress ONCHANGE');
+        check($caught !== null, 'Ошибка сохранения задания видна вызывающему коду');
+        check(count($onchangeCalls) === $before && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === '1', 'Ошибка очереди откатывает значение и не ставит ONCHANGE');
         check($locks->released, 'Property lock released after failure');
-        check($queued === array(array('modulepropertyset', 'broken'), array('modulepropertyset', 'healthy')), 'Other subscribers still notified directly through the queue');
+        check($queued === array(array('modulepropertyset', 'broken')), 'После отказа SQL оставшаяся запись прекращается');
     }
     unset($_SERVER['REQUEST_URI']); $failQueue = false; $throwQueue = false;
     $properties->set($object, 'motion', 1, array('zigbee' => 0));
@@ -236,8 +238,8 @@ namespace {
         $onchangeFailure = $failure; $caught = null;
         try { $properties->set($object, 'motion', 0); } catch (RuntimeException $e) { $caught = $e; }
         check($caught !== null && $locks->released, 'Отказ постановки ONCHANGE виден вызывающему коду и освобождает блокировку');
-        check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === '0',
-            'Ошибка очереди не подменяет результат уже выполненной записи');
+        check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === '1',
+            'Отказ постановки ONCHANGE откатывает изменение свойства');
         $onchangeFailure = '';
         $before = count($onchangeCalls);
         $properties->set($object, 'motion', 1);

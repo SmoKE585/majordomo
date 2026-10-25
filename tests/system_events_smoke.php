@@ -31,9 +31,12 @@ final class EventBusFixtureConnection
     public array $rows = array();
     public int $lastId = 0;
     public array $queries = array();
+    public array $runtime = array();
+    private int $affected = 0;
 
     public function Insert(string $table, array &$record): int
     {
+        if ($table === 'core_runtime_queue') { $id = count($this->runtime) + 1; $this->runtime[$id] = $record; return $id; }
         $record['ID'] = ++$this->lastId;
         $this->rows[$record['ID']] = $record;
         return $record['ID'];
@@ -86,11 +89,13 @@ final class EventBusFixtureConnection
 
     public function Exec(string $sql, bool $ignoreErrors = false): mixed
     {
+        $this->affected = 0;
         $this->queries[] = $sql;
         if (preg_match('/UPDATE system_events SET PROCESSED=1.*WHERE ID=(\d+)/s', $sql, $match)) {
             $id = (int)$match[1];
             if (isset($this->rows[$id])) {
                 $this->rows[$id]['PROCESSED'] = 1;
+                $this->affected = 1;
             }
         }
         if (str_contains($sql, 'DELETE FROM system_events')) {
@@ -111,7 +116,7 @@ final class EventBusFixtureConnection
 
     public function AffectedRows(): int
     {
-        return 0;
+        return $this->affected;
     }
 }
 
@@ -154,7 +159,7 @@ function processSubscriptions(string $name, array $details): void
 $GLOBALS['delivered'] = array();
 $drained = EventBus::drain(10);
 check($drained === 4, 'drain() processes queued events');
-check(count($GLOBALS['delivered']) === 4, 'Queued events reach module subscribers');
+check(count($GLOBALS['delivered']) === 0 && count($connection->runtime) === 4, 'Queued events reach durable worker queue without running module code');
 check((int)$connection->rows[4]['PROCESSED'] === 1, 'Processed events are acknowledged');
 check(EventBus::drain(10) === 0, 'Second drain does not redeliver acknowledged events');
 

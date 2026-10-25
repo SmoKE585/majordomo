@@ -16,22 +16,27 @@ register_shutdown_function(static function () use ($fixture) {
 });
 $pdo = new PDO('sqlite::memory:', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
 if (getenv('APP_ENV') !== 'testing' || $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') throw new RuntimeException('Isolation failed');
+require __DIR__ . '/fixtures/runtime_queue.php';
+createRuntimeQueueFixture($pdo);
 $pdo->exec('CREATE TABLE operations_queue (ID INTEGER PRIMARY KEY AUTOINCREMENT, TOPIC TEXT, DATANAME TEXT, DATAVALUE TEXT,
     EXPIRE TEXT, CLAIM_TOKEN TEXT DEFAULT "", CLAIM_UNTIL TEXT, ATTEMPTS INTEGER DEFAULT 0)');
 $pdo->sqliteCreateFunction('GET_LOCK', fn(...$args) => 1);
 $pdo->sqliteCreateFunction('RELEASE_LOCK', fn(...$args) => 1);
 $pdo->sqliteCreateFunction('NOW', fn() => date('Y-m-d H:i:s'));
 $adapter = new class($pdo) {
+    private int $affected = 0;
     public function __construct(private PDO $pdo) {}
     public function DbSafe1($value) { return str_replace("'", "''", (string)$value); }
     public function Select($sql) { return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC); }
     public function SelectOne($sql) { return $this->pdo->query($sql)->fetch(PDO::FETCH_ASSOC) ?: array(); }
     public function Exec($sql, $ignore = false) {
+        if ($sql === 'START TRANSACTION') $sql = 'BEGIN';
         if (preg_match('/^DELETE FROM operations_queue WHERE (.+) LIMIT (\d+)$/s', $sql, $match)) {
             $sql = 'DELETE FROM operations_queue WHERE ID IN (SELECT ID FROM operations_queue WHERE ' . $match[1] . ' LIMIT ' . $match[2] . ')';
         }
-        $this->pdo->exec($sql); return true;
+        $this->affected = $this->pdo->exec($sql); return true;
     }
+    public function AffectedRows() { return $this->affected; }
     public function Insert($table, &$row) {
         $this->pdo->prepare('INSERT INTO '.$table.' ('.implode(',',array_keys($row)).') VALUES ('.implode(',',array_fill(0,count($row),'?')).')')->execute(array_values($row));
         return (int)$this->pdo->lastInsertId();
@@ -80,5 +85,10 @@ foreach ($port > 0 ? array(false, true) : array(false) as $redisMode) {
     check($second['DATAVALUE'] === 'SECOND', 'Порядок между типами core сохранён');
     $queue->acknowledge($second);
     check($queue->claim('core_runtime',1,10) === array(), 'Очередь завершилась');
+    $queue->enqueue('core_runtime', 'method', 'OLD', true, 60);
+    $queue->enqueue('core_runtime', 'method', 'NEW', true, 60);
+    $unique = $queue->claimRuntime(1, 10)[0];
+    check($unique['DATAVALUE'] === 'NEW', 'Уникальная постановка сохраняет последнее ожидающее задание');
+    $queue->acknowledgeRuntime($unique);
 }
 echo 'Queue order smoke: ' . $checks . ' passed; SQLite' . ($port > 0 ? ' + isolated Redis' : '; Redis skipped') . ".\n";

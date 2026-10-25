@@ -4,6 +4,7 @@ namespace MajorDoMo\Core;
 
 /**
  * The legacy loader owns the connection; new code receives explicit dependencies.
+ * 2026-10-25 — очередь Redis отделена от прежней очереди при переходе на долговечный журнал SQL.
  * 2026-10-25 — общий сервис уведомлений модулей.
  * 2026-10-23 — общий сервис создания сущностей с обновлением метаданных.
  * Изменения: 2026-10-22 — добавлен сервис apiHooks() для реестра webhook.
@@ -45,7 +46,7 @@ final class Core
     public static function errors(): ErrorReporter { return self::service(__FUNCTION__, fn() => new ErrorReporter(self::cache())); }
     public static function audit(): PropertyAudit { return self::service(__FUNCTION__, fn() => new PropertyAudit(self::database(), self::errors())); }
     public static function methods(): Methods { return self::service(__FUNCTION__, fn() => new Methods(self::database(), self::metadata(), self::code(), self::audit())); }
-    public static function coreLanes(): LaneEventQueue { return self::service(__FUNCTION__, fn() => new LaneEventQueue(self::redis(), 'core_runtime', 300)); }
+    public static function coreLanes(): LaneEventQueue { return self::service(__FUNCTION__, fn() => new LaneEventQueue(self::redis(), 'core_runtime_durable', 300)); }
     public static function queue(): OperationsQueue { return self::service(__FUNCTION__, fn() => new OperationsQueue(self::database(), self::redis(), self::coreLanes())); }
     public static function websockets(): WebSocketQueue { return self::service(__FUNCTION__, fn() => new WebSocketQueue(self::database(), self::redis(), self::queue())); }
     public static function historyStorage(): HistoryStorage { return self::service(__FUNCTION__, fn() => new HistoryStorage(self::database())); }

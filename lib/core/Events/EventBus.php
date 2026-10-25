@@ -5,6 +5,7 @@ namespace MajorDoMo\Core\Events;
 use InvalidArgumentException;
 use MajorDoMo\Core\Core;
 use MajorDoMo\Core\Database;
+use MajorDoMo\Core\RuntimeQueue;
 use Throwable;
 
 /**
@@ -19,6 +20,7 @@ use Throwable;
  *
  * Names are uppercase with underscores (`SYSTEM_UPDATED`, `MODULE_REMOVED`) so the
  * same names work with the legacy hook bus (`SETTINGS_HOOK_EVENT_*` constants).
+ * 2026-10-25 — передача подписок в долговечную очередь атомарна; cycle_core больше не выполняет код модулей.
  */
 final class EventBus
 {
@@ -185,9 +187,6 @@ final class EventBus
         if ($database === null || $limit < 1) {
             return 0;
         }
-        if (!function_exists('processSubscriptions')) {
-            return 0;
-        }
         try {
             $rows = $database->select('SELECT ID, NAME, PAYLOAD FROM system_events WHERE PROCESSED=0 ORDER BY ID LIMIT ' . (int)$limit);
         } catch (Throwable $error) {
@@ -204,40 +203,24 @@ final class EventBus
             if (!is_array($payload)) {
                 $payload = array();
             }
-            $error = null;
-            $audit = null;
-            $auditOwned = false;
-            if ($name !== '' && preg_match(self::NAME_PATTERN, $name) && class_exists(Core::class) && isset($GLOBALS['db'])) {
-                try {
-                    $audit = Core::audit();
-                    $auditOwned = $audit->beginIfMissing('event', $name, $payload, array('source' => 'event:' . $name));
-                } catch (Throwable $ignored) {
-                    $audit = null;
-                }
-            }
+            $unit = null;
+            $queued = false;
             try {
-                if ($name !== '' && preg_match(self::NAME_PATTERN, $name)) {
-                    processSubscriptions($name, $payload);
+                $unit = $database->beginUnit();
+                $database->requireExec('UPDATE system_events SET PROCESSED=1,PROCESSED_AT=NOW(),ERROR=NULL WHERE ID=' . $id . ' AND PROCESSED=0');
+                if ($database->affectedRows() === 1) {
+                    $data = json_encode(array('target' => $name, 'path' => 'core:subscriptions/' . $name,
+                        'params' => array('event' => $name, 'details' => $payload)), JSON_THROW_ON_ERROR);
+                    (new RuntimeQueue($database))->enqueue('subscriptions', $data, time() + 3600, 'event:' . $id);
+                    $queued = true;
                 }
+                $database->commitUnit($unit);
+                $unit = null;
+                if ($queued) $processed++;
             } catch (Throwable $failure) {
-                $error = substr($failure->getMessage(), 0, 1000);
-                self::log('System event subscriber failed for ' . $name . ': ' . $error);
-            } finally {
-                if ($audit && $auditOwned) {
-                    $audit->finishRun($error === null ? 'done' : 'error');
-                    $audit->leave();
-                }
+                if ($unit !== null && $database->hasUnit($unit)) $database->rollbackUnit($unit);
+                self::log('Cannot enqueue system event ' . $id . ': ' . $failure->getMessage());
             }
-            try {
-                $database->exec(
-                    "UPDATE system_events SET PROCESSED=1, PROCESSED_AT=NOW(), ERROR=" .
-                    ($error === null ? 'NULL' : "'" . $database->escape($error) . "'") .
-                    ' WHERE ID=' . $id
-                );
-            } catch (Throwable $failure) {
-                self::log('Cannot acknowledge system event ' . $id . ': ' . $failure->getMessage());
-            }
-            $processed++;
         }
         return $processed;
     }

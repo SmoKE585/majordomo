@@ -9,6 +9,7 @@
  *  - publisher — публикует исходящие команды на отдельном соединении.
  *
  * Запускается только cycle_mqtt_runtime.php; вручную не предназначен.
+ * 2026-10-25 — издатель обслуживает keepalive при пустой очереди и закрывает соединение после ошибки.
  * 2026-10-23 — добавлено для быстрого пути MQTT.
  */
 
@@ -62,6 +63,7 @@ if ($role === 'publisher') {
             MqttRuntime::heartbeat('publisher');
         }
         try {
+            $publisher->tick();
             $items = \MajorDoMo\Core\Core::queue()->claim('mqtt_queue', 1, 60);
             if (!$items) {
                 usleep(50000);
@@ -87,13 +89,12 @@ if ($role === 'publisher') {
                 } else {
                     \MajorDoMo\Core\Core::queue()->release($item, 5);
                     MqttRuntime::count('publish_retry');
-                    $publisher->connect();
                     break;
                 }
             }
         } catch (Throwable $error) {
             mqttWorkerLog('MQTT publisher: ' . $error->getMessage());
-            $publisher->connect();
+            $publisher->close();
             sleep(1);
         }
     }

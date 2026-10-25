@@ -10,6 +10,7 @@ use \InvalidArgumentException;
  * Выполнение фоновых операций из очереди (методы, модули, сообщения, подписки).
  *
  * Изменения:
+ * 2026-10-25 — отказы и повторы сохраняются в SQL вместе с заданием, исключение исполнителя не оставляет скрытое владение.
  * 2026-10-25 — исключения NO_LINKED восстанавливаются с областью свойства,
  *              в том числе у заданий, поставленных прежней версией ядра.
  * 2026-10-23 — явный отказ метода или сценария больше не подтверждается как успешная операция.
@@ -121,7 +122,7 @@ final class OperationWorker
             } elseif ($item['DATANAME'] === 'sayto') {
                 $result = sayTo($params['message'], $params['level'], $params['destination']);
             } elseif ($item['DATANAME'] === 'subscriptions') {
-                $result = processSubscriptions($params['event'], $params['details']);
+                $result = SubscriptionDelivery::run($params['event'], $params['details']);
             } elseif (in_array($item['DATANAME'], array('modulepropertyset', 'moduleevent'), true)) {
                 $name = $data['target'];
                 if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/D', $name)) throw new InvalidArgumentException('Invalid module name');
@@ -131,7 +132,7 @@ final class OperationWorker
                     // A module that is still registered may be in the middle of a
                     // deployment (files replaced, container starting). Never unlink
                     // it on a short retry window: keep the binding and surface the
-                    // failure through operations_failed instead.
+                    // Отказ останется в долговечном журнале; привязка при этом сохраняется.
                     if ($this->isInstalled($name)) throw new RuntimeException('Linked module files are temporarily unavailable');
                     // A deployment can briefly remove the file; confirm through normal retries.
                     if ((int)($item['ATTEMPTS'] ?? 1) < 3) throw new RuntimeException('Linked module is not installed');
@@ -238,17 +239,16 @@ final class OperationWorker
         // При CORE_WORKERS > 1 очередь выдаёт событие только из свободной полосы.
         $items = $this->queue->claimRuntime(1, $timeout + 60);
         foreach ($items as $item) {
-            $result = $execute ? $execute($item) : $this->processes->run('operation', $item['QUEUE_ID'], $item['CLAIM_TOKEN'], $timeout);
+            try {
+                $result = $execute ? $execute($item) : $this->processes->run('operation', $item['QUEUE_ID'], $item['CLAIM_TOKEN'], $timeout);
+                if (!is_array($result)) $result = array('success' => false, 'error' => 'Исполнитель не вернул результат');
+            } catch (Throwable $error) {
+                $result = array('success' => false, 'error' => get_class($error) . ': ' . $error->getMessage());
+            }
             if (!empty($result['success'])) {
                 $this->queue->acknowledgeRuntime($item);
             } elseif ((int)($item['ATTEMPTS'] ?? 1) >= 3) {
                 $error = substr((string)($result['error'] ?? 'Unknown worker error'), 0, 4096);
-                if (Config::get('USE_REDIS')) {
-                    $this->redis->requireConnection()->hSet($this->redis->key('queue:failed:core_runtime'), $item['QUEUE_ID'], json_encode(array('item' => $item, 'error' => $error), JSON_THROW_ON_ERROR));
-                } else {
-                    $record = array('TOPIC' => 'core_runtime', 'PAYLOAD' => json_encode($item, JSON_THROW_ON_ERROR), 'LAST_ERROR' => $error, 'ADDED' => date('Y-m-d H:i:s'));
-                    if (!$this->db->insert('operations_failed', $record)) throw new RuntimeException('Cannot preserve failed operation');
-                }
                 $this->queue->failRuntime($item, $error);
                 if ($this->errors) {
                     $this->errors->report('property_delivery',
@@ -260,7 +260,7 @@ final class OperationWorker
             } else {
                 $attempt = max(1, (int)($item['ATTEMPTS'] ?? 1));
                 $delay = min(300, 5 * (2 ** ($attempt - 1)));
-                $this->queue->releaseRuntime($item, $delay);
+                $this->queue->releaseRuntime($item, $delay, (string)($result['error'] ?? 'Unknown worker error'));
                 if ($this->errors) {
                     $this->errors->report('property_delivery',
                         'Фоновая операция будет повторена: ' . ($result['error'] ?? 'unknown error'),

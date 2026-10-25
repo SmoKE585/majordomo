@@ -136,14 +136,14 @@ try {
         array('script', array('input' => 5), 'Test script'),
     ) as [$operation, $params, $target]) {
         check(Core::queue()->enqueueRuntime($operation, $params, $target), 'Direct core operation queued: ' . $operation);
-        $item = $pdo->query('SELECT * FROM operations_queue ORDER BY ID DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+        $item = $pdo->query('SELECT * FROM core_runtime_queue ORDER BY ID DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
         check($item['DATANAME'] === $operation && str_starts_with(json_decode($item['DATAVALUE'], true)['path'], 'core:'), 'Core operation has no API path');
-        $pdo->exec("UPDATE operations_queue SET CLAIM_TOKEN='direct',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $item['ID']);
+        $pdo->exec("UPDATE core_runtime_queue SET CLAIM_TOKEN='direct',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $item['ID']);
         check(Core::worker()->execute($item['ID'], 'direct')['success'] === true, 'Worker executes core function: ' . $operation);
     }
     Core::queue()->enqueueRuntime('script', array(), 'Отсутствующий сценарий');
-    $missing = $pdo->query('SELECT ID FROM operations_queue ORDER BY ID DESC LIMIT 1')->fetchColumn();
-    $pdo->exec("UPDATE operations_queue SET CLAIM_TOKEN='direct',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $missing);
+    $missing = $pdo->query('SELECT ID FROM core_runtime_queue ORDER BY ID DESC LIMIT 1')->fetchColumn();
+    $pdo->exec("UPDATE core_runtime_queue SET CLAIM_TOKEN='direct',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $missing);
     $failure = Core::worker()->execute($missing, 'direct');
     check($failure['success'] === false && str_contains($failure['error'], 'Отсутствующий сценарий'), 'Missing direct script reports its original name');
     $_GET = array('outer' => 1); $_POST = array('outer' => 2); $_REQUEST = array('outer' => 3); $_SERVER['REQUEST_URI'] = '/outer';
@@ -157,11 +157,11 @@ try {
     check($internal['params']['from'] === 'query' && $internal['params']['fromBody'] === 1, 'Internal facade dispatches without HTTP');
     check($globals === array($_GET, $_POST, $_REQUEST, $_SERVER), 'Internal facade restores caller globals');
     check(Core::api()->request('/api/method/Lamp.run', 'GET', array('value' => 8)), 'Legacy async method accepted');
-    check($pdo->query('SELECT DATANAME FROM operations_queue ORDER BY ID DESC')->fetchColumn() === 'method', 'Original queue operation type retained');
+    check($pdo->query('SELECT DATANAME FROM core_runtime_queue ORDER BY ID DESC')->fetchColumn() === 'method', 'Original queue operation type retained');
     check(Core::api()->request('/api/module/fixtureapi', 'POST', array('input' => 1)), 'Async module accepted');
-    $queued = $pdo->query('SELECT * FROM operations_queue ORDER BY ID DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+    $queued = $pdo->query('SELECT * FROM core_runtime_queue ORDER BY ID DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
     check($queued['DATANAME'] === 'api', 'Generic calls use existing queue');
-    $pdo->exec("UPDATE operations_queue SET CLAIM_TOKEN='fixture',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $queued['ID']);
+    $pdo->exec("UPDATE core_runtime_queue SET CLAIM_TOKEN='fixture',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $queued['ID']);
     check(Core::worker()->execute($queued['ID'], 'fixture')['success'] === true, 'Worker executes queued API through dispatcher');
     // Api\Request разбирает сегмент пути через rawurldecode, поэтому кодировать
     // его нужно rawurlencode: urlencode() превращает пробел в "+" и сценарий
@@ -170,8 +170,8 @@ try {
     check(Core::api()->request('/api/script/Missing%20script', 'GET', array(), true) === false, 'Missing internal script is reported as a failure');
     check(str_contains((string)Core::api()->lastError(), 'not_found'), 'Internal API failure keeps its reason for the log');
     Core::api()->request('/api/script/Missing%20script', 'GET', array());
-    $queued = $pdo->query('SELECT * FROM operations_queue ORDER BY ID DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
-    $pdo->exec("UPDATE operations_queue SET CLAIM_TOKEN='fixture',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $queued['ID']);
+    $queued = $pdo->query('SELECT * FROM core_runtime_queue ORDER BY ID DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+    $pdo->exec("UPDATE core_runtime_queue SET CLAIM_TOKEN='fixture',CLAIM_UNTIL='2099-01-01 00:00:00' WHERE ID=" . $queued['ID']);
     $failed = Core::worker()->execute($queued['ID'], 'fixture');
     check($failed['success'] === false && str_contains($failed['error'], '/api/script/Missing script') && str_contains($failed['error'], 'not_found'),
         'Failed background API names the path and the reason');

@@ -63,5 +63,14 @@ $last = $runner->run('operation', 'after-timeout', 'token-5', 3);
 check($last['success'] && $last['id'] === 'after-timeout', 'Следующее задание работает после таймаута');
 $cold = (new MajorDoMo\Core\ProcessRunner($root))->run('job', 'job', 'job-token', 3);
 check($cold['success'] && $cold['id'] === 'job', 'Прежний запуск задач планировщика сохранён');
+if (function_exists('pcntl_alarm')) {
+    $started = microtime(true);
+    $process = proc_open(array(PHP_BINARY, $root . 'scripts/core_worker.php', 'operation', 'timeout', 'own-deadline', '1'),
+        array(0 => array('pipe','r'), 1 => array('pipe','w'), 2 => array('pipe','w')), $pipes, $root);
+    fclose($pipes[0]); stream_get_contents($pipes[1]); stream_get_contents($pipes[2]);
+    fclose($pipes[1]); fclose($pipes[2]);
+    check(proc_close($process) === 124 && microtime(true) - $started < 3,
+        'Самостоятельный дедлайн работает без контроля времени родителем');
+}
 $runner = null;
 echo 'Process runner smoke: ' . $checks . " passed; disposable processes, no application boot.\n";

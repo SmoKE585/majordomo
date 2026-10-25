@@ -51,7 +51,7 @@ namespace {
     putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('USE_REDIS=false');
     error_reporting(E_ALL);
     set_error_handler(static function ($severity, $message, $file, $line) { throw new \ErrorException($message, 0, $severity, $file, $line); });
-    foreach (array('Database', 'CodeExecutor', 'PropertyChain', 'PropertyAudit', 'Properties', 'Methods', 'OperationsQueue', 'OperationWorker', 'ApiClient') as $class) {
+    foreach (array('Database', 'CodeExecutor', 'PropertyChain', 'PropertyAudit', 'Properties', 'Methods', 'RuntimeQueue', 'OperationsQueue', 'OperationWorker', 'ApiClient') as $class) {
         require dirname(__DIR__) . '/lib/core/' . $class . '.php';
     }
     require dirname(__DIR__) . '/lib/core/Helpers/Scripts.php';
@@ -70,6 +70,8 @@ namespace {
     $checks = 0;
     $pdo = new \PDO('sqlite::memory:', null, null, array(\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION));
     check(getenv('APP_ENV') === 'testing' && $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'sqlite', 'Изоляция подтверждена');
+    require __DIR__ . '/fixtures/runtime_queue.php';
+    createRuntimeQueueFixture($pdo);
     $pdo->sqliteCreateFunction('NOW', fn() => date('Y-m-d H:i:s'));
     $pdo->sqliteCreateFunction('GET_LOCK', fn(...$args) => 1);
     $pdo->sqliteCreateFunction('RELEASE_LOCK', fn(...$args) => 1);
@@ -88,7 +90,8 @@ namespace {
         public function __construct(private \PDO $pdo) {}
         public function DbSafe1($value) { return str_replace("'", "''", (string)$value); }
         public function SelectOne($sql) { return $this->pdo->query($sql)->fetch(\PDO::FETCH_ASSOC) ?: array(); }
-        public function Exec($sql, $ignoreErrors = false) { $this->pdo->exec($sql); return true; }
+        public function Exec($sql, $ignoreErrors = false) { $this->pdo->exec($sql === 'START TRANSACTION' ? 'BEGIN' : $sql); return true; }
+        public function inTransaction() { return $this->pdo->inTransaction(); }
         public function Insert($table, &$row) {
             $this->pdo->prepare('INSERT INTO ' . $table . ' (' . implode(',', array_keys($row)) . ') VALUES (' . implode(',', array_fill(0, count($row), '?')) . ')')->execute(array_values($row));
             return (int)$this->pdo->lastInsertId();
@@ -166,13 +169,13 @@ class scripts {
     }
 }
 PHP);
-    function queued(): array { return $GLOBALS['pdo']->query('SELECT * FROM operations_queue ORDER BY ID')->fetchAll(\PDO::FETCH_ASSOC); }
+    function queued(): array { return $GLOBALS['pdo']->query("SELECT * FROM core_runtime_queue WHERE STATUS='pending' ORDER BY ID")->fetchAll(\PDO::FETCH_ASSOC); }
     function executeNext(): array {
         $row = queued()[0];
-        $GLOBALS['pdo']->prepare('UPDATE operations_queue SET CLAIM_TOKEN=?,CLAIM_UNTIL=? WHERE ID=?')->execute(array('fixture', date('Y-m-d H:i:s', time() + 60), $row['ID']));
+        $GLOBALS['pdo']->prepare('UPDATE core_runtime_queue SET CLAIM_TOKEN=?,CLAIM_UNTIL=? WHERE ID=?')->execute(array('fixture', date('Y-m-d H:i:s', time() + 60), $row['ID']));
         $result = $GLOBALS['worker']->execute((string)$row['ID'], 'fixture');
         check($result['success'], 'Операция выполнена: ' . ($result['error'] ?? $row['DATANAME']));
-        $GLOBALS['pdo']->prepare('DELETE FROM operations_queue WHERE ID=?')->execute(array($row['ID']));
+        $GLOBALS['pdo']->prepare('DELETE FROM core_runtime_queue WHERE ID=?')->execute(array($row['ID']));
         check(PropertyChain::delivery() === array('module' => '', 'point' => ''), 'Воркер очистил контекст');
         return $row;
     }
@@ -184,7 +187,7 @@ PHP);
         }
     }
     function resetDelivery(string $module): void {
-        $GLOBALS['pdo']->exec("DELETE FROM operations_queue; UPDATE pvalues SET VALUE=CASE ID WHEN 1 THEN '1' ELSE '0' END;
+        $GLOBALS['pdo']->exec("DELETE FROM core_runtime_queue; UPDATE pvalues SET VALUE=CASE ID WHEN 1 THEN '1' ELSE '0' END;
             UPDATE properties SET ONCHANGE=CASE ID WHEN 1 THEN 'changed' ELSE '' END");
         $GLOBALS['pdo']->prepare('UPDATE pvalues SET LINKED_MODULES=?')->execute(array($module . ',witness'));
         $GLOBALS['delivered'] = $GLOBALS['warnings'] = array();

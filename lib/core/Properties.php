@@ -13,6 +13,7 @@ use \RuntimeException;
  * изменений не даёт автоматизации зациклиться.
  *
  * Изменения:
+ * 2026-10-25 — значение, история и задания фиксируются одной транзакцией; кеш и WebSocket обновляются после COMMIT.
  * 2026-10-25 — уведомления и ONCHANGE ставятся в очередь до снятия блокировки свойства;
  *              внутренний ONCHANGE больше не зависит от синхронных веток callMethodSafe.
  * 2026-10-25 — явный NO_LINKED больше не отменяется областью предыдущего обработчика.
@@ -321,8 +322,9 @@ final class Properties
             }
         }
 
-        $linked_operation_errors = array();
         $audit_owned = false;
+        $unit = null;
+        $websocket_changed = false;
         $property_lock = $this->locks->acquire($object->id, $property);
         try {
             startMeasure('getPropertyByName');
@@ -406,6 +408,7 @@ final class Properties
                     if ($value == '') $value = $old_value;
                 }
 
+                $unit = $this->db->beginUnit();
                 $this->locks->check($property_lock);
                 $v['VALUE'] = $value . '';
                 $v['SOURCE'] = $source . '';
@@ -426,6 +429,7 @@ final class Properties
                     if (!$v['ID']) throw new RuntimeException('Property value was not created');
                 }
             } else {
+                $unit = $this->db->beginUnit();
                 $prop = array();
                 $prop['OBJECT_ID'] = $object->id;
                 $prop['TITLE'] = $property;
@@ -441,8 +445,6 @@ final class Properties
                 if (!$v['ID']) throw new RuntimeException('Property value was not created');
             }
             endMeasure('setproperty_update');
-
-            $this->cache->set($cached_name, $value);
 
             // Останавливаем цепочку, если это свойство уже встречалось или шагов
             // стало слишком много: так автоматизация A → модуль → A не зациклится.
@@ -491,7 +493,7 @@ final class Properties
                 // В БД значения хранятся строками: число 1 и строка '1'
                 // обозначают одно состояние и не требуют повторной отправки.
                 if ($old_value === false || (string)$old_value !== $v['VALUE']) {
-                    $this->websockets->post($object->object_title . '.' . $property, $value);
+                    $websocket_changed = true;
                 }
                 endMeasure('setproperty_postwebsocketqueue');
             }
@@ -541,28 +543,16 @@ final class Properties
                         $params['value'] = $value;
                         $params['_chain'] = $next_chain;
                         PropertyAudit::attach($params);
-                        try {
-                            if (!Core::queue()->enqueueRuntime('modulepropertyset', $params, (string)$linked_module)) throw new RuntimeException('Linked operation was not queued');
-                        } catch (Throwable $e) {
-                            // The value is already saved. A failed notification is
-                            // reported once per module/window, not per value.
-                            $linked_operation_errors[] = $e;
-                            $this->errors?->report('property_delivery',
-                                'Не удалось поставить в очередь уведомление модулю ' . $linked_module
-                                . ' для ' . $object->object_title . '.' . $property . ': ' . $e->getMessage(),
-                                $linked_module);
-                        }
+                        // Это сохранение задания, а не обращение к устройству.
+                        // Отказ SQL должен откатить и значение, и все задания записи.
+                        if (!Core::queue()->enqueueRuntime('modulepropertyset', $params, (string)$linked_module)) throw new RuntimeException('Linked operation was not queued');
                         endMeasure('linkedModule' . $linked_module);
                     }
                     endMeasure('linkedModulesProcessing');
                 }
             }
 
-            if ($abort_after_save) {
-                return;
-            }
-
-            if (!$chain_stopped && isset($prop['ONCHANGE']) && $prop['ONCHANGE']) {
+            if (!$abort_after_save && !$chain_stopped && isset($prop['ONCHANGE']) && $prop['ONCHANGE']) {
                 $params = array();
                 $params['PROPERTY'] = $property;
                 $params['NEW_VALUE'] = (string)$value;
@@ -587,13 +577,27 @@ final class Properties
                     throw new RuntimeException('Property ONCHANGE was not queued');
                 }
             }
+            // Побочные эффекты не должны показывать ещё не зафиксированное
+            // значение. Вложенная запись ждёт COMMIT внешней транзакции.
+            $full_name = $object->object_title . '.' . $property;
+            $this->db->afterUnit(function () use ($cached_name, $websocket_changed, $full_name, $value): void {
+                $this->cache->delete($cached_name);
+                if ($websocket_changed) $this->websockets->post($full_name, $value);
+            }, function () use ($cached_name): void { $this->cache->delete($cached_name); });
+            try { $this->db->commitUnit($unit); }
+            finally { if (!$this->db->hasUnit($unit)) $unit = null; }
         } catch (Throwable $e) {
+            if ($unit !== null && $this->db->hasUnit($unit)) {
+                try { $this->db->rollbackUnit($unit); } finally { $unit = null; }
+            }
             $this->cache->delete($cached_name ?? ('MJD:' . $object->object_title . '.' . $property));
             if ($audit_owned) {
                 $this->audit?->finishRun('error', null, $e);
                 $this->audit?->leave();
                 $audit_owned = false;
             }
+            $this->errors?->report('property_delivery', 'Ошибка записи свойства ' . $object->object_title . '.' . $property
+                . ': ' . $e->getMessage(), 'write:' . $object->object_title . '.' . $property);
             throw $e;
         } finally {
             try {
@@ -604,10 +608,6 @@ final class Properties
                     $this->audit?->leave();
                 }
             }
-        }
-
-        if ($linked_operation_errors && Config::bool('PROPERTY_DELIVERY_STRICT')) {
-            throw new RuntimeException(implode('; ', array_map(static fn($e) => $e->getMessage(), $linked_operation_errors)), 0, $linked_operation_errors[0]);
         }
 
         endMeasure('setProperty (' . $property . ')', 1);

@@ -28,8 +28,33 @@ if (!defined('MYSQL_BOTH')) {
 }
 
 
+/**
+ * Соединение MySQL для старых модулей и служб ядра.
+ * 2026-10-25 — исключения служб ядра вместо exit и завершение побочных эффектов после транзакции.
+ */
 class mysql
 {
+    private int $exceptionScopes = 0;
+    private array $transactionCommit = array();
+    private array $transactionRollback = array();
+
+    public function inTransaction(): bool { return $this->transactionActive; }
+    public function withExceptions(callable $call)
+    {
+        $this->exceptionScopes++;
+        try { return $call(); } finally { $this->exceptionScopes--; }
+    }
+    public function afterTransaction(array $commit, array $rollback): void
+    {
+        $this->transactionCommit = array_merge($this->transactionCommit, $commit);
+        $this->transactionRollback = array_merge($this->transactionRollback, $rollback);
+    }
+    private function finishTransactionCallbacks(bool $committed): void
+    {
+        $callbacks = $committed ? $this->transactionCommit : array_reverse($this->transactionRollback);
+        $this->transactionCommit = $this->transactionRollback = array();
+        foreach ($callbacks as $callback) $callback();
+    }
     var $host;
     var $port;
     var $user;
@@ -121,11 +146,15 @@ class mysql
             else {
                 $this->lastErrorNo = 2013;
                 $this->lastErrorDetails = 'Transaction connection was lost; explicit rollback or restart is required';
+                if (!$ignore_errors && $this->exceptionScopes) throw new RuntimeException($this->lastErrorDetails, $this->lastErrorNo);
                 if (!$ignore_errors) $this->Error($query, 0);
                 return false;
             }
         }
-        if (!$this->dbh && !$this->Connect()) return false;
+        if (!$this->dbh && !$this->Connect()) {
+            if ($this->exceptionScopes) throw new RuntimeException('Database connection unavailable', $this->lastErrorNo);
+            return false;
+        }
         $this->latestTransaction = time();
         $result = false;
         $this->lastAffectedRows = 0;
@@ -180,9 +209,13 @@ class mysql
                 $this->lastAffectedRows = $affected;
                 $this->lastInsertId = $insertId;
             }
+            if (preg_match('/^\s*(COMMIT|ROLLBACK)\b/i', $query, $end) && !preg_match('/^\s*ROLLBACK\s+TO\b/i', $query)) {
+                $this->finishTransactionCallbacks(strtoupper($end[1]) === 'COMMIT');
+            }
         }
 
         if (!$result && !$ignore_errors) {
+            if ($this->exceptionScopes) throw new RuntimeException($this->lastErrorDetails, $this->lastErrorNo);
             $this->Error($query, 0);
             return 0;
         }
@@ -356,6 +389,7 @@ class mysql
         $this->dbh = null;
         $this->connected = false;
         $this->transactionActive = false;
+        $this->finishTransactionCallbacks(false);
     }
 
     /**
@@ -367,6 +401,9 @@ class mysql
      */
     public function DbSafe($str)
     {
+        if (!$this->connected && $this->exceptionScopes) {
+            if (!$this->Connect()) throw new RuntimeException('Database connection unavailable', $this->lastErrorNo);
+        }
         if (!$this->connected) {
             echo "Database is not connected!";
             exit;
@@ -386,6 +423,9 @@ class mysql
      */
     public function DbSafe1($str)
     {
+        if (!$this->connected && $this->exceptionScopes) {
+            if (!$this->Connect()) throw new RuntimeException('Database connection unavailable', $this->lastErrorNo);
+        }
         if (!$this->connected) {
             echo "Database is not connected!";
             exit;

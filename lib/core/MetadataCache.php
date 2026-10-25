@@ -6,6 +6,7 @@ namespace MajorDoMo\Core;
 /**
  * Метаданные по версии Redis с небольшим кешем внутри исполнителя.
  * 2026-10-25 — повторный доступ не читает то же описание из Redis; версия проверяется каждый раз.
+ * 2026-10-25 — незавершённые изменения не попадают в общий кеш; инвалидация ждёт COMMIT.
  */
 final class MetadataCache
 {
@@ -15,7 +16,7 @@ final class MetadataCache
 
     public function get($key, $load)
     {
-        if (!Config::get('USE_REDIS')) return $load();
+        if ($this->db->inTransaction() || !Config::get('USE_REDIS')) return $load();
         $redis = $this->redis->requireConnection();
         $epoch = (string)($redis->get($this->redis->key('meta:epoch')) ?: '0');
         if ($this->localEpoch !== $epoch) {
@@ -56,6 +57,11 @@ final class MetadataCache
     public function changedBySql($query)
     {
         if (!preg_match('/^\s*(?:INSERT(?:\s+IGNORE)?\s+INTO|REPLACE\s+INTO|UPDATE|DELETE\s+FROM|ALTER\s+TABLE|TRUNCATE(?:\s+TABLE)?)\s+`?(objects|classes|properties|methods)`?\b/i', $query, $m)) return;
+        if ($this->db->inTransaction()) {
+            $this->local = array();
+            $this->db->afterTransaction(fn() => $this->changedBySql($query), fn() => $this->invalidate());
+            return;
+        }
         if (strtolower($m[1]) === 'methods' && preg_match('/^\s*UPDATE\b/i', $query)) {
             preg_match('/\bSET\s+(.+)\s+WHERE\b/is', $query, $set);
             preg_match_all('/(?:^|,)\s*`?(\w+)`?\s*=/', $set[1] ?? '', $fields);

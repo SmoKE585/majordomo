@@ -6,6 +6,7 @@ use MajorDoMo\Core\Migrations\Migration;
 use \Throwable;
 use \RuntimeException;
 
+/** Миграции ядра. 2026-10-25 — долговечная SQL-очередь; порядок задаёт имя файла, а не текстовая метка версии. */
 final class Migrations
 {
     /** @var string Каталог файловых миграций; тесты подменяют его на временный. */
@@ -294,8 +295,25 @@ final class Migrations
             $migration->sourceFile = basename($file);
             $migrations[$version] = $migration;
         }
-        uksort($migrations, 'strcmp');
         return $migrations;
+    }
+
+    public function ensureRuntimeQueueSchema(): void
+    {
+        $this->db->requireExec("CREATE TABLE IF NOT EXISTS core_runtime_queue (
+            ID bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            DATANAME varchar(1024) NOT NULL, DATAVALUE mediumtext NOT NULL,
+            LANE varchar(160) NOT NULL, STATUS varchar(16) NOT NULL DEFAULT 'pending',
+            SOURCE_KEY varchar(100) DEFAULT NULL, CREATED datetime NOT NULL,
+            EXPIRE datetime NOT NULL, AVAILABLE_AT datetime NOT NULL,
+            CLAIM_TOKEN varchar(64) NOT NULL DEFAULT '', CLAIM_UNTIL datetime DEFAULT NULL,
+            ATTEMPTS int unsigned NOT NULL DEFAULT 0, LAST_ERROR text DEFAULT NULL, FINISHED datetime DEFAULT NULL,
+            DISPATCH_GENERATION char(32) NOT NULL DEFAULT '',
+            UNIQUE KEY uq_runtime_source (SOURCE_KEY), KEY idx_runtime_lane (STATUS,LANE,ID),
+            KEY idx_runtime_ready (STATUS,AVAILABLE_AT,CLAIM_UNTIL), KEY idx_runtime_expire (STATUS,EXPIRE),
+            KEY idx_runtime_dispatch (STATUS,DISPATCH_GENERATION,ID), KEY idx_runtime_claim (STATUS,CLAIM_TOKEN,CLAIM_UNTIL)
+        ) ENGINE=InnoDB ROW_FORMAT=DYNAMIC DEFAULT CHARSET=utf8mb4");
+        do { $moved = $this->queue->migrateLegacyRuntime(200); } while ($moved >= 200);
     }
 
     public function migrationPath(): string
@@ -485,6 +503,9 @@ final class Migrations
         $this->removeLegacyConnect();
         if (Config::get('USE_REDIS')) {
             foreach ($this->db->select('SELECT * FROM operations_queue ORDER BY ID') as $row) {
+                // Новая таблица журнала будет создана следующей файловой
+                // миграцией; до неё задания ядра должны остаться на месте.
+                if ($row['TOPIC'] === 'core_runtime') continue;
                 $ttl = strtotime($row['EXPIRE']) - time();
                 if ($ttl > 0 && !$this->queue->enqueue($row['TOPIC'], $row['DATANAME'], $row['DATAVALUE'], false, $ttl)) throw new RuntimeException('Cannot migrate pending operation');
                 $this->db->requireExec('DELETE FROM operations_queue WHERE ID=' . (int)$row['ID']);

@@ -50,7 +50,7 @@ final class ApiFixtureConnection
     public function getLastError(): array { return array('message' => 'fixture failure', 'code' => 1); }
 }
 
-/** Изолированное окружение API. 2026-10-23 — сценарии с исполняемым тестовым кодом. */
+/** Изолированное окружение API. 2026-10-25 — долговечный журнал заданий в SQLite. */
 final class ApiFixture
 {
     public static function initialize(string $root, string $project): void
@@ -126,6 +126,8 @@ PHP);
         file_put_contents($root . '/cms/modules_installed/control_modules.installed', 'fixture');
         file_put_contents($root . '/cms/modules_installed/fixturehook.installed', 'fixture');
         $pdo = self::pdo($root);
+        require_once __DIR__ . '/runtime_queue.php';
+        createRuntimeQueueFixture($pdo);
         $pdo->exec(Schema::sql(true));
         $pdo->exec(Schema::userSessionsSql(true));
         foreach (Schema::hooksStatements(true) as $statement) {

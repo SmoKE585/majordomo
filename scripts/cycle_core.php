@@ -11,6 +11,7 @@
  * При CORE_WORKERS = 1 или без Redis сохраняется прежний последовательный
  * цикл — это аварийный и совместимый режим.
  *
+ * 2026-10-25 — исполнители используют долговечную SQL-очередь, Redis для их работы не требуется.
  * 2026-10-23 — добавлен параллельный режим с порядком по сущности.
  */
 
@@ -32,9 +33,16 @@ require_once './load_settings.php';
 set_time_limit(0);
 
 $coreWorkers = max(1, min(16, \MajorDoMo\Core\Config::int('CORE_WORKERS', 3)));
-$parallel = $coreWorkers > 1 && \MajorDoMo\Core\Config::get('USE_REDIS') && class_exists('Redis');
+$parallel = $coreWorkers > 1;
 
 if (!$parallel) {
+    if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
+        pcntl_async_signals(true);
+        foreach (array(SIGTERM, SIGINT) as $signal) pcntl_signal($signal, static function (): void {
+            \MajorDoMo\Core\Core::processes()->stop();
+            exit;
+        });
+    }
     $heartbeat = 0;
     $eventsDrainedAt = 0;
     while (true) {
@@ -95,6 +103,7 @@ $heartbeat = 0;
 $eventsDrainedAt = 0;
 $migratedAt = 0;
 $lanesMaintainedAt = 0;
+$workersCheckedAt = 0;
 while (true) {
     try {
         if (time() - $heartbeat >= 5) {
@@ -106,7 +115,7 @@ while (true) {
             \MajorDoMo\Core\Events\EventBus::flushDeferred(ROOT, 20);
             \MajorDoMo\Core\Events\EventBus::drain(20);
         }
-        if (time() - $lanesMaintainedAt >= 5) {
+        if (\MajorDoMo\Core\Config::get('USE_REDIS') && time() - $lanesMaintainedAt >= 5) {
             $lanesMaintainedAt = time();
             try {
                 $lanes = \MajorDoMo\Core\Core::coreLanes();
@@ -116,19 +125,20 @@ while (true) {
                 DebMes('Core lane maintenance: ' . $error->getMessage(), 'cycle_core', 'warning');
             }
         }
-        // Совместимость при обновлении: старые элементы ZSET, поставленные
-        // прежней версией, переносятся в полосы.
-        if (time() - $migratedAt >= 5) {
-            $migratedAt = time();
-            try {
-                \MajorDoMo\Core\Core::queue()->migrateLegacyRuntime(200);
-            } catch (Throwable $error) {
-                DebMes('Core legacy queue migration: ' . $error->getMessage(), 'cycle_core', 'warning');
-            }
-        }
         foreach ($pool->maintain() as $event) {
             DebMes('Core worker pool: ' . $event, 'cycle_core', 'warning');
             echo date('Y-m-d H:i:s') . ' Core worker pool: ' . $event . PHP_EOL;
+        }
+        if (time() - $workersCheckedAt >= 5) {
+            $workersCheckedAt = time();
+            $timeout = max(120, (defined('CORE_OPERATION_TIMEOUT') ? (int)CORE_OPERATION_TIMEOUT : 60) + 65);
+            foreach ($pool->pids() as $name => $pid) {
+                if ($pid > 0 && \MajorDoMo\Core\WorkerHeartbeat::stalled(ROOT, $pid, $pool->uptime($name), $timeout)) {
+                    $pool->restart($name);
+                    \MajorDoMo\Core\WorkerHeartbeat::remove(ROOT, $pid);
+                    DebMes('Контроллер ' . $name . ' перезапущен: нет прогресса ' . $timeout . ' секунд', 'cycle_core', 'error');
+                }
+            }
         }
     } catch (Throwable $e) {
         $message = 'Core supervisor: ' . $e->getMessage();
