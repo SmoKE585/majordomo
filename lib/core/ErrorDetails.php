@@ -58,7 +58,7 @@ final class ErrorDetails
             'method' => (string)($_SERVER['REQUEST_METHOD'] ?? 'CLI'),
             'ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''), 'at' => date('Y-m-d H:i:s'),
         );
-        foreach (array('file', 'line', 'cycle', 'entity', 'action', 'url', 'method', 'ip', 'source') as $key) {
+        foreach (array('file', 'line', 'cycle', 'entity', 'action', 'url', 'method', 'ip', 'source', 'trigger_event') as $key) {
             if (isset($context[$key]) && is_scalar($context[$key])) $data[$key] = $key === 'line' ? max(0, (int)$context[$key]) : self::clean((string)$context[$key], 1500);
         }
         $data['file'] = self::path($data['file']);

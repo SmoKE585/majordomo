@@ -309,11 +309,15 @@ function registerError($code = 'custom', $details = '')
             'source' => $data['source'], 'file' => $data['file'], 'line' => $data['line'],
             'cycle' => $data['cycle'], 'entity' => $data['entity'], 'occurred_at' => $data['at']);
         // Подписчик не должен получить событие о записи, которую ещё можно откатить.
-        $db->afterUnit(static function () use ($payload, &$reporting): void {
-            $reporting = true;
-            try { \MajorDoMo\Core\Events\SystemEvents::systemError($payload); }
-            finally { $reporting = false; }
-        }, static function (): void {});
+        // Окончательный отказ подписчика SYSTEM_ERROR сохраняется в журнале,
+        // но не запускает этого же сломанного подписчика снова через очередь.
+        if (($data['trigger_event'] ?? '') !== 'SYSTEM_ERROR') {
+            $db->afterUnit(static function () use ($payload, &$reporting): void {
+                $reporting = true;
+                try { \MajorDoMo\Core\Events\SystemEvents::systemError($payload); }
+                finally { $reporting = false; }
+            }, static function (): void {});
+        }
         $db->commitUnit($unit);
         $unit = null;
     } catch (\Throwable $failure) {

@@ -18,12 +18,14 @@ $pdo->exec('CREATE TABLE system_errors (ID INTEGER PRIMARY KEY, CODE TEXT, TITLE
 $pdo->exec('CREATE TABLE system_errors_data (ID INTEGER PRIMARY KEY, ERROR_ID INTEGER, COMMENTS TEXT, ADDED TEXT)');
 $pdo->exec('CREATE TABLE system_events (ID INTEGER PRIMARY KEY, NAME TEXT, PAYLOAD TEXT, SOURCE TEXT, CREATED TEXT, PROCESSED INTEGER)');
 $db = new class($pdo) {
+    public bool $failHistory = false;
     public function __construct(private PDO $pdo) {}
     public function Select($sql) { return $this->pdo->query(str_replace(' FOR UPDATE', '', $sql))->fetchAll(PDO::FETCH_ASSOC); }
     public function SelectOne($sql) { return $this->Select($sql)[0] ?? null; }
     public function Exec($sql, $ignored = false) { $this->pdo->exec($sql === 'START TRANSACTION' ? 'BEGIN' : $sql); return true; }
     public function DbSafe1($value) { return substr($this->pdo->quote((string)$value), 1, -1); }
     public function Insert($table, &$record) {
+        if ($table === 'system_errors_data' && $this->failHistory) throw new RuntimeException('Fixture history failure');
         $keys = array_keys($record);
         $statement = $this->pdo->prepare('INSERT INTO ' . $table . ' (' . implode(',', $keys) . ') VALUES (' . implode(',', array_fill(0, count($keys), '?')) . ')');
         $statement->execute(array_values($record));
@@ -86,4 +88,27 @@ check(SystemEvents::severity('SYSTEM_ERROR') === 'error' && in_array('SYSTEM_ERR
 EventBus::on(SystemEvents::SYSTEM_ERROR, static function (): void { registerError('recursive', 'Ошибка в подписчике'); });
 registerError('listener', 'Проверка защиты события');
 check(count($events) === $before + 1 && !$db->SelectOne("SELECT * FROM system_errors WHERE CODE='recursive'"), 'Повторный вход из слушателя остаётся в логе');
+$before = count($events);
+registerError('event_handler', ErrorDetails::encode('Подписчик SYSTEM_ERROR завершился сбоем', array('trigger_event' => 'SYSTEM_ERROR')));
+check($db->SelectOne("SELECT * FROM system_errors WHERE CODE='event_handler'") && count($events) === $before, 'Ошибка фонового подписчика сохраняется без бесконечной цепочки SYSTEM_ERROR');
+$db->failHistory = true;
+registerError('history_failure', 'Проверка отката при отказе истории');
+$db->failHistory = false;
+check(!$db->SelectOne("SELECT * FROM system_errors WHERE CODE='history_failure'") && count($events) === $before, 'Отказ записи истории откатывает группу и не создаёт событие');
+
+function getEvalCode() { return ''; }
+function PerformanceReport($mode) { return array(); }
+function dprint($value, $stop = false) {}
+function saveCycleToCache($key, $value) { $GLOBALS['cycleFailureCache'][$key] = $value; }
+require dirname(__DIR__) . '/lib/errors.class.php';
+restore_error_handler(); restore_exception_handler();
+$argv[0] = 'scripts/cycle_fixture.php';
+majordomoErrorHandler(E_USER_WARNING, 'Диагностическое предупреждение', __FILE__, __LINE__);
+check(count($events) === $before && empty($GLOBALS['cycleFailureCache']), 'Предупреждение PHP не создаёт ошибку и не подменяет причину падения');
+majordomoExceptionHandler(new RuntimeException('Причина падения цикла'));
+check(count($events) === $before && str_contains($GLOBALS['cycleFailureCache']['cycle_fixtureLastError'], 'Причина падения цикла')
+    && ErrorDetails::decode($GLOBALS['cycleFailureCache']['cycle_fixtureLastFailure']) !== null, 'Сбой цикла сохраняет причину и ждёт попыток супервизора');
+$argv[0] = $originalScript;
+majordomoExceptionHandler(new RuntimeException('Критичный сбой HTTP-операции'));
+check(count($events) === $before + 1 && end($events)['code'] === 'php_exception', 'Непойманный сбой вне циклов создаёт системную ошибку сразу');
 echo 'System errors smoke: ' . $checks . ' passed; SQLite :memory:, без внешних сервисов.' . PHP_EOL;

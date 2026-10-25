@@ -79,7 +79,7 @@
                             <input type="hidden" name="id" value="[#ID#]">
                             <input type="hidden" name="view_mode" value="toggle_keep_history">
                             <input type="hidden" name="data_source" value="system_errors">
-                            <input type="hidden" name="_token" value="[#CSRF_TOKEN#]">
+                            <input type="hidden" name="_token" value="<#CSRF_TOKEN#>">
                         </form>
                     </td>
                     <td class="md-errors-col-actions">
@@ -88,11 +88,11 @@
                                 <i class="ti ti-history" aria-hidden="true"></i>
                             </a>
                             [#if STATUS_STATE!="closed"#]
-                            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="clear_system_errors"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><input type="hidden" name="id" value="[#ID#]"><button type="submit" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="Закрыть ошибку" aria-label="Закрыть ошибку [#CODE#]">
+                            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="clear_system_errors"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="<#CSRF_TOKEN#>"><input type="hidden" name="id" value="[#ID#]"><button type="submit" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="Закрыть ошибку" aria-label="Закрыть ошибку [#CODE#]">
                                 <i class="ti ti-check" aria-hidden="true"></i>
                             </button></form>
                             [#endif#]
-                            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="delete_system_errors"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><input type="hidden" name="id" value="[#ID#]"><button type="submit" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить ошибку [#CODE#]" data-md-confirm="Удалить ошибку [#CODE#] и всю историю?">
+                            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="delete_system_errors"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="<#CSRF_TOKEN#>"><input type="hidden" name="id" value="[#ID#]"><button type="submit" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить ошибку [#CODE#]" data-md-confirm="Удалить ошибку [#CODE#] и всю историю?">
                                 <i class="ti ti-trash" aria-hidden="true"></i>
                             </button></form>
                         </div>
@@ -122,7 +122,7 @@
     <div class="md-empty__title">Ошибок пока нет</div>
     <p class="md-empty__text">Здесь появятся сбои ядра, модулей и циклов, требующие вмешательства. Диагностика и успешное восстановление остаются в файловых логах.</p>
     <div class="md-empty__actions">
-        <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="addtesterror"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><button type="submit" class="md-btn md-btn--secondary md-btn--sm" data-md-confirm="Создать тестовую ошибку?">
+        <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="addtesterror"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="<#CSRF_TOKEN#>"><button type="submit" class="md-btn md-btn--secondary md-btn--sm" data-md-confirm="Создать тестовую ошибку?">
             <i class="ti ti-bug" aria-hidden="true"></i><#LANG_NEWSYSTEM_ERROR_GET_ERROR#>
         </button></form>
     </div>

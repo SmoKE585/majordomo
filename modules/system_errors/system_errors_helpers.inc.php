@@ -275,7 +275,8 @@ if (!function_exists('md_system_errors_title')) {
             return $title;
         }
         $message = md_system_errors_message($comments);
-        return $message !== '' ? $message : (string)$code;
+        $message = trim((string)preg_replace('/\s+/u', ' ', explode("\n", $message, 2)[0]));
+        return $message !== '' ? mb_substr($message, 0, 160, 'UTF-8') : (string)$code;
     }
 }
 

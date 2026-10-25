@@ -254,11 +254,15 @@ final class OperationWorker
                 $this->queue->failRuntime($item, $error);
                 if ($this->errors) {
                     $diagnostic = is_array($result['diagnostic'] ?? null) ? $result['diagnostic'] : array();
+                    $operation = json_decode((string)($item['DATAVALUE'] ?? ''), true);
+                    $triggerEvent = in_array($item['DATANAME'] ?? '', array('subscriptions', 'moduleevent'), true)
+                        ? (string)($operation['params']['event'] ?? $operation['target'] ?? '') : '';
                     $this->errors->report('property_delivery',
                         'Фоновая операция не выполнена после повторов: ' . $error,
                         'worker:' . (string)($item['QUEUE_ID'] ?? $item['DATANAME'] ?? 'unknown'), 300,
                         array_merge(array_intersect_key($diagnostic, array_flip(array('file', 'line', 'entity'))),
-                            array('source' => 'фоновая операция', 'action' => 'Устраните причину в обработчике; проверьте окончательно отклонённое задание в очереди.')));
+                            array('source' => 'фоновая операция', 'trigger_event' => $triggerEvent,
+                                'action' => 'Устраните причину в обработчике; проверьте окончательно отклонённое задание в очереди.')));
                 } else {
                     DebMes('Core operation failed permanently: ' . $error, 'core_runtime', 'error');
                 }

@@ -23,7 +23,7 @@
             </div>
         </div>
         <div class="md-ui-hero__actions">
-            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="addtesterror"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><button type="submit" class="md-btn md-btn--secondary" data-md-confirm="Создать тестовую ошибку?">
+            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="addtesterror"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="<#CSRF_TOKEN#>"><button type="submit" class="md-btn md-btn--secondary" data-md-confirm="Создать тестовую ошибку?">
                 <i class="ti ti-bug" aria-hidden="true"></i><span class="md-btn__label"><#LANG_NEWSYSTEM_ERROR_GET_ERROR#></span>
             </button></form>
             <button type="button" class="md-btn md-btn--ghost" data-bs-toggle="modal" data-bs-target="#mdErrorsSettingsModal">
@@ -46,7 +46,7 @@
             <div class="md-alert__title">Есть активные ошибки</div>
             <div class="md-alert__text">Групп: <strong>[#ERRORS_ACTIVE_TOTAL#]</strong> · срабатываний: <strong>[#ERRORS_ACTIVE_OCCURRENCES#]</strong>. Устраните причины и закройте разобранные ошибки. При новом сбое они откроются повторно.</div>
             <div class="md-alert__actions">
-                <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="readall"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><button type="submit" class="md-btn md-btn--secondary md-btn--sm">
+                <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="readall"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="<#CSRF_TOKEN#>"><button type="submit" class="md-btn md-btn--secondary md-btn--sm">
                     <i class="ti ti-checks" aria-hidden="true"></i>Закрыть все ошибки
                 </button></form>
             </div>
@@ -99,7 +99,7 @@
 
     [#inc system_errors_search_admin.html#]
 
-    <p class="md-errors-hint-line"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Критичный сбой регистрируется через <code>registerError('код', 'описание')</code> ; событие <code>SYSTEM_ERROR</code> доступно модулям и сценариям.</span></p>
+    <p class="md-errors-hint-line"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Диагностика и промежуточные попытки восстановления доступны в <a href="<#ROOTHTML#>panel/xray.html">X-Ray</a>. Закрытие ошибки сохраняет историю.</span></p>
 </div>
 
 <div class="modal fade md-modal" id="mdErrorsSettingsModal" tabindex="-1" aria-labelledby="mdErrorsSettingsTitle" aria-hidden="true">
@@ -124,7 +124,7 @@
                     <button type="submit" class="md-btn md-btn--primary"><i class="ti ti-device-floppy" aria-hidden="true"></i><#LANG_SUBMIT#></button>
                 </div>
                 <input type="hidden" name="mode" value="update_settings">
-            <input type="hidden" name="_token" value="[#CSRF_TOKEN#]"></form>
+            <input type="hidden" name="_token" value="<#CSRF_TOKEN#>"></form>
         </div>
     </div>
 </div>
@@ -159,7 +159,7 @@
                 <i class="ti ti-arrow-left" aria-hidden="true"></i><span class="md-btn__label"><#LANG_BACK#></span>
             </a>
             [#if ID!="" && ACTIVE!="0"#]
-            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="clear_system_errors"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><input type="hidden" name="id" value="[#ID#]"><button type="submit" class="md-btn md-btn--secondary">
+            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="clear_system_errors"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="<#CSRF_TOKEN#>"><input type="hidden" name="id" value="[#ID#]"><button type="submit" class="md-btn md-btn--secondary">
                 <i class="ti ti-check" aria-hidden="true"></i><span class="md-btn__label">Закрыть ошибку</span>
             </button></form>
             [#endif#]

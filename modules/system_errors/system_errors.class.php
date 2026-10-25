@@ -140,9 +140,10 @@ class system_errors extends module
         $session = \MajorDoMo\Core\Core::session();
         if (!$session->has('system_errors_csrf')) $session->set('system_errors_csrf', bin2hex(random_bytes(32)));
         $out['CSRF_TOKEN'] = $session->get('system_errors_csrf');
+        $submittedToken = gr('_token');
         $mutating = in_array($this->view_mode, array('toggle_keep_history', 'addtesterror', 'readall', 'delete_system_errors', 'clear_system_errors', 'delete_system_errors_data'), true)
             || in_array($this->mode, array('update_settings', 'update'), true);
-        if ($mutating && (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !hash_equals($out['CSRF_TOKEN'], (string)gr('_token')))) {
+        if ($mutating && (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_string($submittedToken) || !hash_equals($out['CSRF_TOKEN'], $submittedToken))) {
             $out['ERROR_MSG'] = 'Действие не выполнено. Используйте кнопку на странице; при устаревшей форме обновите страницу.';
             $this->view_mode = '';
             $this->mode = '';
