@@ -1,6 +1,7 @@
 <?php
 /**
- * System_errors
+ * Журнал критичных сбоев системы.
+ * 2026-10-25 — закрытие ошибок, повторное открытие и защита действий формы.
  *
  * System_errors
  *
@@ -136,6 +137,16 @@ class system_errors extends module
      */
     function admin(&$out)
     {
+        $session = \MajorDoMo\Core\Core::session();
+        if (!$session->has('system_errors_csrf')) $session->set('system_errors_csrf', bin2hex(random_bytes(32)));
+        $out['CSRF_TOKEN'] = $session->get('system_errors_csrf');
+        $mutating = in_array($this->view_mode, array('toggle_keep_history', 'addtesterror', 'readall', 'delete_system_errors', 'clear_system_errors', 'delete_system_errors_data'), true)
+            || in_array($this->mode, array('update_settings', 'update'), true);
+        if ($mutating && (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !hash_equals($out['CSRF_TOKEN'], (string)gr('_token')))) {
+            $out['ERROR_MSG'] = 'Действие не выполнено. Используйте кнопку на странице; при устаревшей форме обновите страницу.';
+            $this->view_mode = '';
+            $this->mode = '';
+        }
         if (isset($this->data_source) && !isset($_GET['data_source']) && !isset($_POST['data_source'])) {
             $out['SET_DATASOURCE'] = 1;
         }
@@ -146,7 +157,7 @@ class system_errors extends module
         }
 
         if ($this->mode == 'update_settings') {
-            $keep_history = gr('keep_history','int');
+            $keep_history = max(0, (int)gr('keep_history','int'));
             $rec=SQLSelectOne("SELECT * FROM settings WHERE NAME='ERRORS_KEEP_HISTORY'");
             $rec['NAME']='ERRORS_KEEP_HISTORY';
             $rec['VALUE']=$keep_history;
@@ -171,12 +182,12 @@ class system_errors extends module
         $this->search_system_errors($out);
 
         if ($this->view_mode == 'addtesterror') {
-            registerError('testing_error_#' . rand(1000, 9999), 'Тестовая ошибка');
+            registerError('testing_error', 'Проверка журнала ошибок и события SYSTEM_ERROR. Это тестовое срабатывание можно закрыть.');
             $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Тестовая ошибка создана'));
         }
         if ($this->view_mode == 'readall') {
             SQLExec("UPDATE system_errors SET ACTIVE=0");
-            $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Все ошибки отмечены как просмотренные'));
+            $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Все ошибки закрыты. История сохранена'));
         }
 
         if ($this->data_source == 'system_errors' || $this->data_source == '') {
@@ -191,9 +202,9 @@ class system_errors extends module
                 $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Ошибка удалена'));
             }
             if ($this->view_mode == 'clear_system_errors') {
-                // Mark as read only: the history stays available for review.
+                // Закрытие подтверждает разбор сбоя, но не удаляет историю.
                 SQLExec("UPDATE system_errors SET ACTIVE=0 WHERE ID='" . (int)$this->id . "'");
-                $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Ошибка отмечена как просмотренная'));
+                $this->redirect("?data_source=system_errors&ok_msg=" . urlencode('Ошибка закрыта. История сохранена'));
             }
         }
         if ($this->data_source == 'system_errors_data') {

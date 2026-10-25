@@ -3,7 +3,8 @@
 namespace MajorDoMo\Core\Cycles;
 
 /**
- * Persistent desired state of the background cycles.
+ * Персистентное управление фоновыми циклами.
+ * 2026-10-25 — исчерпание попыток хранится отдельно от остановки администратором.
  *
  * Cycle processes are children of the long-running `cycle.php` supervisor, so
  * a web request cannot signal them directly. The legacy implementation used
@@ -132,6 +133,23 @@ final class CycleStateStore
         return $this->desired($name) === self::DISABLED;
     }
 
+    public function failure(string $name): ?array
+    {
+        $entry = $this->entries()[$name] ?? array();
+        return is_array($entry['failure'] ?? null) ? $entry['failure'] : null;
+    }
+
+    /** Блокировка переживает перезапуск супервизора, но не ручную команду. */
+    public function fail(string $name, string $reason): void
+    {
+        $names = $this->normalizeNames(array($name));
+        if ($names === array()) throw new \InvalidArgumentException('Некорректное имя цикла');
+        $this->mutate(function (array $state) use ($name, $reason): array {
+            $state['cycles'][$name]['failure'] = array('at' => time(), 'reason' => mb_substr($reason, 0, 1500, 'UTF-8'));
+            return $state;
+        });
+    }
+
     /**
      * Persist a desired state. A generation bump asks the supervisor to
      * stop and start the process even when the state itself does not change.
@@ -156,9 +174,11 @@ final class CycleStateStore
             $now = time();
             foreach ($names as $name) {
                 $entry = isset($cycles[$name]) && is_array($cycles[$name]) ? $cycles[$name] : array();
+                $retry = isset($entry['failure']);
+                unset($entry['failure']);
                 $entry['desired'] = $desired;
                 $entry['updated'] = $now;
-                $entry['generation'] = max(0, (int)($entry['generation'] ?? 0)) + ($bumpGeneration ? 1 : 0);
+                $entry['generation'] = max(0, (int)($entry['generation'] ?? 0)) + ($bumpGeneration || $retry ? 1 : 0);
                 $cycles[$name] = $entry;
             }
             $state['cycles'] = $cycles;

@@ -1,6 +1,6 @@
 <?php
 
-// 2026-10-23 — проверка стартовой паузы супервизора до загрузки приложения с виртуальным sleep.
+// 2026-10-25 — три повтора, одна критичная ошибка и аварийная остановка до ручного запуска.
 /** Real supervisor runtime and owned child processes, with an isolated bootstrap and virtual time. */
 putenv('APP_ENV=testing');
 putenv('DB_CONNECTION=sqlite');
@@ -27,11 +27,12 @@ check($policy->stalled('cycle_scheduler', 1000, 1000, 1300) === null, 'A legitim
 check(str_contains($policy->stalled('cycle_scheduler', 1000, 1000, 1360), 'Heartbeat stalled'), 'Scheduler must still recover when it exceeds the job deadline');
 check((new CycleWatchdog(120, 180, array(), 600))->timeout('cycle_scheduler') === 660, 'Custom job deadlines must be respected');
 check((new CycleWatchdog(120, 180, array('cycle_scheduler' => 900)))->timeout('cycle_scheduler') === 900, 'Explicit scheduler override must take precedence');
-check($policy->failure('cycle_flapping', 1000)['delay'] === 2, 'First crash must restart promptly');
+check($policy->failure('cycle_flapping', 1000)['delay'] === 5, 'Первый повтор ждёт 5 секунд');
 check(!$policy->failure('cycle_flapping', 1001)['critical'], 'Second crash must remain below the escalation threshold');
-check($policy->failure('cycle_flapping', 1002)['critical'], 'Three crashes must raise a critical incident');
+check($policy->failure('cycle_flapping', 1002)['delay'] === 30, 'Третий повтор ждёт 30 секунд без критичной ошибки');
+check($policy->failure('cycle_flapping', 1003)['notify'], 'После трёх неудачных повторов создаётся одна ошибка');
 for ($i = 0; $i < 1000; $i++) $retry = $policy->failure('cycle_flapping', 1003);
-check($retry['delay'] === 60 && $retry['count'] === 32, 'Restart backoff and diagnostic memory must stay bounded');
+check($retry['delay'] === 0 && $retry['count'] === 5 && !$retry['notify'], 'Исчерпанные попытки не продолжаются и не повторяют уведомление');
 $policy->stalled('cycle_flapping', 1000, 1004, 1004);
 $policy->stalled('cycle_flapping', 1000, 1604, 1604);
 check($policy->failure('cycle_flapping', 1605)['count'] === 1, 'Ten healthy minutes must reset a crash streak');
@@ -175,6 +176,7 @@ try {
         $setup = "\nnamespace {\n"
             . 'require_once ' . var_export($project . '/lib/threads.php', true) . ";\n"
             . 'require_once ' . var_export($project . '/lib/core/Cycles/CycleWatchdog.php', true) . ";\n"
+            . 'require_once ' . var_export($project . '/lib/core/ErrorDetails.php', true) . ";\n"
             . 'require_once ' . var_export($project . '/lib/core/Cycles/CycleStateStore.php', true) . ";\n"
             . 'require_once ' . var_export($project . '/lib/core/Cycles/CycleMaintenance.php', true) . ";\n"
             . 'require_once ' . var_export($directory . '/CycleSupervisor.php', true) . ";\n"
@@ -242,12 +244,13 @@ try {
             check(!str_contains(json_encode($result['active']), 'cycle_market.php'), 'A missing cycle script must not be started');
             check(str_contains($output, 'script was removed; supervision stopped'), 'A missing script must stop being supervised instead of retrying forever');
         } else {
-            check(count($result['errors']) >= 3 && str_contains(json_encode($result['errors']), 'CRITICAL'), 'Repeated failure must escalate in ' . $scenario);
+            check(count($result['errors']) === 1, 'Только исчерпание трёх повторов создаёт одну ошибку: ' . $scenario . json_encode($result['errors']));
+            check(!str_contains(json_encode($result['active']), 'cycle_market.php'), 'Цикл ждёт ручного запуска после исчерпания попыток: ' . $scenario);
             check(substr_count($output, 'Starting thread:') > 2 || in_array($scenario, array('missing','spawnfail'), true), 'Cycle must restart even while another cycle stays healthy: ' . $scenario);
             if ($scenario === 'crash') check(str_contains(json_encode($result['errors']), 'fixture sensor failure') && str_contains(json_encode($result['errors']), 'Exit code: 7'), 'Crash diagnostics must include stderr and exit code');
             if ($scenario === 'cleanexit') check(str_contains(json_encode($result['errors']), 'Exit code: 0'), 'Unexpected exit 0 of enabled cycles must still recover');
             if ($scenario === 'silent') check(str_contains(json_encode($result['errors']), 'No heartbeat'), 'First-heartbeat failure must be visible');
-            if ($scenario === 'hung') check(str_contains(json_encode($result['errors']), 'Heartbeat stalled'), 'Existing stale heartbeat must trigger recovery');
+            if ($scenario === 'hung') check(str_contains(json_encode($result['logs']), 'Heartbeat stalled'), 'Старый heartbeat запускает восстановление; новый процесс может не дать первого heartbeat');
             if ($scenario === 'filelog') check(str_contains(json_encode($result['errors']), 'Parse error'), 'Fatal error in redirected file log must remain diagnosable');
             if ($scenario === 'storage') check(str_contains($output, 'heartbeat storage is unavailable'), 'Storage outage must be visible without stopping process recovery');
         }

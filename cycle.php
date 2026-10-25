@@ -1,6 +1,7 @@
 <?php
 /**
- * Timer Cycle script
+ * Супервизор фоновых циклов.
+ * 2026-10-25 — три попытки восстановления; критичная ошибка только при их исчерпании.
  * 2026-10-23 — пауза 30 секунд перед загрузкой приложения даёт службам время на старт.
  *
  * @package MajorDoMo
@@ -139,16 +140,26 @@ function addCycleRuntimeLog($cycleTitle, $message)
 
 function reportCycleRuntimeFailure($title, $reason, $code = 'cycle_stop')
 {
-    global $cycleWatchdog;
-    $retry = $cycleWatchdog->failure($title, time());
-    $message = ($retry['critical'] ? 'CRITICAL: ' : 'RECOVERY: ') . $title . ': ' . $reason
-        . '; failures in 10 minutes: ' . $retry['count'] . '; restart in ' . $retry['delay'] . 's';
+    global $cycleWatchdog, $cycleStateStore;
+    $retry = $cycleWatchdog->failure($title, time(), $cycleStateStore->generation($title));
+    $message = $retry['critical']
+        ? 'Цикл ' . $title . ' не восстановлен после трёх повторных запусков. Автозапуск остановлен; требуется ручной запуск после устранения причины. Причина: ' . $reason
+        : 'Восстановление ' . $title . ': попытка ' . $retry['count'] . '/3 через ' . $retry['delay'] . ' с. Причина: ' . $reason;
     echo date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
     DebMes($message, 'boot', $retry['critical'] ? 'error' : 'warning');
     addCycleRuntimeLog($title, $message);
     setCycleRuntimeStatus($title, $retry['critical'] ? 'error' : 'starting', $message);
-    try { registerError($code, $message); }
-    catch (Throwable $error) { error_log('Cycle supervisor cannot register system error: ' . $error->getMessage()); }
+    if ($retry['notify']) {
+        $cycleStateStore->fail($title, $message);
+        try {
+            $context = array('cycle' => $title, 'source' => $title, 'file' => 'scripts/' . $title . '.php',
+                'action' => 'Устраните причину и запустите цикл вручную в X-Ray или командой php majordomo cycles:start ' . $title . '.');
+            try { $last = \MajorDoMo\Core\ErrorDetails::decode((string)checkCycleFromCache($title . 'LastFailure')); }
+            catch (Throwable $error) { $last = null; error_log('Причина падения недоступна в кэше: ' . get_class($error)); }
+            if ($last !== null) $context = array_merge($context, array_intersect_key($last, array_flip(array('file', 'line', 'entity'))));
+            registerError($code . ':' . $title, \MajorDoMo\Core\ErrorDetails::encode($message, $context));
+        } catch (Throwable $error) { error_log('Cycle supervisor cannot register system error: ' . $error->getMessage()); }
+    }
     return $retry['delay'];
 }
 
@@ -163,6 +174,11 @@ function startCycleThread($threads, $title, $cmd)
         return false;
     }
 
+    // Чистим след предыдущего процесса до запуска: новый может упасть сразу.
+    try {
+        saveCycleToCache($title . 'LastError', '');
+        saveCycleToCache($title . 'LastFailure', '');
+    } catch (Throwable $error) { error_log('Cannot clear previous cycle failure: ' . get_class($error)); }
     $pipeId = $threads->newThread($cmd);
     if (!$pipeId) {
         $message = 'Failed to start cycle process: ' . $cmd;
@@ -585,7 +601,6 @@ foreach ($cycles as $path) {
             $pipe_id = startCycleThread($threads, $title, $path);
         }
         if ($pipe_id && isset($title)) {
-            saveCycleToCache($title . 'LastError', '');
             setCycleRuntimeStatus($title, 'starting');
             $pipes[$pipe_id] = $path;
             $is_running[$title] = $pipe_id;
@@ -839,6 +854,7 @@ while (true) {
                     // Explicit stop must cancel any delayed start/restart requests.
                     unset($to_start[$title]);
                 } elseif ($control == 'start') {
+                    $cycleWatchdog->reset($title);
                     $cycleStateStore->set($title, \MajorDoMo\Core\Cycles\CycleStateStore::RUNNING);
                     unset($to_stop[$title]);
                     if (!isset($is_running[$title])) {
@@ -848,6 +864,7 @@ while (true) {
                         setCycleRuntimeStatus($title, 'running');
                     }
                 } elseif ($control == 'restart') {
+                    $cycleWatchdog->reset($title);
                     $cycleStateStore->set($title, \MajorDoMo\Core\Cycles\CycleStateStore::RUNNING);
                     $to_stop[$title] = time();
                     $to_start[$title] = time() + 2;

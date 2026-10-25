@@ -255,6 +255,7 @@ function logAction($action_type, $details = '', $context = array(), ...$legacy_a
  * перезаписывается.
  *
  * Изменения:
+ * 2026-10-25 — единый контекст сбоя, повторное открытие и событие SYSTEM_ERROR.
  * 2026-10-22 — TITLE/DETAILS заполняются из ErrorCatalog.
  *
  * @param string $code Код ошибки (группа в журнале)
@@ -263,89 +264,63 @@ function logAction($action_type, $details = '', $context = array(), ...$legacy_a
  */
 function registerError($code = 'custom', $details = '')
 {
+    static $reporting = false;
+    $code = mb_substr(trim((string)$code), 0, 50, 'UTF-8');
+    $data = \MajorDoMo\Core\ErrorDetails::decode((string)$details)
+        ?? \MajorDoMo\Core\ErrorDetails::capture((string)$details);
+    DebMes("Error registered (type: $code):\n" . \MajorDoMo\Core\ErrorDetails::text($data), 'errors');
 
-    $e = new \Exception;
-    $backtrace = $e->getTraceAsString();
-    if (isset($_SERVER['REQUEST_URI'])) {
-        $url = $_SERVER['REQUEST_URI'];
-    } else {
-        $url = 'n/a';
-    }
-    DebMes("Error registered (type: $code):\n" . $details . "\nURL: $url\nBacktrace:\n" . $backtrace, 'errors');
-    $code = trim($code);
-
-    if ($code == 'sql') {
-        return 0;
-    }
-
-    $error_rec = SQLSelectOne("SELECT * FROM system_errors WHERE CODE = '" . DBSafe($code) . "'");
-    if (!is_array($error_rec)) {
-        $error_rec = array();
-    }
-
-    if (empty($error_rec['ID'])) {
-        $error_rec['CODE'] = $code;
-        $error_rec['KEEP_HISTORY'] = 1;
-        $error_rec['ID'] = SQLInsert('system_errors', $error_rec);
-    }
-
-    // Группа должна объяснять код без чтения исходников: что произошло,
-    // почему, чем грозит и что делать. Текст берём из каталога и не
-    // перезаписываем: администратор мог отредактировать его вручную.
-    if (class_exists('MajorDoMo\\Core\\ErrorCatalog')) {
-        $error_rec = \MajorDoMo\Core\ErrorCatalog::fill($error_rec, $code);
-    }
-
-    $error_rec['LATEST_UPDATE'] = date('Y-m-d H:i:s');
-    @$error_rec['ACTIVE'] = (int)$error_rec['ACTIVE'] + 1;
-    SQLUpdate('system_errors', $error_rec);
-
-    $history_rec = array();
-    $history_rec['ERROR_ID'] = $error_rec['ID'];
-    $history_rec['COMMENTS'] = $details . "\nBacktrace:\n" . $backtrace;
-    $history_rec['ADDED'] = $error_rec['LATEST_UPDATE'];
-
-    // Request context helps to understand where a registered error came from.
-    $context_lines = array();
-    if ($url !== '' && $url !== 'n/a') {
-        $context_lines[] = 'URL: ' . str_replace(array("\r", "\n"), '', $url);
-    }
-    if (!empty($_SERVER['REQUEST_METHOD'])) {
-        $context_lines[] = 'Method: ' . str_replace(array("\r", "\n"), '', (string)$_SERVER['REQUEST_METHOD']);
-    }
-    if (!empty($_SERVER['REMOTE_ADDR'])) {
-        $context_lines[] = 'IP: ' . str_replace(array("\r", "\n"), '', (string)$_SERVER['REMOTE_ADDR']);
-    }
-    if (!empty($_SERVER['HTTP_REFERER'])) {
-        $context_lines[] = 'Referer: ' . str_replace(array("\r", "\n"), '', (string)$_SERVER['HTTP_REFERER']);
-    }
-    if (count($context_lines)) {
-        $history_rec['COMMENTS'] .= "\nContext:\n" . implode("\n", $context_lines);
-    }
-
-    //Temporary disabled
-    /*
-    $xrayUrl = BASE_URL . ROOTHTML.'popup/xray.html?ajax=1&md=xray&op=getcontent&view_mode=';
-    $history_rec['PROPERTIES_DATA'] = getURL($xrayUrl, 0);
-    $history_rec['METHODS_DATA']    = getURL($xrayUrl . 'methods', 0);
-    $history_rec['SCRIPTS_DATA']    = getURL($xrayUrl . 'scripts', 0);
-    $history_rec['TIMERS_DATA']     = getURL($xrayUrl . 'timers', 0);
-    $history_rec['EVENTS_DATA']     = getURL($xrayUrl . 'events', 0);
-    $history_rec['DEBUG_DATA']      = getURL($xrayUrl . 'debmes', 0);
-     */
-    $history_rec['ID'] = SQLInsert('system_errors_data', $history_rec);
-
-    if (!$error_rec['KEEP_HISTORY']) {
-        SQLExec("DELETE FROM system_errors_data WHERE ERROR_ID=" . (int)$error_rec['ID'] . " AND ID != '" . $history_rec['ID'] . "'");
-    } elseif (defined('SETTINGS_ERRORS_KEEP_HISTORY') && SETTINGS_ERRORS_KEEP_HISTORY > 0) {
-        SQLExec("DELETE FROM system_errors_data WHERE ADDED<'" . date('Y-m-d H:i:s', time() - SETTINGS_ERRORS_KEEP_HISTORY * 24 * 60 * 60) . "'");
-    } else {
-        $tmp = SQLSelect("SELECT ID FROM system_errors_data WHERE ERROR_ID=" . (int)$error_rec['ID'] . " ORDER BY ID DESC LIMIT 50");
-        if ($tmp[0]['ID'] && count($tmp) == 50) {
-            $tmp = array_reverse($tmp);
-            SQLExec("DELETE FROM system_errors_data WHERE ERROR_ID=" . (int)$error_rec['ID'] . " AND ID<" . $tmp[0]['ID']);
+    // Ошибки SQL нельзя снова писать через ту же БД. Защита от зацикливания
+    // свойств не означает потерю значения и остаётся предупреждением в логе.
+    if ($code === 'sql' || $code === 'property_chain' || $reporting || basename((string)($GLOBALS['argv'][0] ?? '')) === 'core_worker.php') return 0;
+    $reporting = true;
+    $unit = null;
+    try {
+        $db = \MajorDoMo\Core\Core::database();
+        $unit = $db->beginUnit();
+        $record = $db->one("SELECT * FROM system_errors WHERE CODE='" . $db->escape($code) . "' FOR UPDATE") ?? array();
+        if (empty($record['ID'])) {
+            $record = array('CODE' => $code, 'KEEP_HISTORY' => 1, 'ACTIVE' => 0);
+            $record['ID'] = $db->insert('system_errors', $record);
         }
-
+        if (empty($record['ID'])) throw new \RuntimeException('Группа ошибки не сохранена');
+        $previous = $db->one('SELECT COMMENTS FROM system_errors_data WHERE ERROR_ID=' . (int)$record['ID'] . ' ORDER BY ID DESC LIMIT 1');
+        $previousData = \MajorDoMo\Core\ErrorDetails::decode((string)($previous['COMMENTS'] ?? ''));
+        $data['occurrences'] = max((int)($previousData['occurrences'] ?? 0), (int)($record['ACTIVE'] ?? 0), $previous ? 1 : 0) + 1;
+        $record = \MajorDoMo\Core\ErrorCatalog::fill($record, $code);
+        $record['LATEST_UPDATE'] = $data['at'];
+        $record['ACTIVE'] = (int)($record['ACTIVE'] ?? 0) + 1;
+        if (!$db->update('system_errors', $record)) throw new \RuntimeException('Состояние ошибки не сохранено');
+        $history = array('ERROR_ID' => (int)$record['ID'], 'ADDED' => $data['at'],
+            'COMMENTS' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR));
+        $history['ID'] = $db->insert('system_errors_data', $history);
+        if (empty($history['ID'])) throw new \RuntimeException('Событие ошибки не сохранено');
+        if (!$record['KEEP_HISTORY']) {
+            $db->requireExec('DELETE FROM system_errors_data WHERE ERROR_ID=' . (int)$record['ID'] . ' AND ID<>' . (int)$history['ID']);
+        } elseif (defined('SETTINGS_ERRORS_KEEP_HISTORY') && SETTINGS_ERRORS_KEEP_HISTORY > 0) {
+            $db->requireExec("DELETE FROM system_errors_data WHERE ADDED<'" . date('Y-m-d H:i:s', time() - SETTINGS_ERRORS_KEEP_HISTORY * 86400) . "'");
+        } else {
+            $rows = $db->select('SELECT ID FROM system_errors_data WHERE ERROR_ID=' . (int)$record['ID'] . ' ORDER BY ID DESC LIMIT 50');
+            if (count($rows) === 50) $db->requireExec('DELETE FROM system_errors_data WHERE ERROR_ID=' . (int)$record['ID'] . ' AND ID<' . (int)$rows[49]['ID']);
+        }
+        $payload = array('error_id' => (int)$record['ID'], 'event_id' => (int)$history['ID'],
+            'code' => $code, 'status' => \MajorDoMo\Core\ErrorDetails::status($record['ACTIVE'], $data),
+            'title' => (string)($record['TITLE'] ?? $code), 'message' => $data['message'],
+            'source' => $data['source'], 'file' => $data['file'], 'line' => $data['line'],
+            'cycle' => $data['cycle'], 'entity' => $data['entity'], 'occurred_at' => $data['at']);
+        // Подписчик не должен получить событие о записи, которую ещё можно откатить.
+        $db->afterUnit(static function () use ($payload, &$reporting): void {
+            $reporting = true;
+            try { \MajorDoMo\Core\Events\SystemEvents::systemError($payload); }
+            finally { $reporting = false; }
+        }, static function (): void {});
+        $db->commitUnit($unit);
+        $unit = null;
+    } catch (\Throwable $failure) {
+        if ($unit !== null && isset($db) && $db->hasUnit($unit)) $db->rollbackUnit($unit);
+        error_log('MajorDoMo: не удалось зарегистрировать ошибку ' . $code . ': ' . get_class($failure) . "\n" . \MajorDoMo\Core\ErrorDetails::text($data));
+    } finally {
+        $reporting = false;
     }
 }
 

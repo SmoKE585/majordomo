@@ -41,6 +41,7 @@ class Core {
 }
 PHP);
 file_put_contents($root . 'lib/loader.php', '<?php usleep(100000); file_put_contents(dirname(__DIR__)."/starts",getmypid()."\n",FILE_APPEND|LOCK_EX);');
+file_put_contents($root . 'lib/loader.php', 'require ' . var_export(dirname(__DIR__) . '/lib/core/ErrorDetails.php', true) . ';', FILE_APPEND);
 file_put_contents($root . 'load_settings.php', '<?php define("SETTINGS_FIXTURE",true); file_put_contents(__DIR__."/settings-".getmypid(),"loaded");');
 $runner = new MajorDoMo\Core\ProcessRunner($root);
 check($runner->prepare(), 'Подготовленный процесс запущен');

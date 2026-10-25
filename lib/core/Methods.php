@@ -5,6 +5,7 @@ namespace MajorDoMo\Core;
 use \Throwable;
 
 /**
+ * 2026-10-25 — ошибки метода сохраняют исходное исключение и имя объекта.
  * Вызов методов объектов и классов.
  *
  * Находит метод по объекту или классу с учётом наследования, выполняет его код
@@ -192,7 +193,8 @@ final class Methods
                         }
                     } catch (Throwable $e) {
                         //getLogger($this)->error(sprintf('Exception in "%s.%s" method', $object->object_title, $name), $e);
-                        registerError('method', sprintf('Exception in "%s.%s" method: %s', $object->object_title, $name, $e->getMessage()));
+                        registerError('method', ErrorDetails::encode(sprintf('Метод %s.%s не выполнен: %s', $object->object_title, $name, $e->getMessage()),
+                            array('entity' => $object->object_title . '.' . $name, 'source' => 'метод объекта'), $e));
                         throw $e;
                     }
                 }

@@ -12,6 +12,7 @@ use \Throwable;
  * анонимные pipe (на Windows это блокирует родителя), а пишет журнал каждого
  * ребёнка в отдельный файл и следит за кодом выхода.
  *
+ * 2026-10-25 — три попытки восстановления, затем ошибка и ожидание рестарта цикла.
  * 2026-10-23 — добавлено для MQTT runtime и параллельного core_runtime.
  */
 final class ProcessPool
@@ -19,9 +20,11 @@ final class ProcessPool
     /** @var array<string,array<string,mixed>> */
     private array $slots = array();
     private bool $stopping = false;
+    private Cycles\CycleWatchdog $recovery;
 
     public function __construct(private string $logDirectory)
     {
+        $this->recovery = new Cycles\CycleWatchdog();
         if (!is_dir($logDirectory)) @mkdir($logDirectory, 0777, true);
     }
 
@@ -41,6 +44,7 @@ final class ProcessPool
             'next_start' => 0.0,
             'log' => $this->logFile($name),
             'last_error' => '',
+            'failed' => false,
         );
     }
 
@@ -62,7 +66,7 @@ final class ProcessPool
         $events = array();
         foreach ($this->slots as $name => &$slot) {
             if (!is_resource($slot['handle'])) {
-                if ($this->stopping) continue;
+                if ($this->stopping || $slot['failed']) continue;
                 if (microtime(true) < $slot['next_start']) continue;
                 if ($this->spawn($name)) {
                     $events[] = $name . ': started';
@@ -72,18 +76,22 @@ final class ProcessPool
                 continue;
             }
             $status = proc_get_status($slot['handle']);
-            if (!empty($status['running'])) continue;
+            if (!empty($status['running'])) {
+                $this->recovery->stalled($name, (int)$slot['started'], time(), time());
+                continue;
+            }
             $exit = (int)($status['exitcode'] ?? -1);
             $signal = (int)($status['termsig'] ?? 0);
             $uptime = microtime(true) - (float)$slot['started'];
-            $slot['last_error'] = 'exit=' . $exit . ' signal=' . $signal . ' uptime=' . (int)$uptime . 's';
+            $slot['last_error'] = ($signal > 0 ? 'Процесс остановлен сигналом ' . $signal : ($exit === 0 ? 'Процесс неожиданно завершился без сообщения об ошибке' : 'Процесс завершился с кодом ' . $exit)) . '; время работы ' . (int)$uptime . ' с';
+            $tail = $this->lastOutput($slot);
+            if ($tail !== '') $slot['last_error'] .= "\nПоследний вывод: " . ErrorDetails::clean($tail, 2500);
             proc_close($slot['handle']);
             $slot['handle'] = null;
             $slot['pid'] = 0;
             if ($this->stopping) continue;
             $slot['restarts']++;
-            $slot['backoff'] = $slot['backoff'] === 0 ? 2 : min(60, $slot['backoff'] * 2);
-            $slot['next_start'] = microtime(true) + $slot['backoff'];
+            $this->scheduleRecovery($name);
             $events[] = $name . ': ' . $slot['last_error'] . ', restart in ' . $slot['backoff'] . 's';
             $this->appendLog($name, '--- process exited: ' . $slot['last_error'] . '; restart in ' . $slot['backoff'] . 's ---');
         }
@@ -128,6 +136,7 @@ final class ProcessPool
     {
         if (!isset($this->slots[$name])) return false;
         $slot = &$this->slots[$name];
+        if ($slot['failed']) return false;
         if (is_resource($slot['handle'])) {
             @proc_terminate($slot['handle']);
             $deadline = microtime(true) + 1.0;
@@ -145,9 +154,9 @@ final class ProcessPool
             $slot['pid'] = 0;
         }
         $this->appendLog($name, '--- restart requested by supervisor (stuck heartbeat) ---');
-        $slot['backoff'] = 0;
-        $slot['next_start'] = 0.0;
-        return $this->spawn($name);
+        $slot['last_error'] = 'Исполнитель перестал подтверждать работу';
+        $this->scheduleRecovery($name);
+        return !$slot['failed'];
     }
 
     public function uptime(string $name): float
@@ -186,18 +195,18 @@ final class ProcessPool
             2 => array('file', $slot['log'], 'a'),
         );
         $this->appendLog($name, '--- starting: ' . implode(' ', $command) . ' ---');
+        clearstatcache(true, $slot['log']);
+        $slot['log_offset'] = is_file($slot['log']) ? (int)filesize($slot['log']) : 0;
         try {
             $process = proc_open($command, $descriptors, $pipes, defined('ROOT') ? ROOT : null, null, array('bypass_shell' => true));
         } catch (Throwable $error) {
             $slot['last_error'] = $error->getMessage();
-            $slot['backoff'] = $slot['backoff'] === 0 ? 2 : min(60, $slot['backoff'] * 2);
-            $slot['next_start'] = microtime(true) + $slot['backoff'];
+            $this->scheduleRecovery($name);
             return false;
         }
         if (!is_resource($process)) {
             $slot['last_error'] = 'proc_open failed';
-            $slot['backoff'] = $slot['backoff'] === 0 ? 2 : min(60, $slot['backoff'] * 2);
-            $slot['next_start'] = microtime(true) + $slot['backoff'];
+            $this->scheduleRecovery($name);
             return false;
         }
         foreach ($pipes as $pipe) {
@@ -217,6 +226,36 @@ final class ProcessPool
         $safe = preg_replace('/[^a-zA-Z0-9_.-]+/', '_', $name);
         return rtrim($this->logDirectory, '/\\') . DIRECTORY_SEPARATOR
             . 'log_' . date('Y-m-d') . '-pool-' . $safe . '.txt';
+    }
+
+    private function scheduleRecovery(string $name): void
+    {
+        $slot = &$this->slots[$name];
+        $retry = $this->recovery->failure($name, time());
+        $slot['backoff'] = $retry['delay'];
+        $slot['next_start'] = microtime(true) + $retry['delay'];
+        if (!$retry['critical']) return;
+        $slot['failed'] = true;
+        $message = 'Исполнитель ' . $name . ' не восстановлен после трёх повторных запусков. ' . $slot['last_error'];
+        $this->appendLog($name, $message);
+        if ($retry['notify'] && function_exists('registerError')) {
+            registerError('worker_stop:' . $name, ErrorDetails::encode($message, array('source' => $name,
+                'entity' => $name, 'file' => (string)($slot['command'][1] ?? ''),
+                'action' => 'Проверьте журнал исполнителя ' . basename($slot['log']) . ' и перезапустите управляющий цикл.')));
+        }
+    }
+
+    /** Читаем только хвост текущего запуска, не смешивая его с прежним падением. */
+    private function lastOutput(array $slot): string
+    {
+        if (!is_file($slot['log'])) return '';
+        $handle = fopen($slot['log'], 'rb');
+        if ($handle === false) return '';
+        try {
+            $size = (int)(fstat($handle)['size'] ?? 0);
+            fseek($handle, max((int)($slot['log_offset'] ?? 0), $size - 4096));
+            return trim((string)stream_get_contents($handle, 4096));
+        } finally { fclose($handle); }
     }
 
     private function appendLog(string $name, string $line): void

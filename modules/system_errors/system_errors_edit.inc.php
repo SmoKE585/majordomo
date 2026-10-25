@@ -6,6 +6,7 @@
  * без чтения исходников.
  *
  * Изменения:
+ * 2026-10-25 — сводка события и статусы без потери прежней истории.
  * 2026-10-22 — описание подставляется из ErrorCatalog; ручная правка
  *              администратора не перезаписывается.
  */
@@ -42,7 +43,8 @@ if ($this->tab == '') {
         $rec['TITLE'] = trim((string)gr('title'));
 
         $rec['DETAILS'] = (string)gr('details');
-        $rec['ACTIVE'] = (int)gr('active');
+        // Форма меняет состояние, а не обнуляет счётчик повторов.
+        $rec['ACTIVE'] = (int)gr('active') ? max(1, (int)($rec['ACTIVE'] ?? 0)) : 0;
         $rec['KEEP_HISTORY'] = (int)gr('keep_history') ? 1 : 0;
 
         if ($ok) {
@@ -78,6 +80,9 @@ if (is_array($rec)) {
     }
 }
 outHash($rec, $out);
+$out['DIAGNOSTIC'] = md_system_errors_diagnostic($latest_comment, html_entity_decode((string)($rec['DETAILS'] ?? ''), ENT_QUOTES, 'UTF-8'));
+$out['STATUS_STATE'] = \MajorDoMo\Core\ErrorDetails::status((int)($rec['ACTIVE'] ?? 0), \MajorDoMo\Core\ErrorDetails::decode($latest_comment));
+$out['STATUS_LABEL'] = \MajorDoMo\Core\ErrorDetails::label($out['STATUS_STATE']);
 
 $out['TITLE_DISPLAY'] = htmlspecialchars($display_title, ENT_QUOTES, 'UTF-8');
 $out['ACTIVE'] = isset($rec['ACTIVE']) ? (int)$rec['ACTIVE'] : 0;
@@ -103,6 +108,9 @@ $history_total = $error_id > 0
     ? SQLSelectOne("SELECT COUNT(*) AS CNT FROM system_errors_data WHERE ERROR_ID = " . $error_id)
     : array('CNT' => 0);
 $out['HISTORY_TOTAL'] = isset($history_total['CNT']) ? (int)$history_total['CNT'] : 0;
+$out['STATUS_STATE'] = \MajorDoMo\Core\ErrorDetails::status((int)($rec['ACTIVE'] ?? 0), \MajorDoMo\Core\ErrorDetails::decode($latest_comment), $out['HISTORY_TOTAL']);
+$out['STATUS_LABEL'] = \MajorDoMo\Core\ErrorDetails::label($out['STATUS_STATE']);
+if ($out['DIAGNOSTIC']['SOURCE'] !== '') $out['ORIGIN_MODULE'] = htmlspecialchars($out['DIAGNOSTIC']['SOURCE'], ENT_QUOTES, 'UTF-8');
 $out['EVENTS_TOTAL'] = $out['HISTORY_TOTAL'];
 $out['EVENTS_LABEL'] = $out['HISTORY_TOTAL'] . ' ' . md_system_errors_plural($out['HISTORY_TOTAL'], 'событие', 'события', 'событий');
 
@@ -120,6 +128,8 @@ if ($this->tab == 'history') {
         foreach ($history as $history_index => $history_item) {
             $raw_comments = (string)$history_item['COMMENTS'];
             $display_comments = $raw_comments;
+            $data = \MajorDoMo\Core\ErrorDetails::decode($raw_comments);
+            if ($data !== null) $display_comments = \MajorDoMo\Core\ErrorDetails::text($data);
             if (defined('ROOT') && ROOT !== '') {
                 $display_comments = str_replace(ROOT, '', $display_comments);
             }
@@ -141,6 +151,8 @@ if ($this->tab == 'history') {
                 'ADDED' => md_system_errors_date((string)$history_item['ADDED']),
                 'ADDED_RAW' => htmlspecialchars((string)$history_item['ADDED'], ENT_QUOTES, 'UTF-8'),
                 'MESSAGE' => htmlspecialchars($message, ENT_QUOTES, 'UTF-8'),
+                'SOURCE' => htmlspecialchars((string)($data['source'] ?? $origin['MODULE']), ENT_QUOTES, 'UTF-8'),
+                'ENTITY' => htmlspecialchars((string)($data['entity'] ?? ''), ENT_QUOTES, 'UTF-8'),
                 'COMMENTS_PREVIEW' => htmlspecialchars($preview, ENT_QUOTES, 'UTF-8'),
                 'COMMENTS' => htmlspecialchars($display_comments, ENT_QUOTES, 'UTF-8'),
                 'CODE' => htmlspecialchars((string)$history_item['CODE'], ENT_QUOTES, 'UTF-8'),

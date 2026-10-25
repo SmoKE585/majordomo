@@ -49,6 +49,7 @@ cycle_core → EventBus::drain() → processSubscriptions(NAME, payload)
 
 | Имя | Когда | Payload |
 | --- | --- | --- |
+| `SYSTEM_ERROR` | критичный сбой сохранён в журнал ошибок | `error_id`, `event_id`, `code`, `status` (`new`/`repeated`), `title`, `message`, `source`, `file`, `line`, `cycle`, `entity`, `occurred_at` |
 | `MODULE_INSTALLED` | модуль установлен из маркета | `module`, `source` |
 | `MODULE_REMOVED` | модуль удалён | `module`, `cycles[]` |
 | `MODULE_UPDATED` | модуль обновлён | `module`, `from`, `to` |
@@ -67,6 +68,14 @@ cycle_core → EventBus::drain() → processSubscriptions(NAME, payload)
 становится константой `SETTINGS_HOOK_EVENT_<NAME>`.
 
 ## 3. Как подписаться
+
+`SYSTEM_ERROR` публикуется после фиксации ошибки и истории, включая внешнюю
+транзакцию. Промежуточные повторы и диагностические предупреждения его не
+создают. Для циклов событие возникает после исчерпания трёх повторных запусков.
+Подписка: `subscribeToEvent('my_module', 'SYSTEM_ERROR')`; параметры доступны в
+`$details`. Сообщение очищено от распространённых секретов, стек с аргументами
+в payload не передаётся. Ошибка синхронного слушателя не вызывает рекурсивное
+событие. Закрытие записи не создаёт новое `SYSTEM_ERROR`.
 
 Модуль:
 

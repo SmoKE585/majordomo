@@ -4,6 +4,7 @@ namespace MajorDoMo\Core;
 
 /**
  * The legacy loader owns the connection; new code receives explicit dependencies.
+ * 2026-10-25 — таймеры используют восстанавливаемый индекс Redis и общий журнал цепочек.
  * 2026-10-25 — очередь Redis отделена от прежней очереди при переходе на долговечный журнал SQL.
  * 2026-10-25 — общий сервис уведомлений модулей.
  * 2026-10-23 — общий сервис создания сущностей с обновлением метаданных.
@@ -57,7 +58,7 @@ final class Core
     public static function apiTokens(): Api\TokenStore { return self::service(__FUNCTION__, fn() => new Api\TokenStore($GLOBALS['db']->dbh)); }
     public static function apiHooks(): Api\HookStore { return self::service(__FUNCTION__, fn() => new Api\HookStore($GLOBALS['db']->dbh, Config::root())); }
     public static function processes(): ProcessRunner { return self::service(__FUNCTION__, fn() => new ProcessRunner()); }
-    public static function scheduler(): Scheduler { return self::service(__FUNCTION__, fn() => new Scheduler(self::database(), self::processes(), self::audit())); }
+    public static function scheduler(): Scheduler { return self::service(__FUNCTION__, fn() => new Scheduler(self::database(), self::processes(), self::audit(), new SchedulerQueue(self::database(), self::redis()))); }
     public static function worker(): OperationWorker { return self::service(__FUNCTION__, fn() => new OperationWorker(self::database(), self::redis(), self::queue(), self::processes(), self::errors(), self::audit())); }
     public static function network(): NetworkAccess { return self::service(__FUNCTION__, fn() => new NetworkAccess()); }
 }

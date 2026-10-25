@@ -1,5 +1,6 @@
 <?php
 /**
+ * 2026-10-25 — ошибки сценария сохраняют источник без копирования кода в журнал.
  * Scripts
  *
  * Изменения: 2026-10-23 — журнал сохраняет код сценария на момент выполнения.
@@ -187,7 +188,7 @@ class scripts extends module
                         }
                         if ($success === false) {
                             //getLogger($this)->error(sprintf('Error in script "%s". Code: %s', $rec['TITLE'], $code));
-                            registerError('script', sprintf('Error in script "%s". Code: %s', $rec['TITLE'], $code));
+                            registerError('script', \MajorDoMo\Core\ErrorDetails::encode('Сценарий ' . $rec['TITLE'] . ' вернул отказ (false).', array('source' => 'сценарий', 'entity' => $rec['TITLE'])));
                         }
                         return $success;
                     } catch (Exception $e) {
@@ -197,7 +198,8 @@ class scripts extends module
                         // Старые файлы модулей и другие запуски сохраняют прежний контракт.
                         $hook = \MajorDoMo\Core\Api\HookContext::hook();
                         if (in_array($hook['HANDLER_TYPE'] ?? 'module', array('script', 'code'), true)) throw $e;
-                        registerError('script', sprintf('Error in script "%s": ' . $e->getMessage(), $rec['TITLE']));
+                        registerError('script', \MajorDoMo\Core\ErrorDetails::encode('Сценарий ' . $rec['TITLE'] . ' не выполнен: ' . $e->getMessage(),
+                            array('source' => 'сценарий', 'entity' => $rec['TITLE']), $e));
                     }
                 }
             } catch (Throwable $e) {
@@ -372,7 +374,7 @@ class scripts extends module
         setEvalCode($trimmedCode);
         $success = eval($trimmedCode);
         if ($success === false) {
-            registerError('script', sprintf('Error in script "%s". Code: %s', $title, $trimmedCode));
+            registerError('script', \MajorDoMo\Core\ErrorDetails::encode('Сценарий ' . $title . ' вернул отказ (false).', array('source' => 'сценарий', 'entity' => $title)));
         }
         return $success;
     }

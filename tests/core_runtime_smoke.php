@@ -85,6 +85,8 @@ try {
     execTest("INSERT INTO operations_queue (TOPIC,DATANAME,DATAVALUE,EXPIRE) VALUES ('core_runtime','method','" . DBSafe($legacyRuntime) . "',NOW()+INTERVAL 1 HOUR)");
     if (USE_REDIS) mjdGetRedisConnection()->rPush('mjd:queue:core_runtime', json_encode(array('DATANAME' => 'method', 'DATAVALUE' => $legacyRuntime)));
     Core::migrations()->run();
+    $jobFields = array_column(SQLSelect('SHOW COLUMNS FROM jobs'), 'Field');
+    check(count(array_intersect(array('TRACE_ID', 'PARENT_EVENT_ID', 'DISPATCH_GENERATION'), $jobFields)) === 3, 'migration adds scheduler trace and Redis generation columns');
     check((int)SQLSelectOne("SELECT COUNT(*) AS C FROM core_runtime_queue WHERE DATAVALUE='" . DBSafe($legacyRuntime) . "'")['C'] === (USE_REDIS ? 2 : 1),
         'migration preserves legacy SQL and Redis runtime tasks before creating the new journal');
     check(!Core::database()->tableExists('public_calls'), 'Connect-only public_calls table removed');
@@ -296,18 +298,21 @@ try {
     check(checkFromCache('literal:*:one')===false && checkFromCache('literal:x:one')==='other', 'cache prefix clearing treats glob characters literally');
 
     $job = array('TITLE'=>'test','COMMANDS'=>'return false;','RUNTIME'=>date('Y-m-d H:i:s',time()-1));
-    $jobId = SQLInsert('jobs',$job);
+    $jobId = Core::scheduler()->schedule($job['TITLE'], $job['COMMANDS'], time() - 1, 0);
     Core::scheduler()->run(fn($row,$token)=>Core::scheduler()->execute($row['ID'],$token));
     $failed = SQLSelectOne('SELECT * FROM jobs WHERE ID='.$jobId);
     check((int)$failed['PROCESSED'] === 0 && (int)$failed['ATTEMPTS'] === 1 && $failed['LAST_ERROR'] !== '', 'scheduler does not acknowledge job returning false');
     execTest("UPDATE jobs SET COMMANDS='throw new RuntimeException(\"expected\");',RUNTIME=NOW() WHERE ID=$jobId");
+    // Тест вручную двигает часы задания; обновляем и его индекс Redis.
+    (new \MajorDoMo\Core\SchedulerQueue(Core::database(), Core::redis()))->changed($jobId);
     Core::scheduler()->run(fn($row,$token)=>Core::scheduler()->execute($row['ID'],$token));
     check((int)SQLSelectOne('SELECT ATTEMPTS FROM jobs WHERE ID='.$jobId)['ATTEMPTS'] === 2, 'scheduler retries thrown exceptions');
     execTest("UPDATE jobs SET RUNTIME=NOW() WHERE ID=$jobId");
+    (new \MajorDoMo\Core\SchedulerQueue(Core::database(), Core::redis()))->changed($jobId);
     Core::scheduler()->run(fn($row,$token)=>Core::scheduler()->execute($row['ID'],$token));
     check((int)SQLSelectOne('SELECT EXPIRED FROM jobs WHERE ID='.$jobId)['EXPIRED'] === 1, 'scheduler stops after bounded failed attempts');
     $job = array('TITLE'=>'success','COMMANDS'=>'return true;','RUNTIME'=>date('Y-m-d H:i:s',time()-1));
-    $successId=SQLInsert('jobs',$job);
+    $successId=Core::scheduler()->schedule($job['TITLE'], $job['COMMANDS'], time() - 1, 0);
     Core::scheduler()->run(fn($row,$token)=>Core::scheduler()->execute($row['ID'],$token));
     check((int)SQLSelectOne('SELECT PROCESSED FROM jobs WHERE ID='.$successId)['PROCESSED'] === 1, 'scheduler acknowledges successful job');
     check(Core::scheduler()->execute($successId,'wrong')['success'] === false, 'job cannot be replayed without its claim');
@@ -335,9 +340,17 @@ try {
     file_put_contents($fixture . 'lib/loader.php',$loader); file_put_contents($fixture . 'load_settings.php','<?php');
     $processes = new \MajorDoMo\Core\ProcessRunner($fixture);
     $scheduler = new \MajorDoMo\Core\Scheduler(Core::database(),$processes);
-    $job=array('TITLE'=>'subprocess','COMMANDS'=>'sg("Lamp.status",42); return true;','RUNTIME'=>date('Y-m-d H:i:s',time()-1)); $id=SQLInsert('jobs',$job);
+    $jobTrace = Core::audit()->begin('method', 'Door.open');
+    $jobParent = Core::audit()->stepStart('method', 'Door.open');
+    $id = Core::scheduler()->schedule('subprocess', 'sg("Lamp.status",42); return true;', time() - 1, 0);
+    Core::audit()->stepFinish($jobParent);
+    \MajorDoMo\Core\PropertyAudit::leave();
     $scheduler->run();
     check((int)SQLSelectOne('SELECT PROCESSED FROM jobs WHERE ID='.$id)['PROCESSED'] === 1 && gg('Lamp.status') === 42, 'real isolated PHP worker completes job without HTTP');
+    $jobRuns = Core::audit()->trace($jobTrace);
+    $jobEvents = $jobRuns[0]['events'];
+    check(count(array_filter($jobEvents, static fn($event) => $event['type'] === 'job' && $event['execution'] !== null)) === 1, 'real child job continues creator trace with its code snapshot');
+    check(count(array_filter($jobEvents, static fn($event) => $event['type'] === 'property' && $event['title'] === 'Lamp.status')) === 1, 'job property write appears in creator change chain across processes');
     $job=array('TITLE'=>'fatal','COMMANDS'=>'exit(0);','RUNTIME'=>date('Y-m-d H:i:s',time()-1)); $id=SQLInsert('jobs',$job);
     $scheduler->run();
     check((int)SQLSelectOne('SELECT PROCESSED FROM jobs WHERE ID='.$id)['PROCESSED'] === 0, 'worker exit without result is not acknowledged');

@@ -2,6 +2,7 @@
 
 /**
  * Контракт документации.
+ * 2026-10-25 — разрешена категория TODO для заметок будущих задач.
  *
  * Docs — одновременно справочник для агентов и «База знаний» в админке,
  * поэтому каждый материал должен быть навигабельным: front matter с известной
@@ -13,7 +14,7 @@ $docsRoot = str_replace('\\', '/', $root . '/docs');
 
 $allowedCategories = array(
     'general', 'core', 'data', 'automation', 'ui', 'api',
-    'integration', 'migration', 'user', 'deploy', 'dev', 'archive', 'agents',
+    'integration', 'migration', 'user', 'deploy', 'dev', 'archive', 'agents', 'todo',
 );
 
 $checks = 0;

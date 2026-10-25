@@ -17,6 +17,7 @@ use \Throwable;
  * транзакцию нельзя. Выключателя нет, настраивается только срок хранения.
  *
  * Изменения:
+ * 2026-10-25 — чтение цепочки по trace id и связь отложенного задания с шагом постановки.
  * 2026-10-25 — сбой, отменяющий транзакцию, передаётся писателю свойства; журнал ошибок ждёт её завершения.
  * 2026-10-25 — запись свойства не запускает DDL, способный неявно зафиксировать её транзакцию.
  * 2026-10-24 — счётчики фактических событий по десятиминутным интервалам для дашборда.
@@ -322,6 +323,17 @@ final class PropertyAudit
         }
     }
 
+    /** Чтение одной цепочки, в том числе до первого изменения свойства. */
+    public function trace(string $traceId): array
+    {
+        $traceId = self::normalizeTraceId($traceId);
+        if ($traceId === '') return array();
+        $run = $this->db->one("SELECT * FROM property_audit_runs WHERE TRACE_ID='" . $traceId . "'");
+        if (!$run) return array();
+        $events = $this->db->select("SELECT * FROM property_audit_events WHERE TRACE_ID='" . $traceId . "' ORDER BY ID");
+        return array($this->presentRun($run, array_map(fn($event) => $this->presentEvent($event, 0), $events), 0));
+    }
+
     /** Возвращает события по 10 минут; null означает, что журнал ещё не создан. */
     public function activityByTenMinutes(int $from, int $to): ?array
     {
@@ -487,7 +499,7 @@ final class PropertyAudit
     /** Служебная оболочка хранится в существующем поле, параметры API остаются прежними. */
     private function eventParams(array $data): ?string
     {
-        $parent = self::$steps ? (int)end(self::$steps) : 0;
+        $parent = (int)($data['parent_event_id'] ?? (self::$steps ? (int)end(self::$steps) : 0));
         $execution = $data['execution'] ?? null;
         if (!$parent && $execution === null) return isset($data['params']) ? $this->json($data['params']) : null;
         if (is_array($execution) && isset($execution['code'])) {

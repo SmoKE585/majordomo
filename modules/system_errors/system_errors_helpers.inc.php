@@ -1,6 +1,7 @@
 <?php
 /**
- * Formatting helpers for the system_errors module.
+ * Форматирование нового диагностического конверта и старой истории ошибок.
+ * 2026-10-25 — понятная сводка сбоя, источник и три статуса журнала.
  *
  * The module stores raw PHP backtraces. These helpers keep absolute paths and
  * byte escapes out of the main UI while preserving the raw text in a details
@@ -75,6 +76,11 @@ if (!function_exists('md_system_errors_plural')) {
 if (!function_exists('md_system_errors_split_comment')) {
     function md_system_errors_split_comment($comments)
     {
+        $data = \MajorDoMo\Core\ErrorDetails::decode((string)$comments);
+        if ($data !== null) {
+            return array('MESSAGE' => (string)$data['message'], 'TRACE' => (string)$data['trace'],
+                'CONTEXT' => 'URL: ' . $data['url'] . "\nMethod: " . $data['method'] . "\nIP: " . $data['ip']);
+        }
         $comments = str_replace("\r\n", "\n", (string)$comments);
         $parts = preg_split('/\nBacktrace:\s*\n/i', $comments, 2);
         $message = trim($parts[0]);
@@ -143,6 +149,11 @@ if (!function_exists('md_system_errors_message')) {
 if (!function_exists('md_system_errors_frames')) {
     function md_system_errors_frames($comments)
     {
+        $data = \MajorDoMo\Core\ErrorDetails::decode((string)$comments);
+        if ($data !== null) {
+            $comments = $data['message'] . "\nBacktrace:\n#0 " . $data['file'] . '(' . (int)$data['line'] . '): ' . ($data['entity'] ?: $data['source'])
+                . "\n" . $data['trace'];
+        }
         $parts = md_system_errors_split_comment($comments);
         if ($parts['TRACE'] === '') {
             return array();
@@ -222,6 +233,11 @@ if (!function_exists('md_system_errors_origin')) {
             return array('HAS_ORIGIN' => 0, 'MODULE' => '', 'FILE' => '', 'LINE' => 0, 'CALL' => '');
         }
         $frame = $frames[0];
+        foreach ($frames as $candidate) {
+            if (in_array($candidate['FILE_RAW'], array('lib/core/Helpers/ActionLog.php', 'lib/core/ErrorReporter.php'), true)) continue;
+            $frame = $candidate;
+            break;
+        }
         return array(
             'HAS_ORIGIN' => ($frame['FILE'] !== '' || $frame['CALL'] !== '') ? 1 : 0,
             'MODULE' => $frame['MODULE'],
@@ -230,6 +246,25 @@ if (!function_exists('md_system_errors_origin')) {
             'CALL' => $frame['CALL'],
         );
     }
+}
+
+/** Сводка описывает событие, а каталог даёт последствия и следующий шаг. */
+function md_system_errors_diagnostic($comments, $description = '')
+{
+    $data = \MajorDoMo\Core\ErrorDetails::decode((string)$comments);
+    $blocks = array();
+    foreach (array('Почему' => 'CAUSE', 'Чем грозит' => 'IMPACT', 'Что делать' => 'ACTION') as $label => $key) {
+        if (preg_match('/(?:^|\n)' . preg_quote($label, '/') . ':\s*(.*?)(?=\n\s*\n|$)/su', (string)$description, $match)) $blocks[$key] = trim($match[1]);
+    }
+    $summary = md_system_errors_message($comments);
+    if (preg_match('/^Message:\s*(.+)$/m', $summary, $match)) $summary = $match[1];
+    return array(
+        'SUMMARY' => $summary,
+        'SOURCE' => $data['source'] ?? '', 'ENTITY' => $data['entity'] ?? '',
+        'CAUSE' => $blocks['CAUSE'] ?? 'Точная причина не определена. Проверьте сообщение и технические детали события.',
+        'IMPACT' => $blocks['IMPACT'] ?? 'Операция завершилась сбоем; её результат нужно проверить.',
+        'ACTION' => ($data['action'] ?? '') ?: ($blocks['ACTION'] ?? 'Откройте источник ошибки и устраните указанную причину перед повторным запуском.'),
+    );
 }
 
 if (!function_exists('md_system_errors_title')) {

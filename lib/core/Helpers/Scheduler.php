@@ -1,6 +1,6 @@
 <?php
 
-/** System helpers. Public names and argument defaults are part of the module API. */
+/** Совместимые функции таймеров. 2026-10-25 — общий планировщик, Redis и сохранение цепочки. */
 
 /**
  * Summary of addScheduledJob
@@ -12,17 +12,7 @@
  */
 function addScheduledJob($title, $commands, $datetime, $expire = 1800)
 {
-    clearScheduledJob($title);
-    $rec = array();
-    $rec['TITLE'] = $title;
-    $rec['COMMANDS'] = $commands;
-    $rec['RUNTIME'] = date('Y-m-d H:i:s', $datetime);
-    if ((int)$expire > 0) {
-        $rec['EXPIRE'] = date('Y-m-d H:i:s', $datetime + (int)$expire);
-    }
-    $rec['ID'] = SQLInsert('jobs', $rec);
-
-    return $rec['ID'];
+    return \MajorDoMo\Core\Core::scheduler()->schedule((string)$title, (string)$commands, (int)$datetime, (int)$expire);
 }
 
 /**
@@ -32,7 +22,7 @@ function addScheduledJob($title, $commands, $datetime, $expire = 1800)
  */
 function clearScheduledJob($title)
 {
-    return SQLExec("DELETE FROM jobs WHERE TITLE = '" . DBSafe($title) . "'");
+    return \MajorDoMo\Core\Core::scheduler()->cancelTitle((string)$title);
 }
 
 /**
@@ -52,7 +42,7 @@ function clearTimeOut($title)
  */
 function deleteScheduledJob($id)
 {
-    return SQLExec("DELETE FROM jobs WHERE ID = " . (int)$id);
+    return \MajorDoMo\Core\Core::scheduler()->cancel((int)$id);
 }
 
 /**
@@ -87,7 +77,5 @@ function setTimeOut($title, $commands, $timeout = 0, $expire = 0)
  */
 function timeOutExists($title)
 {
-    $job = SQLSelectOne("SELECT ID FROM jobs WHERE PROCESSED = 0 AND TITLE = '" . DBSafe($title) . "'");
-	if(!isset($job)) return false;
-    return isset($job['ID']) ? (int)$job['ID'] : 0;
+    return \MajorDoMo\Core\Core::scheduler()->exists((string)$title);
 }

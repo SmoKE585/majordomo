@@ -5,7 +5,9 @@ namespace MajorDoMo\Core {
     final class Core
     {
         public static object $objects;
+        public static object $scheduler;
         public static function objects() { return self::$objects; }
+        public static function scheduler() { return self::$scheduler; }
     }
 }
 
@@ -155,7 +157,10 @@ PHP
         }
     }
     $db = new mysql($pdo);
-    $pdo->exec('CREATE TABLE jobs (ID INTEGER PRIMARY KEY AUTOINCREMENT, TITLE TEXT, COMMANDS TEXT, RUNTIME TEXT, EXPIRE TEXT, PROCESSED INTEGER DEFAULT 0)');
+    require_once $project . '/lib/core.class.php';
+    require_once __DIR__ . '/fixtures/scheduler.php';
+    createSchedulerFixture($pdo);
+    MajorDoMo\Core\Core::$scheduler = new MajorDoMo\Core\Scheduler(new MajorDoMo\Core\Database(new RuntimeTestConnection($pdo)), new MajorDoMo\Core\ProcessRunner());
     helpersCheck(timeOutExists('missing') === 0, 'Missing timeout returns zero without a PHP warning');
     $id = addScheduledJob("fixture's job", 'return 42;', time() + 60);
     helpersCheck($id > 0 && timeOutExists("fixture's job") === $id, 'Schedule returns its id and escapes its title');

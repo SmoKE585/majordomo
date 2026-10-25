@@ -65,8 +65,8 @@
                             <input class="md-check__input" id="mdErrorActive" type="checkbox" name="active" value="1" data-md-raw-checkbox[#if ACTIVE!="0"#] checked[#endif#]>
                             <span class="md-check__box" aria-hidden="true"><i class="ti ti-check"></i></span>
                             <span class="md-check__text">
-                                <span class="md-check__label">Активная ошибка</span>
-                                <span class="md-check__desc">Показывать как требующую внимания</span>
+                                <span class="md-check__label">Ошибка открыта</span>
+                                <span class="md-check__desc">Снимите отметку после разбора причины, чтобы закрыть ошибку</span>
                             </span>
                         </label>
 
@@ -97,4 +97,4 @@
     <input type="hidden" name="mode" value="update">
     <input type="hidden" name="data_source" value="[#DATA_SOURCE#]">
     <input type="hidden" name="tab" value="[#TAB#]">
-</form>
+<input type="hidden" name="_token" value="[#CSRF_TOKEN#]"></form>

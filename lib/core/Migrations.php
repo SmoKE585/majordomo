@@ -6,7 +6,11 @@ use MajorDoMo\Core\Migrations\Migration;
 use \Throwable;
 use \RuntimeException;
 
-/** Миграции ядра. 2026-10-25 — долговечная SQL-очередь; порядок задаёт имя файла, а не текстовая метка версии. */
+/**
+ * Миграции ядра.
+ * 2026-10-25 — контекст цепочки и поколение индекса Redis для таймеров.
+ * 2026-10-25 — долговечная SQL-очередь; порядок задаёт имя файла, а не текстовая метка версии.
+ */
 final class Migrations
 {
     /** @var string Каталог файловых миграций; тесты подменяют его на временный. */
@@ -21,6 +25,16 @@ final class Migrations
         ?string $migrationPath = null
     ) {
         $this->migrationPath = rtrim($migrationPath ?? __DIR__ . '/Migrations', '/\\');
+    }
+
+    public function ensureScheduledJobTraceSchema(): void
+    {
+        $columns = array_column($this->db->select('SHOW COLUMNS FROM jobs'), 'Field');
+        foreach (array('TRACE_ID' => "char(32) NOT NULL DEFAULT ''", 'PARENT_EVENT_ID' => 'bigint unsigned NOT NULL DEFAULT 0',
+            'DISPATCH_GENERATION' => "char(32) NOT NULL DEFAULT ''") as $name => $definition) {
+            if (!in_array($name, $columns, true)) $this->db->requireExec("ALTER TABLE jobs ADD `$name` $definition");
+        }
+        $this->ensureIndex('jobs', 'idx_jobs_dispatch', 'PROCESSED,EXPIRED,DISPATCH_GENERATION,ID');
     }
 
     public function ensureOperationsSchema()

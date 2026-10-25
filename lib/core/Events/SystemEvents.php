@@ -3,13 +3,15 @@
 namespace MajorDoMo\Core\Events;
 
 /**
- * Typed vocabulary for system lifecycle events.
+ * Словарь системных событий для модулей, сценариев и журнала.
+ * 2026-10-25 — событие SYSTEM_ERROR для зарегистрированного критичного сбоя.
  *
  * Keep names stable: they are public API for modules (`subscribeToEvent()`),
  * scenarios, MQTT forwarding and the admin journal.
  */
 final class SystemEvents
 {
+    public const SYSTEM_ERROR = 'SYSTEM_ERROR';
     /** A module was installed or enabled. */
     public const MODULE_INSTALLED = 'MODULE_INSTALLED';
     /** A module was removed or uninstalled. */
@@ -42,6 +44,7 @@ final class SystemEvents
     public static function names(): array
     {
         return array(
+            self::SYSTEM_ERROR,
             self::MODULE_INSTALLED,
             self::MODULE_REMOVED,
             self::MODULE_UPDATED,
@@ -61,6 +64,7 @@ final class SystemEvents
     public static function title(string $name): string
     {
         $titles = array(
+            self::SYSTEM_ERROR => 'Возникла системная ошибка',
             self::MODULE_INSTALLED => 'Модуль установлен',
             self::MODULE_REMOVED => 'Модуль удалён',
             self::MODULE_UPDATED => 'Модуль обновлён',
@@ -80,7 +84,7 @@ final class SystemEvents
     /** Severity used by the journal and the dashboard tone. */
     public static function severity(string $name): string
     {
-        if (in_array($name, array(self::SYSTEM_UPDATE_FAILED, self::SYSTEM_UPDATE_ABORTED), true)) {
+        if (in_array($name, array(self::SYSTEM_ERROR, self::SYSTEM_UPDATE_FAILED, self::SYSTEM_UPDATE_ABORTED), true)) {
             return 'error';
         }
         if (in_array($name, array(self::MODULE_REMOVED, self::CYCLE_SCRIPT_REMOVED, self::AUTH_BRUTE_FORCE), true)) {
@@ -98,6 +102,12 @@ final class SystemEvents
             'module' => $module,
             'source' => $source,
         ), $source);
+    }
+
+    /** Ошибка уже сохранена: событие даёт подписчикам ссылку на её историю. */
+    public static function systemError(array $payload): int
+    {
+        return EventBus::emit(self::SYSTEM_ERROR, $payload, 'system_errors');
     }
 
     /**

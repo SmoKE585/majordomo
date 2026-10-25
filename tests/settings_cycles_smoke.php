@@ -167,6 +167,18 @@ try {
         $supervisor->reconcile(array($name), array($name => 1), $toStart, $toStop);
         check(!isset($toStop[$name]) && isset($toStart[$name]), $name . ' follows normal supervisor recovery');
     }
+    $store = new CycleStateStore($root);
+    $store->set('cycle_main', CycleStateStore::RUNNING);
+    $generation = $store->generation('cycle_main');
+    $store->fail('cycle_main', 'Попытки исчерпаны');
+    $reloaded = new CycleStateStore($root);
+    $supervisor = new CycleSupervisor($reloaded);
+    check(!$supervisor->shouldStartAtBoot('cycle_main') && $reloaded->desired('cycle_main') === CycleStateStore::RUNNING, 'аварийная блокировка переживает перезапуск и сохраняет желание пользователя');
+    $toStart = array('cycle_main' => time()); $toStop = array();
+    $supervisor->reconcile(array('cycle_main'), array(), $toStart, $toStop);
+    check($toStart === array(), 'reconcile не возобновляет исчерпанные попытки');
+    $reloaded->set('cycle_main', CycleStateStore::RUNNING);
+    check($supervisor->shouldStartAtBoot('cycle_main') && $reloaded->generation('cycle_main') > $generation, 'ручной запуск снимает блокировку и начинает новое поколение');
 } finally {
     foreach (glob($root . '/scripts/*.php') ?: array() as $file) {
         unlink($file);

@@ -1,237 +1,157 @@
 <?php
-/**
-* jobs 
-*
-* jobs
-*
-* @package MajorDoMo
-* @author Serge Dzheigalo <sergejey@gmail.com> https://majordomohome.com/
-* @version 0.2 (wizard, 15:03:07 [Mar 27, 2009])
-*/
-//
-//
-class jobs extends module {
-/**
-* jobs
-*
-* Module class constructor
-*
-* @access private
-*/
-function __construct() {
-  $this->name="jobs";
-  $this->title="<#LANG_MODULE_JOBS#>";
-  $this->module_category="<#LANG_SECTION_SYSTEM#>";
-  $this->checkInstalled();
-}
-/**
-* saveParams
-*
-* Saving module parameters
-*
-* @access public
-*/
-function saveParams($data=0) {
- $p=array();
- if (IsSet($this->id)) {
-  $p["id"]=$this->id;
- }
- if (IsSet($this->view_mode)) {
-  $p["view_mode"]=$this->view_mode;
- }
- if (IsSet($this->edit_mode)) {
-  $p["edit_mode"]=$this->edit_mode;
- }
- if (IsSet($this->tab)) {
-  $p["tab"]=$this->tab;
- }
- return parent::saveParams($p);
-}
-/**
-* getParams
-*
-* Getting module parameters from query string
-*
-* @access public
-*/
-function getParams() {
-  global $id;
-  global $mode;
-  global $view_mode;
-  global $edit_mode;
-  global $tab;
-  if (isset($id)) {
-   $this->id=$id;
-  }
-  if (isset($mode)) {
-   $this->mode=$mode;
-  }
-  if (isset($view_mode)) {
-   $this->view_mode=$view_mode;
-  }
-  if (isset($edit_mode)) {
-   $this->edit_mode=$edit_mode;
-  }
-  if (isset($tab)) {
-   $this->tab=$tab;
-  }
-}
-/**
-* Run
-*
-* Description
-*
-* @access public
-*/
-function run() {
- global $session;
-  $out=array();
-  $this->action = 'admin';
-        $this->admin($out);
-  if (IsSet($this->owner->action)) {
-   $out['PARENT_ACTION']=$this->owner->action;
-  }
-  if (IsSet($this->owner->name)) {
-   $out['PARENT_NAME']=$this->owner->name;
-  }
-  $out['VIEW_MODE']=$this->view_mode;
-  $out['EDIT_MODE']=$this->edit_mode;
-  $out['MODE']=$this->mode;
-  $out['ACTION']=$this->action;
-  $out['TAB']=$this->tab;
-  if ($this->single_rec) {
-   $out['SINGLE_REC']=1;
-  }
-  $this->data=$out;
-  $p=new parser(DIR_TEMPLATES.$this->name."/".$this->name.".html", $this->data, $this);
-  $this->result=$p->result;
-}
-/**
-* BackEnd
-*
-* Module backend
-*
-* @access public
-*/
-function admin(&$out) {
- if (isset($this->data_source) && !$_GET['data_source'] && !$_POST['data_source']) {
-  $out['SET_DATASOURCE']=1;
- }
- if ($this->data_source=='jobs' || $this->data_source=='') {
-  if ($this->view_mode=='' || $this->view_mode=='search_jobs') {
-   $this->search_jobs($out);
-  }
-  if ($this->view_mode=='delete_jobs') {
-   $this->delete_jobs($this->id);
-   $this->redirect("?");
-  }
- }
-}
 
+use MajorDoMo\Core\Core;
+use MajorDoMo\Core\Config;
+use MajorDoMo\Core\Scheduler;
 
 /**
-* jobs search
-*
-* @access public
-*/
- function search_jobs(&$out) {
-  //require(DIR_MODULES.$this->name.'/jobs_search.inc.php');
-  if ($this->mode=='add') {
-   global $commands;
-   global $runin;
-   global $runtype;
-   global $title;
-   if ($commands!='' && $title!='') {
-    if ($runtype=='m') {
-     $runin=$runin*60;
-    } elseif ($runtype=='h') {
-     $runin=$runin*60*60;
+ * Панель отложенных заданий: состояние, ошибки, команды и цепочки выполнения.
+ * 2026-10-25 — MDJUI, безопасные POST-действия и общий планировщик с Redis.
+ */
+class jobs extends module
+{
+    public function __construct()
+    {
+        $this->name = 'jobs';
+        $this->title = '<#LANG_MODULE_JOBS#>';
+        $this->module_category = '<#LANG_SECTION_SYSTEM#>';
+        $this->checkInstalled();
     }
-    setTimeOut($title, $commands, $runin);
-    $this->redirect("?");
-   }
-  }
 
-  if ($this->mode=='cancel') {
-   global $id;
-   deleteScheduledJob($id);
-   $this->redirect("?");
-  }
+    public function getParams()
+    {
+        global $id, $view_mode, $mode;
+        if (isset($id) && is_scalar($id)) $this->id = max(0, (int)$id);
+        if (isset($view_mode) && is_string($view_mode)) $this->view_mode = $view_mode;
+        if (isset($mode) && is_string($mode)) $this->mode = $mode;
+    }
 
-  $jobs=SQLSelect("SELECT * FROM jobs ORDER BY RUNTIME");
-  if ($jobs[0]['ID']) {
-   $out['JOBS']=$jobs;
-  }
+    public function saveParams($data = 0)
+    {
+        return parent::saveParams(array('id' => (int)$this->id, 'view_mode' => (string)$this->view_mode));
+    }
 
- }
-/**
-* jobs edit/add
-*
-* @access public
-*/
- function edit_jobs(&$out, $id) {
-  
- }
-/**
-* jobs delete record
-*
-* @access public
-*/
- function delete_jobs($id) {
-  $rec=SQLSelectOne("SELECT * FROM jobs WHERE ID='$id'");
-  // some action for related tables
-  SQLExec("DELETE FROM jobs WHERE ID='".$rec['ID']."'");
- }
-/**
-* Install
-*
-* Module installation routine
-*
-* @access private
-*/
- function install($parent_name="") {
-  parent::install($parent_name);
-  SQLExec("UPDATE project_modules SET HIDDEN=1 WHERE NAME LIKE '".$this->name."'");
- }
-/**
-* Uninstall
-*
-* Module uninstall routine
-*
-* @access public
-*/
- function uninstall() {
-   SQLDropTable('jobs');
-  parent::uninstall();
- }
-/**
-* dbInstall
-*
-* Database installation routine
-*
-* @access private
-*/
- function dbInstall($data) {
-/*
-jobs - jobs
-*/
-  $data = <<<EOD
- jobs: ID int(10) unsigned NOT NULL auto_increment
- jobs: TITLE varchar(255) NOT NULL DEFAULT ''
- jobs: COMMANDS text
- jobs: RUNTIME datetime
- jobs: EXPIRE datetime
- jobs: STARTED datetime
- jobs: PROCESSED int(3) NOT NULL DEFAULT '0'
- jobs: EXPIRED int(3) NOT NULL DEFAULT '0'
-EOD;
-  parent::dbInstall($data);
- }
-// --------------------------------------------------------------------
+    public function run()
+    {
+        $this->getParams();
+        $scheduler = Core::scheduler();
+        if (($_GET['ajax'] ?? '') === '1' && ($_GET['op'] ?? '') === 'trace') {
+            try {
+                $payload = $this->traceResponse($scheduler, (int)$this->id);
+            } catch (Throwable $error) {
+                http_response_code(500);
+                DebMes('Не удалось прочитать цепочку задания: ' . $error->getMessage(), 'jobs', 'error');
+                $payload = array('status' => 'error', 'message' => 'Не удалось прочитать журнал задания.');
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+            exit;
+        }
+        require_once ROOT . 'lib/ui/MDJUI.php';
+        global $session;
+        if (!$session->has('jobs_csrf')) $session->set('jobs_csrf', bin2hex(random_bytes(32)));
+        $token = (string)$session->get('jobs_csrf');
+        $error = '';
+        $draft = array('title' => '', 'commands' => '', 'runin' => '0', 'runtype' => 's');
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+            try {
+                if (!hash_equals($token, self::posted('_token'))) throw new InvalidArgumentException('Форма устарела. Обновите страницу.');
+                $operation = self::posted('operation') ?: self::posted('mode');
+                if ($operation === 'add') {
+                    foreach (array_keys($draft) as $key) $draft[$key] = self::posted($key);
+                    $title = trim($draft['title']);
+                    $delay = filter_var($draft['runin'], FILTER_VALIDATE_INT, array('options' => array('min_range' => 0, 'max_range' => 31536000)));
+                    $units = array('s' => 1, 'm' => 60, 'h' => 3600);
+                    if ($delay === false || !isset($units[$draft['runtype']]) || $delay * $units[$draft['runtype']] > 31536000) throw new InvalidArgumentException('Укажите задержку от 0 секунд до 365 дней.');
+                    if (trim($draft['commands']) === '' || strlen($draft['commands']) > 60000) throw new InvalidArgumentException('Укажите PHP-команду длиной до 60 000 байт.');
+                    try { token_get_all('<?php ' . $draft['commands'], TOKEN_PARSE); }
+                    catch (ParseError $syntax) { throw new InvalidArgumentException('Ошибка PHP: ' . $syntax->getMessage()); }
+                    $scheduler->schedule($title, $draft['commands'], time() + $delay * $units[$draft['runtype']], 0);
+                    $this->redirect('?saved=1');
+                    return;
+                }
+                if ($operation === 'cancel' || $this->view_mode === 'delete_jobs') {
+                    $id = filter_var(self::posted('id'), FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+                    if ($id === false) throw new InvalidArgumentException('Некорректный номер задания.');
+                    $scheduler->cancel($id);
+                    $this->redirect('?cancelled=1');
+                    return;
+                }
+                throw new InvalidArgumentException('Неизвестное действие.');
+            } catch (Throwable $failure) {
+                $error = $failure->getMessage();
+            }
+        } elseif ($this->mode === 'cancel' || $this->view_mode === 'delete_jobs') {
+            $error = 'Для отмены используйте кнопку в списке и подтвердите действие.';
+        }
+        $status = self::query('status');
+        $search = mb_substr(self::query('q'), 0, 255);
+        $page = max(1, (int)self::query('page'));
+        $data = $scheduler->listing($status, $search, $page);
+        $maxAttempts = Scheduler::maxAttempts();
+        $states = array('waiting' => array('Ожидает', 'neutral'), 'running' => array('Выполняется', 'info'),
+            'retry' => array('Повтор', 'warning'), 'failed' => array('Ошибка', 'danger'), 'done' => array('Выполнено', 'success'));
+        ob_start();
+        require ROOT . 'templates/jobs/jobs.php';
+        $this->result = $this->parseLinks(ob_get_clean());
+    }
+
+    public function traceResponse(Scheduler $scheduler, int $id): array
+    {
+        $job = $scheduler->get($id);
+        if (!$job) { http_response_code(404); return array('status' => 'error', 'message' => 'Задание не найдено.'); }
+        $runs = Core::audit()->trace((string)$job['TRACE_ID']);
+        foreach ($runs as &$run) {
+            foreach ($run['events'] as &$event) {
+                $event['links'] = self::eventLinks($event);
+            }
+            unset($event);
+        }
+        unset($run);
+        $count = count($runs);
+        return array('status' => 'ok', 'meta' => array('property_name' => $job['TITLE'],
+            'description' => 'Постановка, попытки выполнения и вызванные изменения.',
+            'retention_days' => Config::int('PROPERTY_AUDIT_RETENTION_DAYS', 7)),
+            'runs' => $runs, 'pagination' => array('page' => 1, 'pages' => $count, 'total' => $count,
+                'per_page' => 1, 'from' => $count, 'to' => $count, 'has_prev' => false, 'has_next' => false));
+    }
+
+    private static function eventLinks(array $event): array
+    {
+        $root = ROOTHTML . 'admin.php?';
+        $links = array();
+        if ($event['object_id'] > 0) $links[] = array('label' => 'Свойства объекта', 'url' => $root . http_build_query(array('action' => 'objects', 'md' => 'objects', 'view_mode' => 'edit_objects', 'id' => $event['object_id'], 'tab' => 'properties')), 'icon' => 'box');
+        if ($event['method_id'] > 0) $links[] = array('label' => 'Метод', 'url' => $root . http_build_query(array('action' => 'methods', 'md' => 'methods', 'view_mode' => 'edit_methods', 'id' => $event['method_id'])), 'icon' => 'code');
+        if ($event['script_id'] > 0) $links[] = array('label' => 'Сценарий', 'url' => $root . http_build_query(array('action' => 'scripts', 'md' => 'scripts', 'view_mode' => 'edit_scripts', 'id' => $event['script_id'])), 'icon' => 'player-play');
+        if ($event['module'] !== '' && preg_match('/^[a-zA-Z0-9_]+$/D', $event['module'])) $links[] = array('label' => 'Модуль', 'url' => ROOTHTML . 'panel/' . $event['module'] . '.html', 'icon' => 'puzzle');
+        return $links;
+    }
+
+    private static function posted(string $key): string
+    {
+        $value = $_POST[$key] ?? '';
+        if (!is_string($value)) throw new InvalidArgumentException('Некорректное поле формы.');
+        return $value;
+    }
+
+    private static function query(string $key): string
+    {
+        return isset($_GET[$key]) && is_string($_GET[$key]) ? $_GET[$key] : '';
+    }
+
+    public function delete_jobs($id) { return Core::scheduler()->cancel((int)$id); }
+
+    public function install($parent_name = '')
+    {
+        parent::install($parent_name);
+        Core::database()->requireExec("UPDATE project_modules SET HIDDEN=1 WHERE NAME='jobs'");
+    }
+
+    public function uninstall()
+    {
+        // Таблица принадлежит планировщику ядра и нужна setTimeOut() без панели jobs.
+        parent::uninstall();
+    }
+
+    public function dbInstall($data) { parent::dbInstall(''); }
 }
-/*
-*
-* TW9kdWxlIGNyZWF0ZWQgTWFyIDI3LCAyMDA5IHVzaW5nIFNlcmdlIEouIHdpemFyZCAoQWN0aXZlVW5pdCBJbmMgd3d3LmFjdGl2ZXVuaXQuY29tKQ==
-*
-*/
-?>

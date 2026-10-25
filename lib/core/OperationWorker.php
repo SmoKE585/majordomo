@@ -10,6 +10,7 @@ use \InvalidArgumentException;
  * Выполнение фоновых операций из очереди (методы, модули, сообщения, подписки).
  *
  * Изменения:
+ * 2026-10-25 — промежуточные повторы остаются в логе, окончательный отказ содержит источник задания.
  * 2026-10-25 — отказы и повторы сохраняются в SQL вместе с заданием, исключение исполнителя не оставляет скрытое владение.
  * 2026-10-25 — исключения NO_LINKED восстанавливаются с областью свойства,
  *              в том числе у заданий, поставленных прежней версией ядра.
@@ -188,6 +189,7 @@ final class OperationWorker
             }
             $result = array('success' => false, 'error' => get_class($e) . ': ' . $e->getMessage()
                 . ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+            $result['diagnostic'] = ErrorDetails::capture($e->getMessage(), array('entity' => (string)($data['target'] ?? '')), $e);
             return $result;
         } finally {
             if ($this->audit) {
@@ -251,9 +253,12 @@ final class OperationWorker
                 $error = substr((string)($result['error'] ?? 'Unknown worker error'), 0, 4096);
                 $this->queue->failRuntime($item, $error);
                 if ($this->errors) {
+                    $diagnostic = is_array($result['diagnostic'] ?? null) ? $result['diagnostic'] : array();
                     $this->errors->report('property_delivery',
                         'Фоновая операция не выполнена после повторов: ' . $error,
-                        'worker:' . (string)($item['DATANAME'] ?? 'unknown'), 300);
+                        'worker:' . (string)($item['QUEUE_ID'] ?? $item['DATANAME'] ?? 'unknown'), 300,
+                        array_merge(array_intersect_key($diagnostic, array_flip(array('file', 'line', 'entity'))),
+                            array('source' => 'фоновая операция', 'action' => 'Устраните причину в обработчике; проверьте окончательно отклонённое задание в очереди.')));
                 } else {
                     DebMes('Core operation failed permanently: ' . $error, 'core_runtime', 'error');
                 }
@@ -261,13 +266,7 @@ final class OperationWorker
                 $attempt = max(1, (int)($item['ATTEMPTS'] ?? 1));
                 $delay = min(300, 5 * (2 ** ($attempt - 1)));
                 $this->queue->releaseRuntime($item, $delay, (string)($result['error'] ?? 'Unknown worker error'));
-                if ($this->errors) {
-                    $this->errors->report('property_delivery',
-                        'Фоновая операция будет повторена: ' . ($result['error'] ?? 'unknown error'),
-                        'worker_retry:' . (string)($item['DATANAME'] ?? 'unknown'), 300);
-                } else {
-                    DebMes('Core operation will retry: ' . ($result['error'] ?? 'unknown error'), 'core_runtime', 'warning');
-                }
+                DebMes('Core operation will retry: ' . ($result['error'] ?? 'unknown error'), 'core_runtime', 'warning');
             }
         }
         return count($items);

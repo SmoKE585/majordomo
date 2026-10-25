@@ -33,7 +33,7 @@ namespace {
     putenv('USE_REDIS=false');
     error_reporting(E_ALL);
     set_error_handler(static function ($severity, $message, $file, $line) { throw new ErrorException($message, 0, $severity, $file, $line); });
-    foreach (array('Database', 'RedisConnection', 'MetadataCache', 'CodeExecutor', 'Methods', 'PropertyAudit', 'PropertyChain') as $name) {
+    foreach (array('Database', 'RedisConnection', 'MetadataCache', 'CodeExecutor', 'ErrorDetails', 'Methods', 'PropertyAudit', 'PropertyChain') as $name) {
         require dirname(__DIR__) . '/lib/core/' . $name . '.php';
     }
     require dirname(__DIR__) . '/lib/core/Helpers/Scripts.php';

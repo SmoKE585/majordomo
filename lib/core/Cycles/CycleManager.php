@@ -6,6 +6,7 @@ use MajorDoMo\Core\Core;
 use MajorDoMo\Core\Config;
 
 /**
+ * 2026-10-25 — аварийная остановка после исчерпания попыток видна без кэша.
  * Public API for managing background cycles.
  *
  * The web UI never kills a process itself. It writes a desired state (and, for
@@ -88,6 +89,10 @@ final class CycleManager
             $runtimeStatus = 'stopped';
             $online = false;
             $details = 'Deploy hold: ' . ($this->store->holdReason() ?: 'failed update');
+        } elseif (($failure = $this->store->failure($name)) !== null) {
+            $runtimeStatus = 'stopped';
+            $online = false;
+            $details = (string)$failure['reason'];
         } elseif ($desired === CycleStateStore::DISABLED) {
             $runtimeStatus = 'disabled';
         } elseif ($desired === CycleStateStore::STOPPED) {

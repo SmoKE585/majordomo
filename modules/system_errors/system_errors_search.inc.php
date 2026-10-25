@@ -6,6 +6,7 @@
  * не меняя запись в базе.
  *
  * Изменения:
+ * 2026-10-25 — сводка, фильтры и статусы; последние события читаются одним запросом.
  * 2026-10-22 — название и описание берутся из ErrorCatalog.
  */
 
@@ -37,6 +38,12 @@ if (is_array($history_rows)) {
 }
 
 $active_groups = 0;
+$status_counts = array('new' => 0, 'repeated' => 0, 'closed' => 0);
+$sources = array();
+$latest_comments = array();
+foreach (SQLSelect('SELECT d.ERROR_ID, d.COMMENTS FROM system_errors_data d JOIN (SELECT ERROR_ID, MAX(ID) AS LAST_ID FROM system_errors_data GROUP BY ERROR_ID) h ON h.LAST_ID=d.ID') as $event) {
+    $latest_comments[(int)$event['ERROR_ID']] = (string)$event['COMMENTS'];
+}
 $active_occurrences = 0;
 $last_error_update = '';
 
@@ -64,11 +71,8 @@ for ($i = 0; $i < $total; $i++) {
 
     $title = trim((string)$res[$i]['TITLE']);
     $code = (string)$res[$i]['CODE'];
-    $latest_comment = '';
-    if ($error_id > 0) {
-        $latest_event = SQLSelectOne("SELECT COMMENTS FROM system_errors_data WHERE ERROR_ID=" . $error_id . " ORDER BY ID DESC LIMIT 1");
-        $latest_comment = isset($latest_event['COMMENTS']) ? (string)$latest_event['COMMENTS'] : '';
-    }
+    $latest_comment = $latest_comments[$error_id] ?? '';
+    $diagnostic = md_system_errors_diagnostic($latest_comment, $res[$i]['DETAILS']);
 
     $display_title = md_system_errors_title($title, $code, $latest_comment);
     $frames = md_system_errors_frames($latest_comment);
@@ -76,8 +80,14 @@ for ($i = 0; $i < $total; $i++) {
     $events_label = $history['CNT'] . ' ' . md_system_errors_plural($history['CNT'], 'событие', 'события', 'событий');
 
     $res[$i]['ACTIVE'] = $active;
-    $res[$i]['STATUS_STATE'] = $active > 0 ? 'active' : 'read';
-    $res[$i]['STATUS_LABEL'] = $active > 0 ? 'Активна' : 'Прочитана';
+    $status = \MajorDoMo\Core\ErrorDetails::status($active, \MajorDoMo\Core\ErrorDetails::decode($latest_comment), $history['CNT']);
+    $status_counts[$status]++;
+    $res[$i]['STATUS_STATE'] = $status;
+    $res[$i]['STATUS_LABEL'] = \MajorDoMo\Core\ErrorDetails::label($status);
+    $res[$i]['SUMMARY'] = mb_substr($diagnostic['SUMMARY'], 0, 230, 'UTF-8');
+    $res[$i]['SOURCE'] = $diagnostic['SOURCE'] ?: html_entity_decode($origin['MODULE'], ENT_QUOTES, 'UTF-8');
+    $sources[$res[$i]['SOURCE']] = $res[$i]['SOURCE'];
+    $res[$i]['ENTITY'] = $diagnostic['ENTITY'];
     $res[$i]['TITLE_DISPLAY'] = $display_title;
     $res[$i]['SHOW_CODE'] = $display_title !== $code ? 1 : 0;
     $res[$i]['KEEP_HISTORY'] = (int)$res[$i]['KEEP_HISTORY'] ? 1 : 0;
@@ -111,6 +121,11 @@ $out['ERRORS_FOUND'] = $active_groups;
 $out['EVENTS_TOTAL'] = $events_total;
 $out['LAST_ERROR_UPDATE'] = htmlspecialchars($last_error_update, ENT_QUOTES, 'UTF-8');
 $out['SETTINGS_ERRORS_KEEP_HISTORY'] = $keep_history_days;
+$out['ERRORS_NEW_TOTAL'] = $status_counts['new'];
+$out['ERRORS_REPEATED_TOTAL'] = $status_counts['repeated'];
+$out['ERRORS_CLOSED_TOTAL'] = $status_counts['closed'];
+ksort($sources);
+$out['SOURCE_OPTIONS'] = array_map(static fn($source) => array('VALUE' => htmlspecialchars($source, ENT_QUOTES, 'UTF-8')), array_values($sources));
 
 if ($this->ajax && gr('op') == 'check') {
     echo $active_groups;

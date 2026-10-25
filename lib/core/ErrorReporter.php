@@ -6,6 +6,7 @@ namespace MajorDoMo\Core;
  * Deduplicates operational failures before they reach logs and the admin error
  * feed. A broken broker or a database outage can fail hundreds of property
  * notifications per minute; each key is reported once per window.
+ * 2026-10-25 — структурированный источник сбоя и отделение защитных предупреждений.
  */
 final class ErrorReporter
 {
@@ -20,7 +21,7 @@ final class ErrorReporter
      * @param string $key     scope (module/object/property); defaults to code
      * @param int    $window  seconds between repeated reports of the same key
      */
-    public function report(string $code, string $message, string $key = '', int $window = 300): bool
+    public function report(string $code, string $message, string $key = '', int $window = 300, array $context = array(), ?\Throwable $error = null): bool
     {
         $window = max(30, $window);
         $key = $code . ':' . ($key !== '' ? $key : 'general');
@@ -40,6 +41,7 @@ final class ErrorReporter
         }
 
         self::$local[$key] = $now;
+        if ($context !== array() || $error !== null) $message = ErrorDetails::encode($message, $context, $error);
         if (function_exists('registerError')) {
             try {
                 registerError($code, $message);
@@ -50,7 +52,8 @@ final class ErrorReporter
         }
         if (function_exists('DebMes')) {
             try {
-                DebMes($message, 'property_delivery', 'error');
+                $data = ErrorDetails::decode($message);
+                DebMes($data !== null ? ErrorDetails::text($data) : $message, 'errors', 'error');
                 return true;
             } catch (\Throwable $e) {
                 // Fall through to the PHP log.

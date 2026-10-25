@@ -5,7 +5,8 @@ namespace MajorDoMo\Core\Cycles;
 use MajorDoMo\Core\Core;
 
 /**
- * Supervisor-side reconciler.
+ * Применение команд управления внутри супервизора.
+ * 2026-10-25 — исчерпавший попытки цикл ждёт явного запуска.
  *
  * `cycle.php` owns the child processes. This class is deliberately small: it
  * translates the persistent desired state into the existing start/stop queues,
@@ -62,7 +63,7 @@ final class CycleSupervisor
 
     public function isDesiredRunning(string $name): bool
     {
-        return !$this->store->isHeld() && $this->store->desired($name) === CycleStateStore::RUNNING;
+        return !$this->store->isHeld() && $this->store->desired($name) === CycleStateStore::RUNNING && $this->store->failure($name) === null;
     }
 
     public function isDisabled(string $name): bool
@@ -72,7 +73,7 @@ final class CycleSupervisor
 
     public function isStoppedByUser(string $name): bool
     {
-        return !$this->isDesiredRunning($name);
+        return $this->store->desired($name) !== CycleStateStore::RUNNING;
     }
 
     public function shouldStartAtBoot(string $name): bool
@@ -107,6 +108,13 @@ final class CycleSupervisor
             return;
         }
         foreach ($names as $name) {
+            $failure = $this->store->failure($name);
+            if ($failure !== null) {
+                unset($toStart[$name]);
+                if (isset($isRunning[$name])) $toStop[$name] ??= time();
+                $this->setStatus($name, 'error', $failure['reason']);
+                continue;
+            }
             $desired = $this->store->desired($name);
             $generation = $this->store->generation($name);
             $seen = $this->seenGenerations[$name] ?? 0;

@@ -7,6 +7,7 @@ use MajorDoMo\Core\Core;
 /**
  * Запись сбоев API в журнал «Ошибки системы» (/panel/system_errors.html).
  *
+ * 2026-10-25 — оригинальное исключение передаётся в единый контекст ошибки.
  * 2026-10-23 — раньше непойманный сбой API уходил только в error_log сервера
  * (класс и request_id), поэтому в журнале панели было пусто. Теперь сбой
  * становится группой журнала с маршрутом, request_id, классом исключения,
@@ -88,7 +89,8 @@ final class FailureLog
                 $sink($code, $details, $key);
                 return;
             }
-            Core::errors()->report($code, $details, $key, self::WINDOW);
+            Core::errors()->report($code, $details, $key, self::WINDOW,
+                array('source' => 'API', 'entity' => $key), $error);
         } catch (\Throwable $ignored) {
             // Журнал может быть недоступен по той же причине, что и сам сбой.
             // Тогда остаётся error_log: строка уже пишется в ApiApplication.

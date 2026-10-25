@@ -1,6 +1,7 @@
 <?php
 /**
- * Error handler
+ * Обработчики ошибок PHP и непойманных исключений.
+ * 2026-10-25 — критичные сбои идут в общий журнал; циклы сообщают через супервизор.
  *
  * Used to handle errors
  *
@@ -196,10 +197,10 @@ function majordomoRememberCycleCrash($shortMessage)
 {
     global $argv;
     if (!isset($argv[0])) {
-        return;
+        return false;
     }
     if (!preg_match('/(cycle_.+?)\.php$/is', basename($argv[0]), $m)) {
-        return;
+        return false;
     }
     $cycleTitle = $m[1];
     $shortMessage = trim((string)$shortMessage);
@@ -208,8 +209,31 @@ function majordomoRememberCycleCrash($shortMessage)
         $shortMessage = substr($shortMessage, 0, 240);
     }
     if ($shortMessage !== '') {
-        saveCycleToCache($cycleTitle . 'LastError', $shortMessage);
+        try {
+            if (function_exists('saveCycleToCache')) saveCycleToCache($cycleTitle . 'LastError', $shortMessage);
+        } catch (\Throwable $failure) { error_log('Не удалось сохранить краткую причину падения: ' . get_class($failure)); }
     }
+    return true;
+}
+
+/** Цикл получает время на восстановление; HTTP и одиночное задание требуют отчёта сразу. */
+function majordomoReportCritical($code, $message, $file, $line, $error = null)
+{
+    $context = array('file' => $file, 'line' => $line);
+    $alreadyReported = $error !== null && \MajorDoMo\Core\ErrorDetails::wasReported($error);
+    $encoded = \MajorDoMo\Core\ErrorDetails::encode($message, $context, $error);
+    $GLOBALS['mjdLastFailure'] = $encoded;
+    $script = basename((string)($GLOBALS['argv'][0] ?? ''));
+    if (preg_match('/^cycle_.+\.php$/D', $script)) {
+        try { saveCycleToCache(basename($script, '.php') . 'LastFailure', $encoded); }
+        catch (\Throwable $failure) { error_log('Не удалось сохранить причину падения цикла: ' . get_class($failure)); }
+        return;
+    }
+    // Долгоживущих исполнителей перезапускает ProcessPool; одиночный
+    // core_worker обслуживает задание и не относится к этой отсрочке.
+    if (in_array($script, array('core_worker.php', 'core_runtime_worker.php', 'mqtt_worker.php'), true)) return;
+    if (!isset($GLOBALS['db']) || $alreadyReported) return;
+    \MajorDoMo\Core\Core::errors()->report($code, $encoded, $file . ':' . $line, 60);
 }
 
 function majordomoExceptionHandler($e)
@@ -220,6 +244,7 @@ function majordomoExceptionHandler($e)
     }
     $message = majordomoGetErrorDetails($e);
     majordomoSaveError($message, 'php_exceptions');
+    majordomoReportCritical('php_exception', 'Выполнение прервано: ' . get_class($e) . ': ' . $e->getMessage(), $e->getFile(), $e->getLine(), $e);
     return true;
 }
 
@@ -228,13 +253,18 @@ function majordomoErrorHandler($errno, $errmsg, $filename, $linenum)
     if (!(error_reporting() & $errno)) return; // suppress warnings hidden by @ or current error_reporting mask
     $errorCode = $errno;
     $errorType = majordomoGetErrorType($errorCode);
-    majordomoRememberCycleCrash("PHP $errorType: $errmsg in " . basename($filename) . ':' . (int)$linenum);
+    // Предупреждение не является причиной завершения: не оставляем его
+    // в LastError, иначе супервизор обвинит его при более позднем выходе.
     $message = "PHP error level $errorCode $errorType in $filename (line $linenum):\n" . $errmsg . "\n";
 
     // The error itself is already in the line above: do not repeat it from
     // error_get_last(), which may still hold an older suppressed diagnostics.
     $message .= majordomoGetErrorDetails(0, false);
     majordomoSaveError($message, in_array($errno, array(E_WARNING, E_USER_WARNING, E_CORE_WARNING, E_COMPILE_WARNING), true) ? 'php_warnings' : 'php_errors');
+    if (in_array($errno, array(E_USER_ERROR, E_RECOVERABLE_ERROR), true)) {
+        majordomoRememberCycleCrash("PHP $errorType: $errmsg in " . basename($filename) . ':' . (int)$linenum);
+        majordomoReportCritical('php_error', $errmsg, $filename, $linenum);
+    }
     return true;
 }
 
@@ -249,6 +279,7 @@ function phpShutDownFunction()
     majordomoRememberCycleCrash('PHP ' . majordomoGetErrorType($error['type']) . ': ' . $error['message'] . ' in ' . basename($error['file']) . ':' . (int)$error['line']);
     $message = majordomoGetErrorDetails();
     majordomoSaveError($message, 'php_errors_shutdown');
+    majordomoReportCritical('php_error', $error['message'], $error['file'], $error['line']);
     $err = new custom_error(nl2br($message));
 }
 

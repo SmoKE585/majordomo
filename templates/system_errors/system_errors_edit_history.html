@@ -98,10 +98,12 @@
                 <summary class="md-errors-event__summary">
                     <span class="md-errors-event__date"><i class="ti ti-alert-triangle" aria-hidden="true"></i>[#ADDED#]</span>
                     <span class="md-errors-event__message">[#COMMENTS_PREVIEW#]</span>
-                    [#if ORIGIN_MODULE!=""#]<span class="md-badge md-badge--outline md-errors-event__module">[#ORIGIN_MODULE#]</span>[#endif#]
+                    [#if ORIGIN_MODULE!=""#]<span class="md-badge md-badge--outline md-errors-event__module">[#SOURCE#]</span>[#endif#]
                     <i class="ti ti-chevron-down md-errors-event__chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="md-errors-event__body">
+                    <p class="md-errors-event__description">[#MESSAGE#]</p>
+                    [#if ENTITY!=""#]<p class="md-errors-event__entity">Объект / операция: <strong>[#ENTITY#]</strong></p>[#endif#]
                     [#if HAS_ORIGIN="1" || HAS_CONTEXT="1"#]
                     <div class="md-errors-event__origin">
                         [#if HAS_ORIGIN="1"#]

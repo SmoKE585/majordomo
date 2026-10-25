@@ -1,7 +1,17 @@
 /*
- * System errors module: grouped error list, history and settings.
+ * Журнал критичных сбоев и история диагностики.
+ * 2026-10-25 — сводка события и действия закрытия.
  * Loaded only from templates/system_errors/action_admin.html.
  */
+
+body.md-admin-shell .md-errors-action-form { display: inline-flex; margin: 0; }
+body.md-admin-shell .md-errors-cell__summary { max-width: 600px; overflow-wrap: anywhere; color: var(--md-ui-text-soft); }
+body.md-admin-shell .md-errors-summary { display: grid; gap: 16px; margin: 0; }
+body.md-admin-shell .md-errors-summary__item { min-width: 0; overflow-wrap: anywhere; }
+body.md-admin-shell .md-errors-summary dt { color: var(--md-ui-muted); font-size: var(--md-ui-fs-xs); font-weight: 500; margin-bottom: 4px; }
+body.md-admin-shell .md-errors-summary dd { margin: 0; white-space: pre-line; }
+body.md-admin-shell .md-errors-summary__item--action { padding: 16px; border-radius: var(--md-ui-radius-md); background: var(--md-ui-info-soft); }
+body.md-admin-shell .md-errors-event__description { white-space: pre-line; overflow-wrap: anywhere; }
 
 body.md-admin-shell .md-errors-page .md-errors-cell__body {
   display: flex;

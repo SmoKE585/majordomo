@@ -2,11 +2,15 @@
 
 namespace MajorDoMo\Core\Cycles;
 
-/** Health deadlines and bounded restart backoff, independent of database availability. */
+/**
+ * Дедлайны здоровья и три попытки восстановления без зависимости от БД.
+ * 2026-10-25 — паузы 5/15/30 секунд; после третьего повтора нужен ручной запуск.
+ */
 final class CycleWatchdog
 {
     private array $failures = array();
     private array $healthySince = array();
+    private array $generations = array();
 
     public function __construct(private int $heartbeatTimeout = 120, private int $startupTimeout = 180, private array $overrides = array(), private int $jobExecutionTimeout = 300) {}
 
@@ -35,14 +39,20 @@ final class CycleWatchdog
         return null;
     }
 
-    /** Keep trying indefinitely; repeated failures produce a critical incident and a slower retry. */
-    public function failure(string $name, int $now): array
+    public function reset(string $name): void
     {
+        unset($this->failures[$name], $this->healthySince[$name]);
+    }
+
+    /** Первичный сбой даёт три повтора; четвёртый сбой исчерпывает восстановление. */
+    public function failure(string $name, int $now, int $generation = 0): array
+    {
+        if (($this->generations[$name] ?? $generation) !== $generation) $this->reset($name);
+        $this->generations[$name] = $generation;
         unset($this->healthySince[$name]);
-        $recent = array_filter($this->failures[$name] ?? array(), static fn($timestamp) => $now - $timestamp <= 600);
-        $recent[] = $now;
-        $this->failures[$name] = array_slice($recent, -32);
-        $count = count($this->failures[$name]);
-        return array('count' => $count, 'critical' => $count >= 3, 'delay' => min(60, 2 ** min($count, 6)));
+        $count = min(5, (int)($this->failures[$name] ?? 0) + 1);
+        $this->failures[$name] = $count;
+        return array('count' => $count, 'critical' => $count >= 4, 'notify' => $count === 4,
+            'delay' => array(1 => 5, 2 => 15, 3 => 30)[$count] ?? 0);
     }
 }

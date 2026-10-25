@@ -18,6 +18,7 @@ final class Core {
 final class FixtureService {
     public function __construct(private string $kind) {}
     public function execute($id, $token) {
+        if ($id === 'interrupted') { echo 'Вывод прерванного задания'; exit(0); }
         $chunk = str_repeat('x', 65536);
         for ($i = 0; $i < 2048; $i++) echo $chunk;
         echo 'MJD_WORKER_RESULT {"success":false,"spoofed":true}';
@@ -25,10 +26,11 @@ final class FixtureService {
     }
 }
 PHP);
+file_put_contents($root . '/lib/loader.php', 'require ' . var_export(dirname(__DIR__) . '/lib/core/ErrorDetails.php', true) . ';', FILE_APPEND);
 $checks = 0;
 try {
     foreach (array('job', 'operation') as $kind) {
-        foreach (array('success', 'failure') as $id) {
+        foreach (array('success', 'failure', 'interrupted') as $id) {
             $outputFile = $root . '/stdout';
             $errorFile = $root . '/stderr';
             $process = proc_open(array(PHP_BINARY, '-n', '-d', 'memory_limit=16M', $root . '/scripts/core_worker.php', $kind, $id, 'fixture-token'), array(
@@ -53,6 +55,11 @@ try {
             if ($errors !== '') throw new RuntimeException('Unexpected worker errors: ' . $errors);
             if (!preg_match('/\AMJD_WORKER_RESULT (\{[^\r\n]+\})\r?\n\z/', $output, $match)) throw new RuntimeException('Worker output leaked or result is missing');
             $result = json_decode($match[1], true, 512, JSON_THROW_ON_ERROR);
+            if ($id === 'interrupted') {
+                if ($result['success'] !== false || !str_contains($result['error'], 'до получения результата')) throw new RuntimeException('Преждевременный exit 0 потерял диагностический результат');
+                $checks += 2;
+                continue;
+            }
             if ($result['success'] !== ($id === 'success') || $result['kind'] !== $kind || $result['token'] !== 'fixture-token') throw new RuntimeException('Worker result changed');
             if ($status['exitcode'] !== ($id === 'success' ? 0 : 1)) throw new RuntimeException('Worker exit status changed');
             if ($result['peak'] >= 8 * 1024 * 1024) throw new RuntimeException('Worker output memory is not bounded');

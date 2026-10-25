@@ -1,0 +1,26 @@
+/* 2026-10-25 — задания: общие токены, компактная таблица и мобильная форма. */
+.md-jobs-page { min-width: 0; }
+.md-jobs-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.md-jobs-filters { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 15rem) auto; align-items: end; gap: 1rem; margin-bottom: 1.25rem; }
+.md-jobs-create-fields { display: grid; grid-template-columns: 2fr 1fr 1fr; align-items: start; gap: 1rem; }
+.md-jobs-table { min-width: 800px; }
+.md-jobs-table td { vertical-align: top; }
+.md-jobs-table th:first-child { width: 32%; }
+.md-jobs-table th:nth-child(4) { width: 24%; }
+.md-jobs-table strong { display: block; overflow-wrap: anywhere; }
+.md-jobs-muted { display: block; color: var(--md-ui-muted); font-size: .8125rem; }
+.md-jobs-command, .md-jobs-error { margin-top: .5rem; font-size: .875rem; }
+.md-jobs-command summary, .md-jobs-error summary { cursor: pointer; color: var(--md-ui-muted); }
+.md-jobs-command summary:focus-visible, .md-jobs-error summary:focus-visible { outline: 2px solid var(--md-ui-focus); outline-offset: 3px; }
+.md-jobs-command pre, .md-jobs-error p { margin: .5rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 30rem; }
+.md-jobs-actions { display: flex; align-items: center; gap: .5rem; }
+.md-jobs-actions form { margin: 0; }
+.md-jobs-page .md-field__hint code { white-space: normal; overflow-wrap: anywhere; }
+.md-jobs-pagination { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+.md-jobs-pagination .pagination { margin: 0; }
+#md-jobs-create { scroll-margin-top: 6rem; }
+@media (max-width: 767px) {
+    .md-jobs-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .md-jobs-filters, .md-jobs-create-fields { grid-template-columns: minmax(0, 1fr); }
+    .md-jobs-actions .md-btn { min-width: 44px; min-height: 44px; }
+}

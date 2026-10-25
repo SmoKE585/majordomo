@@ -10,9 +10,14 @@
             <input type="search" data-md-table-search placeholder="Поиск по коду, названию и описанию" aria-label="Поиск ошибок" autocomplete="off">
         </div>
         <select class="md-table__filter" data-md-table-filter="state" aria-label="Фильтр по статусу">
-            <option value="">Все ошибки</option>
-            <option value="active">Активные</option>
-            <option value="read">Просмотренные</option>
+            <option value="">Все статусы</option>
+            <option value="new">Новая</option>
+            <option value="repeated">Повторная</option>
+            <option value="closed">Закрыта</option>
+        </select>
+        <select class="md-table__filter" data-md-table-filter="source" aria-label="Фильтр по источнику">
+            <option value="">Все источники</option>
+            [#begin SOURCE_OPTIONS#]<option value="[#VALUE#]">[#VALUE#]</option>[#end SOURCE_OPTIONS#]
         </select>
         <div class="md-table__meta" data-md-table-meta>Групп: [#ERRORS_TOTAL#]</div>
     </div>
@@ -30,21 +35,23 @@
             </thead>
             <tbody data-md-table-body>
                 [#begin RESULT#]
-                <tr data-md-row data-row-id="[#ID#]" data-state="[#STATUS_STATE#]" data-search="[#CODE#] [#TITLE#] [#DETAILS#] [#ORIGIN_MODULE#] [#ORIGIN_FILE#]">
+                <tr data-md-row data-row-id="[#ID#]" data-state="[#STATUS_STATE#]" data-source="[#SOURCE#]" data-search="[#CODE#] [#TITLE#] [#DETAILS#] [#SOURCE#] [#ENTITY#] [#SUMMARY#] [#ORIGIN_MODULE#] [#ORIGIN_FILE#]">
                     <td class="md-errors-col-main">
                         <div class="md-table__name md-errors-cell">
                             <span class="md-table__icon"><i class="ti ti-alert-triangle" aria-hidden="true"></i></span>
                             <div class="md-errors-cell__body">
                                 <a href="?view_mode=edit_system_errors&id=[#ID#]&tab=history"><strong>[#TITLE_DISPLAY#]</strong></a>
                                 [#if SHOW_CODE="1"#]<small class="md-errors-code"><code>[#CODE#]</code></small>[#endif#]
+                                <span class="md-errors-cell__summary">[#SUMMARY#]</span>
+                                <small>[#SOURCE#][#if ENTITY!=""#] · [#ENTITY#][#endif#]</small>
                                 [#if HAS_ORIGIN="1"#]
                                 <small class="md-errors-origin" title="[#ORIGIN_FILE#]:[#ORIGIN_LINE#] — [#ORIGIN_CALL#]"><i class="ti ti-file-code" aria-hidden="true"></i><span>[#ORIGIN_MODULE#] · [#ORIGIN_FILE_SHORT#][#if ORIGIN_LINE!="0"#]:[#ORIGIN_LINE#][#endif#]</span></small>
                                 [#endif#]
                                 <span class="md-errors-cell__meta">
-                                    [#if STATUS_STATE="active"#]
-                                    <span class="md-badge md-badge--danger"><i class="ti ti-alert-triangle" aria-hidden="true"></i>Активна · [#ACTIVE#]</span>
+                                    [#if STATUS_STATE!="closed"#]
+                                    <span class="md-badge md-badge--danger"><i class="ti ti-alert-triangle" aria-hidden="true"></i>[#STATUS_LABEL#]</span>
                                     [#else#]
-                                    <span class="md-badge md-badge--success"><i class="ti ti-check" aria-hidden="true"></i>Прочитана</span>
+                                    <span class="md-badge md-badge--success"><i class="ti ti-check" aria-hidden="true"></i>Закрыта</span>
                                     [#endif#]
                                 </span>
                             </div>
@@ -72,6 +79,7 @@
                             <input type="hidden" name="id" value="[#ID#]">
                             <input type="hidden" name="view_mode" value="toggle_keep_history">
                             <input type="hidden" name="data_source" value="system_errors">
+                            <input type="hidden" name="_token" value="[#CSRF_TOKEN#]">
                         </form>
                     </td>
                     <td class="md-errors-col-actions">
@@ -79,14 +87,14 @@
                             <a href="?view_mode=edit_system_errors&id=[#ID#]&tab=history" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="История" aria-label="История ошибки [#CODE#]">
                                 <i class="ti ti-history" aria-hidden="true"></i>
                             </a>
-                            [#if STATUS_STATE="active"#]
-                            <a href="?view_mode=clear_system_errors&id=[#ID#]" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="<#LANG_NEWSYSTEM_ERROR_READ_BTN#>" aria-label="Отметить ошибку [#CODE#] просмотренной">
+                            [#if STATUS_STATE!="closed"#]
+                            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="clear_system_errors"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><input type="hidden" name="id" value="[#ID#]"><button type="submit" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="tooltip" data-bs-title="Закрыть ошибку" aria-label="Закрыть ошибку [#CODE#]">
                                 <i class="ti ti-check" aria-hidden="true"></i>
-                            </a>
+                            </button></form>
                             [#endif#]
-                            <a href="?view_mode=delete_system_errors&id=[#ID#]" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить ошибку [#CODE#]" data-md-confirm="Удалить ошибку [#CODE#] и всю историю?">
+                            <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="delete_system_errors"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><input type="hidden" name="id" value="[#ID#]"><button type="submit" class="md-icon-btn md-icon-btn--sm md-icon-btn--danger" data-bs-toggle="tooltip" data-bs-title="<#LANG_DELETE#>" aria-label="Удалить ошибку [#CODE#]" data-md-confirm="Удалить ошибку [#CODE#] и всю историю?">
                                 <i class="ti ti-trash" aria-hidden="true"></i>
-                            </a>
+                            </button></form>
                         </div>
                     </td>
                 </tr>
@@ -112,11 +120,11 @@
 <div class="md-empty">
     <span class="md-empty__icon"><i class="ti ti-shield-check" aria-hidden="true"></i></span>
     <div class="md-empty__title">Ошибок пока нет</div>
-    <p class="md-empty__text">Журнал пуст. Ошибки появятся здесь, когда модули вызовут <code>registerError()</code>.</p>
+    <p class="md-empty__text">Здесь появятся сбои ядра, модулей и циклов, требующие вмешательства. Диагностика и успешное восстановление остаются в файловых логах.</p>
     <div class="md-empty__actions">
-        <a href="?view_mode=addtesterror" class="md-btn md-btn--secondary md-btn--sm" data-md-confirm="Создать тестовую ошибку?">
+        <form action="?" method="post" class="md-errors-action-form"><input type="hidden" name="view_mode" value="addtesterror"><input type="hidden" name="data_source" value="system_errors"><input type="hidden" name="_token" value="[#CSRF_TOKEN#]"><button type="submit" class="md-btn md-btn--secondary md-btn--sm" data-md-confirm="Создать тестовую ошибку?">
             <i class="ti ti-bug" aria-hidden="true"></i><#LANG_NEWSYSTEM_ERROR_GET_ERROR#>
-        </a>
+        </button></form>
     </div>
 </div>
 [#endif RESULT#]

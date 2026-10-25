@@ -22,7 +22,7 @@ namespace {
     putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('USE_REDIS=false');
     error_reporting(E_ALL);
     set_error_handler(static function ($severity, $message, $file, $line) { throw new ErrorException($message, 0, $severity, $file, $line); });
-    foreach (array('Database', 'RedisConnection', 'PropertyChain', 'OperationWorker') as $class) require dirname(__DIR__) . '/lib/core/' . $class . '.php';
+    foreach (array('Database', 'RedisConnection', 'PropertyChain', 'ErrorDetails', 'OperationWorker') as $class) require dirname(__DIR__) . '/lib/core/' . $class . '.php';
     function runScript($id, $params) { return MajorDoMo\Core\Core::$result; }
     $pdo = new PDO('sqlite::memory:', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
     if (getenv('APP_ENV') !== 'testing' || $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite') throw new RuntimeException('Test isolation failed');
