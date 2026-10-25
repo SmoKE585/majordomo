@@ -2,6 +2,7 @@
 
 /**
  * Запись свойств на SQLite :memory: с подменой внешних операций, без загрузки приложения.
+ * 2026-10-25 — порядок уведомлений и ONCHANGE при следующей записи сразу после освобождения блокировки.
  * 2026-10-23 — проверка отсутствия повторов WebSocket при сохранении обработчиков.
  * 2026-10-25 — входящие события и NO_LINKED разных модулей не блокируют следующую привязку.
  */
@@ -11,9 +12,15 @@ namespace MajorDoMo\Core {
     class MetadataCache { public function get($key, $load) { return $load(); } }
     class PropertyLock {
         public bool $released = false;
+        public ?\Closure $afterRelease = null;
         public function acquire($id, $property) { $this->released = false; return 1; }
         public function check($lock) {}
-        public function release($lock) { $this->released = true; }
+        public function release($lock) {
+            $this->released = true;
+            $callback = $this->afterRelease;
+            $this->afterRelease = null;
+            if ($callback) $callback();
+        }
     }
     class WebSocketQueue {
         public array $posts = array();
@@ -23,6 +30,15 @@ namespace MajorDoMo\Core {
     class Core {
         public static function queue() { return new class {
             public function enqueueRuntime($operation, $params, $target) {
+                $GLOBALS['dispatches'][] = array($operation, $target, (string)($params['NEW_VALUE'] ?? $params['value']));
+                if ($operation === 'method') {
+                    \check(!$GLOBALS['locks']->released, 'ONCHANGE ставится до освобождения блокировки');
+                    $query = $GLOBALS['pdo']->prepare('SELECT VALUE FROM pvalues WHERE PROPERTY_NAME=?');
+                    $query->execute(array('Sensor.' . $params['PROPERTY']));
+                    $GLOBALS['onchangeCalls'][] = array('queued', $params, $query->fetchColumn());
+                    if ($GLOBALS['onchangeFailure'] === 'exception') throw new \RuntimeException('simulated ONCHANGE queue failure');
+                    return $GLOBALS['onchangeFailure'] !== 'false';
+                }
                 $GLOBALS['queued'][] = array($operation, $target);
                 if ($GLOBALS['throwQueue'] && $target === 'broken') throw new \RuntimeException('simulated queue failure');
                 return !($GLOBALS['failQueue'] && $target === 'broken');
@@ -56,40 +72,41 @@ namespace {
     $websockets = new MajorDoMo\Core\WebSocketQueue();
     $properties = new MajorDoMo\Core\Properties(new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(), new MajorDoMo\Core\MetadataCache(), $locks, $websockets, new MajorDoMo\Core\CodeExecutor());
     $object = new class {
-        public $id = 1; public $class_id = 0; public $object_title = 'Sensor'; public array $calls = array();
-        public function callMethod($name, $params) { $this->calls[] = array($name, $params, $GLOBALS['pdo']->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn()); }
-        public function raiseEvent($name, $params) { $this->calls[] = array('queued', $params, $GLOBALS['pdo']->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn()); }
+        public $id = 1; public $class_id = 0; public $object_title = 'Sensor';
+        public function callMethod($name, $params) { throw new RuntimeException('ONCHANGE не должен выполняться внутри записи свойства'); }
+        public function raiseEvent($name, $params) { throw new RuntimeException('Внутренний ONCHANGE не должен зависеть от старого raiseEvent'); }
     };
     $checks = 0;
     function check($condition, $message) { global $checks; if (!$condition) throw new RuntimeException($message); $checks++; }
     $_SERVER['REQUEST_URI'] = '/mqtt/module/zigbee';
     $failQueue = false; $throwQueue = false; $queued = array();
+    $onchangeCalls = $dispatches = array(); $onchangeFailure = '';
     $properties->set($object, 'motion', 1, array('zigbee' => 0));
-    check(count($object->calls) === 1 && $object->calls[0][2] === '1', 'New value saved before ONCHANGE');
+    check(count($onchangeCalls) === 1 && $onchangeCalls[0][2] === '1', 'New value saved before ONCHANGE');
     check($websockets->posts === array(array('Sensor.motion', 1)), 'Changed value is queued for WebSocket');
     check($queued === array(), 'Excluded source module is not echoed');
     $properties->set($object, 'motion', 1, array('zigbee' => 0));
-    check(count($object->calls) === 2, 'Repeated value still triggers ONCHANGE');
+    check(count($onchangeCalls) === 2, 'Repeated value still triggers ONCHANGE');
     check(count($websockets->posts) === 1, 'Repeated integer does not queue the same stored string for WebSocket');
     $pdo->exec("UPDATE pvalues SET LINKED_MODULES='zigbee,broken,healthy'");
     foreach (array('false', 'exception') as $failure) {
         $failQueue = $failure === 'false'; $throwQueue = $failure === 'exception'; $queued = array();
-        $before = count($object->calls); $caught = null;
+        $before = count($onchangeCalls); $caught = null;
         try { $properties->set($object, 'motion', 0, array('zigbee' => 0)); } catch (RuntimeException $e) { $caught = $e; }
         check($caught === null, 'Notification failure does not break the property writer');
-        check(count($object->calls) === $before + 1 && end($object->calls)[2] === '0', 'Notification failure does not suppress ONCHANGE');
+        check(count($onchangeCalls) === $before + 1 && end($onchangeCalls)[2] === '0', 'Notification failure does not suppress ONCHANGE');
         check($locks->released, 'Property lock released after failure');
         check($queued === array(array('modulepropertyset', 'broken'), array('modulepropertyset', 'healthy')), 'Other subscribers still notified directly through the queue');
     }
     unset($_SERVER['REQUEST_URI']); $failQueue = false; $throwQueue = false;
     $properties->set($object, 'motion', 1, array('zigbee' => 0));
-    check(end($object->calls)[0] === 'queued', 'CLI and web both dispatch ONCHANGE asynchronously');
+    check(end($onchangeCalls)[0] === 'queued', 'CLI and web both dispatch ONCHANGE asynchronously');
 
     $pdo->exec("UPDATE pvalues SET LINKED_MODULES='mqtt'");
-    $before = count($object->calls); $queued = array();
+    $before = count($onchangeCalls); $queued = array();
     MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.motion'), 'mqtt');
     try { $properties->set($object, 'motion', 0); } finally { MajorDoMo\Core\PropertyChain::leave(); }
-    check($queued === array() && count($object->calls) === $before
+    check($queued === array() && count($onchangeCalls) === $before
         && $pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === '0',
         'Repeated property in a delivery chain stops notifications but saves the value');
 
@@ -99,14 +116,14 @@ namespace {
     $pdo->exec("INSERT INTO properties VALUES (2,1,0,'cmd',0,0,0,'cmdChanged')");
     $pdo->exec("INSERT INTO pvalues VALUES (2,2,1,'0','','','Sensor.cmd','zigbee,yandexhome')");
     MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.motion'), 'zigbee', 'property:Sensor.motion');
-    $queued = array(); $before = count($object->calls);
+    $queued = array(); $before = count($onchangeCalls);
     $inherited = MajorDoMo\Core\PropertyChain::scopedExclusions(array('zigbee' => 0), array('zigbee' => 'property:Sensor.motion'));
     try { $properties->set($object, 'cmd', 1, $inherited, 'zigbee'); } finally { MajorDoMo\Core\PropertyChain::leave(); }
     check($queued === array(array('modulepropertyset', 'zigbee'), array('modulepropertyset', 'yandexhome')),
         'Source module stays subscribed to another property in the same chain');
-    check(count($object->calls) === $before + 1 && !isset(end($object->calls)[1]['NO_LINKED']['zigbee']),
+    check(count($onchangeCalls) === $before + 1 && !isset(end($onchangeCalls)[1]['NO_LINKED']['zigbee']),
         'Nested ONCHANGE does not inherit the source module exclusion');
-    check((end($object->calls)[1]['_delivery'] ?? null) === array('module' => 'zigbee', 'point' => 'property:Sensor.motion'),
+    check((end($onchangeCalls)[1]['_delivery'] ?? null) === array('module' => 'zigbee', 'point' => 'property:Sensor.motion'),
         'ONCHANGE receives the delivery point needed for cross-process echo scoping');
 
     foreach (array('', 'zigbee') as $sourceModule) {
@@ -118,7 +135,7 @@ namespace {
 
     // Собственное эхо по тому же свойству по-прежнему гасится.
     MajorDoMo\Core\PropertyChain::enter(array('property:Sensor.other'), 'zigbee', 'property:Sensor.cmd');
-    $queued = array(); $before = count($object->calls);
+    $queued = array(); $before = count($onchangeCalls);
     try { $properties->set($object, 'cmd', 0); } finally { MajorDoMo\Core\PropertyChain::leave(); }
     check($queued === array(array('modulepropertyset', 'yandexhome')),
         'Source module does not receive its own echo for the delivered property');
@@ -128,7 +145,7 @@ namespace {
     $properties->set($object, 'cmd', false);
     check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=2')->fetchColumn() === '0',
         'Boolean false is stored as 0, not as an empty string');
-    check(end($object->calls)[1]['NEW_VALUE'] === '0', 'ONCHANGE receives 0 for boolean false');
+    check(end($onchangeCalls)[1]['NEW_VALUE'] === '0', 'ONCHANGE receives 0 for boolean false');
     $properties->set($object, 'cmd', true);
     check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=2')->fetchColumn() === '1',
         'Boolean true is stored as 1');
@@ -147,7 +164,7 @@ namespace {
             MajorDoMo\Core\PropertyChain::enter(array(), $sourceModule);
             $queued = array();
             $properties->set($object, 'motion', 0, array($module => 0));
-            $onchange = end($object->calls)[1];
+            $onchange = end($onchangeCalls)[1];
             check($queued === array(array('modulepropertyset', 'yandexhome')) && $onchange['NEW_VALUE'] === '0',
                 'Входящий ноль не отражается источнику, но доставляется другим подписчикам');
             check($onchange['_delivery']['exclusions'] === array($module => 'property:Sensor.motion'),
@@ -160,7 +177,7 @@ namespace {
             $properties->set($object, 'cmd', 1, $onchange['NO_LINKED']);
             check($queued === array(array('modulepropertyset', $module), array('modulepropertyset', 'yandexhome')),
                 'Унаследованный NO_LINKED не блокирует другое свойство: ' . $module);
-            check(!isset(end($object->calls)[1]['NO_LINKED'][$module]), 'Следующий ONCHANGE не наследует снятое исключение');
+            check(!isset(end($onchangeCalls)[1]['NO_LINKED'][$module]), 'Следующий ONCHANGE не наследует снятое исключение');
             MajorDoMo\Core\PropertyChain::leave();
             check(MajorDoMo\Core\PropertyChain::exclusions() === array(), 'Контекст исключений очищен между доставками');
         }
@@ -168,7 +185,7 @@ namespace {
     $pdo->exec("UPDATE pvalues SET LINKED_MODULES='zigbee,mqtt,yandexhome'");
     $queued = array();
     $properties->set($object, 'motion', 0, array('zigbee' => 0, 'mqtt' => false, 'yandexhome' => null));
-    $onchange = end($object->calls)[1];
+    $onchange = end($onchangeCalls)[1];
     check($queued === array(array('modulepropertyset', 'yandexhome')),
         'Несколько явных исключений распознают 0 и false, но не null');
     check($onchange['_delivery']['exclusions'] === array('zigbee' => 'property:Sensor.motion', 'mqtt' => 'property:Sensor.motion'),
@@ -189,14 +206,50 @@ namespace {
         array('', true), array(null, false), array('01', true), array(1, true),
         array('1.0', true), array(1.0, true), array(1.5, true), array(1.5, false),
     ) as [$input, $changed]) {
-        $websockets->posts = array(); $queued = array(); $before = count($object->calls);
+        $websockets->posts = array(); $queued = array(); $before = count($onchangeCalls);
         $properties->set($object, 'cmd', $input);
         check(count($websockets->posts) === (int)$changed,
             'WebSocket follows the stored value for ' . var_export($input, true));
-        check(count($object->calls) === $before + 1
+        check(count($onchangeCalls) === $before + 1
             && $queued === array(array('modulepropertyset', 'zigbee'), array('modulepropertyset', 'yandexhome')),
             'ONCHANGE and linked modules still receive every assignment');
     }
+
+    // Другой писатель начинает сразу после unlock: его задания обязаны идти
+    // после всех заданий предыдущей записи, включая ONCHANGE.
+    $pdo->exec("UPDATE pvalues SET LINKED_MODULES='mqtt',VALUE='1' WHERE ID=1");
+    $queued = $dispatches = $onchangeCalls = array();
+    $locks->afterRelease = static function () use ($properties, $object) {
+        $properties->set($object, 'motion', 1);
+    };
+    $properties->set($object, 'motion', 0);
+    check($dispatches === array(
+        array('modulepropertyset', 'mqtt', '0'), array('method', 'Sensor.onMotion', '0'),
+        array('modulepropertyset', 'mqtt', '1'), array('method', 'Sensor.onMotion', '1'),
+    ), 'Следующая запись не обгоняет ONCHANGE предыдущего значения');
+    check(array_map(static fn($call) => array($call[1]['OLD_VALUE'], $call[1]['NEW_VALUE']), $onchangeCalls)
+        === array(array('1', '0'), array('0', '1')), 'ONCHANGE сохраняет пары старого и нового значения');
+    check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === '1' && $locks->released,
+        'Обе записи завершены, последнее значение сохранено и блокировка снята');
+
+    foreach (array('false', 'exception') as $failure) {
+        $onchangeFailure = $failure; $caught = null;
+        try { $properties->set($object, 'motion', 0); } catch (RuntimeException $e) { $caught = $e; }
+        check($caught !== null && $locks->released, 'Отказ постановки ONCHANGE виден вызывающему коду и освобождает блокировку');
+        check($pdo->query('SELECT VALUE FROM pvalues WHERE ID=1')->fetchColumn() === '0',
+            'Ошибка очереди не подменяет результат уже выполненной записи');
+        $onchangeFailure = '';
+        $before = count($onchangeCalls);
+        $properties->set($object, 'motion', 1);
+        check(count($onchangeCalls) === $before + 1, 'После отказа следующий ONCHANGE не подавляется');
+    }
+    $pdo->exec('UPDATE properties SET VALIDATION_TYPE=2 WHERE ID=1');
+    $before = count($dispatches);
+    check($properties->set($object, 'motion', 3) === false && $locks->released && count($dispatches) === $before,
+        'Отклонённая валидация освобождает блокировку без уведомлений');
+    $pdo->exec('UPDATE properties SET VALIDATION_TYPE=0 WHERE ID=1');
+    check($properties->set($object, 'motion', 0, 1) === null && $locks->released && count($dispatches) === $before,
+        'Старый no_linked=1 сохраняет значение без обработчиков и освобождает блокировку');
 
     // Событие должно объяснять себя: причину, что сохранено и что делать.
     $propertiesWithErrors = new MajorDoMo\Core\Properties(

@@ -1,10 +1,14 @@
 <?php
 
-/** 2026-10-25 — события, методы, сценарии и защита от циклов на SQLite :memory:, без рабочих сервисов. */
+/**
+ * События, методы, сценарии и защита от циклов на SQLite :memory:, без рабочих сервисов.
+ * 2026-10-25 — ONCHANGE остаётся в очереди при флагах воркера и LOWER_BACKGROUND_PROCESSES.
+ */
 namespace MajorDoMo\Core {
     final class Config {
+        public static bool $lowerBackground = false;
         public static function get($key, $default = null) { return $key === 'USE_REDIS' ? false : $default; }
-        public static function bool($key) { return false; }
+        public static function bool($key) { return $key === 'LOWER_BACKGROUND_PROCESSES' && self::$lowerBackground; }
         public static function has($key) { return false; }
     }
     final class Cache {
@@ -105,7 +109,10 @@ namespace {
         Core::$objects[$title] = new class($index + 1, $title) {
             public int $class_id = 0;
             public function __construct(public int $id, public string $object_title) {}
-            public function raiseEvent($name, $params) { return Core::$queue->enqueueRuntime('method', $params, $this->object_title . '.' . $name); }
+            public function raiseEvent($name, $params) {
+                $params['raiseEvent'] = '1';
+                return Core::$methods->callSafe($this, $name, $params);
+            }
         };
     }
     $changedCode = <<<'PHP'
@@ -185,6 +192,28 @@ PHP);
         PropertyChain::leave();
         $_GET = $_REQUEST = array(); unset($_SERVER['REQUEST_URI']);
     }
+
+    // Используется настоящий Methods::callSafe: упрощённый raiseEvent в
+    // фикстуре раньше скрывал синхронную ветку старого механизма.
+    foreach (array('web', 'worker', 'lower_background') as $context) {
+        resetDelivery('mqtt');
+        $pdo->exec('UPDATE methods SET EXECUTED=NULL');
+        $_SERVER['REQUEST_URI'] = $context === 'worker' ? 'core:modulepropertyset/mqtt' : '/api/v1/properties';
+        $_GET = $context === 'worker' ? array('r_s_m' => 1) : array();
+        MajorDoMo\Core\Config::$lowerBackground = $context === 'lower_background';
+        Core::$properties->set(Core::$objects['Sensor'], 'status', 0, array('mqtt' => 0));
+        $pending = queued();
+        check(array_column($pending, 'DATANAME') === array('modulepropertyset', 'method'),
+            'Уведомление и ONCHANGE поставлены в общую очередь: ' . $context);
+        check(json_decode($pending[1]['DATAVALUE'], true)['target'] === 'Sensor.changed',
+            'Очередь содержит исходный ONCHANGE, а не результат его преждевременного выполнения');
+        check((int)$pdo->query('SELECT COUNT(*) FROM methods WHERE EXECUTED IS NOT NULL')->fetchColumn() === 0,
+            'Код метода не выполнялся во время сохранения свойства: ' . $context);
+        drain();
+        check(in_array(array('mqtt', 'Lamp', 'status', 1), $delivered, true),
+            'После разбора очереди цепочка дошла до MQTT: ' . $context);
+    }
+    MajorDoMo\Core\Config::$lowerBackground = false;
 
     foreach (array('zigbee', 'mqtt', 'fixturemodule') as $module) {
         resetDelivery($module);

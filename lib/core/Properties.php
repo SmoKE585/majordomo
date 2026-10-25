@@ -13,6 +13,8 @@ use \RuntimeException;
  * изменений не даёт автоматизации зациклиться.
  *
  * Изменения:
+ * 2026-10-25 — уведомления и ONCHANGE ставятся в очередь до снятия блокировки свойства;
+ *              внутренний ONCHANGE больше не зависит от синхронных веток callMethodSafe.
  * 2026-10-25 — явный NO_LINKED больше не отменяется областью предыдущего обработчика.
  * 2026-10-25 — входящее событие не блокирует команды своему модулю;
  *              NO_LINKED ограничен исходным свойством через очередь.
@@ -320,6 +322,7 @@ final class Properties
         }
 
         $linked_operation_errors = array();
+        $audit_owned = false;
         $property_lock = $this->locks->acquire($object->id, $property);
         try {
             startMeasure('getPropertyByName');
@@ -467,7 +470,6 @@ final class Properties
             // The journal stores actual value changes only. A repeated value is
             // still delivered to ONCHANGE/subscribers, but does not create a
             // second "changed" row for every sensor poll.
-            $audit_owned = false;
             if ($this->audit && (string)$old_value !== (string)$value) {
                 $full_name = $object->object_title . '.' . $property;
                 $audit_owned = $this->audit->beginIfMissing('property', $full_name, array(), array('source' => $source));
@@ -557,66 +559,50 @@ final class Properties
             }
 
             if ($abort_after_save) {
+                return;
+            }
+
+            if (!$chain_stopped && isset($prop['ONCHANGE']) && $prop['ONCHANGE']) {
+                $params = array();
+                $params['PROPERTY'] = $property;
+                $params['NEW_VALUE'] = (string)$value;
+                $params['OLD_VALUE'] = (string)$old_value;
+                $params['SOURCE'] = (string)$source;
+                $params['NO_LINKED'] = $no_linked;
+                $params['_chain'] = $next_chain;
+                // Точка доставки сохраняет область исключений и защиту от эха
+                // при продолжении цепочки в отдельном процессе.
+                $params['_delivery'] = PropertyChain::deliveryForProperty($chain_token,
+                    is_array($no_linked) ? $no_linked : array());
+                if (is_array($no_linked)) {
+                    $params['NO_LINKED'] = PropertyChain::scopedExclusions($no_linked,
+                        $params['_delivery']['exclusions'] ?? array());
+                }
+                $params['raiseEvent'] = '1';
+                PropertyAudit::attach($params);
+                // Пока держим блокировку, следующая запись этого свойства не
+                // обгонит постановку его обработчика. callMethodSafe здесь
+                // недопустим: флаги старого вызова могут выполнить код сразу.
+                if (!Core::queue()->enqueueRuntime('method', $params, $object->object_title . '.' . $prop['ONCHANGE'])) {
+                    throw new RuntimeException('Property ONCHANGE was not queued');
+                }
+            }
+        } catch (Throwable $e) {
+            $this->cache->delete($cached_name ?? ('MJD:' . $object->object_title . '.' . $property));
+            if ($audit_owned) {
+                $this->audit?->finishRun('error', null, $e);
+                $this->audit?->leave();
+                $audit_owned = false;
+            }
+            throw $e;
+        } finally {
+            try {
+                $this->locks->release($property_lock);
+            } finally {
                 if ($audit_owned) {
                     $this->audit?->finishRun('done');
                     $this->audit?->leave();
                 }
-                return;
-            }
-
-        } catch (Throwable $e) {
-            $this->cache->delete($cached_name ?? ('MJD:' . $object->object_title . '.' . $property));
-            if (!empty($audit_owned)) {
-                $this->audit?->finishRun('error', null, $e);
-                $this->audit?->leave();
-            }
-            throw $e;
-        } finally {
-            $this->locks->release($property_lock);
-        }
-
-        try {
-            if (!$chain_stopped && isset($prop['ONCHANGE']) && $prop['ONCHANGE']) {
-                global $property_linked_history;
-                if (!isset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']])) {
-                    $property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']] = 1;
-                    $params = array();
-                    $params['PROPERTY'] = $property;
-                    $params['NEW_VALUE'] = (string)$value;
-                    $params['OLD_VALUE'] = (string)$old_value;
-                    $params['SOURCE'] = (string)$source;
-                    $params['NO_LINKED'] = $no_linked;
-                    $params['_chain'] = $next_chain;
-                    // Обработчик выполнится, возможно, в другом процессе:
-                    // передаём ему точку доставки, чтобы и там исключение
-                    // модуля-источника действовало только на одно свойство.
-                    $params['_delivery'] = PropertyChain::deliveryForProperty($chain_token,
-                        is_array($no_linked) ? $no_linked : array());
-                    if (is_array($no_linked)) {
-                        $params['NO_LINKED'] = PropertyChain::scopedExclusions($no_linked,
-                            $params['_delivery']['exclusions'] ?? array());
-                    }
-                    PropertyAudit::attach($params);
-                    try {
-                        // Always enqueue: a web request must not wait for user code,
-                        // and web/CLI must behave identically. The worker executes
-                        // the method and carries the chain into nested writes.
-                        $object->raiseEvent($prop['ONCHANGE'], $params);
-                    } finally {
-                        unset($property_linked_history[$object->object_title . '.' . $property][$prop['ONCHANGE']]);
-                    }
-                }
-            }
-        } catch (Throwable $e) {
-            if ($audit_owned) {
-                $this->audit?->finishRun('error', null, $e);
-                $this->audit?->leave();
-            }
-            throw $e;
-        } finally {
-            if ($audit_owned) {
-                $this->audit?->finishRun('done');
-                $this->audit?->leave();
             }
         }
 
