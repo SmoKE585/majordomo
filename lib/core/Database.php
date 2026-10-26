@@ -15,7 +15,11 @@ final class Database
     }
     public function select(string $sql): array { return $this->call(fn() => $this->connection->Select($sql)); }
     public function one(string $sql): ?array { return $this->call(fn() => $this->connection->SelectOne($sql)) ?: null; }
-    public function exec(string $sql, bool $ignoreErrors = false): mixed { return $this->call(fn() => $this->connection->Exec($sql, $ignoreErrors)); }
+    public function exec(string $sql, bool $ignoreErrors = false): mixed
+    {
+        DatabaseGuard::assertAllowed($sql);
+        return $this->call(fn() => $this->connection->Exec($sql, $ignoreErrors));
+    }
     public function requireExec(string $sql, bool $deferErrors = false): mixed
     {
         // Transaction owners must roll back before handling an error. The legacy

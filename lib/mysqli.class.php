@@ -141,6 +141,11 @@ class mysql
      */
     public function Exec($query, $ignore_errors = false)
     {
+        // Отладочный стенд защищает базу от DROP DATABASE/DROP SCHEMA.
+        // Проверка стоит до подключения: запрещённый запрос не должен дойти до MySQL.
+        if (class_exists('\\MajorDoMo\\Core\\DatabaseGuard')) {
+            \MajorDoMo\Core\DatabaseGuard::assertAllowed((string)$query);
+        }
         if ($this->transactionAborted) {
             if (preg_match('/^\s*(?:ROLLBACK(?:\s+WORK)?\s*;?\s*$|BEGIN\b|START\s+TRANSACTION\b)/i', $query)) $this->transactionAborted = false;
             else {

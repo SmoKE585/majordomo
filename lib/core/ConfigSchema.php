@@ -36,6 +36,9 @@ final class ConfigSchema
             'DB_NAME' => array('type' => 'string', 'default' => '', 'required' => true),
             'DB_USER' => array('type' => 'string', 'default' => ''),
             'DB_PASSWORD' => array('type' => 'string', 'default' => '', 'secret' => true),
+            // 1 — приложение отказывается выполнять DROP DATABASE/DROP SCHEMA.
+            // Включается в docker-стенде отладки (см. docs/agents/docker-debug.md).
+            'DB_PROTECT_DROP' => array('type' => 'boolean', 'default' => false, 'constant' => false),
 
             // Paths ----------------------------------------------------------
             'DOC_ROOT' => array('type' => 'string', 'computed' => true, 'env' => false),

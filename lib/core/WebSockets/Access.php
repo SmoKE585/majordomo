@@ -6,6 +6,8 @@ use MajorDoMo\Core\Api\{AccessPolicy, ApiException};
 
 /**
  * Доступ к WebSocket: Origin, API-токен или одноразовый билет администратора.
+ * 2026-10-26 — localhost/127.0.0.1/LAN-IP считаются одним локальным стендом:
+ *              панель по 192.168.1.2 больше не получает 403 при BASE_URL=localhost.
  * 2026-10-23 — истечение пользовательского токена закрывает соединение штатно.
  *
  * 2026-10-23 — домен и поддомены разрешаются по BASE_URL; Host запроса больше
@@ -80,15 +82,31 @@ final class Access
             throw new ApiException(403, 'cross_origin_denied', 'Origin подключения не разрешён.');
         }
         $originHost = SiteDomain::normalize((string)($origin['host'] ?? ''));
+        // Для локального/приватного стенда localhost, 127.0.0.1 и LAN-IP
+        // взаимозаменяемы: панель могла быть открыта по 192.168.1.2, а
+        // BASE_URL остался localhost. Публичные домены проверяются строго.
+        $localAlias = self::isLocalHost($this->publicHost) && self::isLocalHost($originHost);
         // Только настройка владельца задаёт границу сайта. Ни Host, ни билет,
         // ни заголовок same-site не могут разрешить посторонний домен.
-        $allowed = $this->publicHost !== ''
+        $allowed = $localAlias || ($this->publicHost !== ''
             ? $originHost === $this->publicHost || ($this->publicDomain !== null
                 && ($originHost === $this->publicDomain || str_ends_with($originHost, '.' . $this->publicDomain)))
-            : in_array($originHost, $this->allowedHosts($server, $ticketHost), true);
+            : in_array($originHost, $this->allowedHosts($server, $ticketHost), true));
         if ($originHost === '' || !$allowed) {
             throw new ApiException(403, 'cross_origin_denied', 'Origin подключения не разрешён.');
         }
+    }
+
+    /**
+     * Локальный или частный адрес стенда: localhost, loopback, LAN и ULA.
+     * Такие адреса не являются публичным доменом владельца, поэтому их
+     * взаимная замена не расширяет доступ из интернета.
+     */
+    private static function isLocalHost(string $host): bool
+    {
+        if (in_array($host, array('localhost', '127.0.0.1', '::1'), true)) return true;
+        if (filter_var($host, FILTER_VALIDATE_IP) === false) return false;
+        return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
     }
 
     /**

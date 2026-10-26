@@ -22,6 +22,15 @@ MajorDoMo — self-hosted система умного дома на PHP. Идё�
 Проверки Linux-механизмов выполняйте в изолированном Linux-контейнере/окружении;
 если его нет, явно сообщайте о пропуске проверки, не меняя архитектуру системы.
 
+**Docker — только для локальной отладки.** `docker-compose.yml` и `docker/`
+поднимают полный стенд (nginx, PHP-FPM, циклы, MariaDB, Redis, Mosquitto),
+чтобы проверять миграции, циклы и MQTT на структуре старой базы. Это не
+production-развёртывание и не замена `docs/deploy/`: наружу публикуется
+только HTTP-порт, MQTT анонимный, база защищена от `DROP DATABASE`
+приложением (`DB_PROTECT_DROP=1`). Правила и ограничения —
+[`docker-debug.md`](docker-debug.md), пользовательская инструкция —
+[`../user/docker-debug.md`](../user/docker-debug.md).
+
 Текущая цель — **поэтапный редизайн админки**:
 
 - современный SaaS-like интерфейс;
@@ -154,6 +163,7 @@ CLI-скрипты; существующие `tools/config.php` и `tools/instal
 15. `docs/agents/deployment.md` — пайплайн деплоя, миграции, removals, maintenance и systemd; пошаговое развёртывание — `docs/deploy/server-setup.md`, детали sudo — `docs/deploy/systemd-sudo.md`.
 16. `docs/agents/mqtt-runtime.md` — быстрый путь MQTT, полосы `core_runtime`, проекция состояния, настройки и диагностика.
 17. `docs/agents/http-cache.md` — кэш HTTP-ответов (Redis/файл), условные запросы ETag/Last-Modified и сброс после обновления.
+18. `docs/agents/docker-debug.md` — docker-стенд **только для отладки**: состав сервисов, единственный внешний порт, seed базы, защита от `DROP DATABASE`, миграции и проверки.
 
 Если документы противоречат друг другу, приоритет у `docs/agents/AGENTS.md` и фактического кода.
 
@@ -269,6 +279,26 @@ php dev_server.php --host=127.0.0.1 --port=8080
 
 Локально `dev_server.php` отдаёт `public/` как document root, а `modules/`, `cms/`, `docs/` — из корня проекта (как nginx). Системные `scripts/`, `packages/`, `vendor/` закрыты; `/objects/` и `/3rdparty/` удалены. CWD перед запуском PHP = каталог файла, как в php-fpm.
 
+### Docker (только отладка)
+
+```bash
+docker compose up -d --build
+# http://localhost/ — admin / majordomo по умолчанию
+docker compose exec -u www-data app php majordomo cycles:status
+docker compose exec -u www-data app php majordomo migrations:status
+docker compose logs -f app
+```
+
+Стенд не предназначен для production: nginx, PHP-FPM и `cycle.php` живут в
+одном контейнере, MQTT разрешает анонимные подключения, база и Redis наружу не
+публикуются. По умолчанию импортируется `docs/dev/db_terminal.sql` (старая
+схема + демо-данные), затем применяются миграции. `DB_PROTECT_DROP=1`
+запрещает приложению `DROP DATABASE`/`DROP SCHEMA`, но не мешает `DROP TABLE`
+и миграциям. Сброс стенда — только `docker compose down -v` (удаляет данные).
+Полные правила — [`docker-debug.md`](docker-debug.md), пользовательская
+инструкция — [`../user/docker-debug.md`](../user/docker-debug.md),
+`docker/README.md`.
+
 ### Деплой
 
 Целевой веб-сервер — только nginx. Единственный источник правды — `docs/deploy/nginx.conf.sample`; `.htaccess` в проекте нет и добавлять его не нужно. Правила, которые раньше лежали в `.htaccess` (роутинг на `nf.php`/`api.php`, запрет `lib/`, `templates/*.html`, `config.php`, `.env` и dotfiles), перенесены в этот конфиг.
@@ -347,6 +377,10 @@ node tools/screenshot.mjs --url "http://127.0.0.1:8080/admin.php" --out "docs/ui
 - Конфигурацию: `.env`, `Config::get()`, легаси-мост. Не добавлять `define()` и не читать `getenv()` в модулях.
 - Авторизацию: `AuthGate` до loader, только администраторы из `users`, cookie-сессия ядра и CSRF; правила — `docs/agents/authentication.md`. Старые `session->data`, `usual()` и фронтенд модулей удалены.
 - Формат данных и API старых модулей.
+- Доступ к `cms/cycles/state.json` из CLI и супервизора: файл должен читаться и
+  писаться обеими сторонами (`0666`/`0777` в runtime). Иначе `cycles:stop` и
+  `disable` из-под root молча теряются, потому что `cycle.php` под `www-data`
+  видит пустое состояние.
 - Таблицу маршрутов и round-trip-проверку в `lib/admin_router.php`: без неё
   старые ссылки начнут терять состояние.
 - Catch-all-маршрут `([\w-]+).html` → docs: он маскировал 404 под 200.

@@ -1,0 +1,24 @@
+# Контекст сборки. Всё, что перечислено здесь, не попадает в образ.
+# .env и runtime-каталоги исключены: стенд генерирует их сам, чтобы локальная
+# разработка не смешивалась с docker-базой.
+
+.git
+.gitignore
+.idea
+.vscode
+.env
+.env.*
+!.env.example
+docker/.env
+*.log
+
+node_modules
+vendor
+
+backup
+cms
+var
+
+docs/ui-redesign
+
+docker/runtime

@@ -161,6 +161,12 @@ php tests/settings_cycles_smoke.php
 
 ## 7. Ограничения
 
+- `cms/cycles/state.json` и `state.lock` должны быть доступны и CLI, и
+  супервизору. `CycleStateStore` создаёт их с правами `0666`/`0777` в runtime-
+  каталоге: команды `php majordomo` под root и `cycle.php` под `www-data`
+  должны видеть одно и то же состояние. Если файл создан другой учётной
+  записью с правами `0600/0640`, супервизор прочитает пустое состояние и
+  потеряет `stop`/`disable`; проверьте владельца и права `cms/cycles`.
 - Для полного перезапуска супервизора при смене БД нужен systemd
   (`Restart=always`, пример — `docs/deploy/majordomo.service.example`).
   Без него `cycle.php` остановит циклы и завершится; запускать вручную.

@@ -103,6 +103,10 @@ Config::safeAll();                   // массив без secret-ключей
   `PATH_TO_MYSQLDUMP=C:\Program Files\MySQL\bin\mysqldump.exe` лучше заключить
   в кавычки.
 - Пароль с `#`, пробелом или `$` — в кавычках: `DB_PASSWORD="p#ss word"`.
+- `DB_PROTECT_DROP=1` — отладочная защита: общий слой БД (`DatabaseGuard`)
+  отказывается выполнять `DROP DATABASE`/`DROP SCHEMA`. Включается в
+  docker-стенде; `DROP TABLE` и миграции не блокируются. Подробно —
+  [`docker-debug.md`](docker-debug.md).
 - Подстановка `${VAR}` не поддерживается.
 
 Ключи деплоя (`DEPLOY_*`) читаются в `lib/core/Deploy/`:

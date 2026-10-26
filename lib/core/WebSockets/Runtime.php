@@ -9,6 +9,8 @@ use Workerman\Worker;
 
 /**
  * Запуск WebSocket-сервера ядра и очереди изменений свойств.
+ * 2026-10-26 — устаревший pid-файл от прошлого запуска/контейнера удаляется
+ *              до старта Workerman: иначе переиспользованный PID блокирует цикл.
  * 2026-10-23 — временные токены пользователей проверяются без продления сеанса.
  * 2026-10-23 — доменная политика Origin привязана к публичному адресу BASE_URL.
  */
@@ -81,9 +83,39 @@ final class Runtime
         $server->attach($worker);
         $directory = $root . '/cms/cycles';
         if (!is_dir($directory) && !mkdir($directory, 0770, true) && !is_dir($directory)) throw new \RuntimeException('Не удалось создать каталог состояния WebSocket.');
-        Worker::$pidFile = $directory . '/websocket.pid';
+        $pidFile = $directory . '/websocket.pid';
+        self::removeStalePidFile($pidFile);
+        Worker::$pidFile = $pidFile;
         Worker::$logFile = $directory . '/websocket.log';
         Worker::$command = 'start';
         Worker::runAll();
+    }
+
+    /**
+     * Удаляет pid-файл, который указывает на мёртвый или чужой процесс.
+     *
+     * После перезапуска контейнера или сервера номер PID может достаться
+     * другому процессу. Workerman проверяет только сам факт «PID жив» и в
+     * этом случае отказывается стартовать («already running»), хотя его
+     * прошлый master уже завершён. Поэтому оставляем файл только тогда,
+     * когда по /proc видно именно cycle_websockets.
+     */
+    private static function removeStalePidFile(string $path): void
+    {
+        if (!is_file($path)) return;
+        $pid = (int)trim((string)@file_get_contents($path));
+        if ($pid <= 0) {
+            @unlink($path);
+            return;
+        }
+        if (function_exists('posix_kill') && @posix_kill($pid, 0)) {
+            $cmdlineFile = '/proc/' . $pid . '/cmdline';
+            // Не Linux или /proc недоступен: не рискуем удалить живой pid.
+            if (!is_file($cmdlineFile)) return;
+            $cmdline = @file_get_contents($cmdlineFile);
+            if (!is_string($cmdline)) return;
+            if (str_contains($cmdline, 'cycle_websockets.php')) return;
+        }
+        @unlink($path);
     }
 }

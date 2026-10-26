@@ -7,6 +7,7 @@
 Коротко, что нельзя нарушать:
 
 - Рабочая платформа — только Linux/Ubuntu. Windows — локальная разработка и доступные проверки; обходы её ограничений в рабочий код не добавлять. Процессы и Linux-механизмы проверять в Linux-контейнере.
+- Docker (`docker-compose.yml`, `docker/`) — **только локальная отладка и тестирование**, не production и не инструкция по развёртыванию. Стенд публикует только HTTP-порт, поднимает MariaDB/Redis/Mosquitto внутри и защищает базу от `DROP DATABASE` (`DB_PROTECT_DROP=1`). Подробно — `docs/agents/docker-debug.md`; боевая установка — `docs/deploy/`.
 - Проект — MajorDoMo (PHP 8.1+, локальное окружение PHP 8.4), идёт поэтапный редизайн админки на Bootstrap 5. Новый код и Composer-зависимости должны сохранять совместимость с PHP 8.1.
 - Перед любым UI-изменением читать `docs/agents/DESIGN_SYSTEM.md`; новые компоненты — только `MDJUI` + `md-*`.
 - Перед переписыванием старого модуля читать `docs/agents/legacy-module-migration.md`: приоритеты, новый формат, чек-лист.
@@ -18,6 +19,6 @@
 - CLI — `php majordomo`: каждая новая команда отдельным классом в `lib/core/Console/Commands/`, регистрация в `Console\Application`. Для функций, которым нужно управление из терминала, добавляйте команду вместе с реализацией; сначала читайте `docs/agents/console.md`. Не создавайте новые самостоятельные CLI-скрипты в корне или `tools/`. Исключение — `deploy.sh`: это только обёртка оформления и запуска `deploy:update`, логики обновления в ней нет.
 - Статика — только в `public/assets/`, исходники бандла — в `resources/js/` и `resources/css/`; сборка `npm run build`.
 - Никаких новых `<script>`/`<link>` на библиотеки в шаблонах: только npm + бандл.
-- Проверка перед сдачей: `php -l`, `node --check`, `npm run build`, `php tests/routing_smoke.php`, `php tests/config_smoke.php`.
+- Проверка перед сдачей: `php -l`, `node --check`, `npm run build`, `php tests/routing_smoke.php`, `php tests/config_smoke.php`. Для изменений защиты базы — `php tests/db_guard_smoke.php`; для docker-стенда — `docker compose config --quiet` и подъём стека.
 
 Остальная документация: `docs/README.md`.

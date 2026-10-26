@@ -200,6 +200,11 @@ final class InstallDatabase
             return $result;
         }
 
+        // Защита отладочного стенда: схема не должна удалять базу.
+        if (class_exists('\\MajorDoMo\\Core\\DatabaseGuard')) {
+            \MajorDoMo\Core\DatabaseGuard::assertAllowed($sql);
+        }
+
         $imported = @$this->db->multi_query($sql);
         if ($imported) {
             do {

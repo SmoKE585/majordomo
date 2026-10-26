@@ -1,0 +1,148 @@
+# ---------------------------------------------------------------------------
+#  MajorDoMo — docker-стенд ТОЛЬКО для отладки и тестирования.
+#
+#  Это не production: nginx, PHP-FPM и циклы работают в одном контейнере,
+#  MQTT разрешает анонимные подключения, а база защищена от DROP DATABASE
+#  на уровне приложения (DB_PROTECT_DROP=1).
+#
+#  Наружу публикуется только HTTP-порт (по умолчанию 80). MariaDB, Redis и
+#  Mosquitto доступны только внутри сети compose.
+#
+#  Быстрый старт:
+#      docker compose up -d --build
+#      http://localhost/          (логин admin / majordomo)
+#
+#  Переменные можно положить в docker/.env и запускать:
+#      docker compose --env-file docker/.env up -d --build
+# ---------------------------------------------------------------------------
+
+name: majordomo-debug
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    image: majordomo-debug:local
+    restart: unless-stopped
+    ports:
+      # Только этот порт выходит наружу. Для доступа с телефона укажите
+      # MJD_BASE_URL=http://<LAN-IP-компьютера> и MJD_HTTP_PORT=80.
+      - "${MJD_HTTP_PORT:-80}:80"
+    environment:
+      TZ: "${MJD_TIMEZONE:-Europe/Moscow}"
+      MJD_DB_HOST: db
+      MJD_DB_PORT: "3306"
+      MJD_DB_NAME: "${MJD_DB_NAME:-majordomo}"
+      MJD_DB_USER: "${MJD_DB_USER:-majordomo}"
+      MJD_DB_PASSWORD: "${MJD_DB_PASSWORD:-majordomo}"
+      MJD_DB_PROTECT_DROP: "${MJD_DB_PROTECT_DROP:-1}"
+      MJD_REDIS_HOST: redis
+      MJD_REDIS_PORT: "6379"
+      MJD_MQTT_HOST: mosquitto
+      MJD_MQTT_PORT: "1883"
+      MJD_MQTT_FORCE_CONFIG: "${MJD_MQTT_FORCE_CONFIG:-0}"
+      MJD_HTTP_PORT: "${MJD_HTTP_PORT:-80}"
+      MJD_BASE_URL: "${MJD_BASE_URL:-}"
+      MJD_TIMEZONE: "${MJD_TIMEZONE:-Europe/Moscow}"
+      MJD_SITE_TIMEZONE: "${MJD_SITE_TIMEZONE:-Europe/Moscow}"
+      MJD_SITE_LANGUAGE: "${MJD_SITE_LANGUAGE:-ru}"
+      MJD_THEME: "${MJD_THEME:-dark}"
+      MJD_ADMIN_USER: "${MJD_ADMIN_USER:-admin}"
+      MJD_ADMIN_PASSWORD: "${MJD_ADMIN_PASSWORD:-majordomo}"
+      MJD_ADMIN_NAME: "${MJD_ADMIN_NAME:-Docker Admin}"
+      MJD_ADMIN_RESET_PASSWORD: "${MJD_ADMIN_RESET_PASSWORD:-0}"
+      MJD_RUN_MIGRATIONS: "${MJD_RUN_MIGRATIONS:-1}"
+      MJD_FORCE_ENV: "${MJD_FORCE_ENV:-0}"
+    volumes:
+      # Состояние циклов, логи, модули, кэш и настройки модулей.
+      - majordomo_cms:/var/www/html/cms
+      # Сессии, безопасность и служебные события.
+      - majordomo_var:/var/www/html/var
+      - majordomo_backup:/var/www/html/backup
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      # Проверяет не только nginx, но и PHP + БД: /panel/ проходит полный boot.
+      test: ["CMD-SHELL", "curl -fsS --max-time 8 -o /dev/null http://127.0.0.1/panel/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 240s
+    stop_grace_period: 30s
+
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_allowed_packet=64M
+      # Старые модули MajorDoMo рассчитаны на нестрогий режим. Строгий SQL-mode
+      # включайте осознанно, если проверяете именно поведение production-MariaDB.
+      - --sql-mode=NO_AUTO_VALUE_ON_ZERO
+    environment:
+      MARIADB_ROOT_PASSWORD: "${MJD_DB_ROOT_PASSWORD:-majordomo-root}"
+      MARIADB_DATABASE: "${MJD_DB_NAME:-majordomo}"
+      MARIADB_USER: "${MJD_DB_USER:-majordomo}"
+      MARIADB_PASSWORD: "${MJD_DB_PASSWORD:-majordomo}"
+      MJD_DB_SEED: "${MJD_DB_SEED:-legacy}"
+    volumes:
+      - majordomo_db:/var/lib/mysql
+      # Демо-дамп и чистая схема монтируются только для первичного импорта.
+      - ./docs/dev/db_terminal.sql:/seed/legacy.sql:ro
+      - ./lib/core/Install/schema.sql:/seed/schema.sql:ro
+      - ./docker/db/seed.sh:/docker-entrypoint-initdb.d/10-seed.sh:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      # Очередь MQTT нельзя вытеснять как обычный кэш.
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - majordomo_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    restart: unless-stopped
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - majordomo_mosquitto_data:/mosquitto/data
+      - majordomo_mosquitto_log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h 127.0.0.1 -t healthcheck -m ok -q 0 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  majordomo_cms:
+  majordomo_var:
+  majordomo_backup:
+  majordomo_db:
+  majordomo_redis:
+  majordomo_mosquitto_data:
+  majordomo_mosquitto_log:

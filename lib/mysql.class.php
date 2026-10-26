@@ -152,6 +152,10 @@ class mysql
     */
    public function Exec($query, $ignore_errors = false)
    {
+      // Отладочный стенд защищает базу от DROP DATABASE/DROP SCHEMA.
+      if (class_exists('\\MajorDoMo\\Core\\DatabaseGuard')) {
+         \MajorDoMo\Core\DatabaseGuard::assertAllowed((string)$query);
+      }
       if (!$this->dbh && !$this->Connect()) return false;
       
       if ((time()-$this->latestTransaction)>$this->pingTimeout) {

@@ -72,6 +72,12 @@ class DB {
     
     
     public static function __callStatic($name,$args) {
+        // PDO-путь тоже подчиняется защите базы в отладочном окружении.
+        if (in_array(strtolower($name), array('exec', 'query', 'prepare'), true)
+            && isset($args[0]) && is_string($args[0])
+            && class_exists('\\MajorDoMo\\Core\\DatabaseGuard')) {
+            \MajorDoMo\Core\DatabaseGuard::assertAllowed($args[0]);
+        }
         $callback=array(self::getInstance(),$name);
         return call_user_func_array($callback,$args);
     }

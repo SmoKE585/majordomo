@@ -31,7 +31,7 @@ order: 1
 
 | Категория | Что внутри | Ключевые документы |
 | --- | --- | --- |
-| **Общее** | Обзор проекта, структура каталогов, установка | [`README`](README.md), [`project-structure`](agents/project-structure.md), [`install`](agents/install.md), [`AGENTS`](agents/AGENTS.md) |
+| **Общее** | Обзор проекта, структура каталогов, установка | [`README`](README.md), [`project-structure`](agents/project-structure.md), [`install`](agents/install.md), [`AGENTS`](agents/AGENTS.md), [`docker-debug`](agents/docker-debug.md) |
 | **TODO** | Заметки обсуждений и требования для будущих отдельных задач | [Порядок работы и список заметок](todo/README.md), [ORM](todo/eloquent-orm.md), [коллекции](todo/collections.md), [Redis](todo/redis-facade.md), [Cache](todo/cache-facade.md) |
 | **Ядро** | Точки входа, конфигурация, авторизация, сервисы, ошибки, состояние БД, комментарии в коде | [`core-runtime`](agents/core-runtime.md), [`entrypoints`](agents/entrypoints.md), [`configuration`](agents/configuration.md), [`authentication`](agents/authentication.md), [`errors`](agents/errors.md), [`code-comments`](agents/code-comments.md), [`db-lib-analysis`](agents/db-lib-analysis.md) |
 | **Свойства и данные** | Запись свойств, `ONCHANGE`, привязки, журнал изменений, справочник функций | [`property-bindings`](agents/property-bindings.md), [`property-audit`](agents/property-audit.md), [`system-functions`](user/system-functions.md) |
@@ -40,7 +40,7 @@ order: 1
 | **API и маршруты** | REST API, токены, чистые URL, 404 | [`api`](agents/api.md), [`api-client`](agents/api-client.md), [`admin-routing`](agents/admin-routing.md), [`user/api`](user/api.md) |
 | **Интеграции** | Сторонние библиотеки, Zigbee, сеть и память MQTT/WebSocket | [`third-party`](agents/third-party.md), [`zigbee`](agents/zigbee.md), [`user/zigbee`](user/zigbee.md), [`network-memory`](user/network-memory.md) |
 | **Переписывание модулей** | Пошаговый порядок перевода legacy-модуля на новый формат | [`legacy-module-migration`](agents/legacy-module-migration.md) |
-| **Пользователю** | Команды, журналы, режимы, вход в панель, инструкции | [`user/README`](user/README.md), [`commands`](user/commands.md), [`logs`](user/logs.md), [`modes`](user/modes.md), [`authentication`](user/authentication.md) |
+| **Пользователю** | Команды, журналы, режимы, вход в панель, инструкции | [`user/README`](user/README.md), [`commands`](user/commands.md), [`logs`](user/logs.md), [`modes`](user/modes.md), [`authentication`](user/authentication.md), [`docker-debug`](user/docker-debug.md) |
 
 Исторические разборы и разовые отчёты лежат в [`archive/`](archive/) и не
 являются инструкциями: актуальное поведение описано в профильных документах
@@ -64,6 +64,7 @@ order: 1
 | API-клиент | [`api`](agents/api.md) → [`api-client`](agents/api-client.md) |
 | Внедрение ИИ-агентов, чата и помощи в редакторе | [`ai-agents-todo`](agents/ai-agents-todo.md) |
 | Деплой и nginx | [`deploy/`](deploy/) |
+| Поднять стенд для отладки (Docker) | [`user/docker-debug`](user/docker-debug.md) → [`agents/docker-debug`](agents/docker-debug.md) |
 
 ## Правила
 

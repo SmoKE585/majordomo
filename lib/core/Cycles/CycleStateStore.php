@@ -4,6 +4,8 @@ namespace MajorDoMo\Core\Cycles;
 
 /**
  * Персистентное управление фоновыми циклами.
+ * 2026-10-26 — state/lock доступны и CLI под root, и cycle.php под www-data:
+ *              иначе супервизор читал пустое состояние и терял stop/disable.
  * 2026-10-25 — исчерпание попыток хранится отдельно от остановки администратором.
  *
  * Cycle processes are children of the long-running `cycle.php` supervisor, so
@@ -413,7 +415,10 @@ final class CycleStateStore
             @unlink($temporary);
             return false;
         }
-        @chmod($temporary, 0640);
+        // CLI под root и циклы под www-data должны видеть один и тот же файл.
+        // 0640 оставлял state root-овым, супервизор читал пустоту и терял
+        // команды stop/disable; runtime-каталог cms и так общий для службы.
+        @chmod($temporary, 0666);
         if (!@rename($temporary, $this->statePath)) {
             @unlink($this->statePath);
             if (!@rename($temporary, $this->statePath)) {
@@ -436,6 +441,11 @@ final class CycleStateStore
         if (!is_resource($handle)) {
             return null;
         }
+        // Lock-файл должен открываться и из-под root (CLI), и из-под www-data.
+        $permissions = @fileperms($this->lockPath);
+        if (is_int($permissions) && ($permissions & 0002) === 0) {
+            @chmod($this->lockPath, 0666);
+        }
         if (!@flock($handle, $mode)) {
             @fclose($handle);
             return null;
@@ -455,9 +465,14 @@ final class CycleStateStore
     private function ensureDirectory(): bool
     {
         if (is_dir($this->directory)) {
+            $permissions = @fileperms($this->directory);
+            if (is_int($permissions) && ($permissions & 0002) === 0) {
+                @chmod($this->directory, 0777);
+            }
             return true;
         }
-        if (@mkdir($this->directory, 0775, true)) {
+        if (@mkdir($this->directory, 0777, true)) {
+            @chmod($this->directory, 0777);
             return true;
         }
         return is_dir($this->directory);
