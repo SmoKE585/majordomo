@@ -32,7 +32,7 @@ order: 1
 | Категория | Что внутри | Ключевые документы |
 | --- | --- | --- |
 | **Общее** | Обзор проекта, структура каталогов, установка | [`README`](README.md), [`project-structure`](agents/project-structure.md), [`install`](agents/install.md), [`AGENTS`](agents/AGENTS.md), [`docker-debug`](agents/docker-debug.md) |
-| **TODO** | Заметки обсуждений и требования для будущих отдельных задач | [Порядок работы и список заметок](todo/README.md), [ORM](todo/eloquent-orm.md), [коллекции](todo/collections.md), [Redis](todo/redis-facade.md), [Cache](todo/cache-facade.md) |
+| **TODO** | Заметки обсуждений и требования для будущих отдельных задач | [Порядок работы и список заметок](todo/README.md), [ORM](todo/eloquent-orm.md), [коллекции](todo/collections.md), [Redis](todo/redis-facade.md), [Cache](todo/cache-facade.md), [маршрутизация модулей](todo/routing.md) |
 | **Ядро** | Точки входа, конфигурация, авторизация, сервисы, ошибки, состояние БД, комментарии в коде | [`core-runtime`](agents/core-runtime.md), [`entrypoints`](agents/entrypoints.md), [`configuration`](agents/configuration.md), [`authentication`](agents/authentication.md), [`errors`](agents/errors.md), [`code-comments`](agents/code-comments.md), [`db-lib-analysis`](agents/db-lib-analysis.md) |
 | **Свойства и данные** | Запись свойств, `ONCHANGE`, привязки, журнал изменений, справочник функций | [`property-bindings`](agents/property-bindings.md), [`property-audit`](agents/property-audit.md), [`system-functions`](user/system-functions.md) |
 | **Автоматизация** | Циклы, супервизор, события, режимы | [`cycles`](agents/cycles.md), [`cycle-components`](agents/cycle-components.md), [`events`](agents/events.md), [`modes`](user/modes.md) |
