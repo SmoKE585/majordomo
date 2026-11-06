@@ -1,6 +1,7 @@
 <?php
 
 /*
+ * 2026-11-06 — запуск общей очистки журнала аудита при старте.
  * @version 0.1 (auto-set)
  */
 
@@ -49,18 +50,7 @@ try {
     DebMes('Cannot prune system events: ' . $error->getMessage(), 'maintenance', 'warning');
 }
 
-// The property audit journal is always on; only its retention is configurable.
-try {
-    $audit_days = \MajorDoMo\Core\Config::int('PROPERTY_AUDIT_RETENTION_DAYS');
-    if ($audit_days > 0) {
-        $pruned_audit = \MajorDoMo\Core\Core::audit()->prune($audit_days);
-        if ($pruned_audit > 0) {
-            DebMes('Pruned ' . $pruned_audit . ' old property audit rows', 'maintenance');
-        }
-    }
-} catch (Throwable $error) {
-    DebMes('Cannot prune property audit: ' . $error->getMessage(), 'maintenance', 'warning');
-}
+\MajorDoMo\Core\Core::audit()->pruneConfigured();
 
 // Remove legacy hook subscribers for deleted user systems.
 DebMes("Removing legacy hook subscribers for deleted user systems.", 'maintenance');

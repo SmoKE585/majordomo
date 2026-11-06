@@ -1,5 +1,7 @@
 <?php
 
+/** 2026-11-06 — регулярная очистка журнала аудита в работающем цикле. */
+
 chdir(dirname(__FILE__) . '/../');
 
 include_once("./config.php");
@@ -49,6 +51,7 @@ $old_date = date('Y-m-d');
 
 $checked_time = 0;
 $started_time = time();
+$next_audit_prune = $started_time + 5 * 60;
 $objects = array();
 $total = 0;
 
@@ -106,6 +109,10 @@ while (1) {
             } catch (Exception $e) {
                 DebMes('Error in onNewMinute for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main', 'error');
             }
+        }
+        if (time() >= $next_audit_prune) {
+            \MajorDoMo\Core\Core::audit()->pruneConfigured(4);
+            $next_audit_prune = time() + 5 * 60;
         }
         $old_minute = $m;
     }

@@ -6,8 +6,18 @@ putenv('DB_CONNECTION=sqlite');
 putenv('DB_DATABASE=:memory:');
 putenv('USE_REDIS=false');
 
-require_once dirname(__DIR__) . '/lib/core/Database.php';
-require_once dirname(__DIR__) . '/lib/core/PropertyAudit.php';
+require_once dirname(__DIR__) . '/lib/core.class.php';
+
+$configRoot = sys_get_temp_dir() . '/mjd-property-audit-' . bin2hex(random_bytes(6));
+mkdir($configRoot, 0700);
+register_shutdown_function(static function () use ($configRoot): void {
+    $cache = MajorDoMo\Core\ConfigCache::path($configRoot);
+    if (is_file($cache)) unlink($cache);
+    if (is_dir(dirname($cache))) rmdir(dirname($cache));
+    if (is_dir($configRoot . '/cms')) rmdir($configRoot . '/cms');
+    rmdir($configRoot);
+});
+MajorDoMo\Core\Config::boot($configRoot);
 
 $pdo = new PDO('sqlite::memory:', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
 $pdo->exec("
@@ -164,4 +174,28 @@ $audit->stepFinish($step, true);
 $stored = json_decode($pdo->query('SELECT PARAMS FROM property_audit_events WHERE ID=' . $step['id'])->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
 check($stored['__mdj_audit_step_v1']['execution']['code'] === 'return 1;' && $stored['__mdj_audit_step_v1']['params']['_truncated'] === true, 'Large input cannot erase the code snapshot or step metadata');
 $audit->finishRun(); $audit->leave();
-echo 'Property audit smoke tests passed: 32 checks; SQLite :memory:, no external connections.' . "\n";
+$pdo->exec('DELETE FROM property_audit_events; DELETE FROM property_audit_runs');
+$recent = date('Y-m-d H:i:s');
+$old = date('Y-m-d H:i:s', time() - 8 * 86400);
+$insertRun = $pdo->prepare('INSERT INTO property_audit_runs (ID, TRACE_ID, STARTED, LAST_SEEN) VALUES (?, ?, ?, ?)');
+$insertEvent = $pdo->prepare('INSERT INTO property_audit_events (ID, TRACE_ID, ADDED) VALUES (?, ?, ?)');
+for ($i = 1; $i <= 105; $i++) {
+    $id = $i * 10;
+    $traceId = str_pad((string)$id, 32, '0', STR_PAD_LEFT);
+    $added = $i === 103 || $i === 104 ? $recent : $old;
+    $insertRun->execute(array($id, $traceId, $added, $i === 105 ? $recent : $added));
+    $insertEvent->execute(array($id, $traceId, $added));
+}
+
+check(MajorDoMo\Core\Config::int('PROPERTY_AUDIT_MAX_ROWS') === 2000000, 'Default row cap is two million');
+check($audit->prune(0, 100, maxRows: 105) === 0, 'Exactly at the cap, no rows are removed');
+check($audit->prune(0, 100, maxRows: 4) === 202, 'Row cap works without age retention and drains more than one batch per table');
+check($pdo->query('SELECT ID FROM property_audit_events ORDER BY ID')->fetchAll(PDO::FETCH_COLUMN) === [1020, 1030, 1040, 1050],
+    'Events retain the newest dates and break timestamp ties by ID, including gaps');
+check($pdo->query('SELECT ID FROM property_audit_runs ORDER BY ID')->fetchAll(PDO::FETCH_COLUMN) === [1020, 1030, 1040, 1050],
+    'Runs are capped independently');
+check($audit->prune(7, maxRows: 4) === 3, 'Age retention still removes old rows below the row cap');
+check($pdo->query('SELECT ID FROM property_audit_runs ORDER BY ID')->fetchAll(PDO::FETCH_COLUMN) === [1030, 1040, 1050],
+    'Age retention for runs uses their last activity');
+
+echo 'Property audit smoke tests passed: 39 checks; SQLite :memory:, no external connections.' . "\n";

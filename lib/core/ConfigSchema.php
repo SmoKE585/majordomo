@@ -20,6 +20,7 @@ namespace MajorDoMo\Core;
  *   required  doctor warns when the key is missing
  *
  * Изменения:
+ * 2026-11-06 — лимит количества записей аудита на таблицу.
  * 2026-10-23 — необязательный секретный ключ шифрования ИИ-помощника.
  */
 final class ConfigSchema
@@ -102,6 +103,7 @@ final class ConfigSchema
             // lookup (including an accidental full scan) cost seconds. 0 still
             // keeps entries indefinitely, but it is now an explicit choice.
             'PROPERTY_AUDIT_RETENTION_DAYS' => array('type' => 'integer', 'default' => 7, 'constant' => false),
+            'PROPERTY_AUDIT_MAX_ROWS' => array('type' => 'integer', 'default' => 2000000, 'constant' => false),
 
             // Logging --------------------------------------------------------
             'LOG_DIRECTORY' => array('type' => 'string', 'optional' => true),

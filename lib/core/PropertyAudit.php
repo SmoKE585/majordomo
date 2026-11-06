@@ -14,9 +14,10 @@ use \Throwable;
  *
  * Ошибки диагностики регистрируются после завершения транзакции. Deadlock и
  * потеря соединения передаются писателю: продолжать отменённую сервером
- * транзакцию нельзя. Выключателя нет, настраивается только срок хранения.
+ * транзакцию нельзя. Настраиваются срок хранения и число записей.
  *
  * Изменения:
+ * 2026-11-06 — очистка аудита ограничивает число записей в каждой таблице.
  * 2026-10-25 — чтение цепочки по trace id и связь отложенного задания с шагом постановки.
  * 2026-10-25 — сбой, отменяющий транзакцию, передаётся писателю свойства; журнал ошибок ждёт её завершения.
  * 2026-10-25 — запись свойства не запускает DDL, способный неявно зафиксировать её транзакцию.
@@ -348,37 +349,68 @@ final class PropertyAudit
         );
     }
 
-    /**
-     * Удаляет журнал старше окна хранения.
-     *
-     * Пачки ограничены бюджетом времени, а не числом итераций: после снижения
-     * срока хранения на большой таблице прежние 40 пачек оставляли хвост, и
-     * журнал сокращался только за несколько рестартов `cycle_main`. Заголовки
-     * запусков удаляются отдельно, небольшим фиксированным числом пачек — их
-     * на порядок меньше, чем событий.
-     *
-     * @param int $seconds Бюджет удаления событий, секунд.
-     */
-    public function prune(int $days, int $limit = 5000, int $seconds = 30): int
+    /** Запускает очистку при старте и во время работы основного цикла. */
+    public function pruneConfigured(int $seconds = 30): void
     {
-        $days = max(0, $days);
+        try {
+            $deleted = $this->prune(
+                Config::int('PROPERTY_AUDIT_RETENTION_DAYS'),
+                seconds: $seconds,
+                maxRows: Config::int('PROPERTY_AUDIT_MAX_ROWS')
+            );
+            if ($deleted > 0) {
+                \DebMes('Удалено строк журнала аудита: ' . $deleted, 'maintenance');
+            }
+        } catch (Throwable $error) {
+            \DebMes('Ошибка очистки журнала аудита: ' . $error->getMessage(), 'maintenance', 'warning');
+        }
+    }
+
+    /** Удаляет просроченные и лишние строки. Бюджет времени делится между таблицами. */
+    public function prune(int $days, int $limit = 5000, int $seconds = 30, int $maxRows = 0): int
+    {
+        if ($days < 1 && $maxRows < 1) return 0;
         $limit = max(100, min(50000, $limit));
-        if ($days < 1) return 0;
-        $cutoff = date('Y-m-d H:i:s', time() - $days * 86400);
-        $total = 0;
+        $cutoff = $days > 0 ? $this->db->escape(date('Y-m-d H:i:s', time() - $days * 86400)) : null;
         $this->ensureSchema();
-        $deadline = microtime(true) + max(1, $seconds);
-        do {
-            $this->db->exec("DELETE FROM property_audit_events WHERE ADDED<'" . $this->db->escape($cutoff) . "' LIMIT " . $limit);
-            $deleted = $this->db->affectedRows();
-            $total += max(0, $deleted);
-            if ($deleted < $limit) break;
-        } while (microtime(true) < $deadline);
-        for ($batch = 0; $batch < 20; $batch++) {
-            $this->db->exec("DELETE FROM property_audit_runs WHERE LAST_SEEN<'" . $this->db->escape($cutoff) . "' LIMIT " . $limit);
-            $deleted = $this->db->affectedRows();
-            $total += max(0, $deleted);
-            if ($deleted < $limit) break;
+        $total = 0;
+
+        foreach (array(
+            'property_audit_events' => array('ADDED', 'ADDED'),
+            'property_audit_runs' => array('STARTED', 'LAST_SEEN'),
+        ) as $table => [$createdColumn, $ageColumn]) {
+            // Индекс даты позволяет найти границу без чтения содержимого строк.
+            // ID различает записи с одной датой и допускает пропуски в нумерации.
+            $boundary = $maxRows > 0 ? $this->db->one(
+                "SELECT ID, $createdColumn FROM $table ORDER BY $createdColumn DESC, ID DESC LIMIT 1 OFFSET $maxRows"
+            ) : null;
+            $deadline = microtime(true) + max(1, $seconds) / 2;
+            if ($boundary !== null) {
+                $date = $this->db->escape($boundary[$createdColumn]);
+                $id = (int)$boundary['ID'];
+                $where = "($createdColumn<'$date' OR ($createdColumn='$date' AND ID<=$id))";
+                $total += $this->pruneBatches($table, $where, " ORDER BY $createdColumn, ID", $limit, $deadline);
+            }
+
+            if ($cutoff !== null) {
+                $total += $this->pruneBatches($table, "$ageColumn<'$cutoff'", '', $limit, $deadline);
+            }
+        }
+        return $total;
+    }
+
+    private function pruneBatches(string $table, string $where, string $order, int $limit, float $deadline): int
+    {
+        $total = 0;
+        while (microtime(true) < $deadline) {
+            $rows = $this->db->select("SELECT ID FROM $table WHERE $where$order LIMIT $limit");
+            if (!$rows) break;
+
+            $ids = implode(',', array_map('intval', array_column($rows, 'ID')));
+            // За время между запросами запуск мог продолжиться и обновить LAST_SEEN.
+            $this->db->requireExec("DELETE FROM $table WHERE ID IN ($ids) AND $where");
+            $total += $this->db->affectedRows();
+            if (count($rows) < $limit) break;
         }
         return $total;
     }
