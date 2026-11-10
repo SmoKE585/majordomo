@@ -1,4 +1,5 @@
 <?php
+// 2026-11-10 — эхо своих MQTT-команд отсекается до обработки привязок.
 chdir(dirname(__FILE__) . '/../');
 
 include_once("./config.php");
@@ -85,6 +86,7 @@ function procmsg($topic, $msg)
     global $mqtt_handlers_alive;
     global $mqtt_handlers_checked;
 
+    $echo = MqttEcho::shared()->consume((string)$topic, (string)$msg);
     // Subscribers receive the original event before MQTT strip/dedup filters.
     if ($mqtt_integrations) {
         try {
@@ -93,6 +95,7 @@ function procmsg($topic, $msg)
             DebMes('MQTT module event was not queued: ' . $error->getMessage(), 'mqtt_error', 'warning');
         }
     }
+    if ($echo) return false;
 
     if ($mqtt_async && $mqtt_runtime_index) {
         if ($stripmode && !$mqtt_runtime_index->isLinkedOrPrefix($topic)) {
@@ -348,7 +351,7 @@ function mqttRunOnce()
                 if (isset($mqtt->config['DEBUG_MODE']) && (int)$mqtt->config['DEBUG_MODE']) {
                     echo "Publishing to $topic : $value\n";
                 }
-                $result = $mqtt_client->publish($topic, $value, $qos, $retain);
+                $result = MqttEcho::shared()->publish($mqtt_client, (string)$topic, (string)$value, $qos, $retain);
                 if (!is_null($result) && !$result) {
                     \MajorDoMo\Core\Core::queue()->release($mqtt_data);
                     DebMes("Error writing from queue '$value' to $topic", 'mqtt_error');

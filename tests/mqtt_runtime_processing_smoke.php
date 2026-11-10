@@ -52,6 +52,7 @@ $insert->execute(array('home/lamp/state', 'state', 'Lamp', 'status', '', ''));
 $insert->execute(array('home/lamp/brightness', 'brightness', 'Lamp', 'brightness', '', ''));
 $insert->execute(array('home/button/action', 'action', 'Button', '', 'press', ''));
 $insert->execute(array('home/lamp/set', 'set', '', '', '', 'home/lamp/set'));
+$insert->execute(array('home/lamp/set/action', 'action', 'Lamp', '', 'command', ''));
 $insert->execute(array('home/unlinked', 'unlinked', '', '', '', ''));
 
 $actions = array();
@@ -126,6 +127,7 @@ check($actions === array(array('Button.press', 'press')), 'Linked method must be
 
 $actions = array();
 $mqtt->processRuntimeMessage('home/lamp/set', 'off', false, $mqtt->getRuntimeIndex());
+$mqtt->processRuntimeMessage('home/lamp/set', '{\"action\":1}', false, $mqtt->getRuntimeIndex());
 check($actions === array(), 'Write-only topic must not be processed as input');
 
 // Strict mode drops unknown topics before any state/history write.

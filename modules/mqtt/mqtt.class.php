@@ -1,6 +1,7 @@
 <?php
 /**
  * MQTT
+ * 2026-11-10 — фактическая публикация отмечается для защиты общих топиков от эха.
  * 2026-10-25 — исходящие команды не фильтруются по значению и не склеиваются; отказ отправки не подтверждает состояние.
  * 2026-10-25 — отказ связанного свойства или метода не подтверждает входящее сообщение.
  *
@@ -18,6 +19,7 @@ require_once __DIR__ . '/MqttUnlinkedThrottle.php';
 require_once __DIR__ . '/MqttSchema.php';
 require_once __DIR__ . '/MqttBindingIndex.php';
 require_once __DIR__ . '/MqttRuntime.php';
+require_once __DIR__ . '/MqttEcho.php';
 
 class mqtt extends module
 {
@@ -554,7 +556,7 @@ class mqtt extends module
             return 0;
         }
 
-        $result = $mqtt_client->publish($topic, $value, $qos, $retain);
+        $result = MqttEcho::shared()->publish($mqtt_client, (string)$topic, (string)$value, (int)$qos, (int)$retain);
         $mqtt_client->close();
         endMeasure('mqttPublish');
         if (!$result) {
@@ -727,7 +729,7 @@ class mqtt extends module
         $throttled = $process_record && !$is_linked && $interval > 0;
         try {
             $json_payload = $this->decodeJsonObjectPayload($value);
-            if ($json_payload !== false) {
+            if ($json_payload !== false && !$this->isPathWriteTopic($path)) {
                 foreach ($json_payload as $k => $v) {
                     if (is_array($v)) $v = json_encode($v);
                     $this->processMessage($path . '/' . $k, $v, $ignore_stripmode, $linked_paths);
@@ -902,6 +904,7 @@ class mqtt extends module
             $path = json_decode('"' . $path . '"');
         }
 
+        if ($index->isWritePath($path)) return false;
         $stripmode = !$ignore_stripmode && !empty($this->config['MQTT_STRIPMODE']);
         if ($stripmode && !$index->isLinkedOrPrefix($path)) {
             return false;

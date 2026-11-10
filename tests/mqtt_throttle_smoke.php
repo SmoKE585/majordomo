@@ -155,6 +155,16 @@ $before = $writes;
 $mqtt->processMessage('device', '{"temperature":22,"noise":3,"nested":{"state":"on","new":1}}', false, $paths);
 check($writes === $before + 2 && !$pdo->query("SELECT ID FROM mqtt WHERE PATH='device/nested/new'")->fetchColumn(), 'Strict JSON mode must process linked leaves only');
 
+$pdo->exec("INSERT INTO mqtt(PATH, PATH_WRITE) VALUES ('output', 'command')");
+$pdo->exec("INSERT INTO mqtt(PATH, LINKED_OBJECT, LINKED_METHOD) VALUES ('command/action','Room','onCommand'), ('sensor/action','Room','onMotion')");
+$eventPaths = $mqtt->getLinkedPathsSnapshot(true);
+$beforeActions = count($actions);
+$mqtt->processMessage('command', '{\"action\":1}', false, $eventPaths);
+$mqtt->processMessage('sensor/action', '1', false, $eventPaths);
+$mqtt->processMessage('sensor/action', '1', false, $eventPaths);
+check(array_slice($actions, $beforeActions) === array(array('Room.onMotion', '1'), array('Room.onMotion', '1')),
+    'Command JSON must not invoke its linked child and repeated sensor events must still reach the method');
+
 // On SQL failure the reservation is released and the next incoming message can retry.
 $mqtt->config['MQTT_STRIPMODE'] = 0;
 $failWrite = true;

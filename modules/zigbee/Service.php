@@ -4,10 +4,15 @@ namespace MajorDoMo\Modules\Zigbee;
 
 use Closure;
 use InvalidArgumentException;
+use JsonException;
 use MajorDoMo\Core\Core;
 use RuntimeException;
 use Throwable;
 
+/**
+ * Принимает события Zigbee2MQTT и доставляет их привязкам.
+ * Изменения: 2026-11-10 — некорректные входные сообщения записываются в журнал без повторной доставки.
+ */
 final class Service
 {
     private ?array $roots = null;
@@ -89,23 +94,47 @@ final class Service
         foreach ($this->repository->bridges(true) as $bridge) {
             if (!str_starts_with($topic, $bridge['BASE_TOPIC'] . '/')) continue;
             $suffix = substr($topic, strlen($bridge['BASE_TOPIC']) + 1);
+            $bridgeMessage = str_starts_with($suffix, 'bridge/');
+            if ($bridgeMessage) {
+                if (!in_array($suffix, array('bridge/devices', 'bridge/state', 'bridge/info', 'bridge/event', 'bridge/logging'), true)
+                    && !str_starts_with($suffix, 'bridge/response/')) return;
+            } elseif (preg_match('#/(set|get)(/.*)?$#D', $suffix)) {
+                return;
+            }
+
+            $availability = !$bridgeMessage && str_ends_with($suffix, '/availability');
+            // Повтор задания не исправит входной пакет. Ошибки хранения и привязок обрабатываются ниже.
             try {
-                if (str_starts_with($suffix, 'bridge/')) { $this->bridgeMessage($bridge, $suffix, $payload); return; }
-                if (preg_match('#/(set|get)(/.*)?$#D', $suffix)) return;
-                $availability = str_ends_with($suffix, '/availability');
+                $value = ($availability || $suffix === 'bridge/state') && in_array($payload, array('online', 'offline'), true)
+                    ? $payload : json_decode($payload, true, 64, JSON_THROW_ON_ERROR);
+            } catch (JsonException $e) {
+                $this->repository->log((int)$bridge['ID'], null, $topic,
+                    'Некорректный JSON MQTT (' . strlen($payload) . ' байт): ' . $e->getMessage(), 'error');
+                return;
+            }
+
+            if ($availability || $suffix === 'bridge/state') {
+                $value = is_array($value) ? ($value['state'] ?? '') : $value;
+                if (!in_array($value, array('online', 'offline'), true)) {
+                    $this->repository->log((int)$bridge['ID'], null, $topic, 'Неизвестный статус доступности.', 'error');
+                    return;
+                }
+            } elseif (!$bridgeMessage && (!is_array($value) || !str_starts_with(ltrim($payload), '{'))) {
+                $this->repository->log((int)$bridge['ID'], null, $topic, 'Ожидался JSON-объект состояния устройства.', 'error');
+                return;
+            }
+
+            try {
+                if ($bridgeMessage) { $this->bridgeMessage($bridge, $suffix, $value, $payload); return; }
                 $name = $availability ? substr($suffix, 0, -13) : $suffix;
-                $value = $availability && in_array($payload, array('online', 'offline'), true) ? $payload : json_decode($payload, true, 64, JSON_THROW_ON_ERROR);
                 $device = $this->repository->device((int)$bridge['ID'], $name);
                 $now = date('Y-m-d H:i:s');
                 $update = array('ID' => $device['ID']);
                 if ($availability) {
-                    $state = is_array($value) ? ($value['state'] ?? '') : $value;
-                    if (!in_array($state, array('online', 'offline'), true)) throw new InvalidArgumentException('Неизвестный статус доступности.');
-                    $update['AVAILABLE'] = $state;
-                    if ($state === 'online') $update['LAST_SEEN'] = $now;
+                    $update['AVAILABLE'] = $value;
+                    if ($value === 'online') $update['LAST_SEEN'] = $now;
                     $this->repository->save('zigbee_devices', $update);
                 } else {
-                    if (!is_array($value) || !str_starts_with(ltrim($payload), '{')) throw new InvalidArgumentException('Ожидался JSON-объект состояния устройства.');
                     $update['AVAILABLE'] = 'online';
                     $update['LAST_SEEN'] = $now;
                     // Receiving data proves contact even when an object handler
@@ -147,12 +176,9 @@ final class Service
         }
     }
 
-    private function bridgeMessage(array $bridge, string $suffix, string $payload): void
+    private function bridgeMessage(array $bridge, string $suffix, mixed $data, string $payload): void
     {
         $id = (int)$bridge['ID'];
-        // Ignore our own requests and large converter/definition snapshots.
-        if (str_starts_with($suffix, 'bridge/request/') || in_array($suffix, array('bridge/definitions', 'bridge/converters', 'bridge/extensions'), true)) return;
-        $data = $suffix === 'bridge/state' && in_array($payload, array('online', 'offline'), true) ? $payload : json_decode($payload, true, 64, JSON_THROW_ON_ERROR);
         if ($suffix === 'bridge/devices') {
             if (!is_array($data) || !array_is_list($data)) throw new InvalidArgumentException('Список устройств должен быть JSON-массивом.');
             $replay = array();
@@ -177,9 +203,7 @@ final class Service
             }
             $this->repository->log($id, null, $suffix, 'Обнаружение завершено. Устройств в сообщении: ' . count($data));
         } elseif ($suffix === 'bridge/state') {
-            $state = is_array($data) ? ($data['state'] ?? '') : $data;
-            if (!in_array($state, array('online', 'offline'), true)) throw new InvalidArgumentException('Неизвестный статус Zigbee2MQTT.');
-            $this->repository->save('zigbee_bridges', array('ID' => $id, 'STATE' => $state, 'LAST_SEEN' => date('Y-m-d H:i:s')));
+            $this->repository->save('zigbee_bridges', array('ID' => $id, 'STATE' => $data, 'LAST_SEEN' => date('Y-m-d H:i:s')));
         } elseif ($suffix === 'bridge/info') {
             $this->repository->save('zigbee_bridges', array('ID' => $id, 'INFO' => ValueTransformer::json($data), 'LAST_SEEN' => date('Y-m-d H:i:s')));
         } elseif ($suffix === 'bridge/event' || str_starts_with($suffix, 'bridge/response/') || $suffix === 'bridge/logging') {

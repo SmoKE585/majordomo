@@ -2,12 +2,15 @@
 
 use MajorDoMo\Core\Config;
 
+require_once __DIR__ . '/MqttEcho.php';
+
 /**
  * Долгоживущее соединение для исходящих команд MQTT.
  *
  * Отдельный процесс издателя нужен, чтобы готовая команда свету не ждала
  * разбора пачки датчиков и не открывала TCP-соединение на каждую публикацию.
  *
+ * 2026-11-10 — исходящие пакеты отмечаются для фильтра эха в цикле приёма.
  * 2026-10-25 — keepalive обслуживается и без команд; закрытое соединение проверяется до публикации.
  * 2026-10-23 — добавлено для быстрого пути MQTT.
  */
@@ -60,7 +63,7 @@ final class MqttPublisher
         // записи: успешный fwrite сам по себе не обнаруживал потерю первой команды.
         $this->tick();
         if ($this->client === null && !$this->connect()) return false;
-        try { $result = $this->client->publish($topic, $value, $qos, $retain); }
+        try { $result = MqttEcho::shared()->publish($this->client, $topic, $value, $qos, $retain); }
         catch (Throwable $error) { $this->close(); $this->reportError('MQTT publish failed: ' . $error->getMessage()); return false; }
         if ($result === false || $result === 0) {
             // Соединение могло закрыться между командами; следующий вызов

@@ -20,6 +20,7 @@ namespace {
     class module { public function checkInstalled() {} }
     require DIR_MODULES . 'zigbee/zigbee.class.php';
     require DIR_MODULES . 'mqtt/MqttIntegrations.php';
+    require DIR_MODULES . 'mqtt/MqttEcho.php';
 
     use MajorDoMo\Core\Core;
     use MajorDoMo\Core\Database;
@@ -200,8 +201,19 @@ namespace {
     $service->command($house, 'permit_join', array('time' => 120));
     check($published[2][0] === 'Z2M/House/bridge/request/permit_join' && isset(json_decode($published[2][1], true)['transaction']), 'Bridge request has transaction ID');
     rejects(fn() => $service->command($house, '../../bad', array()), 'Command allowlist');
-    rejects(fn() => $service->receive('Z2M/House/Kitchen/Renamed', 'broken'), 'Invalid JSON visible as an error');
-    check((int)$pdo->query("SELECT COUNT(*) FROM zigbee_events WHERE LEVEL='error'")->fetchColumn() >= 2, 'Errors preserved in journal');
+    $errorsBefore = (int)$pdo->query("SELECT COUNT(*) FROM zigbee_events WHERE LEVEL='error'")->fetchColumn();
+    $service->receive('Z2M/House/Kitchen/Renamed', 'broken');
+    $service->receive('Z2M/House/Kitchen/Renamed/brightness', '10');
+    $service->receive('Z2M/House/Kitchen/Renamed/availability', '{"state":"bad"}');
+    $service->receive('Z2M/House/bridge/state', '');
+    $service->receive('Z2M/House/bridge/unknown', 'broken');
+    check((int)$pdo->query("SELECT COUNT(*) FROM zigbee_events WHERE LEVEL='error'")->fetchColumn() === $errorsBefore + 4,
+        'Invalid packets are logged once without retry and unsupported bridge topics are ignored');
+    check(!$pdo->query("SELECT ID FROM zigbee_devices WHERE FRIENDLY_NAME='Kitchen/Renamed/brightness'")->fetchColumn(),
+        'An MQTT scalar must not create a Zigbee device');
+    $lastError = $pdo->query("SELECT TOPIC,MESSAGE FROM zigbee_events WHERE LEVEL='error' ORDER BY ID DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    check($lastError['TOPIC'] === 'Z2M/House/bridge/state' && str_contains($lastError['MESSAGE'], 'JSON MQTT'),
+        'Malformed payload diagnostics include the original MQTT topic');
     $repo->save('zigbee_bridges', array('ID' => $house, 'ENABLED' => 0));
     rejects(fn() => $service->write((int)$state['ID'], 1), 'Disabled bridge blocks writes');
     $repo->save('zigbee_bridges', array('ID' => $house, 'ENABLED' => 1));
