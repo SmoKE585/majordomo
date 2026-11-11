@@ -1,4 +1,5 @@
 <?php
+// 2026-11-11 — очистка пустых каталогов сохраняет файлы и не обходит символические ссылки.
 /*
  * @version 0.1 (auto-set)
  */
@@ -769,16 +770,24 @@ function copyTree($source, $destination, $over = 0, $patterns = 0)
 
 function removeEmptySubFolders($path)
 {
+    if (is_link($path)) return false;
+    if (!is_dir($path)) return !file_exists($path);
+
+    // glob('*') не видит скрытые файлы: такой каталог нельзя считать пустым.
+    $entries = scandir($path);
+    if ($entries === false) return false;
     $empty = true;
-    foreach (glob($path . DIRECTORY_SEPARATOR . "*") as $file) {
-        $empty &= is_dir($file) && removeEmptySubFolders($file);
+    foreach ($entries as $entry) {
+        if ($entry === '.' || $entry === '..') continue;
+        $file = $path . DIRECTORY_SEPARATOR . $entry;
+        // Обходим все подкаталоги, даже если ранее уже встретился файл.
+        // Ссылки сохраняем и не чистим каталоги за пределами дерева.
+        if (is_link($file) || !is_dir($file) || !removeEmptySubFolders($file)) {
+            $empty = false;
+        }
     }
 
-    if (is_dir($path)) {
-        $empty &= rmdir($path);
-    }
-
-    return $empty;
+    return $empty && rmdir($path);
 }
 
 function getDirTree($dir, &$results = array())

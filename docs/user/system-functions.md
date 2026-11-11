@@ -654,7 +654,7 @@ $newValue = $params['NEW_VALUE'];
 | `function processLine($line, $hash = '')` | Разбирает строку legacy-описания файлов с подстановками. |
 | `function processLines($data)` | Обрабатывает строки legacy-описания файлов и синхронизации. |
 | `function remote_file_exists($url)` | Проверяет наличие удалённого ресурса HTTP-запросом. |
-| `function removeEmptySubFolders($path)` | Рекурсивно удаляет пустые каталоги, включая переданный path, если он оказался пустым. |
+| `function removeEmptySubFolders($path)` | Рекурсивно удаляет пустые каталоги, включая переданный path, если он оказался пустым. Учитывает скрытые файлы, не обходит символические ссылки; возвращает `true`, если каталог удалён или уже отсутствует, `false`, если он непустой. |
 | `function removeTree($destination, $iframe = 0)` | Рекурсивно удаляет дерево; iframe включает потоковый отчёт для старого интерфейса. |
 | `function remove_old_files($path, $days)` | Удаляет старые файлы по возрасту в днях; служебная файловая операция. |
 | `function walk_dir($dir, $callback, $move = 0)` | Legacy-обход каталога с callback для файлов. |
