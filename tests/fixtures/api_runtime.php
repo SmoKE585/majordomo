@@ -1,4 +1,5 @@
 <?php
+// 2026-11-11 — тестовые SQL-функции подтверждают владельца блокировки свойства.
 /** Isolated API dependencies. Never loaded by an application entry point. */
 // 2026-10-23 — код сценариев и SHOW COLUMNS для изолированной проверки webhook/миграции.
 // 2026-10-23 — схема пользовательских сеансов и профиль пользователя для HTTP-проверок.
@@ -161,6 +162,8 @@ PHP);
         $pdo = new PDO('sqlite:' . $root . '/fixture.sqlite', null, null, array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
         $pdo->sqliteCreateFunction('GET_LOCK', static fn() => 1);
         $pdo->sqliteCreateFunction('RELEASE_LOCK', static fn() => 1);
+        $pdo->sqliteCreateFunction('IS_USED_LOCK', static fn() => 1);
+        $pdo->sqliteCreateFunction('CONNECTION_ID', static fn() => 1);
         $pdo->sqliteCreateFunction('NOW', static fn() => date('Y-m-d H:i:s'));
         return $pdo;
     }

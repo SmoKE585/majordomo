@@ -1,4 +1,5 @@
 <?php
+// 2026-11-11 — модель SQL-блокировки поддерживает проверку владельца перед записью.
 
 /** Real property/worker services on SQLite :memory:, with modules in a disposable fixture. */
 putenv('APP_ENV=testing');
@@ -37,6 +38,8 @@ if (getenv('APP_ENV') !== 'testing' || $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)
 $pdo->sqliteCreateFunction('NOW', fn() => date('Y-m-d H:i:s'));
 $pdo->sqliteCreateFunction('GET_LOCK', fn($name, $timeout) => 1);
 $pdo->sqliteCreateFunction('RELEASE_LOCK', fn($name) => 1);
+$pdo->sqliteCreateFunction('IS_USED_LOCK', fn($name) => 1);
+$pdo->sqliteCreateFunction('CONNECTION_ID', fn() => 1);
 set_error_handler(static function ($severity, $message, $file, $line) { throw new ErrorException($message, 0, $severity, $file, $line); });
 
 /** Translate only MySQL syntax; all selects, updates and queue claims execute on SQLite. */

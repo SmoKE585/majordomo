@@ -1,4 +1,5 @@
 <?php
+// 2026-11-11 — заглушка БД поддерживает проверку владельца блокировки свойства.
 
 /** SQLite-only module contract tests; no application boot, HTTP, Redis or broker. */
 // 2026-10-23 — заглушка очереди использует действующий контракт MQTT-доставки.
@@ -54,6 +55,7 @@ namespace {
         public function SelectOne($sql) {
             if (str_contains($sql, 'GET_LOCK(')) return array('ACQUIRED' => 1);
             if (str_contains($sql, 'RELEASE_LOCK(')) return array('RELEASED' => 1);
+            if (str_contains($sql, 'IS_USED_LOCK(')) return array('OWNED' => 1);
             return $this->pdo->query($sql)->fetch(PDO::FETCH_ASSOC);
         }
         public function DbSafe1($value) { return str_replace("'", "''", (string)$value); }

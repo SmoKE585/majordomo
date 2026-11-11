@@ -2,6 +2,7 @@
 
 /**
  * События, методы, сценарии и защита от циклов на SQLite :memory:, без рабочих сервисов.
+ * 2026-11-11 — защита БД подключается вместе с транзакционным адаптером.
  * 2026-10-25 — ONCHANGE остаётся в очереди при флагах воркера и LOWER_BACKGROUND_PROCESSES.
  */
 namespace MajorDoMo\Core {
@@ -51,7 +52,7 @@ namespace {
     putenv('APP_ENV=testing'); putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('USE_REDIS=false');
     error_reporting(E_ALL);
     set_error_handler(static function ($severity, $message, $file, $line) { throw new \ErrorException($message, 0, $severity, $file, $line); });
-    foreach (array('Database', 'CodeExecutor', 'PropertyChain', 'PropertyAudit', 'Properties', 'Methods', 'RuntimeQueue', 'OperationsQueue', 'OperationWorker', 'ApiClient') as $class) {
+    foreach (array('DatabaseGuard', 'Database', 'CodeExecutor', 'PropertyChain', 'PropertyAudit', 'Properties', 'Methods', 'RuntimeQueue', 'OperationsQueue', 'OperationWorker', 'ApiClient') as $class) {
         require dirname(__DIR__) . '/lib/core/' . $class . '.php';
     }
     require dirname(__DIR__) . '/lib/core/Helpers/Scripts.php';

@@ -2,6 +2,7 @@
 
 /**
  * Запись свойств на SQLite :memory: с подменой внешних операций, без загрузки приложения.
+ * 2026-11-11 — явно подключается защита БД для транзакций изолированного теста.
  * 2026-10-25 — порядок уведомлений и ONCHANGE при следующей записи сразу после освобождения блокировки.
  * 2026-10-23 — проверка отсутствия повторов WebSocket при сохранении обработчиков.
  * 2026-10-25 — входящие события и NO_LINKED разных модулей не блокируют следующую привязку.
@@ -70,6 +71,7 @@ namespace {
         public function DbSafe1($value) { return str_replace("'", "''", $value); }
     };
     require dirname(__DIR__) . '/lib/core/Database.php'; require dirname(__DIR__) . '/lib/core/PropertyChain.php'; require dirname(__DIR__) . '/lib/core/PropertyAudit.php'; require dirname(__DIR__) . '/lib/core/ErrorReporter.php'; require dirname(__DIR__) . '/lib/core/Properties.php';
+    require dirname(__DIR__) . '/lib/core/DatabaseGuard.php';
     $locks = new MajorDoMo\Core\PropertyLock();
     $websockets = new MajorDoMo\Core\WebSocketQueue();
     $properties = new MajorDoMo\Core\Properties(new MajorDoMo\Core\Database($connection), new MajorDoMo\Core\Cache(), new MajorDoMo\Core\MetadataCache(), $locks, $websockets, new MajorDoMo\Core\CodeExecutor());

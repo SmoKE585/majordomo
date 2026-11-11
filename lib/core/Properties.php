@@ -13,6 +13,7 @@ use \RuntimeException;
  * изменений не даёт автоматизации зациклиться.
  *
  * Изменения:
+ * 2026-11-11 — владение SQL-блокировкой проверяется и при создании нового свойства.
  * 2026-10-25 — значение, история и задания фиксируются одной транзакцией; кеш и WebSocket обновляются после COMMIT.
  * 2026-10-25 — уведомления и ONCHANGE ставятся в очередь до снятия блокировки свойства;
  *              внутренний ONCHANGE больше не зависит от синхронных веток callMethodSafe.
@@ -430,6 +431,7 @@ final class Properties
                 }
             } else {
                 $unit = $this->db->beginUnit();
+                $this->locks->check($property_lock);
                 $prop = array();
                 $prop['OBJECT_ID'] = $object->id;
                 $prop['TITLE'] = $property;
