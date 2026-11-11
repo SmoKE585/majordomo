@@ -209,62 +209,22 @@ body.md-admin-shell .md-saverestore-upload-form .md-upload {
   width: 100%;
 }
 
-body.md-admin-shell .md-saverestore-backup-list {
-  display: grid;
-  gap: 8px;
-}
-
-body.md-admin-shell .md-saverestore-backup-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 12px;
-  background: var(--md-ui-surface);
-  border: 1px solid var(--md-ui-border);
-  border-radius: var(--md-ui-radius-sm);
-}
-
-body.md-admin-shell .md-saverestore-backup-item__icon {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  color: var(--md-ui-primary);
-  background: var(--md-ui-primary-soft);
-  border-radius: 9px;
-  font-size: 1.05rem;
-}
-
-body.md-admin-shell .md-saverestore-backup-item__meta {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-body.md-admin-shell .md-saverestore-backup-item__title {
-  margin: 0;
-  color: var(--md-ui-text);
-  font-size: var(--md-ui-fs-sm);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-body.md-admin-shell .md-saverestore-backup-item__details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-top: 3px;
-  color: var(--md-ui-muted);
-  font-size: var(--md-ui-fs-caption);
-}
-
-body.md-admin-shell .md-saverestore-backup-item__actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-}
+/* 2026-11-11 — каталог копий использует общий data table и локальную компоновку ячеек. */
+body.md-admin-shell .md-saverestore-catalog { margin-top: 16px; min-width: 0; }
+body.md-admin-shell .md-saverestore-catalog .md-table { min-width: 580px; }
+body.md-admin-shell .md-saverestore-catalog__copy { min-width: 220px; max-width: 340px; }
+body.md-admin-shell .md-saverestore-catalog__copy strong,
+body.md-admin-shell .md-saverestore-catalog__copy span,
+body.md-admin-shell .md-saverestore-catalog__copy code,
+body.md-admin-shell .md-saverestore-catalog__metadata > * { display: block; }
+body.md-admin-shell .md-saverestore-catalog__copy code { white-space: normal; overflow-wrap: anywhere; margin-top: 4px; }
+body.md-admin-shell .md-saverestore-catalog__copy span,
+body.md-admin-shell .md-saverestore-catalog__metadata small,
+body.md-admin-shell .md-saverestore-catalog__note { color: var(--md-ui-text-muted); font-size: var(--md-ui-fs-caption); }
+body.md-admin-shell .md-saverestore-catalog__metadata { min-width: 155px; }
+body.md-admin-shell .md-saverestore-catalog__metadata span { margin-top: 8px; }
+body.md-admin-shell .md-saverestore-catalog__actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 145px; }
+body.md-admin-shell .md-saverestore-catalog__note { display: block; margin-top: 8px; max-width: 170px; white-space: normal; }
 
 body.md-admin-shell .md-saverestore-check-grid {
   display: grid;

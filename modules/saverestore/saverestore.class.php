@@ -2,6 +2,7 @@
 
 /**
  * Обновление и восстановление системы.
+ * 2026-11-11 — понятный каталог копий и защищённое скачивание из обоих мест хранения.
  * 2026-11-11 — HTML и оборванные ответы источника не принимаются за Atom-ленту.
  * 2026-10-23 — загрузка архива вынесена в Core\Deploy\ArchiveDownloader:
  *              прогресс в журнале, таймауты и повтор через IPv4 вместо
@@ -347,6 +348,44 @@ class saverestore extends module
         }
 
         return DOC_ROOT . DIRECTORY_SEPARATOR . 'backup';
+    }
+
+    function backupCatalog()
+    {
+        require_once __DIR__ . '/BackupCatalog.php';
+        return new \MajorDoMo\Modules\SaveRestore\BackupCatalog($this->getSaveRestoreDirectory(), $this->getBackupStorageDirectory());
+    }
+
+    /** Скачивание проходит через сеанс администратора, в том числе вне web-root. */
+    function downloadBackup()
+    {
+        $source = gr('source');
+        $name = gr('file');
+        $entry = is_string($source) && is_string($name) ? $this->backupCatalog()->download($source, $name) : null;
+        if ($entry === null) {
+            http_response_code(404);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'Резервная копия не найдена или недоступна для скачивания.';
+            exit;
+        }
+        $stream = fopen($entry['PATH'], 'rb');
+        if ($stream === false) {
+            http_response_code(500);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'Не удалось открыть резервную копию для скачивания.';
+            exit;
+        }
+        while (ob_get_level() > 0) ob_end_clean();
+        header('Content-Type: application/octet-stream');
+        $fallbackName = preg_replace('/[^A-Za-z0-9._-]/', '_', $entry['NAME']);
+        header('Content-Disposition: attachment; filename="' . $fallbackName . '"; filename*=UTF-8\'\'' . rawurlencode($entry['NAME']));
+        header('Content-Length: ' . fstat($stream)['size']);
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+        if (fpassthru($stream) === false) error_log('MajorDoMo backup download: чтение файла прервано.');
+        fclose($stream);
+        exit;
     }
 
     function isPathWithinRoot($path, $root)
@@ -1162,6 +1201,7 @@ class saverestore extends module
      */
     function admin(&$out)
     {
+        if ($this->mode === 'download_backup') $this->downloadBackup();
         // Дашборд проверяет обновления отдельным AJAX; страница здесь не нужна.
         if (gr('ajax') && gr('op') === 'check_updates') {
             header('Content-Type: application/json; charset=utf-8');
@@ -1478,70 +1518,12 @@ class saverestore extends module
             $out['DESIGN'] = $design;
         }
 
-        $source = $this->getSaveRestoreDirectory();
-        $backups_dir = $this->getBackupStorageDirectory();
-        $items = array();
-
-        if (is_dir($source)) {
-            $local_files = glob($source . DIRECTORY_SEPARATOR . '*');
-            if (is_array($local_files)) {
-                foreach ($local_files as $file) {
-                    $items[] = array(
-                        'path' => $file,
-                        'is_local' => 1
-                    );
-                }
-            }
-        }
-
-        if (is_dir($backups_dir)) {
-            $backup_files = glob(rtrim($backups_dir, DIRECTORY_SEPARATOR . '/') . DIRECTORY_SEPARATOR . '*');
-            if (is_array($backup_files)) {
-                foreach ($backup_files as $file) {
-                    $items[] = array(
-                        'path' => $file,
-                        'is_local' => 0
-                    );
-                }
-            }
-        }
-
-        usort($items, function ($a, $b) {
-            $left_time = file_exists($a['path']) ? (int)filemtime($a['path']) : 0;
-            $right_time = file_exists($b['path']) ? (int)filemtime($b['path']) : 0;
-            if ($left_time == $right_time) {
-                return strcmp(basename((string)$a['path']), basename((string)$b['path']));
-            }
-            return $right_time <=> $left_time;
-        });
-
         $out['FILES'] = array();
-        foreach ($items as $index => $item) {
-            $file = $item['path'];
-            if (!file_exists($file)) {
-                continue;
-            }
-
-            $tmp = array();
-            $tmp['ID'] = $index;
-            $tmp['FILENAME'] = $item['is_local'] ? basename($file) : $file;
-            $tmp['FILENAME_URL'] = urlencode($tmp['FILENAME']);
-            $tmp['TITLE'] = basename($file);
-            $tmp['IS_LOCAL'] = $item['is_local'];
-            $tmp['SOURCE_TITLE'] = $item['is_local'] ? 'Локальный архив модуля' : 'Внешнее хранилище';
-            $tmp['UPDATED'] = date('Y-m-d H:i:s', filemtime($file));
-            $tmp['DOWNLOAD_URL'] = '';
-
-            if (is_file($file)) {
-                $tmp['FILESIZE'] = number_format((filesize($file) / 1024 / 1024), 2);
-                if ($item['is_local']) {
-                    $tmp['DOWNLOAD_URL'] = ROOTHTML . 'cms/saverestore/' . rawurlencode(basename($file));
-                }
-            } else {
-                $tmp['FILESIZE'] = '';
-            }
-
-            $out['FILES'][] = $tmp;
+        foreach ($this->backupCatalog()->all() as $index => $entry) {
+            $entry['ID'] = $index;
+            $entry['FILENAME_URL'] = rawurlencode($entry['PATH']);
+            $entry['DOWNLOAD_URL'] = '?mode=download_backup&source=' . $entry['SOURCE'] . '&file=' . rawurlencode($entry['NAME']);
+            $out['FILES'][] = $entry;
         }
 
 

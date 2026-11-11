@@ -1,4 +1,5 @@
 <?php
+// 2026-11-11 — существующие PHP-партиалы входят в проверку, а не считаются потерянными include.
 /**
  * Template render smoke test (no database required).
  *
@@ -158,6 +159,8 @@ function inspectTemplate(string $path, array $files, array $includes, array $nee
     $missing = false;
     foreach ($includes[$path] as $child) {
         $childPath = dirname($path) . '/' . $child;
+        // PHP-партиал исполняет сам движок; его предупреждения проверяются при рендере.
+        if (str_ends_with($childPath, '.php') && is_file($childPath)) continue;
         if (!isset($files[$childPath])) {
             $missing = true;
             continue;

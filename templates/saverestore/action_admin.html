@@ -2,7 +2,7 @@
  @version 2.1 (design system)
 #-->
 [#if CLEAR_FIRST!="1"#]
-<link rel="stylesheet" href="<#ROOTHTML#>assets/modules/saverestore/saverestore.css?v=2026-10-23-1" type="text/css">
+<link rel="stylesheet" href="<#ROOTHTML#>assets/modules/saverestore/saverestore.css?v=2026-11-11-1" type="text/css">
 <script type="text/javascript" src="<#ROOTHTML#>assets/modules/saverestore/saverestore.js?v=2026-10-23-1"></script>
 
 <div class="md-ui-page md-ui-page--stack md-saverestore-page" data-saverestore-page data-saverestore-open-update="[#if MODE="getlatest_iframe"#]1[#else#]0[#endif#]">
@@ -258,7 +258,7 @@
                         </button>
                         <button type="button" class="nav-link" role="tab" aria-selected="false" aria-controls="restoreInServer" data-saverestore-panel="restoreInServer">
                             <i class="ti ti-archive" aria-hidden="true"></i>
-                            <span>Сохранённые копии</span>
+                            <span>Резервные копии</span>
                         </button>
                         <button type="button" class="nav-link" role="tab" aria-selected="false" aria-controls="createBackup" data-saverestore-panel="createBackup">
                             <i class="ti ti-device-floppy" aria-hidden="true"></i>
@@ -293,51 +293,7 @@
                         </section>
 
                         <section id="restoreInServer" class="md-saverestore-restore-panel" role="tabpanel" data-saverestore-panel-body hidden>
-                            <div class="md-saverestore-note">
-                                <i class="ti ti-info-circle" aria-hidden="true"></i>
-                                <div>
-                                    <strong>Архивы на сервере</strong>
-                                    <span>Восстановление выполняется только из ваших сохранённых архивов.</span>
-                                </div>
-                            </div>
-                            [#if FILES#]
-                            <div class="md-saverestore-backup-list">
-                                [#begin FILES#]
-                                <article class="md-saverestore-backup-item">
-                                    <span class="md-saverestore-backup-item__icon"><i class="ti ti-archive" aria-hidden="true"></i></span>
-                                    <div class="md-saverestore-backup-item__meta">
-                                        <h3 class="md-saverestore-backup-item__title">[#TITLE#]</h3>
-                                        <div class="md-saverestore-backup-item__details">
-                                            <span>[#SOURCE_TITLE#]</span>
-                                            <span>[#UPDATED#]</span>
-                                            [#if FILESIZE!=""#]<span>[#FILESIZE#] МБ</span>[#endif#]
-                                        </div>
-                                    </div>
-                                    <div class="md-saverestore-backup-item__actions">
-                                        [#if "<#CLEAR_FIRST#>"!="1"#]
-                                        <a href="?mode=upload&restore=[#FILENAME_URL#]" class="md-btn md-btn--primary md-btn--sm" data-md-confirm="<#LANG_ARE_YOU_SURE#>">
-                                            <span class="md-btn__label"><#LANG_RESTORE#></span>
-                                        </a>
-                                        [#endif#]
-                                        [#if DOWNLOAD_URL!=""#]
-                                        <a href="[#DOWNLOAD_URL#]" class="md-btn md-btn--secondary md-btn--sm">
-                                            <span class="md-btn__label">Скачать</span>
-                                        </a>
-                                        [#endif#]
-                                        <a href="?mode=delete&file=[#FILENAME_URL#]" class="md-icon-btn md-icon-btn--danger" data-md-confirm="<#LANG_ARE_YOU_SURE#>" aria-label="Удалить архив">
-                                            <i class="ti ti-trash" aria-hidden="true"></i>
-                                        </a>
-                                    </div>
-                                </article>
-                                [#end FILES#]
-                            </div>
-                            [#else#]
-                            <div class="md-empty md-empty--compact">
-                                <div class="md-empty__icon"><i class="ti ti-archive-off" aria-hidden="true"></i></div>
-                                <div class="md-empty__title">Архивы не найдены</div>
-                                <div class="md-empty__text">Загрузите архив или создайте новую резервную копию.</div>
-                            </div>
-                            [#endif FILES#]
+                            [#inc _backups.php#]
                         </section>
 
                         <section id="createBackup" class="md-saverestore-restore-panel" role="tabpanel" data-saverestore-panel-body hidden>
