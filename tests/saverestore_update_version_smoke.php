@@ -1,5 +1,7 @@
 <?php
 
+// 2026-11-11 — HTML-ошибки, оборванный XML и смешанный текст не ломают проверку обновлений.
+
 /**
  * Изолированные проверки фиксации версии системного обновления.
  *
@@ -139,6 +141,17 @@ try {
     $entries = $sv->parseUpdateFeedEntries($two);
     check(count($entries) === 2 && $sv->getUpdateEntryCommit($entries[1]) === '14d4bd4f00000000000000000000000000000000', 'Лента из двух записей сохраняет порядок');
     check($sv->parseUpdateFeedEntries('<html>404</html>') === array(), 'HTML вместо ленты не считается лентой');
+    $html = '<html><body><h1>503</h1>Service unavailable</body></html>';
+    check($sv->parseUpdateFeedEntries($html) === array(), 'HTML с текстом после заголовка не вызывает TypeError');
+    check(XMLTreeToArray(GetXMLTree($html))['html']['body']['textvalue'] === 'Service unavailable', 'Текстовые узлы сохраняются в textvalue');
+    $mixed = XMLTreeToArray(GetXMLTree('<root>before<child>0</child>after<child>2</child>end<child>3</child></root>'));
+    check($mixed['root']['textvalue'] === 'beforeafterend', 'Смешанный текст до и после элементов сохраняется');
+    check(array_column($mixed['root']['child'], 'textvalue') === array('0', '2', '3'), 'Повторяющиеся элементы сохраняют порядок и нулевой текст');
+    check(GetXMLTree('<feed><entry>broken') === false, 'Невалидный XML возвращает false');
+    check($sv->parseUpdateFeedEntries(substr($one, 0, -7)) === array(), 'Оборванная лента не возвращает частичные записи');
+    check($sv->parseUpdateFeedEntries('<html>' . substr($one, strpos($one, '<feed')) . '</html>') === array(), 'Лента внутри HTML не принимается за корневую Atom-ленту');
+    $mixedFeed = str_replace('<title>One</title>', '<title>One<b>commit</b>tail</title>', $one);
+    check($sv->getUpdateEntryCommit($sv->parseUpdateFeedEntries($mixedFeed)[0]) === $sha, 'Смешанное содержимое Atom-записи не мешает читать коммит');
 
     // -- Ссылки на ленту и архив коммита ----------------------------------
     $github = 'https://github.com/acme/repo/archive/master.tar.gz';

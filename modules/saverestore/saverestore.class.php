@@ -2,6 +2,7 @@
 
 /**
  * Обновление и восстановление системы.
+ * 2026-11-11 — HTML и оборванные ответы источника не принимаются за Atom-ленту.
  * 2026-10-23 — загрузка архива вынесена в Core\Deploy\ArchiveDownloader:
  *              прогресс в журнале, таймауты и повтор через IPv4 вместо
  *              «повисшего» curl с единственным TIMEOUT=600.
@@ -186,7 +187,7 @@ class saverestore extends module
             return array();
         }
         $tree = GetXMLTree($feed_xml);
-        if (!is_array($tree)) {
+        if (!is_array($tree) || ($tree[0]['tag'] ?? '') !== 'feed') {
             return array();
         }
         $data = XMLTreeToArray($tree);

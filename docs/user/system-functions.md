@@ -689,8 +689,8 @@ $newValue = $params['NEW_VALUE'];
 | Сигнатура | Назначение и результат |
 | --- | --- |
 | `function GetChildren($vals, &$i)` | Служебный рекурсивный разбор дочерних узлов XML; индекс обхода передаётся по ссылке. |
-| `function GetXMLTree($data)` | Разбирает XML в дерево через legacy XML-парсер. |
-| `function XMLTreeToArray($data)` | Преобразует результат legacy XML-парсера в массив. |
+| `function GetXMLTree($data)` | Разбирает XML в дерево через legacy XML-парсер; возвращает `false`, если XML невалиден или расширение XML недоступно. |
+| `function XMLTreeToArray($data)` | Преобразует результат legacy XML-парсера в массив; смешанный текст сохраняется в `textvalue`, включая строку `0`. |
 
 ### XML и массивы
 

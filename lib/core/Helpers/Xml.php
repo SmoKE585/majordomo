@@ -1,4 +1,5 @@
 <?php
+// 2026-11-11 — не возвращаем оборванные деревья и сохраняем смешанный текст XML.
 /*
 * @version 0.2
 */
@@ -58,8 +59,11 @@ function GetXMLTree($data)
 
     // by: anony@mous.com - meets XML 1.0 specification
     xml_parser_set_option($p, XML_OPTION_CASE_FOLDING, 0);
-    xml_parse_into_struct($p, $data, $vals, $index);
+    $parsed = xml_parse_into_struct($p, $data, $vals, $index);
     xml_parser_free($p);
+    if (!$parsed) {
+        return false;
+    }
 
     $i = 0;
     $tree = array();
@@ -82,6 +86,11 @@ function XMLTreeToArray($data)
     $total = count($data);
 
     for ($i = 0; $i < $total; $i++) {
+        // GetChildren возвращает текст после вложенного тега отдельной строкой.
+        if (is_string($data[$i])) {
+            $res['textvalue'] = ($res['textvalue'] ?? '') . $data[$i];
+            continue;
+        }
         if (!isset($res[$data[$i]['tag']])) {
             $res[$data[$i]['tag']] = array();
 
@@ -106,7 +115,7 @@ function XMLTreeToArray($data)
             }
         }
 
-        if ($data[$i]['value']) {
+        if (isset($data[$i]['value']) && $data[$i]['value'] !== '') {
             $elem['textvalue'] = $data[$i]['value'];
         }
 
@@ -114,7 +123,7 @@ function XMLTreeToArray($data)
             $children = XMLTreeToArray($data[$i]['children']);
 
             foreach ($children as $k => $v) {
-                $elem[$k] = $v;
+                $elem[$k] = $k === 'textvalue' ? ($elem[$k] ?? '') . $v : $v;
             }
         }
 
