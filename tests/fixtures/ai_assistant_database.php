@@ -6,6 +6,7 @@ declare(strict_types=1);
  * Адаптер тестовой SQLite к штатному Database без загрузки приложения.
  *
  * Изменения:
+ * 2026-11-11 — изолированная запись методов в тестах подтверждений.
  * 2026-10-23 — общий адаптер изолированных тестов модуля ИИ-помощника.
  */
 final class AiAssistantDatabaseFixture
@@ -39,7 +40,7 @@ final class AiAssistantDatabaseFixture
     }
     private function checkRecord(string $table, array $record): void
     {
-        if (!in_array($table, array('project_modules', 'classes', 'objects', 'properties', 'scripts'), true)
+        if (!in_array($table, array('project_modules', 'classes', 'objects', 'properties', 'methods', 'scripts'), true)
             && !preg_match('/^ai_assistant_[a-z_]+$/D', $table)) throw new RuntimeException('Неожиданная таблица фикстуры ИИ-помощника.');
         foreach (array_keys($record) as $field) {
             if (!preg_match('/^[A-Z_]+$/D', $field)) throw new RuntimeException('Некорректное поле тестовой записи.');

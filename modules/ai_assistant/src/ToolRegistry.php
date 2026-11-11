@@ -12,6 +12,7 @@ use RuntimeException;
  * Реестр реализованных Neuron Tools; произвольных обработчиков из запроса нет.
  *
  * Изменения:
+ * 2026-11-11 — поиск по коду методов через существующее разрешение find_scripts.
  * 2026-10-23 — точный фрагмент документации через query в read_knowledge.
  * 2026-10-23 — подтверждаемое создание и пульс во время поиска знаний.
  * 2026-10-23 — объекты, свойства, ссылки, код и история установки под тем же
@@ -60,7 +61,7 @@ final class ToolRegistry
             'find_references' => array('object', 'property', 'limit'),
             'read_code' => array('object', 'method', 'class', 'script', 'offset', 'limit'),
             'read_history' => array('object', 'property', 'days', 'page'),
-            'find_scripts' => array('query', 'offset', 'limit'),
+            'find_scripts' => array('query', 'offset', 'limit', 'kind'),
             'search_knowledge' => array('query', 'offset', 'limit'),
             'read_knowledge' => array('id', 'offset', 'limit', 'query'),
             default => throw new InvalidArgumentException('Инструмент пока не реализован.'),
@@ -82,7 +83,8 @@ final class ToolRegistry
                 self::text($arguments, array('object')), self::text($arguments, array('property')),
                 time() - self::integer($arguments, 'days', 7, 1, 90) * 86400, time(),
                 self::integer($arguments, 'page', 1, 1, 10000)),
-            'find_scripts' => $this->installation()->searchScripts(
+            'find_scripts' => $this->findCode(
+                self::optionalText($arguments, 'kind'),
                 self::optionalText($arguments, 'query'),
                 self::integer($arguments, 'offset', 0, 0, 1000000),
                 self::integer($arguments, 'limit', 10, 1, 25)),
@@ -151,6 +153,15 @@ final class ToolRegistry
             throw new InvalidArgumentException('Укажите script или method с object либо class.');
         }
         return $this->installation()->methodCode($object, $method, $offset, $limit, $class);
+    }
+
+    private function findCode(string $kind, string $query, int $offset, int $limit): array
+    {
+        return match ($kind) {
+            '', 'script' => $this->installation()->searchScripts($query, $offset, $limit),
+            'method' => $this->installation()->searchMethods($query, $offset, $limit),
+            default => throw new InvalidArgumentException('Для поиска укажите kind=script или kind=method.'),
+        };
     }
 
     private function installation(): InstallationInspector

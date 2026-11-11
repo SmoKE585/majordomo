@@ -1,11 +1,11 @@
-/* 2026-10-24 — восстановление результата оборванного SSE и подключение чата с голосовым вводом. */
+/* 2026-11-11 — карусель подтверждений и прокрутка, сохраняющая место чтения. */
 (function (window, document) {
     'use strict';
     var labels = {
         find_objects: 'Ищу устройства', read_object: 'Изучаю объект', read_property: 'Читаю свойство',
         find_references: 'Проверяю связи и соседние устройства', read_code: 'Читаю код',
-        read_history: 'Изучаю историю', find_scripts: 'Ищу сценарии',
-        search_knowledge: 'Ищу в справке', read_knowledge: 'Читаю документацию', create_entity: 'Готовлю предложение создания'
+        read_history: 'Изучаю историю', find_scripts: 'Ищу пользовательский код',
+        search_knowledge: 'Ищу в справке', read_knowledge: 'Читаю документацию', create_entity: 'Готовлю предложения изменений'
     };
     function el(tag, cls, text) {
         var node = document.createElement(tag);
@@ -176,14 +176,70 @@
             }
         }, finish: finish};
     }
-    var pendingScrolls = new WeakSet();
-    function scrollToBottom(container) {
-        if (!container || pendingScrolls.has(container)) return;
-        pendingScrolls.add(container);
-        // Ждём перерасчёта высоты после очередной части ответа или готовой разметки.
+    var scrollStates = new WeakMap();
+    function trackScroll(container, button) {
+        if (!container) return null;
+        if (scrollStates.has(container)) {
+            var existing = scrollStates.get(container);
+            if (button && existing.button !== button) {
+                existing.button = button;
+                button.addEventListener('click', function () { scrollToBottom(container, true); });
+                existing.updateButton();
+            }
+            return existing;
+        }
+        var state = {follow: true, scheduled: false, top: container.scrollTop, height: container.scrollHeight, size: container.clientHeight, width: container.clientWidth, button: button};
+        scrollStates.set(container, state);
+        function updateButton() { if (state.button) state.button.hidden = state.follow; }
+        container.addEventListener('scroll', function () {
+            var top = container.scrollTop;
+            var layoutChanged = state.size !== container.clientHeight || state.width !== container.clientWidth;
+            var resized = state.height !== container.scrollHeight || layoutChanged;
+            var clampedTop = Math.min(state.top, Math.max(0, container.scrollHeight - container.clientHeight));
+            if (layoutChanged && state.follow) scrollToBottom(container);
+            else if (top < clampedTop - 1) state.follow = false;
+            else if (resized && state.follow) scrollToBottom(container);
+            else if (container.scrollHeight - container.clientHeight - top < 32) state.follow = true;
+            state.top = top;
+            state.height = container.scrollHeight; state.size = container.clientHeight; state.width = container.clientWidth;
+            updateButton();
+        }, {passive: true});
+        // Останавливаем и уже запланированный кадр до прихода события scroll.
+        function pause() { state.follow = false; updateButton(); }
+        container.addEventListener('wheel', function (event) { if (event.deltaY < 0) pause(); }, {passive: true});
+        var touchY = null;
+        container.addEventListener('touchstart', function (event) { touchY = event.touches[0].clientY; }, {passive: true});
+        container.addEventListener('touchmove', function (event) {
+            if (touchY !== null && event.touches[0].clientY > touchY + 5) pause();
+        }, {passive: true});
+        container.addEventListener('keydown', function (event) {
+            if (['ArrowUp', 'PageUp', 'Home'].includes(event.key)) pause();
+        });
+        if (button) button.addEventListener('click', function () { scrollToBottom(container, true); });
+        state.updateButton = updateButton;
+        if (window.ResizeObserver) {
+            var observer = new ResizeObserver(function () {
+                if (!container.isConnected) { observer.disconnect(); return; }
+                if (state.follow) scrollToBottom(container);
+            });
+            observer.observe(container);
+        }
+        updateButton();
+        return state;
+    }
+    function scrollToBottom(container, force) {
+        if (!container) return;
+        var state = trackScroll(container);
+        if (force) { state.follow = true; state.updateButton(); }
+        if (!state.follow || state.scheduled) return;
+        state.scheduled = true;
         window.requestAnimationFrame(function () {
-            pendingScrolls.delete(container);
-            if (container.isConnected) container.scrollTop = container.scrollHeight;
+            state.scheduled = false;
+            if (container.isConnected && state.follow) {
+                container.scrollTop = container.scrollHeight;
+                state.top = container.scrollTop;
+                state.height = container.scrollHeight; state.size = container.clientHeight; state.width = container.clientWidth;
+            }
         });
     }
     async function copy(text) {
@@ -219,9 +275,54 @@
         if (window.MDCodeSample) window.MDCodeSample.init(root);
     }
     function showActions(root, actions) {
+        if (!root) return;
+        var deck = root._aiDeck;
+        if (!deck || !root.contains(deck.viewport)) {
+            if (deck) root.removeEventListener('keydown', deck.keydown);
+            var nav = el('div', 'md-ai-actions__nav');
+            var prev = el('button', 'md-btn md-btn--secondary md-btn--sm', '← Назад');
+            var next = el('button', 'md-btn md-btn--secondary md-btn--sm', 'Далее →');
+            prev.type = next.type = 'button';
+            prev.setAttribute('aria-label', 'Предыдущее предложение'); next.setAttribute('aria-label', 'Следующее предложение');
+            var counter = el('span', 'md-ai-actions__counter'); counter.setAttribute('aria-live', 'polite');
+            nav.append(prev, counter, next);
+            var viewport = el('div', 'md-ai-actions__viewport');
+            root.append(nav, viewport);
+            root.setAttribute('role', 'region'); root.setAttribute('aria-label', 'Предложения изменений');
+            root.setAttribute('aria-roledescription', 'карусель');
+            deck = {viewport: viewport, index: 0}; root._aiDeck = deck;
+            deck.refresh = function () {
+                var cards = Array.from(viewport.children);
+                deck.index = Math.max(0, Math.min(deck.index, cards.length - 1));
+                cards.forEach(function (card, index) { card.hidden = index !== deck.index; });
+                root.hidden = cards.length === 0;
+                counter.textContent = cards.length ? (deck.index + 1) + ' из ' + cards.length : '';
+                prev.disabled = deck.index === 0; next.disabled = deck.index >= cards.length - 1;
+                if (window.MDCodeSample && cards.length) window.MDCodeSample.init(cards[deck.index]);
+            };
+            function move(step) { deck.index += step; deck.refresh(); }
+            prev.addEventListener('click', function () { move(-1); });
+            next.addEventListener('click', function () { move(1); });
+            deck.keydown = function (event) {
+                if (event.target.closest('pre, code, textarea, input')) return;
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); move(event.key === 'ArrowLeft' ? -1 : 1); }
+            };
+            root.addEventListener('keydown', deck.keydown);
+            var start = null;
+            viewport.addEventListener('touchstart', function (event) {
+                start = event.target.closest('.md-code-sample, button, a, summary') ? null : {x: event.touches[0].clientX, y: event.touches[0].clientY};
+            }, {passive: true});
+            viewport.addEventListener('touchend', function (event) {
+                if (!start) return;
+                var dx = event.changedTouches[0].clientX - start.x, dy = event.changedTouches[0].clientY - start.y;
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
+                start = null;
+            }, {passive: true});
+        }
         (actions || []).forEach(function (action) {
             var old = root.querySelector('[data-ai-action="' + Number(action.id) + '"]');
             if (old) old.remove();
+            if (!['pending', 'applying'].includes(action.status)) return;
             var parsed = el('div');
             parsed.innerHTML = action.html || '';
             var box = parsed.firstElementChild;
@@ -230,7 +331,7 @@
             var bar = box.querySelector('.md-ai-action__buttons');
             function update(value) {
                 action = value;
-                state.textContent = value.result || ({pending: 'Требуется ваше подтверждение', applying: 'Создание выполняется…', rejected: 'Отменено', created: 'Создано', failed: 'Не удалось создать'}[value.status] || value.status);
+                state.textContent = value.result || ({pending: 'Требуется ваше подтверждение', applying: 'Выполняется…', rejected: 'Отменено', created: 'Создано', updated: 'Сохранено', failed: 'Не удалось применить'}[value.status] || value.status);
                 bar.hidden = value.status !== 'pending';
             }
             bar.querySelectorAll('[data-ai-action-decision]').forEach(function (button) {
@@ -239,15 +340,33 @@
                     bar.querySelectorAll('button').forEach(function (item) { item.disabled = true; });
                     try {
                         var result = await request('action_decide', {action_id: action.id, decision: decision});
-                        update(result.action);
+                        if (['pending', 'applying'].includes(result.action.status)) update(result.action);
+                        else {
+                            var focused = box.contains(document.activeElement);
+                            box.remove(); deck.refresh();
+                            root.dispatchEvent(new CustomEvent('ai:action-result', {bubbles: true, detail: result.action}));
+                            // Страница и быстрый drawer могут показывать один диалог одновременно.
+                            document.querySelectorAll('.md-ai-actions').forEach(function (other) {
+                                if (other === root || !other._aiDeck) return;
+                                var card = other.querySelector('[data-ai-action="' + Number(action.id) + '"]');
+                                if (!card) return;
+                                card.remove(); other._aiDeck.refresh();
+                                other.dispatchEvent(new CustomEvent('ai:action-result', {bubbles: true, detail: result.action}));
+                            });
+                            if (focused) {
+                                var scope = root.closest('[data-ai-chat], .md-ai-editor');
+                                var target = deck.viewport.querySelector('[data-ai-action]:not([hidden]) button') || (scope && scope.querySelector('[data-ai-prompt], textarea'));
+                                if (target) target.focus({preventScroll: true});
+                            }
+                        }
                     } catch (error) { state.textContent = errorText(error); }
                     finally { bar.querySelectorAll('button').forEach(function (item) { item.disabled = false; }); }
                 });
             });
-            root.appendChild(box);
+            deck.viewport.appendChild(box);
             update(action);
         });
-        if (window.MDCodeSample) window.MDCodeSample.init(root);
+        deck.refresh();
     }
     function showSources(root, sources) {
         var items = Array.isArray(sources) ? sources : Object.values(sources || {});
@@ -269,9 +388,9 @@
     function loadPage() {
         if (window.MDAIPage) return Promise.resolve();
         if (!pageScript) pageScript = new Promise(function (resolve, reject) {
-            var link = el('link'); link.rel = 'stylesheet'; link.href = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.css?v=20261024-12';
+            var link = el('link'); link.rel = 'stylesheet'; link.href = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.css?v=20261111-1';
             document.head.appendChild(link);
-            var script = el('script'); script.src = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.js?v=20261024-12';
+            var script = el('script'); script.src = (window.ROOTHTML || '/') + 'assets/modules/ai_assistant/ai_assistant.js?v=20261111-1';
             script.onload = resolve;
             script.onerror = function () { pageScript = null; script.remove(); reject(new Error('Не удалось загрузить чат. Повторите открытие.')); };
             document.head.appendChild(script);
@@ -299,5 +418,5 @@
     }
     window.MDAssistant = {request: request, consume: consume, progress: progress, copy: copy, newRunId: newRunId,
         bindMessages: bindMessages, showActions: showActions, showSources: showSources, errorText: errorText,
-        scrollToBottom: scrollToBottom, recoverRun: recoverRun};
+        scrollToBottom: scrollToBottom, trackScroll: trackScroll, recoverRun: recoverRun};
 })(window, document);

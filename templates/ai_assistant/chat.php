@@ -1,5 +1,5 @@
 <?php
-// 2026-10-23 — чат с потоковым ответом, выбором агента и историей диалогов.
+// 2026-11-11 — доступная прокрутка истории и кнопка возвращения к ответу.
 $readyAgents = array_values(array_filter($agents, static fn(array $agent): bool => !empty($agent['READY'])));
 $selectedAgent = (int)($dialog['AGENT_ID'] ?? 0);
 if ($selectedAgent < 1 && $readyAgents !== array()) $selectedAgent = (int)$readyAgents[0]['ID'];
@@ -99,7 +99,7 @@ $agentJson = array_map(static fn(array $agent): array => array(
 
             <?php endif; ?>
             <div class="md-alert md-alert--danger" data-ai-recovery hidden></div>
-            <div class="md-ai-chat__messages" data-ai-messages role="log" aria-label="Сообщения диалога" aria-live="polite">
+            <div class="md-ai-chat__messages" data-ai-messages tabindex="0" role="log" aria-label="Сообщения диалога" aria-live="polite">
                 <?php if ($messages === array()): ?>
                     <div class="md-ai-chat__empty" data-ai-empty>
                         <?= MDJUI::emptyState(array('icon' => 'messages', 'title' => 'Начните разговор',
@@ -112,6 +112,10 @@ $agentJson = array_map(static fn(array $agent): array => array(
                 <div class="md-ai-actions" data-ai-actions></div>
             </div>
 
+            <div class="md-ai-chat__jump">
+                <?= MDJUI::button('К последним сообщениям', array('variant' => 'secondary', 'size' => 'sm', 'icon' => 'arrow-down',
+                    'attrs' => array('data-ai-jump-bottom' => '', 'hidden' => true))) ?>
+            </div>
             <form class="md-ai-composer" data-ai-composer>
                 <label class="md-visually-hidden" for="<?= !empty($drawer) ? 'aiDrawerPrompt' : 'aiPrompt' ?>">Сообщение</label>
                 <textarea class="md-textarea md-ai-composer__input" id="<?= !empty($drawer) ? 'aiDrawerPrompt' : 'aiPrompt' ?>" name="prompt" rows="<?= !empty($drawer) ? 2 : 3 ?>"

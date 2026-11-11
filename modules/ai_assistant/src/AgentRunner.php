@@ -21,6 +21,7 @@ use Throwable;
  * Один запуск агента: история, инструменты, поток и безопасное завершение.
  *
  * Изменения:
+ * 2026-11-11 — пакет изменений сохраняется до отдельного подтверждения каждой карточки.
  * 2026-10-24 — токены сущностей в готовом Markdown превращаются в общие бейджи, кроме блоков кода.
  * 2026-10-23 — единый бюджет инструментов и привязка результата к запуску для восстановления SSE.
  * 2026-10-23 — штатный approval Neuron, устойчивый контекст после обрыва и общий компонент кода.
@@ -174,10 +175,10 @@ final class AgentRunner
                 if ((int)$agentRecord['MAX_STEPS'] > 0 && count($pending) > (int)$agentRecord['MAX_STEPS']) throw new ProviderFailure('approval_limit', 'Слишком много предложений за один запрос. Разбейте задачу на части.');
                 foreach ($pending as $action) {
                     if ($action->name !== 'create_entity') throw new ProviderFailure('approval', 'Неизвестный инструмент подтверждения.');
-                    $actions[] = $requests->propose((int)$dialog['ID'], $userId, $agentId, $action->inputs);
+                    array_push($actions, ...$requests->proposeBatch((int)$dialog['ID'], $userId, $agentId, $action->inputs));
                 }
                 if ($actions === array()) throw new ProviderFailure('approval', 'Не удалось подготовить предложение действия.');
-                $content = trim($text) ?: 'Предложение подготовлено. Проверьте параметры и подтвердите создание кнопкой ниже.';
+                $content = trim($text) ?: 'Предложения подготовлены. Проверьте каждое действие и подтвердите или отклоните его карточку.';
                 $meta = array('run_id' => $runId, 'tools' => $tools, 'sources' => array_values($sources), 'actions' => array_column($actions, 'id'));
                 $messageId = $this->chat->appendMessage((int)$dialog['ID'], $userId, 'assistant', $content, $meta);
                 $this->chat->finishRun($runId, 'done');

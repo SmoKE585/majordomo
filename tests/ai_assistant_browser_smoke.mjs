@@ -1,4 +1,4 @@
-// 2026-10-24 — голосовой ввод, свёрнутые этапы, прокрутка потока и единый фон кода в обеих темах.
+// 2026-11-11 — карусель решений и ручная прокрутка во время потока во всех поверхностях.
 import assert from 'node:assert/strict';
 import {execFileSync, spawn} from 'node:child_process';
 import {createServer} from 'node:http';
@@ -12,6 +12,8 @@ const output = execFileSync('php', ['tests/ai_assistant_panel_smoke.php', '--exp
 const fixturePath = output.match(/UI_FIXTURE=(.+)/)[1].trim();
 assert.ok(path.resolve(fixturePath).startsWith(path.resolve(tmpdir()) + path.sep));
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
+const pendingActions = new Map([fixture.action, {...fixture.action, id: fixture.action.id + 1,
+    html: fixture.action.html.replaceAll('data-ai-action="' + fixture.action.id + '"', 'data-ai-action="' + (fixture.action.id + 1) + '"')}].map(action => [action.id, action]));
 const artifactDir = await mkdtemp(path.join(tmpdir(), 'mjd-ai-browser-'));
 let run = null, runResult = null, decisionCount = 0, lastSend = null, sendCount = 0;
 const server = createServer(async (req, res) => {
@@ -23,11 +25,16 @@ const server = createServer(async (req, res) => {
             const data = Object.fromEntries(new URLSearchParams(body));
             const op = url.searchParams.get('op');
             if (op === 'drawer') return json({html: fixture.drawer});
-            if (op === 'messages') return json({dialog: {id: fixture.dialog_id, title: 'Проверка интерфейса', agent_id: 1}, messages: fixture.messages, actions: [fixture.action], run});
+            if (op === 'messages') return json({dialog: {id: fixture.dialog_id, title: 'Проверка интерфейса', agent_id: 1}, messages: fixture.messages, actions: [...pendingActions.values()], run});
             if (op === 'run_status') return json({run, result: runResult});
             if (op === 'editor_state') return json({enabled: true, agents: [{id: 1, title: 'Редактор', profile: 'editor'}], default_agent: 1});
             if (op === 'dialog_create') return json({dialog: {id: fixture.dialog_id}});
-            if (op === 'action_decide') { decisionCount++; return json({action: {...fixture.action, status: 'created', result: 'Создано. Код не запускался.'}}); }
+            if (op === 'action_decide') {
+                decisionCount++;
+                const action = pendingActions.get(Number(data.action_id)); pendingActions.delete(Number(data.action_id));
+                return json({action: {...action, status: data.decision === 'approve' ? 'created' : 'rejected',
+                    result: data.decision === 'approve' ? 'Создано. Код не запускался.' : 'Отменено пользователем.'}});
+            }
             if (op === 'cancel') { if (run) run.STATUS = 'cancelled'; return json({cancelled: true}); }
             if (op === 'send') {
                 sendCount++;
@@ -53,13 +60,13 @@ const server = createServer(async (req, res) => {
                     return res.end();
                 }
                 if (data.prompt === 'ожидание после обрыва') return res.end();
-                if (data.prompt === 'длинный') {
+                if (data.prompt === 'длинный' || data.prompt === 'читаю историю') {
                     for (let part = 1; part <= 10; part++) {
-                        await sleep(70);
+                        await sleep(data.prompt === 'читаю историю' ? 150 : 70);
                         event('token', {text: `\nЧасть ${part}: ` + 'Объяснение кода и найденных устройств. '.repeat(25)});
                     }
                 }
-                event('done', {html: (data.prompt === 'длинный' ? '<p>Подробный ответ.</p>'.repeat(35) : '') + fixture.answer_html, actions: []});
+                event('done', {html: (['длинный', 'читаю историю'].includes(data.prompt) ? '<p>Подробный ответ.</p>'.repeat(35) : '') + fixture.answer_html, actions: []});
                 run.STATUS = 'done'; return res.end();
             }
             return json({});
@@ -126,9 +133,38 @@ try {
     await evaluate('window.lastSpeechRecognition.emit("включи свет", true);window.lastSpeechRecognition.stop()');
     await waitFor('document.querySelector("[data-ai-voice]").getAttribute("aria-pressed") === "false"');
     assert.equal(await evaluate('document.querySelector("[data-ai-prompt]").value'), 'сохрани включи свет');
-    await evaluate('document.querySelector("[data-ai-action] .md-btn--primary").click()');
-    await waitFor('document.querySelector(".md-ai-action__status").textContent.includes("Создано")');
+    await waitFor('document.querySelector(".md-ai-actions__counter").textContent === "1 из 2"');
+    assert.equal(await evaluate('document.querySelectorAll("[data-ai-action]:not([hidden])").length'), 1, 'Виден только один слайд.');
+    await evaluate('document.querySelector(".md-ai-actions__nav button:last-child").click()');
+    assert.equal(await evaluate('document.querySelector(".md-ai-actions__counter").textContent'), '2 из 2');
+    await evaluate('document.querySelector(".md-ai-actions__nav button:last-child").dispatchEvent(new KeyboardEvent("keydown", {key:"ArrowLeft",bubbles:true}))');
+    assert.equal(await evaluate('document.querySelector(".md-ai-actions__counter").textContent'), '1 из 2', 'Стрелки клавиатуры листают предложения.');
+    await evaluate(`{
+        const viewport=document.querySelector('.md-ai-actions__viewport'), target=viewport.querySelector('.md-card__title') || viewport;
+        const touch=(x)=>new Touch({identifier:1,target,clientX:x,clientY:120});
+        target.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,touches:[touch(260)]}));
+        target.dispatchEvent(new TouchEvent('touchend',{bubbles:true,changedTouches:[touch(60)]}));
+    }`);
+    assert.equal(await evaluate('document.querySelector(".md-ai-actions__counter").textContent'), '2 из 2', 'Свайп листает карточки.');
+    await evaluate('document.querySelector(".md-ai-actions__nav button:first-child").click()');
+    for (const [theme, width] of [['light', 1360], ['dark', 360]]) {
+        await call('Emulation.setDeviceMetricsOverride', {width, height: 1000, deviceScaleFactor: 1, mobile: width < 600});
+        await evaluate(`document.documentElement.dataset.bsTheme=${JSON.stringify(theme)}`); await sleep(80);
+        assert.ok(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Карусель не переполняет экран: ' + theme);
+        await evaluate('document.querySelector("[data-ai-actions]").scrollIntoView({block:"center"})');
+        const screenshot = await call('Page.captureScreenshot', {format: 'png'});
+        await writeFile(path.join(artifactDir, 'cards-' + theme + '.png'), Buffer.from(screenshot.data, 'base64'));
+    }
+    await call('Emulation.setDeviceMetricsOverride', {width: 1360, height: 1000, deviceScaleFactor: 1, mobile: false});
+    await evaluate('document.documentElement.dataset.bsTheme="light"');
+    await evaluate('document.querySelector("[data-ai-action]:not([hidden]) .md-btn--primary").click()');
+    await waitFor('document.querySelector("[data-ai-messages]").textContent.includes("Создано. Код не запускался.")');
     assert.equal(decisionCount, 1);
+    assert.equal(await evaluate('document.querySelectorAll("[data-ai-action]").length'), 1, 'Подтверждённая карточка удалена.');
+    await evaluate('document.querySelector("[data-ai-action]:not([hidden]) [data-ai-action-decision=reject]").click()');
+    await waitFor('document.querySelector("[data-ai-actions]").hidden');
+    assert.equal(decisionCount, 2);
+    assert.equal(await evaluate('document.querySelectorAll("[data-ai-action]").length'), 0, 'Отклонённая карточка тоже удалена.');
     await evaluate('document.querySelector("[data-ai-prompt]").value="обрыв";document.querySelector("[data-ai-composer]").requestSubmit()');
     await waitFor('document.querySelector("[data-ai-messages]").textContent.includes("Истёк лимит времени агента") && !document.querySelector("[data-ai-send]").disabled');
     assert.equal(run.STATUS, 'error', 'Серверная ошибка не заменяется сетевой или отменой.');
@@ -149,6 +185,7 @@ try {
     await waitFor('document.querySelector("[data-ai-drawer] [data-ai-prompt]") && !document.querySelector("[data-ai-drawer] [data-ai-send]").disabled');
     assert.equal(await evaluate('document.querySelector("#mdAdminDrawerHost").hidden'), false);
     assert.equal(await evaluate('document.querySelectorAll("[data-ai-drawer] .md-ai-chat__side,[data-ai-drawer] .md-ai-chat__top,[data-ai-drawer] a").length'), 0, 'В быстром drawer нет истории, настроек и служебных переходов.');
+    assert.equal(await evaluate('document.querySelectorAll("[data-ai-drawer] [data-ai-action]").length'), 0, 'При повторном открытии решённые карточки не возвращаются.');
     await sleep(60); // Drawer завершает собственную установку фокуса.
     await evaluate(`{
         const root = document.createElement('div'); root.id = 'progressFixture';
@@ -177,11 +214,24 @@ try {
     assert.ok(await evaluate('document.querySelector("[data-ai-drawer] [data-ai-send]").disabled'), 'Прокрутка происходит во время потока.');
     await waitFor('!document.querySelector("[data-ai-drawer] [data-ai-send]").disabled');
     await waitFor(atBottom('[data-ai-drawer] [data-ai-messages]'));
+    await evaluate('document.querySelector("[data-ai-drawer] [data-ai-prompt]").value="читаю историю";document.querySelector("[data-ai-drawer] [data-ai-composer]").requestSubmit()');
+    await waitFor('document.querySelector("[data-ai-drawer] [data-ai-messages]").textContent.includes("Часть 2:")');
+    await evaluate('window.readingBox=document.querySelector("[data-ai-drawer] [data-ai-messages]");window.readingBox.scrollTop=0;window.readingBox.dispatchEvent(new Event("scroll"))');
+    await waitFor('!document.querySelector("[data-ai-drawer] [data-ai-jump-bottom]").hidden');
+    await sleep(400);
+    assert.equal(await evaluate('window.readingBox.scrollTop'), 0, 'Поток не отрывает от чтения истории.');
+    await waitFor('!document.querySelector("[data-ai-drawer] [data-ai-send]").disabled');
+    assert.equal(await evaluate('window.readingBox.scrollTop'), 0, 'Завершение ответа также сохраняет позицию.');
+    await evaluate('document.querySelector("[data-ai-drawer] [data-ai-jump-bottom]").click()');
+    await waitFor(atBottom('[data-ai-drawer] [data-ai-messages]'));
+    await waitFor('document.querySelector("[data-ai-drawer] [data-ai-jump-bottom]").hidden');
     for (const [theme, width] of [['light', 1360], ['dark', 390]]) {
         await call('Emulation.setDeviceMetricsOverride', {width, height: 1000, deviceScaleFactor: 1, mobile: width < 600});
         await evaluate(`document.documentElement.dataset.bsTheme=${JSON.stringify(theme)}`); await sleep(150);
         assert.ok(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Нет горизонтального переполнения: ' + theme);
         assert.ok(await evaluate('document.querySelector("[data-ai-drawer] [data-ai-send]").getBoundingClientRect().bottom <= window.innerHeight'), 'Отправка доступна без прокрутки оболочки.');
+        await waitFor(atBottom('[data-ai-drawer] [data-ai-messages]'));
+        await waitFor('document.querySelector("[data-ai-drawer] [data-ai-jump-bottom]").hidden');
         const screenshot = await call('Page.captureScreenshot', {format: 'png'});
         await writeFile(path.join(artifactDir, theme + '.png'), Buffer.from(screenshot.data, 'base64'));
     }
@@ -201,6 +251,17 @@ try {
     await waitFor('!document.querySelector(".md-ai-editor__bar .md-btn--primary").disabled');
     await waitFor(atBottom('#mdAdminDrawerBody'));
     // Многострочный код воспроизводит конфликт фона и двойную прокрутку со снимка.
+    await evaluate('document.querySelector(".md-ai-editor__prompt").value="читаю историю";document.querySelector(".md-ai-editor__bar .md-btn--primary").click()');
+    await waitFor('document.querySelector(".md-ai-editor__answer").textContent.includes("Часть 3:")');
+    await evaluate('window.editorReading=document.querySelector("#mdAdminDrawerBody");window.editorReading.scrollTop=0;window.editorReading.dispatchEvent(new Event("scroll"))');
+    await waitFor('!document.querySelector(".md-ai-editor__jump").hidden');
+    await sleep(400);
+    assert.ok(await evaluate('window.editorReading.scrollTop < 100'), 'Помощник редактора не отрывает от чтения.');
+    await waitFor('!document.querySelector(".md-ai-editor__bar .md-btn--primary").disabled');
+    assert.ok(await evaluate('window.editorReading.scrollTop < 100'), 'Готовый ответ редактора не сбрасывает позицию.');
+    await evaluate('document.querySelector(".md-ai-editor__jump").click()');
+    await waitFor(atBottom('#mdAdminDrawerBody'));
+    await waitFor('document.querySelector(".md-ai-editor__jump").hidden');
     await evaluate(`{
         const code = document.querySelector('.md-ai-editor__answer .md-code-sample__code');
         code.textContent = '// Пример сценария\\n' + ('$value = getGlobal(\\'Light.status\\'); // Значение свойства\\n').repeat(30);

@@ -27,8 +27,8 @@ if (!empty($drawer)) {
     return;
 }
 ?>
-<link rel="stylesheet" href="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.css?v=20261023-11">
-<script src="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.js?v=20261023-11" defer></script>
+<link rel="stylesheet" href="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.css?v=20261111-1">
+<script src="<?= $e(ROOTHTML) ?>assets/modules/ai_assistant/ai_assistant.js?v=20261111-1" defer></script>
 
 <div class="md-ui-page md-ui-page--stack md-ai-page" data-md-ai-panel
      data-ai-endpoint="<?= $e(ROOTHTML) ?>panel/ai_assistant.html?ajax=1"

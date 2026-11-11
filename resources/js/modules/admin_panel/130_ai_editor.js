@@ -1,4 +1,5 @@
 /*
+ * 2026-11-11 — результаты подтверждений и сохранение места чтения потока.
  * 2026-10-23 — прокрутка drawer вслед за этапами и частями ответа.
  * 2026-10-23 — ИИ-помощник в редакторе кода: один drawer, вставка одной
  * отменяемой операцией, проверка конфликта и отсутствие автосохранения формы.
@@ -29,6 +30,12 @@
 
     function buildPanel(editor, context, stateData) {
         var root = el('div', 'md-ai-editor');
+        var jump = el('button', 'md-btn md-btn--secondary md-btn--sm md-ai-editor__jump', 'К последним сообщениям');
+        jump.type = 'button'; jump.hidden = true;
+        root.appendChild(jump);
+        window.requestAnimationFrame(function () {
+            window.MDAssistant.trackScroll(root.closest('.md-drawer__body'), jump);
+        });
         var intro = el('div', 'md-ai-editor__intro');
         intro.appendChild(el('strong', '', 'Что сделать с кодом?'));
         var chips = el('div', 'md-ai-editor__chips');
@@ -157,10 +164,13 @@
             var timeline = ai.progress(steps);
             var content = el('div', 'md-prose'); panel.answer.appendChild(content);
             var actions = el('div', 'md-ai-actions'); panel.answer.appendChild(actions);
+            actions.addEventListener('ai:action-result', function (event) {
+                panel.answer.appendChild(el('p', 'md-ai-action-result', event.detail.result || 'Решение сохранено.'));
+            });
             var terminal = false, failed = false, accumulated = '';
             var scroller = panel.root.closest('.md-drawer__body');
             setBusy(true, 'Помощник готовит ответ…');
-            ai.scrollToBottom(scroller);
+            ai.scrollToBottom(scroller, true);
             panel.runId = ai.newRunId();
             panel.controller = new AbortController();
             function receive(name, data) {

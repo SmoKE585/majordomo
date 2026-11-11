@@ -1,4 +1,5 @@
 /*
+ * 2026-11-11 — результаты решений в истории и управляемое слежение за потоком.
  * 2026-10-24 — ИИ-помощник: чат с SSE, диагностика, сборка индекса и голосовой ввод.
  * Без jQuery; повторная инициализация после partLoad.
  */
@@ -54,9 +55,14 @@
         var actions = chat.querySelector('[data-ai-actions]');
         var recovered = chat.querySelector('[data-ai-recovery]');
         var initialActions = JSON.parse(chat.dataset.actions || '[]');
+        ai.trackScroll(messages, chat.querySelector('[data-ai-jump-bottom]'));
         ai.showActions(actions, initialActions);
         ai.bindMessages(messages);
-        function scrollDown() { ai.scrollToBottom(messages); }
+        function scrollDown(force) { ai.scrollToBottom(messages, force); }
+        actions.addEventListener('ai:action-result', function (event) {
+            bubble('assistant', event.detail.result || 'Решение сохранено.');
+            scrollDown();
+        });
         function setBusy(value, text) {
             busy = value;
             prompt.disabled = value || !select.value;
@@ -170,7 +176,7 @@
                 setBusy(false, 'Enter — отправить, Shift+Enter — новая строка');
                 if (run && run.STATUS === 'error') failure(run.ERROR || 'Предыдущий запрос прерван. Можно повторить.');
             }
-            scrollDown();
+            scrollDown(true);
         }
         function bubble(role, text) {
             var empty = messages.querySelector('[data-ai-empty]');
@@ -196,6 +202,8 @@
             finally { setBusy(false, 'Enter — отправить, Shift+Enter — новая строка'); }
             dialogId = Number(result.dialog.id);
             messages.innerHTML = ''; actions.innerHTML = ''; messages.appendChild(actions); recovered.hidden = true;
+            actions.hidden = true;
+            scrollDown(true);
             prompt.value = '';
             chat.querySelector('[data-ai-dialog-title]').textContent = 'Новый диалог';
             var list = chat.querySelector('[data-ai-dialogs]');
@@ -243,7 +251,7 @@
                 timeline = ai.progress(assistant.body);
                 prompt.value = ''; recovered.hidden = true;
                 setBusy(true, 'Помощник готовит ответ…');
-                scrollDown();
+                scrollDown(true);
                 controller = new AbortController(); runId = ai.newRunId();
                 var response = await ai.request('send', {dialog_id: dialogId, agent_id: select.value, prompt: text, request_id: runId}, controller.signal, true);
                 await ai.consume(response, receive);

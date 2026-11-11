@@ -14,6 +14,7 @@ use RuntimeException;
  * сценарии, ссылки и история. Никакого SQL, shell или записи от модели.
  *
  * Изменения:
+ * 2026-11-11 — поиск пользовательских методов по коду с точным владельцем.
  * 2026-10-23 — поиск кандидатов с опечатками, транслитерацией и бытовыми названиями.
  * 2026-10-23 — единый серверный слой для Tools помощника и контекста редактора.
  */
@@ -310,7 +311,7 @@ final class InstallationInspector
             $script = $this->db->one('SELECT ID,TITLE,CODE FROM scripts WHERE ID=' . (int)$method['SCRIPT_ID']);
         }
         $code = SensitiveText::clean((string)($method['CODE'] ?? ''));
-        if ($code === '' && $script !== null) $code = SensitiveText::clean((string)($script['CODE'] ?? ''));
+        if ($script !== null) $code = SensitiveText::clean((string)($script['CODE'] ?? ''));
         $total = mb_strlen($code);
         $parent = null;
         if ((int)($method['CALL_PARENT'] ?? 0) > 0) {
@@ -386,6 +387,42 @@ final class InstallationInspector
             'code' => mb_substr($code, $offset, $limit), 'offset' => $offset, 'total_characters' => $total,
             'next_offset' => $offset + $limit < $total ? $offset + $limit : null,
             'url' => self::url('/panel/script/' . (int)$record['ID'] . '.html'));
+    }
+
+    /** Поиск пользовательских методов, включая реализацию через сценарий. */
+    public function searchMethods(string $query, int $offset = 0, int $limit = 10): array
+    {
+        if (mb_strlen($query) > 200 || !mb_check_encoding($query, 'UTF-8') || preg_match('/[\x00-\x1f\x7f]/', $query)) {
+            throw new InvalidArgumentException('Поисковый запрос должен быть текстом UTF-8 до 200 символов.');
+        }
+        self::page($offset, $limit, 25);
+        $from = ' FROM methods m LEFT JOIN objects o ON o.ID=m.OBJECT_ID LEFT JOIN classes c ON c.ID=m.CLASS_ID'
+            . ' LEFT JOIN scripts s ON s.ID=m.SCRIPT_ID';
+        $where = '';
+        if ($query !== '') {
+            $like = '%' . str_replace(array('%', '_'), array('\\%', '\\_'), $this->db->escape($query)) . '%';
+            $conditions = array();
+            foreach (array('m.TITLE', 'm.DESCRIPTION', 'm.CODE', 'o.TITLE', 'o.DESCRIPTION', 'c.TITLE', 'c.DESCRIPTION', 's.TITLE', 's.CODE') as $column) {
+                $conditions[] = $column . " LIKE '" . $like . "'";
+            }
+            $where = ' WHERE (' . implode(' OR ', $conditions) . ')';
+        }
+        $total = (int)($this->db->one('SELECT COUNT(*) AS C' . $from . $where)['C'] ?? 0);
+        $rows = $this->db->select('SELECT m.ID,m.TITLE,m.DESCRIPTION,m.CLASS_ID,m.OBJECT_ID,o.TITLE AS OBJECT_TITLE,o.CLASS_ID AS OBJECT_CLASS_ID,c.TITLE AS CLASS_TITLE'
+            . $from . $where . ' ORDER BY m.TITLE,m.ID LIMIT ' . $offset . ',' . $limit);
+        $items = array();
+        foreach ($rows as $row) {
+            $object = (int)$row['OBJECT_ID'] > 0;
+            $items[] = array('id' => (int)$row['ID'], 'title' => SensitiveText::clean((string)$row['TITLE']),
+                'description' => SensitiveText::clean(mb_substr((string)($row['DESCRIPTION'] ?? ''), 0, 300)),
+                'object' => $object ? SensitiveText::clean((string)$row['OBJECT_TITLE']) : '',
+                'class' => $object ? '' : SensitiveText::clean((string)$row['CLASS_TITLE']),
+                'origin' => $object ? 'object' : 'class',
+                'url' => self::url('/panel/class/' . (int)($object ? $row['OBJECT_CLASS_ID'] : $row['CLASS_ID'])
+                    . ($object ? '/object/' . (int)$row['OBJECT_ID'] : '') . '/methods/' . (int)$row['ID'] . '.html'));
+        }
+        return array('kind' => 'reference_data', 'items' => $items, 'total' => $total,
+            'next_offset' => $offset + $limit < $total ? $offset + $limit : null);
     }
 
     public function history(string $objectName, string $propertyName, int $from, int $to, int $page = 1, int $perPage = 10): array

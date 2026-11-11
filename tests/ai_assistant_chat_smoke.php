@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// 2026-10-23 — полный цикл AgentRunner: история, инструменты, стрим и сохранение.
+// 2026-11-11 — пакеты, методы, конфликты версий и однократные решения в SQLite.
 
 putenv('APP_ENV=testing');
 putenv('DB_CONNECTION=sqlite');
@@ -183,13 +183,16 @@ try {
         'description' => 'Тестовый вечерний сценарий', 'code' => '$GLOBALS["ai_fixture_executed"] = true;');
     $chat->appendMessage($dialogId, 1, 'user', 'Создай вечерний сценарий');
     $pendingRun = $chat->beginRun($dialogId, 1, $agentId, 'Создай вечерний сценарий');
-    $approvalFake = new FakeAIProvider(new ToolCallMessage(null, array(new ToolCall('create_entity', 'create-1', $payload))));
+    $methodPayload = array('kind' => 'class_method', 'name' => 'turnOnFixture', 'parent' => 'Lamp',
+        'description' => 'Включение лампы', 'code' => '$this->setProperty("status", 1);', 'call_parent' => '2');
+    $approvalFake = new FakeAIProvider(new ToolCallMessage(null, array(new ToolCall('create_entity', 'create-1', array('changes' => array($payload, $methodPayload))))));
     $approvalRunner = new AgentRunner($state, $chat, $agents, $models, $factory, null, static fn(): int => 1, $approvalFake);
     $approvalEvents = array();
     $approval = $approvalRunner->run($pendingRun, 1, static function (array $event) use (&$approvalEvents): void { $approvalEvents[] = $event; });
     check($approval['status'] === 'approval', 'Neuron приостановил создание для подтверждения.');
     check((int)$pdo->query('SELECT COUNT(*) FROM scripts')->fetchColumn() === 0, 'До подтверждения сценарий не создан.');
     $requests = new \MajorDoMo\Modules\AiAssistant\ActionRequests($database, $chat, $agents, $state);
+    check(count($requests->forDialog($dialogId, 1)) === 2, 'Один вызов модели предлагает весь пакет, без промежуточных подтверждений.');
     $draft = $requests->forDialog($dialogId, 1)[0];
     check($draft['status'] === 'pending' && str_contains($draft['code_html'], 'data-md-code-sample'), 'Сохранён точный код для подтверждения в общем UI-компоненте.');
     $invalidated = 0;
@@ -200,6 +203,83 @@ try {
     $decision = $requests->decide($draft['id'], 1, true, $creator);
     check($decision['status'] === 'created' && (int)$pdo->query('SELECT COUNT(*) FROM scripts')->fetchColumn() === 1, 'Подтверждение создало ровно один сценарий.');
     check(!isset($GLOBALS['ai_fixture_executed']) && $invalidated === 1, 'Создание обновило метаданные, не исполнило PHP-код.');
+    $methodDraft = $requests->forDialog($dialogId, 1)[0];
+    check($methodDraft['data']['kind'] === 'class_method', 'Решённая карточка исключена, следующая остаётся ожидающей.');
+    check($requests->decide($methodDraft['id'], 1, true, $creator)['status'] === 'created', 'Метод класса создаётся отдельным подтверждением.');
+    $method = $pdo->query("SELECT * FROM methods WHERE TITLE='turnOnFixture'")->fetch(PDO::FETCH_ASSOC);
+    check((int)$method['CLASS_ID'] === 1 && (int)$method['OBJECT_ID'] === 0 && (int)$method['CALL_PARENT'] === 2, 'Метод записан владельцу с выбранным порядком родителя.');
+    $update = array_replace($methodPayload, array('operation' => 'update', 'code' => '$this->setProperty("status", 0);', 'call_parent' => ''));
+    $editDraft = $requests->propose($dialogId, 1, $agentId, $update);
+    check(str_contains($editDraft['html'], 'Исходный код') && str_contains($editDraft['html'], 'Сохранить'), 'Правка показывает исходный и новый код перед подтверждением.');
+    check($requests->decide($editDraft['id'], 1, true, $creator)['status'] === 'updated', 'Подтверждение сохраняет новый код метода.');
+    check($pdo->query("SELECT CODE FROM methods WHERE ID=" . (int)$method['ID'])->fetchColumn() === $update['code'], 'Сохранено точное тело метода.');
+    check((int)$pdo->query('SELECT CALL_PARENT FROM methods WHERE ID=' . (int)$method['ID'])->fetchColumn() === 2, 'Пустой call_parent сохраняет прежнее наследование.');
+    $conflict = $requests->propose($dialogId, 1, $agentId, $update);
+    $pdo->exec("UPDATE methods SET CODE='return 42;' WHERE ID=" . (int)$method['ID']);
+    check($requests->decide($conflict['id'], 1, true, $creator)['status'] === 'failed', 'Изменённый другим редактором метод не перезаписывается.');
+    check($pdo->query('SELECT CODE FROM methods WHERE ID=' . (int)$method['ID'])->fetchColumn() === 'return 42;', 'Конкурентная правка сохранена.');
+    $withoutDescription = $update; unset($withoutDescription['description']);
+    $descriptionDraft = $requests->propose($dialogId, 1, $agentId, $withoutDescription);
+    check($descriptionDraft['data']['description'] === $methodPayload['description'], 'Отсутствующее описание сохраняет метаданные пользовательского метода.');
+    $requests->decide($descriptionDraft['id'], 1, false, $creator);
+    $objectDraft = $requests->propose($dialogId, 1, $agentId, array_replace($methodPayload, array('kind' => 'object_method', 'parent' => 'KitchenLamp')));
+    check($requests->decide($objectDraft['id'], 1, true, $creator)['status'] === 'created', 'Явное переопределение метода создаётся у объекта.');
+    $objectEdit = $requests->propose($dialogId, 1, $agentId, array_replace($update, array('kind' => 'object_method', 'parent' => 'KitchenLamp')));
+    check($requests->decide($objectEdit['id'], 1, true, $creator)['status'] === 'updated', 'Собственный метод объекта редактируется.');
+    check($pdo->query('SELECT CODE FROM methods WHERE ID=' . (int)$method['ID'])->fetchColumn() === 'return 42;', 'Правка объекта не затрагивает метод класса.');
+    $beforeBadBatch = (int)$pdo->query('SELECT COUNT(*) FROM ai_assistant_actions')->fetchColumn();
+    $badBatch = false;
+    try { $requests->proposeBatch($dialogId, 1, $agentId, array('changes' => array($payload, array_replace($methodPayload, array('code' => 'if ('))))); }
+    catch (InvalidArgumentException) { $badBatch = true; }
+    check($badBatch && (int)$pdo->query('SELECT COUNT(*) FROM ai_assistant_actions')->fetchColumn() === $beforeBadBatch, 'Неверный PHP отклоняет весь пакет без частичных карточек.');
+    $dependent = $requests->proposeBatch($dialogId, 1, $agentId, array('changes' => array(
+        array('kind' => 'class', 'name' => 'BatchLights'),
+        array('kind' => 'object', 'name' => 'BatchLamp', 'parent' => 'BatchLights'),
+        array_replace($methodPayload, array('parent' => 'BatchLights')),
+        array_replace($methodPayload, array('kind' => 'object_method', 'parent' => 'BatchLamp')),
+    )));
+    foreach ($dependent as $pendingAction) check($requests->decide($pendingAction['id'], 1, true, $creator)['status'] === 'created', 'Пакет подтверждается в порядке зависимостей.');
+    check($requests->forDialog($dialogId, 1) === array(), 'Завершённые и ошибочные карточки не возвращаются после перезагрузки.');
+    // Бытовой запрос проходит настоящие инструменты поиска и чтения, но без внешней модели.
+    $securityClass = $creator->create(array('kind' => 'class', 'name' => 'SecurityLogic'));
+    $creator->create(array('kind' => 'object', 'name' => 'Vacuum', 'parent' => 'Lamp', 'description' => 'Робот-пылесос'));
+    $vacuumProperty = $creator->create(array('kind' => 'object_property', 'name' => 'cleaning', 'parent' => 'Vacuum'));
+    $originalSecurity = '$mode = (int)($params["MODE"] ?? 1);' . "\n" . '$this->setProperty("armed", $mode);';
+    $security = $creator->create(array('kind' => 'class_method', 'name' => 'setGuard', 'parent' => 'SecurityLogic',
+        'description' => 'Постановка и изменение режима охраны', 'code' => $originalSecurity));
+    $securityInput = $agents->get($agentId);
+    $securityInput['TOOLS'] = array('find_scripts', 'read_code', 'find_objects', 'read_property', 'create_entity');
+    $agents->save($agentId, $securityInput);
+    $changedSecurity = '$mode = (int)($params["MODE"] ?? 1);' . "\n" . 'if ($mode > 0 && getGlobal("Vacuum.cleaning")) { return false; }'
+        . "\n" . '$this->setProperty("armed", $mode);';
+    $securityProvider = new FakeAIProvider(
+        new ToolCallMessage(null, array(new ToolCall('find_scripts', 'guard-search', array('kind' => 'method', 'query' => 'охран')))),
+        new ToolCallMessage(null, array(new ToolCall('read_code', 'guard-read', array('class' => 'SecurityLogic', 'method' => 'setGuard')),
+            new ToolCall('find_objects', 'vacuum-search', array('query' => 'пылесос')))),
+        new ToolCallMessage(null, array(new ToolCall('read_property', 'vacuum-property', array('object' => 'Vacuum', 'property' => 'cleaning')))),
+        new ToolCallMessage(null, array(new ToolCall('create_entity', 'guard-change', array('changes' => array(array(
+            'kind' => 'class_method', 'name' => 'setGuard', 'parent' => 'SecurityLogic', 'operation' => 'update',
+            'description' => 'Постановка и изменение режима охраны', 'code' => $changedSecurity,
+        ))))))
+    );
+    $securityDialog = $chat->createDialog(1, $agentId, 'Охрана и пылесос', 'chat', array());
+    $securityQuestion = 'Найди, где ставится режим охраны в методе, и учитывай уборку пылесоса при постановке и изменении режима. Покажи правку до подтверждения.';
+    $chat->appendMessage($securityDialog, 1, 'user', $securityQuestion);
+    $securityRun = $chat->beginRun($securityDialog, 1, $agentId, $securityQuestion);
+    $securityRunner = new AgentRunner($state, $chat, $agents, $models, $factory, null, static fn(): int => 1, $securityProvider);
+    check($securityRunner->run($securityRun, 1, static function (array $event): void {})['status'] === 'approval', 'Запрос об охране и пылесосе дошёл от поиска до предпросмотра правки.');
+    $searchMessages = json_encode($securityProvider->getRecorded()[1]->messages, JSON_UNESCAPED_UNICODE);
+    check(str_contains($searchMessages, 'setGuard') && str_contains($searchMessages, 'SecurityLogic'), 'Поиск передал модели метод и реального владельца без известного заранее имени метода.');
+    check(str_contains(json_encode($securityProvider->getRecorded()[3]->messages), 'cleaning'), 'Модель получила настоящее свойство пылесоса.');
+    check($pdo->query('SELECT CODE FROM methods WHERE ID=' . $security['id'])->fetchColumn() === $originalSecurity, 'До подтверждения пользовательский код остался исходным.');
+    $securityDraft = $requests->forDialog($securityDialog, 1)[0];
+    check(str_contains($securityDraft['before_html'], 'setProperty') && str_contains($securityDraft['code_html'], 'Vacuum.cleaning'), 'Предпросмотр содержит исходный код и новое условие пылесоса.');
+    check($requests->decide($securityDraft['id'], 1, false, $creator)['status'] === 'rejected'
+        && $pdo->query('SELECT CODE FROM methods WHERE ID=' . $security['id'])->fetchColumn() === $originalSecurity, 'Отказ оставляет пользовательский метод без изменений.');
+    $securityDraft = $requests->propose($securityDialog, 1, $agentId, array_replace($securityDraft['data'], array('operation' => 'update')));
+    check($requests->decide($securityDraft['id'], 1, true, $creator)['status'] === 'updated'
+        && $pdo->query('SELECT CODE FROM methods WHERE ID=' . $security['id'])->fetchColumn() === $changedSecurity, 'Подтверждение сохраняет показанное тело метода с условием пылесоса.');
+    $securityInput = $agents->get($agentId); $securityInput['TOOLS'] = array('find_objects', 'create_entity'); $agents->save($agentId, $securityInput);
     $requests->decide($draft['id'], 1, true, $creator);
     check((int)$pdo->query('SELECT COUNT(*) FROM scripts')->fetchColumn() === 1, 'Повторный клик не создаёт дубликат.');
     $rejected = $requests->propose($dialogId, 1, $agentId, array_replace($payload, array('name' => 'RejectedFixture')));
@@ -224,6 +304,22 @@ try {
     $duplicateDenied = false;
     try { $creator->create(array('kind' => 'object', 'name' => 'FixtureToilet', 'parent' => 'FixtureLights')); } catch (InvalidArgumentException) { $duplicateDenied = true; }
     check($duplicateDenied, 'Существующий объект не перезаписывается.');
+    $linkedScript = $creator->create(array('kind' => 'script', 'name' => 'LinkedGuardFixture', 'code' => 'return 17;'));
+    $linkedMethod = $creator->create(array('kind' => 'class_method', 'name' => 'linkedGuard', 'parent' => 'Lamp', 'code' => 'return 1;'));
+    $pdo->exec('UPDATE methods SET SCRIPT_ID=' . $linkedScript['id'] . ' WHERE ID=' . $linkedMethod['id']);
+    $linkedReader = new \MajorDoMo\Core\Inspection\InstallationInspector($database);
+    check($linkedReader->methodCode('', 'linkedGuard', 0, 4000, 'Lamp')['code'] === 'return 17;', 'Чтение показывает исполняемый сценарий, а не неактивный код метода.');
+    $linkedUpdate = array('kind' => 'class_method', 'name' => 'linkedGuard', 'parent' => 'Lamp', 'operation' => 'update', 'code' => 'return 18;');
+    $linkedDraft = $requests->propose($dialogId, 1, $agentId, $linkedUpdate);
+    check(str_contains($linkedDraft['before_html'], '17') && str_contains($linkedDraft['html'], 'LinkedGuardFixture'), 'Предпросмотр показывает реальный исходный сценарий и замену привязки.');
+    $pdo->exec('UPDATE scripts SET CODE=\'return 19;\' WHERE ID=' . $linkedScript['id']);
+    $linkedRejected = false;
+    try { $creator->updateMethod($linkedUpdate, array_replace(\MajorDoMo\Core\EntityCreator::methodSnapshot($database, $linkedUpdate), array('_SCRIPT_CODE' => 'return 17;'))); }
+    catch (RuntimeException) { $linkedRejected = true; }
+    check($linkedRejected, 'Правка не затирает изменившуюся реализацию связанного сценария.');
+    $creator->updateMethod($linkedUpdate, \MajorDoMo\Core\EntityCreator::methodSnapshot($database, $linkedUpdate));
+    check((int)$pdo->query('SELECT SCRIPT_ID FROM methods WHERE ID=' . $linkedMethod['id'])->fetchColumn() === 0
+        && $pdo->query('SELECT CODE FROM scripts WHERE ID=' . $linkedScript['id'])->fetchColumn() === 'return 19;', 'Метод переключается на свой код, исходный сценарий сохранён.');
     $cancelRun = $chat->beginRun($dialogId, 1, $agentId, 'Проверка обрыва');
     $chat->requestCancel($cancelRun, 1);
     check($chat->run($cancelRun, 1)['STATUS'] === 'cancelled', 'Отмена сразу освобождает диалог.');
