@@ -1,4 +1,5 @@
 <?php
+// 2026-11-11 — зависимые циклы запускаются после готовности main, без расходования повторов во время ожидания.
 /**
  * Супервизор фоновых циклов.
  * 2026-10-25 — три попытки восстановления; критичная ошибка только при их исчерпании.
@@ -179,6 +180,7 @@ function startCycleThread($threads, $title, $cmd)
         saveCycleToCache($title . 'LastError', '');
         saveCycleToCache($title . 'LastFailure', '');
     } catch (Throwable $error) { error_log('Cannot clear previous cycle failure: ' . get_class($error)); }
+    if ($title === 'cycle_main') (new \MajorDoMo\Core\Cycles\CycleReadiness(ROOT))->reset();
     $pipeId = $threads->newThread($cmd);
     if (!$pipeId) {
         $message = 'Failed to start cycle process: ' . $cmd;
@@ -556,6 +558,13 @@ $cycleWatchdog = new \MajorDoMo\Core\Cycles\CycleWatchdog(
     defined('JOBS_EXECUTION_TIMEOUT') ? (int)JOBS_EXECUTION_TIMEOUT : 300
 );
 $to_start = $to_stop = $started_when = $is_running = $expected_exits = array();
+$mainReadiness = new \MajorDoMo\Core\Cycles\CycleReadiness(ROOT);
+$mayStartCycle = static function (string $title) use (&$is_running, $threads, $mainReadiness): bool {
+    if ($title === 'cycle_main' || !\MajorDoMo\Core\Config::bool('WAIT_FOR_MAIN_CYCLE', true)) return true;
+    if (!isset($is_running['cycle_main'])) return false;
+    $info = $threads->getThreadInfo($is_running['cycle_main']);
+    return !empty($info['running']) && $mainReadiness->ready((int)($info['pid'] ?? 0));
+};
 
 foreach ($cycles as $path) {
 
@@ -578,6 +587,11 @@ foreach ($cycles as $path) {
         }
 
 
+        if (!$mayStartCycle($title)) {
+            $to_start[$title] = time() + 1;
+            setCycleRuntimeStatus($title, 'starting', 'Waiting for cycle_main readiness');
+            continue;
+        }
         DebMes("Starting " . $path . " ... ", 'boot');
         setCycleRuntimeStatus($title, 'starting');
         addCycleRuntimeLog($title, 'Starting ' . $path);
@@ -1012,6 +1026,11 @@ while (true) {
             continue;
         }
         if (isset($is_running[$title], $to_stop[$title])) continue;
+        if (!isset($is_running[$title]) && !$mayStartCycle($title)) {
+            $to_start[$title] = time() + 1;
+            setCycleRuntimeStatus($title, 'starting', 'Waiting for cycle_main readiness');
+            continue;
+        }
         if ($tm <= time()) {
             if (!isset($is_running[$title])) {
                 $cmd = './scripts/' . $title . '.php';

@@ -1,6 +1,6 @@
 <?php
 
-/** 2026-11-06 — регулярная очистка журнала аудита в работающем цикле. */
+/** 2026-11-11 — быстрый старт без тяжёлого обслуживания; готовность main подтверждается его PID. */
 
 chdir(dirname(__FILE__) . '/../');
 
@@ -16,13 +16,11 @@ $ctl = new control_modules();
 setGlobal((str_replace('.php', '', basename(__FILE__))) . 'Run', time(), 1);
 $cycleVarName = 'ThisComputer.' . str_replace('.php', '', basename(__FILE__)) . 'Run';
 
-echo "Running startup maintenance" . PHP_EOL;
-$run_from_start = 1;
-include("./scripts/startup_maintenance.php");
-$run_from_start = 0;
-
 setGlobal('ThisComputer.started_time', time());
-callMethod('ThisComputer.StartUp');
+// Пользовательский StartUp не должен задерживать запуск ядра или обрывать main.
+if (!\MajorDoMo\Core\Core::queue()->enqueueRuntime('method', array(), 'ThisComputer.StartUp')) {
+    throw new RuntimeException('Не удалось поставить ThisComputer.StartUp в очередь');
+}
 processSubscriptionsSafe('startup');
 
 $sqlQuery = "SELECT *
@@ -32,7 +30,7 @@ $sqlQuery = "SELECT *
 $timerClass = SQLSelectOne($sqlQuery);
 $o_qry = 1;
 
-if ($timerClass['SUB_LIST'] != '') {
+if (!empty($timerClass['SUB_LIST'])) {
     $o_qry .= " AND (CLASS_ID IN (" . $timerClass['SUB_LIST'] . ")";
     $o_qry .= "  OR CLASS_ID = " . $timerClass['ID'] . ")";
 } else {
@@ -51,10 +49,10 @@ $old_date = date('Y-m-d');
 
 $checked_time = 0;
 $started_time = time();
-$next_audit_prune = $started_time + 5 * 60;
 $objects = array();
 $total = 0;
 
+(new \MajorDoMo\Core\Cycles\CycleReadiness(ROOT))->markReady();
 echo date("H:i:s") . " running " . basename(__FILE__) . "\n";
 set_time_limit(0);
 while (1) {
@@ -106,13 +104,9 @@ while (1) {
             echo date('H:i:s') . ' ' . $objects[$i]['TITLE'] . "->onNewMinute\n";
             sg($objects[$i]['TITLE'] . '.time', date('Y-m-d H:i:s'));
             callMethodSafe($objects[$i]['TITLE'] . '.onNewMinute');
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 DebMes('Error in onNewMinute for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main', 'error');
             }
-        }
-        if (time() >= $next_audit_prune) {
-            \MajorDoMo\Core\Core::audit()->pruneConfigured(4);
-            $next_audit_prune = time() + 5 * 60;
         }
         $old_minute = $m;
     }
@@ -124,7 +118,7 @@ while (1) {
             try {
             echo date('H:i:s') . ' ' . $objects[$i]['TITLE'] . "->onNewHour\n";
             callMethodSafe($objects[$i]['TITLE'] . '.onNewHour');
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 DebMes('Error in onNewHour for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main', 'error');
             }
         }
@@ -138,7 +132,7 @@ while (1) {
             try {
             echo date('H:i:s') . ' ' . $objects[$i]['TITLE'] . "->onNewDay\n";
             callMethodSafe($objects[$i]['TITLE'] . '.onNewDay');
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 DebMes('Error in onNewDay for ' . $objects[$i]['TITLE'] . ': ' . $e->getMessage(), 'cycle_main', 'error');
             }
         }

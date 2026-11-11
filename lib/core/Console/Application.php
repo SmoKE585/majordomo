@@ -8,6 +8,7 @@ use MajorDoMo\Core\Console\Commands;
  * Единый реестр CLI и обработка вывода команд.
  *
  * Изменения:
+ * 2026-11-11 — команда автоматического обслуживания и просмотра результатов.
  * 2026-10-25 — просмотр таймеров jobs:list со статусами и причинами сбоев.
  * 2026-10-25 — зарегистрирована диагностика долговечного журнала заданий ядра.
  * 2026-10-23 — обновление системы из терминала (`deploy:update`) для deploy.sh.
@@ -36,6 +37,7 @@ final class Application
             new Commands\CyclesDisableCommand(), new Commands\CyclesEnableCommand(), new Commands\SystemReloadCommand(),
             new Commands\MigrationsStatusCommand(), new Commands\MigrationsRunCommand(),
             new Commands\MaintenanceOnCommand(), new Commands\MaintenanceOffCommand(), new Commands\MaintenanceStatusCommand(),
+            new Commands\MaintenanceRunCommand(),
             new Commands\DeployUpdateCommand(),
             new Commands\SystemdSetCommand(), new Commands\SystemdGivePermissionsCommand(),
             new Commands\LogsTailCommand(),

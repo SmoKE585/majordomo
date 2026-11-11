@@ -134,12 +134,15 @@ php majordomo list config --json
 | `maintenance:on` | включить `cms/maintenance.json`; `--reason`, `--ttl`, `--message` |
 | `maintenance:off` | выключить режим и снять `cms/cycles/deploy.hold` |
 | `maintenance:status` | состояние маркера и ошибки |
+| `maintenance:run` | обслуживание по расписанию; `--force` — все этапы сейчас, `--task=cleanup\|backup\|files\|tables` — один этап, `--status` — результаты без БД; поддерживает `--json` |
 | `deploy:update` | системное обновление без HTTP: `--check`, `--plan`, `--yes`, `--branch`, `--url`; вызывается `deploy.sh` |
 | `systemd:set` | создать unit `majordomo-<user>`; `--apply`, `--disable-old`, `--fix-owner`, `--dry-run` |
 | `systemd:give-permissions` | wrapper + sudoers, только точные действия `systemctl` |
 
 `migrations:*` требуют БД и загружают штатный config/loader через
-`Context::migrations()`. `maintenance:*` работают без БД. `systemd:*` реально
+`Context::migrations()`. `maintenance:on/off/status` работают без БД.
+`maintenance:run --status` читает сохранённый отчёт; отдельные этапы используют
+штатный loader, настройки и helpers, как миграции. `systemd:*` реально
 меняют ОС только от root; `--dry-run` доступен без root и печатает unit,
 wrapper и sudoers. Реальные команды проверяются на изолированных временных
 каталогах, а не на рабочем `/etc`.

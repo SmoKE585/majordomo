@@ -4,6 +4,7 @@ namespace MajorDoMo\Core\Install;
 
 /**
  * Declarative schema of the first-run wizard.
+ * 2026-11-11 — ожидание готовности основного цикла включено по умолчанию.
  *
  * One field definition drives:
  *  - server-side validation and normalisation;
@@ -564,8 +565,8 @@ final class InstallSchema
                 'section' => 'performance',
                 'type' => 'switch',
                 'label' => 'Ждать основной цикл',
-                'description' => 'Остальные циклы стартуют после запуска основного. Так надёжнее при медленном старте.',
-                'default' => '0',
+                'description' => 'Остальные циклы ждут подтверждения готовности основного; ожидание не расходует попытки запуска.',
+                'default' => '1',
                 'width' => 'half',
             ),
             'RESTART_THREADS' => array(

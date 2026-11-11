@@ -20,6 +20,7 @@ namespace MajorDoMo\Core;
  *   required  doctor warns when the key is missing
  *
  * Изменения:
+ * 2026-11-11 — расписание автообслуживания и ожидание готовности main по умолчанию.
  * 2026-11-06 — лимит количества записей аудита на таблицу.
  * 2026-10-23 — необязательный секретный ключ шифрования ИИ-помощника.
  */
@@ -94,7 +95,10 @@ final class ConfigSchema
             'CYCLE_HEARTBEAT_TIMEOUT' => array('type' => 'integer', 'default' => 120, 'constant' => false),
             'CYCLE_STARTUP_TIMEOUT' => array('type' => 'integer', 'default' => 180, 'constant' => false),
             'CYCLE_TIMEOUTS' => array('type' => 'json', 'default' => array(), 'constant' => false),
-            'WAIT_FOR_MAIN_CYCLE' => array('type' => 'boolean', 'optional' => true),
+            'WAIT_FOR_MAIN_CYCLE' => array('type' => 'boolean', 'default' => true),
+            'MAINTENANCE_HOUR' => array('type' => 'integer', 'default' => 4, 'constant' => false),
+            'MAINTENANCE_INTERVAL' => array('type' => 'integer', 'default' => 900, 'constant' => false),
+            'MAINTENANCE_TIMEOUT' => array('type' => 'integer', 'default' => 1800, 'constant' => false),
             'LOWER_BACKGROUND_PROCESSES' => array('type' => 'boolean', 'optional' => true),
             'ENABLE_PANEL_ACCELERATION' => array('type' => 'boolean', 'optional' => true),
             'PROPERTY_DELIVERY_STRICT' => array('type' => 'boolean', 'default' => false, 'constant' => false),
