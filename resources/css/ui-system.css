@@ -9421,7 +9421,7 @@ body.md-admin-shell .md-ai-progress .is-running::before { background: var(--md-u
 body.md-admin-shell .md-ai-progress .is-done::before { background: var(--md-ui-success); }
 body.md-admin-shell .md-ai-progress .is-error::before { background: var(--md-ui-danger); }
 body.md-admin-shell .md-ai-action { margin: 12px 0; min-width: 0; }
-body.md-admin-shell .md-ai-action__body { display: grid; gap: 8px; }
+body.md-admin-shell .md-ai-action__body { display: grid; gap: 8px; min-width: 0; }
 body.md-admin-shell .md-ai-action p { margin: 0; }
 body.md-admin-shell .md-ai-action__buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 body.md-admin-shell .md-ai-action__buttons[hidden] { display: none; }
@@ -9432,8 +9432,13 @@ body.md-admin-shell .md-ai-actions__nav .md-btn { min-height: 44px; }
 body.md-admin-shell .md-ai-actions__counter { color: var(--md-ui-text-muted); font-size: 13px; white-space: nowrap; }
 body.md-admin-shell .md-ai-actions__viewport { min-width: 0; }
 body.md-admin-shell .md-ai-actions__viewport .md-ai-action { margin: 8px 0; }
-body.md-admin-shell .md-ai-actions__viewport .md-ai-action__body { max-height: min(44vh, 420px); overflow: auto; overscroll-behavior: contain; }
-body.md-admin-shell .md-ai-action__buttons { position: sticky; bottom: 0; background: var(--md-ui-surface); padding-block: 8px; }
+/* Карточка не прокручивается внутри чата: длинный код раскрывается по запросу. */
+body.md-admin-shell .md-ai-action .md-code-sample__scroll { max-height: none; }
+body.md-admin-shell .md-ai-action .md-card__footer { display: grid; justify-content: stretch; gap: 10px; }
+body.md-admin-shell .md-ai-action__buttons { position: static; }
+body.md-admin-shell .md-ai-action__code { min-width: 0; }
+body.md-admin-shell .md-ai-action__code:has(> details[open]) > .md-ai-action__preview { display: none; }
+body.md-admin-shell .md-ai-action details > summary { cursor: pointer; padding-block: 8px; }
 body.md-admin-shell .md-ai-chat__jump { display: flex; justify-content: center; flex-shrink: 0; }
 body.md-admin-shell .md-ai-chat__jump:has([hidden]) { display: none; }
 body.md-admin-shell [data-ai-jump-bottom][hidden] { display: none; }

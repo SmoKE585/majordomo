@@ -165,6 +165,33 @@ try {
     await waitFor('document.querySelector("[data-ai-actions]").hidden');
     assert.equal(decisionCount, 2);
     assert.equal(await evaluate('document.querySelectorAll("[data-ai-action]").length'), 0, 'Отклонённая карточка тоже удалена.');
+    await evaluate(`window.MDAssistant.showActions(document.querySelector('[data-ai-actions]'), [${JSON.stringify(fixture.layout_action)}])`);
+    const assertCardLayout = async expanded => {
+        const layout = await evaluate(`(() => {
+            const card=document.querySelector('[data-ai-action]:not([hidden])'), body=card.querySelector('.md-ai-action__body'),
+                footer=card.querySelector('.md-card__footer'), bar=card.querySelector('.md-ai-action__buttons');
+            const scrollers=Array.from(card.querySelectorAll('*')).filter(node=>node.checkVisibility() && /auto|scroll/.test(getComputedStyle(node).overflowY) && node.scrollHeight>node.clientHeight+1);
+            return {scrollers:scrollers.map(node=>node.className), buttonsOutside:!body.contains(bar),
+                footerBelow:footer.getBoundingClientRect().top>=body.getBoundingClientRect().bottom-1,
+                position:getComputedStyle(bar).position, previewVisible:card.querySelector('.md-ai-action__preview').checkVisibility()};
+        })()`);
+        assert.deepEqual(layout.scrollers, [], 'В карточке нет внутренних вертикальных прокруток.');
+        assert.ok(layout.buttonsOutside && layout.footerBelow, 'Футер расположен после кода и не перекрывает строки.');
+        assert.equal(layout.position, 'static');
+        assert.equal(layout.previewVisible, !expanded, 'При раскрытии краткий предпросмотр заменяется полным кодом.');
+    };
+    for (const [theme, width] of [['light', 1360], ['dark', 390]]) {
+        await call('Emulation.setDeviceMetricsOverride', {width, height: 1000, deviceScaleFactor: 1, mobile: width < 600});
+        await evaluate(`document.documentElement.dataset.bsTheme=${JSON.stringify(theme)}`);
+        await assertCardLayout(false);
+        await evaluate('document.querySelector("[data-ai-full-code]").open=true;document.querySelector("[data-ai-action] details:not([data-ai-full-code])").open=true');
+        await assertCardLayout(true);
+        await evaluate('document.querySelector("[data-ai-full-code]").open=false;document.querySelector("[data-ai-action] details:not([data-ai-full-code])").open=false;document.querySelector("[data-ai-action] .md-card__footer").scrollIntoView({block:"center"})');
+        const screenshot = await call('Page.captureScreenshot', {format: 'png'});
+        await writeFile(path.join(artifactDir, 'action-footer-' + theme + '.png'), Buffer.from(screenshot.data, 'base64'));
+    }
+    await evaluate('document.querySelector("[data-ai-actions]").innerHTML="";document.querySelector("[data-ai-actions]").hidden=true;document.documentElement.dataset.bsTheme="light"');
+    await call('Emulation.setDeviceMetricsOverride', {width: 1360, height: 1000, deviceScaleFactor: 1, mobile: false});
     await evaluate('document.querySelector("[data-ai-prompt]").value="обрыв";document.querySelector("[data-ai-composer]").requestSubmit()');
     await waitFor('document.querySelector("[data-ai-messages]").textContent.includes("Истёк лимит времени агента") && !document.querySelector("[data-ai-send]").disabled');
     assert.equal(run.STATUS, 'error', 'Серверная ошибка не заменяется сетевой или отменой.');
@@ -186,6 +213,21 @@ try {
     assert.equal(await evaluate('document.querySelector("#mdAdminDrawerHost").hidden'), false);
     assert.equal(await evaluate('document.querySelectorAll("[data-ai-drawer] .md-ai-chat__side,[data-ai-drawer] .md-ai-chat__top,[data-ai-drawer] a").length'), 0, 'В быстром drawer нет истории, настроек и служебных переходов.');
     assert.equal(await evaluate('document.querySelectorAll("[data-ai-drawer] [data-ai-action]").length'), 0, 'При повторном открытии решённые карточки не возвращаются.');
+    await evaluate(`window.MDAssistant.showActions(document.querySelector('[data-ai-drawer] [data-ai-actions]'), [${JSON.stringify(fixture.layout_action)}])`);
+    for (const [theme, width] of [['light', 800], ['dark', 390]]) {
+        await call('Emulation.setDeviceMetricsOverride', {width, height: 1000, deviceScaleFactor: 1, mobile: width < 600});
+        await evaluate(`document.documentElement.dataset.bsTheme=${JSON.stringify(theme)}`);
+        await assertCardLayout(false);
+        await evaluate('document.querySelector("[data-ai-full-code]").open=true');
+        await assertCardLayout(true);
+        await evaluate('document.querySelector("[data-ai-full-code]").open=false');
+        await sleep(100);
+        await evaluate('document.querySelector("[data-ai-drawer] [data-ai-messages]").scrollTop=1000000');
+        const screenshot = await call('Page.captureScreenshot', {format: 'png'});
+        await writeFile(path.join(artifactDir, 'drawer-action-' + theme + '.png'), Buffer.from(screenshot.data, 'base64'));
+    }
+    await evaluate('document.querySelector("[data-ai-drawer] [data-ai-actions]").innerHTML="";document.querySelector("[data-ai-drawer] [data-ai-actions]").hidden=true');
+    await call('Emulation.setDeviceMetricsOverride', {width: 1360, height: 1000, deviceScaleFactor: 1, mobile: false});
     await sleep(60); // Drawer завершает собственную установку фокуса.
     await evaluate(`{
         const root = document.createElement('div'); root.id = 'progressFixture';

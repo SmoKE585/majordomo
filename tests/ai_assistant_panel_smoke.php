@@ -184,10 +184,18 @@ try {
         $pageHtml = $render(array('view_mode' => 'chat', 'dialog_id' => $longDialog));
         $drawerHtml = $render(array('view_mode' => 'chat', 'dialog_id' => $longDialog, 'op' => 'drawer'));
         check(!str_contains($drawerHtml, '<script') && str_contains($drawerHtml, 'data-ai-drawer'), 'Drawer использует общий чат без вложенных скриптов.');
+        $layoutDialog = $chat->createDialog(1, $agentId, 'Длинная правка', 'chat', array());
+        $layoutAction = $requests->propose($layoutDialog, 1, $agentId, array('kind' => 'object_method', 'name' => 'check', 'parent' => 'SecurityObject',
+            'description' => 'Проверка режима охраны с учётом пылесоса.', 'code' => str_repeat('$this->setProperty("status", 1); // Строка проверки' . "\n", 60)));
+        $layoutAction['data']['operation'] = 'update';
+        $layoutAction['before_html'] = MDJUI::codeSample(array('language' => 'php', 'code' => str_repeat('return true;' . "\n", 30)));
+        $action = $layoutAction;
+        ob_start(); require $fixture . '/templates/ai_assistant/_action.php'; $layoutAction['html'] = ob_get_clean();
+        check(str_contains($layoutAction['html'], 'data-ai-full-code') && str_contains($layoutAction['html'], 'md-card__footer'), 'Длинная правка имеет раскрытие полного кода и отдельный футер.');
         $export = sys_get_temp_dir() . '/mjd-ai-ui-' . bin2hex(random_bytes(6)) . '.json';
         file_put_contents($export, json_encode(array('page' => $pageHtml, 'drawer' => $drawerHtml, 'messages' => $exportMessages,
             'answer_html' => MajorDoMo\Modules\AiAssistant\AgentRunner::render("Найдено устройство.\n\n```php\ncm('LigthToilet.turnOn');\n```"),
-            'action' => $proposal, 'dialog_id' => $longDialog), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+            'action' => $proposal, 'layout_action' => $layoutAction, 'dialog_id' => $longDialog), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
         echo 'UI_FIXTURE=' . $export . PHP_EOL;
     }
     $long = str_repeat('я', 200001);

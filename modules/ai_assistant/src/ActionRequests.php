@@ -10,6 +10,7 @@ use RuntimeException;
 /**
  * Неизменяемые предложения Neuron и однократное решение владельца диалога.
  * Изменения:
+ * 2026-11-11 — короткий предпросмотр длинного кода без вложенной прокрутки.
  * 2026-11-11 — пакет предложений, исходная версия правки и история решений.
  * 2026-10-23 — подтверждение с повторной проверкой прав, срока и защиты от двойного клика.
  */
@@ -123,8 +124,12 @@ final class ActionRequests
         $data = json_decode($row['PAYLOAD'], true, 16, JSON_THROW_ON_ERROR);
         $before = $data['_expected'] ?? null;
         unset($data['_expected']);
+        $codeLines = explode("\n", str_replace(array("\r\n", "\r"), "\n", $data['code']));
         $action = array('id' => (int)$row['ID'], 'status' => $row['STATUS'], 'result' => $row['RESULT'],
             'data' => $data, 'code_html' => $data['code'] !== '' ? \MDJUI::codeSample(array('language' => 'php', 'code' => $data['code'])) : '',
+            'code_lines' => count($codeLines),
+            'code_preview_html' => count($codeLines) > 12 ? \MDJUI::codeSample(array('language' => 'php',
+                'code' => implode("\n", array_slice($codeLines, 0, 12)), 'copy' => false, 'caption' => 'Первые 12 строк. Полный код — ниже.')) : '',
             'before_html' => $before !== null ? \MDJUI::codeSample(array('language' => 'php', 'code' => $before['_SCRIPT_CODE'] ?? $before['CODE'])) : '',
             'source_script' => $before['_SCRIPT_TITLE'] ?? '');
         ob_start();
