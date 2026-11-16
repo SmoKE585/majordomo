@@ -134,6 +134,9 @@
                 return data && typeof data.output !== 'undefined' ? data.output : '';
             });
         },
+        runObjectMethod: function (objectId, methodId) {
+            return post('/methods/run', {object_id: Number(objectId), method_id: Number(methodId)});
+        },
         websocketTicket: function () {
             return get('/websocket-ticket');
         },

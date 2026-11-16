@@ -6,6 +6,7 @@ use MajorDoMo\Core\{Core, Database};
 
 /**
  * Обработчики API делегируют выполнение функциям и сервисам ядра.
+ * Изменения: 2026-11-16 — запуск метода объекта через защищённый маршрут панели.
  * Изменения: 2026-10-25 — общий список уведомлений только в сеансе администратора.
  * Изменения: 2026-10-23 — пользовательский вход обрабатывается только HTTP-границей.
  * Изменения: 2026-10-22 — сообщения и подписки доступны внешним клиентам v1.
@@ -76,6 +77,7 @@ final class Dispatcher
             'panelDashboard' => $panel->dashboard((string)($params['fresh'] ?? '') === '1'),
             'panelSearch' => $panel->search($params),
             'panelConsole' => $panel->console($params),
+            'panelMethodRun' => $panel->runMethod($params),
             'panelWebsocket' => $panel->websocketTicket(),
             'panelNotifications' => $panel->dismiss($params),
             'panelNotificationList' => $panel->notifications($params),

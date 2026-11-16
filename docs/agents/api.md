@@ -120,7 +120,7 @@ X-Ray, уведомления, билет WebSocket и данные X-Ray. Ма�
 
 Клиент — `resources/js/modules/admin_panel/07_api.js` (`window.MDJAdminApi`):
 `dashboard()`, `updates()`, `search()`, `console()`, `dismissModuleNotifications()`,
-`propertyHistory()`, `propertyTrace()`, `xray.content()`, `xray.service()`,
+`runObjectMethod(objectId, methodId)`, `propertyHistory()`, `propertyTrace()`, `xray.content()`, `xray.service()`,
 `xray.command()`, `xray.cycleLog()`, `xray.clearLogs()`, `xray.database()`,
 `xray.stopTimer()` и другие методы. История и цепочка свойства объекта
 (`/panel/objects/{object}/properties/{property}/history|trace`) делегируют
@@ -130,6 +130,13 @@ X-Ray, уведомления, билет WebSocket и данные X-Ray. Ма�
 сохранены как тонкие адаптеры над `lib/core/Api/Panel.php`, `PanelSearch.php` и
 `PanelConsole.php`; их логика больше не дублируется. X-Ray отдаёт данные теми же методами `admin()` и
 `service_control()`, переключаясь в режим возврата массива.
+
+`POST /api/v1/panel/methods/run` запускает метод выбранного объекта из его
+редактора. Запрос содержит `object_id` и `method_id`; маршрут доступен только
+в активной сессии администратора и проходит общую проверку CSRF. Ответ
+показывает перехваченный `echo`, JSON-представление результата, длительность и
+класс/сообщение исключения. Это диагностический запуск доверенного PHP-кода
+метода, а не песочница.
 
 ## Входящие webhook
 

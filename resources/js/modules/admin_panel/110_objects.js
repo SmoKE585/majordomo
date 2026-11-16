@@ -95,6 +95,39 @@
         applyFilter();
     }
 
+    function formatMethodRun(data) {
+        var lines = [data.ok ? 'Метод выполнен' : 'Метод завершился с ошибкой',
+            'Объект: ' + data.object + '.' + data.method,
+            'Время: ' + data.duration_ms + ' мс'];
+        if (data.error) lines.push('Ошибка: ' + data.error.class + ': ' + data.error.message);
+        lines.push('', 'Вывод echo:', data.output || '(пусто)', '', 'Возвращённое значение:', data.result);
+        return lines.join('\n');
+    }
+
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-md-run-object-method]');
+        if (!button || !window.MDJAdminApi) return;
+        event.preventDefault();
+        var result = document.querySelector('[data-md-method-run-result]');
+        if (!result) return;
+        var label = button.querySelector('.md-btn__label');
+        var initialLabel = label ? label.textContent : button.textContent;
+        button.disabled = true;
+        if (label) label.textContent = 'Выполняется…';
+        result.hidden = false;
+        result.textContent = 'Метод выполняется…';
+        window.MDJAdminApi.runObjectMethod(button.dataset.objectId, button.dataset.methodId).then(function (data) {
+            result.textContent = formatMethodRun(data);
+            result.classList.toggle('text-danger', !data.ok);
+        }).catch(function (error) {
+            result.textContent = 'Запрос не выполнен: ' + (error.message || 'неизвестная ошибка');
+            result.classList.add('text-danger');
+        }).finally(function () {
+            button.disabled = false;
+            if (label) label.textContent = initialLabel;
+        });
+    });
+
     if (window.MDJAdminUI && typeof window.MDJAdminUI.registerModuleUI === 'function') {
         window.MDJAdminUI.registerModuleUI('objects-list', {
             init: function (root) {

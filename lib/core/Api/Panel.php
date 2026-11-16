@@ -49,6 +49,84 @@ final class Panel
         return array('output' => (new PanelConsole())->run($command));
     }
 
+    /**
+     * Запуск выбранного метода из формы объекта с перехватом echo и исключений.
+     * 2026-11-16 — заменена удалённая GET-ссылка /objects/ на вызов панели.
+     */
+    public function runMethod(array $params): array
+    {
+        $objectId = filter_var($params['object_id'] ?? null, FILTER_VALIDATE_INT);
+        $methodId = filter_var($params['method_id'] ?? null, FILTER_VALIDATE_INT);
+        if ($objectId === false || (int)$objectId < 1 || $methodId === false || (int)$methodId < 1) {
+            throw new ApiException(422, 'validation_failed', 'Некорректный объект или метод.');
+        }
+
+        $method = $this->db->one('SELECT ID,TITLE,CLASS_ID,OBJECT_ID FROM methods WHERE ID=' . (int)$methodId);
+        $objectRow = $this->db->one('SELECT ID,TITLE FROM objects WHERE ID=' . (int)$objectId);
+        if (!$method || !$objectRow) {
+            throw new ApiException(404, 'not_found', 'Объект или метод не найден.');
+        }
+        $object = Core::objects()->get((string)$objectRow['TITLE']);
+        if (!$object) {
+            throw new ApiException(404, 'not_found', 'Объект не найден.');
+        }
+        $resolvedMethodId = Core::methods()->resolve($object, (string)$method['TITLE'], $object->class_id, $object->id);
+        $methodIsInClassTree = false;
+        $classId = (int)$object->class_id;
+        $visited = array();
+        while ($classId > 0 && !isset($visited[$classId])) {
+            if ((int)$method['CLASS_ID'] === $classId) {
+                $methodIsInClassTree = true;
+                break;
+            }
+            $visited[$classId] = true;
+            $classRow = $this->db->one('SELECT PARENT_ID FROM classes WHERE ID=' . $classId);
+            $classId = (int)($classRow['PARENT_ID'] ?? 0);
+        }
+        $methodIsObjectOverride = (int)$method['OBJECT_ID'] === (int)$object->id;
+        if ((int)$resolvedMethodId < 1 || (!$methodIsObjectOverride && !$methodIsInClassTree)) {
+            throw new ApiException(422, 'method_mismatch', 'Выбранный метод не принадлежит этому объекту.');
+        }
+
+        $startedAt = hrtime(true);
+        $bufferLevel = ob_get_level();
+        ob_start();
+        $result = null;
+        $error = null;
+        try {
+            $result = Core::objects()->call((string)$objectRow['TITLE'] . '.' . (string)$method['TITLE'], array(), false);
+        } catch (\Throwable $exception) {
+            $error = array(
+                'class' => get_class($exception),
+                'message' => $exception->getMessage(),
+            );
+        } finally {
+            $output = '';
+            while (ob_get_level() > $bufferLevel) {
+                $chunk = ob_get_clean();
+                if (is_string($chunk)) $output = $chunk . $output;
+            }
+        }
+
+        $outputLimit = 65536;
+        $returnValue = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR, 32);
+        if ($returnValue === false) $returnValue = '[не удалось представить возвращаемое значение]';
+        if (strlen($returnValue) > $outputLimit) $returnValue = substr($returnValue, 0, $outputLimit) . '… [обрезано]';
+        $truncated = strlen($output) > $outputLimit;
+        if ($truncated) $output = substr($output, 0, $outputLimit) . "\n… [вывод обрезан]";
+
+        return array(
+            'ok' => $error === null,
+            'object' => (string)$objectRow['TITLE'],
+            'method' => (string)$method['TITLE'],
+            'output' => $output,
+            'result' => $returnValue,
+            'error' => $error,
+            'duration_ms' => round((hrtime(true) - $startedAt) / 1e6, 2),
+            'output_truncated' => $truncated,
+        );
+    }
+
     public function websocketTicket(): array
     {
         $session = Core::session(ROOT);

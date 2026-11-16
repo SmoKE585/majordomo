@@ -47,14 +47,6 @@
                     <td>
                         <div class="md-table__actions">
                             <a href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&overwrite=1&method_id=[#ID#]" class="md-btn md-btn--secondary md-btn--sm"><#LANG_SETUP#></a>
-                            <div class="dropdown">
-                                <button type="button" class="md-icon-btn md-icon-btn--sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<#LANG_ACTIONS#>">
-                                    <i class="ti ti-dots" aria-hidden="true"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end md-menu">
-                                    <li><a class="dropdown-item" href="<#ROOTHTML#>objects/?object=[#OBJECT_TITLE#]&op=m&m=[#TITLE#]" target="_blank" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-player-play" aria-hidden="true"></i><#LANG_RUN_SCRIPT_BTN#></a></li>
-                                </ul>
-                            </div>
                         </div>
                     </td>
                 </tr>
@@ -326,7 +318,7 @@
                                     <span class="md-btn__label"><#LANG_ACTIONS#></span><i class="ti ti-chevron-down" aria-hidden="true"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end md-menu">
-                                    <li><a class="dropdown-item" href="<#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" target="_blank" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-player-play" aria-hidden="true"></i><#LANG_RUN_SCRIPT_BTN#></a></li>
+                                    <li><button type="button" class="dropdown-item" data-md-run-object-method data-object-id="<#ID#>" data-method-id="<#METHOD_ID#>"><i class="ti ti-player-play" aria-hidden="true"></i><#LANG_RUN_SCRIPT_BTN#></button></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-danger" href="?view_mode=<#VIEW_MODE#>&id=<#ID#>&tab=<#TAB#>&delete_meth=<#METHOD_ID#>" data-md-confirm="<#LANG_ARE_YOU_SURE#>"><i class="ti ti-trash" aria-hidden="true"></i><#LANG_DELETE#></a></li>
                                 </ul>
@@ -355,9 +347,10 @@
                 <div class="md-card__body">
                     <div class="md-ui-form-stack">
                         <div class="md-field">
-                            <span class="md-field__label"><#LANG_RUN_BY_URL#></span>
+                            <span class="md-field__label">Запуск и отладочный вывод</span>
                             <div class="md-field__control">
-                                <pre class="mb-0 p-2 rounded-3 bg-body-tertiary text-break"><a href="<#SERVER_URL#><#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#>" data-md-confirm="<#LANG_ARE_YOU_SURE#>" target="_blank"><#SERVER_URL#><#ROOTHTML#>objects/?object=<#OBJECT_TITLE_URL#>&op=m&m=<#METHOD_TITLE_URL#></a></pre>
+                                <button type="button" class="md-btn md-btn--secondary" data-md-run-object-method data-object-id="<#ID#>" data-method-id="<#METHOD_ID#>"><i class="ti ti-player-play" aria-hidden="true"></i><span class="md-btn__label">Запустить метод</span></button>
+                                <pre class="md-method-run-result mt-3 mb-0 p-3 rounded-3 bg-body-tertiary text-break" data-md-method-run-result hidden aria-live="polite"></pre>
                             </div>
                         </div>
                         <div class="md-field">

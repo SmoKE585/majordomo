@@ -63,6 +63,7 @@ final class Contract
      *
      * Они не входят в публичную спецификацию и OpenAPI: Dispatcher пускает
      * сюда только сеанс администратора, а не токен или локальную сеть.
+     * 2026-11-16 — добавлен административный запуск метода объекта с отладочным выводом.
      * 2026-10-22 — замена admin.php?ajax_panel=1 и X-Ray AJAX на /api/v1/panel.
      */
     public static function panelOperations(): array
@@ -72,6 +73,7 @@ final class Contract
             array('GET', '/panel/search', 'panelSearch', 'Поиск по панели', true),
             array('GET', '/panel/websocket-ticket', 'panelWebsocket', 'Билет WebSocket панели', true),
             array('POST', '/panel/console', 'panelConsole', 'Выполнить код в консоли X-Ray', true),
+            array('POST', '/panel/methods/run', 'panelMethodRun', 'Запустить метод объекта из панели', true),
             array('GET', '/panel/notifications', 'panelNotificationList', 'Непрочитанные уведомления модулей', true),
             array('POST', '/panel/notifications/dismiss', 'panelNotifications', 'Отметить уведомления прочитанными', true),
             array('GET', '/panel/xray/content', 'panelXrayContent', 'Данные режима X-Ray', true),
