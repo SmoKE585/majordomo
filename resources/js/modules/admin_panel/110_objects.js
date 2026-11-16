@@ -95,12 +95,16 @@
         applyFilter();
     }
 
-    function createMethodRunPage() {
+    function openMethodOutput(page, text) {
+        var outputUrl = URL.createObjectURL(new Blob([text], {type: 'text/plain;charset=utf-8'}));
+        page.addEventListener('load', function () {
+            URL.revokeObjectURL(outputUrl);
+        }, {once: true});
+        page.location.replace(outputUrl);
+    }
+
+    function openMethodRunPage() {
         var page = window.open('', '_blank');
-        if (!page) return null;
-        page.document.open();
-        page.document.write('<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Результат запуска метода</title><style>body{margin:0;padding:24px;background:#f4f6f8;color:#202833;font:15px/1.5 system-ui,sans-serif}main{max-width:960px;margin:0 auto}.card{padding:20px;margin:16px 0;background:#fff;border:1px solid #dce2e8;border-radius:12px}h1{font-size:24px;margin:0 0 6px}h2{font-size:16px;margin:0 0 10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font:13px/1.6 ui-monospace,monospace}.error{color:#b42318}.muted{color:#667085}</style></head><body><main><h1 id="title">Результат запуска метода</h1><p id="status" class="muted">Метод выполняется…</p><section class="card"><h2>Вывод echo</h2><pre id="output">Ожидание…</pre></section><section class="card"><h2>Возвращённое значение</h2><pre id="value">Ожидание…</pre></section><section class="card" id="error-card" hidden><h2 class="error">Исключение</h2><pre id="error" class="error"></pre></section></main></body></html>');
-        page.document.close();
         return page;
     }
 
@@ -108,26 +112,22 @@
         var link = event.target.closest('[data-md-run-object-method]');
         if (!link || !window.MDJAdminApi) return;
         event.preventDefault();
-        var page = createMethodRunPage();
+        var page = openMethodRunPage();
         if (!page) {
             window.alert('Браузер заблокировал новую вкладку. Разрешите всплывающие окна для панели и повторите запуск.');
             return;
         }
         window.MDJAdminApi.runObjectMethod(link.dataset.objectId, link.dataset.methodId).then(function (data) {
-            page.document.title = data.object + '.' + data.method + ' — результат';
-            page.document.getElementById('title').textContent = data.object + '.' + data.method;
-            page.document.getElementById('status').textContent = (data.ok ? 'Метод выполнен' : 'Метод завершился с ошибкой') + ' · ' + data.duration_ms + ' мс';
-            page.document.getElementById('status').className = data.ok ? 'muted' : 'error';
-            page.document.getElementById('output').textContent = data.output || '(пусто)';
-            page.document.getElementById('value').textContent = data.result;
-            if (data.error) {
-                page.document.getElementById('error-card').hidden = false;
-                page.document.getElementById('error').textContent = data.error.class + ': ' + data.error.message;
+            var text = data.output || '';
+            var value;
+            try { value = JSON.parse(data.result); } catch (error) { value = data.result; }
+            if (value !== null && typeof value !== 'undefined') {
+                text += typeof value === 'string' ? value : (typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value));
             }
+            if (data.error) text += data.error.message;
+            openMethodOutput(page, text);
         }).catch(function (error) {
-            page.document.getElementById('status').textContent = 'Запрос не выполнен';
-            page.document.getElementById('status').className = 'error';
-            page.document.getElementById('output').textContent = error.message || 'Неизвестная ошибка';
+            openMethodOutput(page, error.message || 'Ошибка запуска метода.');
         });
     });
 
